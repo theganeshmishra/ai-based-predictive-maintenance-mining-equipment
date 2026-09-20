@@ -1,0 +1,48 @@
+# Python environments and caches
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Editors and operating systems
+.DS_Store
+.idea/
+.vscode/
+
+# Secrets and local configuration
+.env
+.env.*
+!.env.example
+
+# TiNA and derived data: never commit the full dataset
+data/raw/
+data/interim/
+data/processed/
+*.csv
+*.csv.gz
+*.tsv
+*.parquet
+*.feather
+*.arrow
+*.h5
+*.hdf5
+
+# Allow small, reviewed metric tables in the dedicated results folder
+!results/*.csv
+
+# Fitted models and large generated artifacts
+*.joblib
+*.pkl
+*.pickle
+*.onnx
+models/
+
+# Local logs and scratch output
+*.log
+work/

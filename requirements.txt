@@ -1,0 +1,10 @@
+jupyterlab>=4.2,<5
+matplotlib>=3.9,<4
+numpy>=2.0,<3
+pandas>=2.2,<3
+polars>=1.5,<2
+pyarrow>=17,<22
+scikit-learn>=1.5,<2
+seaborn>=0.13,<1
+imbalanced-learn>=0.12,<1
+joblib>=1.4,<2
