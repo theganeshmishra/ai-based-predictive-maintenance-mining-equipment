@@ -22,6 +22,21 @@ data/
 
 These directories and common data formats are ignored by Git. Create the directories locally as needed.
 
+## One-day local starter sample
+
+The official dataset is partitioned by day. To run the notebooks without downloading the full dataset, start with the September 6, 2017 partition (about 74,000 rows):
+
+```bash
+mkdir -p data/raw
+curl -fL \
+  "https://raw.githubusercontent.com/ari-dasci/OD-TINA/main/data/day%3D2017-09-06/data.parquet" \
+  -o data/raw/tina_sample_2017-09-06.parquet
+export TINA_DATA_PATH="data/raw/tina_sample_2017-09-06.parquet"
+export TINA_TIME_COLUMN="unix"
+```
+
+This sample is suitable for verifying the environment and the data-understanding workflow. It is not large or event-diverse enough for final model conclusions.
+
 ## Recommended first subset
 
 The full data has more than 38 million rows, so first select a bounded contiguous time range that:
