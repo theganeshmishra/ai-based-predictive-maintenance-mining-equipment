@@ -73,13 +73,23 @@ pip install -r requirements.txt
 jupyter lab
 ```
 
-Place the downloaded data under `data/raw/` and set the `TINA_DATA_PATH` environment variable if its filename differs from the notebook default:
+Place the downloaded data under `data/raw/`. The local starter sample uses the official September 6, 2017 Parquet partition and the source timestamp field `unix`:
 
 ```bash
-export TINA_DATA_PATH="data/raw/tina.csv"
+export TINA_DATA_PATH="data/raw/tina_sample_2017-09-06.parquet"
+export TINA_TIME_COLUMN="unix"
 ```
 
 The notebooks are intended to run in numerical order. Before committing a notebook, restart its kernel and run all cells from top to bottom.
+
+For a one-command local setup on macOS or Linux, run:
+
+```bash
+chmod +x run_local.sh
+./run_local.sh
+```
+
+The launcher creates `.venv` when needed, installs the requirements, downloads the official one-day starter partition if it is missing, and starts JupyterLab locally.
 
 ## Analytical approach
 
