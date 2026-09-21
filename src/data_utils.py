@@ -8,13 +8,15 @@ from pathlib import Path
 import polars as pl
 
 
-DEFAULT_DATA_PATH = Path("data/raw/tina.csv")
+DEFAULT_DATA_PATH = Path("data/raw/tina_sample_2017-09-06.parquet")
 EVENT_COLUMNS = ("m_id", "m_subid", "alarms")
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
 
 def resolve_data_path(default: Path = DEFAULT_DATA_PATH) -> Path:
     """Return the TiNA path from TINA_DATA_PATH, or the project default."""
-    return Path(os.environ.get("TINA_DATA_PATH", default))
+    data_path = Path(os.environ.get("TINA_DATA_PATH", default))
+    return data_path if data_path.is_absolute() else PROJECT_ROOT / data_path
 
 
 def scan_tina(path: str | Path | None = None) -> pl.LazyFrame:
