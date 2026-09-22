@@ -6,5 +6,6 @@ Suggested final report sections: problem context, related work, dataset and ethi
 
 ## Current records
 
+- [Group 9 Capstone Project Proposal](Group_9_Capstone_Project_Proposal.pdf)
 - [TiNA data dictionary](data_dictionary.md)
 - [Week 2 data acquisition and subset plan](week-02-data-acquisition.md)
