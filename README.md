@@ -64,7 +64,7 @@ The analysis should begin with a bounded, event-preserving time period. Record t
 Python 3.11 is recommended.
 
 ```bash
-git clone <repository-url>
+git clone https://github.com/theganeshmishra/ai-based-predictive-maintenance-mining-equipment.git
 cd ai-based-predictive-maintenance-mining-equipment
 python -m venv .venv
 source .venv/bin/activate        # Windows: .venv\Scripts\activate
@@ -90,6 +90,12 @@ chmod +x run_local.sh
 ```
 
 The launcher creates `.venv` when needed, installs the requirements, downloads the official one-day starter partition if it is missing, and starts JupyterLab locally.
+
+For the verified Week 2 event-preserving pilot, run
+`python src/build_week2_subset.py` and point `TINA_DATA_PATH` to the generated
+three-day Parquet file. The [Week 2 acquisition record](reports/week-02-data-acquisition.md)
+and [data dictionary](reports/data_dictionary.md) document the exact source,
+checksum, selection rationale, and observed schema.
 
 ## Analytical approach
 
