@@ -48,6 +48,29 @@ The full data has more than 38 million rows, so first select a bounded contiguou
 
 Do not randomly sample individual rows before building lag or rolling-window features. That would break the time-series context.
 
+## Verified Week 2 pilot subset
+
+The project uses the contiguous period from September 8 through September 10,
+2017 for its reproducible Week 2 pilot. It contains 259,200 rows, 4,994 rows
+with a maintenance code, and 26,719 rows with an alarm code. Build the local
+file directly from the pinned official source:
+
+```bash
+python src/build_week2_subset.py
+export TINA_DATA_PATH="data/raw/tina_sample_2017-09-08_to_10.parquet"
+```
+
+On Windows PowerShell, set the data path with:
+
+```powershell
+$env:TINA_DATA_PATH="data/raw/tina_sample_2017-09-08_to_10.parquet"
+```
+
+Expected SHA-256:
+`19365a40e99083c37c9909f25b281caad6e47430c52b255c4c24b0db874db947`.
+See [`reports/week-02-data-acquisition.md`](../reports/week-02-data-acquisition.md)
+for the selection rationale, verification results, and limitations.
+
 ## Reproducibility record
 
 For every shared result, note:
