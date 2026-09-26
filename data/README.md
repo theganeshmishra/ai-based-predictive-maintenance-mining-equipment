@@ -24,7 +24,7 @@ These directories and common data formats are ignored by Git. Create the directo
 
 ## One-day local starter sample
 
-The official dataset is partitioned by day. To run the notebooks without downloading the full dataset, start with the September 6, 2017 partition (about 74,000 rows):
+The official dataset is partitioned by day. To check the local environment without downloading the full dataset, start with the September 6, 2017 partition (about 74,000 rows):
 
 ```bash
 mkdir -p data/raw

@@ -26,10 +26,12 @@ Develop and evaluate a reproducible proof of concept that predicts whether a mai
 
 ## Current work to review
 
-For the Week 3 review, start with [Notebook 01](notebooks/01_TiNA_Data_Understanding.ipynb)
-and the [short findings report](reports/week-03-data-quality-and-events.md).
-The other notebooks are retained for later weeks; the scripts and data notes
-support reproducibility. The submitted [proposal](reports/Group_9_Capstone_Project_Proposal.pdf)
+For the Week 3 review, start with the project's **single TiNA notebook**,
+[Notebook 01](notebooks/01_TiNA_Data_Understanding.ipynb), and the
+[short findings report](reports/week-03-data-quality-and-events.md).
+Future weeks will extend this notebook and keep reusable code in `src/`.
+The scripts and data notes support reproducibility. The submitted
+[proposal](reports/Group_9_Capstone_Project_Proposal.pdf)
 and [proposal slides](presentation/Group_9_Capstone_Project_Proposal_Presentation.pptx)
 remain available without separate folder-index files.
 
@@ -65,7 +67,7 @@ export TINA_TIME_COLUMN="unix"
 The one-day file is only an environment starter. Notebook 01 now uses the
 documented **September 8–10 three-day pilot** and requires that file locally.
 
-The notebooks are intended to run in numerical order. Before committing a notebook, restart its kernel and run all cells from top to bottom.
+Before committing the TiNA notebook, restart its kernel and run all cells from top to bottom.
 
 For a one-command local setup on macOS or Linux, run:
 
@@ -111,11 +113,11 @@ limits, and the selected candidate image dataset for the separate CV module.
 | 1 | Scope, roles, repository, success criteria | Approved project charter and collaboration workflow |
 | 2 | Data acquisition and data dictionary | Reproducible local data setup and bounded subset plan |
 | 3 | Data understanding | Completed notebook 01 and data-quality log |
-| 4 | Cleaning and preprocessing | Initial preprocessing pipeline in notebook 02 |
+| 4 | Cleaning and preprocessing | Initial preprocessing code and a section in the single TiNA notebook |
 | 5 | Exploratory analysis | Time-series, missingness, alarm, and maintenance findings |
 | 6 | Target and feature design | Leakage-safe target definition and feature catalogue |
-| 7 | Feature engineering | Completed notebook 03 and modelling table |
-| 8 | Baseline modelling | Dummy, linear, and tree-based baselines in notebook 04 |
+| 7 | Feature engineering | Reproducible features and a modelling-table summary in the TiNA notebook |
+| 8 | Baseline modelling | Dummy, linear, and tree-based baseline results in the TiNA notebook |
 | 9 | Validation and interpretation | Threshold analysis, error analysis, and feature importance |
 | 10 | Final results and report | Reproducible results, limitations, and report draft |
 | 11 | Presentation and review | Slide deck, demo flow, peer review, and revisions |
