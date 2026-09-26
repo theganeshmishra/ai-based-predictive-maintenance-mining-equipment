@@ -10,12 +10,9 @@ if [[ ! -x .venv/bin/python ]]; then
   .venv/bin/pip install -r requirements.txt
 fi
 
-sample_path="data/raw/tina_sample_2017-09-06.parquet"
+sample_path="data/raw/tina_sample_2017-09-08_to_10.parquet"
 if [[ ! -f "$sample_path" ]]; then
-  mkdir -p data/raw
-  curl -fL \
-    "https://raw.githubusercontent.com/ari-dasci/OD-TINA/main/data/day%3D2017-09-06/data.parquet" \
-    -o "$sample_path"
+  .venv/bin/python src/build_week2_subset.py
 fi
 
 export TINA_DATA_PATH="${TINA_DATA_PATH:-$sample_path}"
