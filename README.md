@@ -37,9 +37,13 @@ Develop and evaluate a reproducible proof of concept that predicts whether a mai
 │   └── 04_Baseline_Models.ipynb
 ├── src/
 │   ├── __init__.py
+│   ├── build_week2_subset.py
 │   └── data_utils.py
 ├── reports/
-│   └── README.md
+│   ├── README.md
+│   ├── data_dictionary.md
+│   ├── week-02-data-acquisition.md
+│   └── week-03-data-quality-and-events.md
 ├── presentation/
 │   └── README.md
 ├── results/
@@ -80,6 +84,9 @@ export TINA_DATA_PATH="data/raw/tina_sample_2017-09-06.parquet"
 export TINA_TIME_COLUMN="unix"
 ```
 
+The one-day file is only an environment starter. Notebook 01 now uses the
+documented **September 8–10 three-day pilot** and requires that file locally.
+
 The notebooks are intended to run in numerical order. Before committing a notebook, restart its kernel and run all cells from top to bottom.
 
 For a one-command local setup on macOS or Linux, run:
@@ -89,13 +96,24 @@ chmod +x run_local.sh
 ./run_local.sh
 ```
 
-The launcher creates `.venv` when needed, installs the requirements, downloads the official one-day starter partition if it is missing, and starts JupyterLab locally.
+The launcher creates `.venv` when needed, installs the requirements, builds the
+pinned three-day pilot if it is missing, and starts JupyterLab locally. The
+one-day starter remains optional for a quick environment check, but Notebook 01
+uses the three-day pilot.
 
 For the verified Week 2 event-preserving pilot, run
 `python src/build_week2_subset.py` and point `TINA_DATA_PATH` to the generated
 three-day Parquet file. The [Week 2 acquisition record](reports/week-02-data-acquisition.md)
 and [data dictionary](reports/data_dictionary.md) document the exact source,
 checksum, selection rationale, and observed schema.
+
+To reproduce the Week 3 findings, open
+[`notebooks/01_TiNA_Data_Understanding.ipynb`](notebooks/01_TiNA_Data_Understanding.ipynb)
+in VS Code, select the project's `.venv` Python kernel, and run all cells.
+
+The [Week 3 data-quality and event-level report](reports/week-03-data-quality-and-events.md)
+documents six maintenance episodes, provisional recovery gaps, model-readiness
+limits, and the selected candidate image dataset for the separate CV module.
 
 ## Analytical approach
 
@@ -104,7 +122,7 @@ checksum, selection rationale, and observed schema.
 - Define a future prediction horizon and generate the target using only future event labels.
 - Construct all predictor features from information available at prediction time.
 - Split chronologically; never use a random train/test split for final evaluation.
-- Begin with dummy and interpretable linear baselines before tree-based models.
+- Begin with dummy, Naive Bayes, and interpretable linear baselines before tree-based models, once the target and chronological evaluation are viable.
 - Evaluate precision, recall, F1, PR-AUC, false alarms, and event-level warning coverage. Accuracy alone is not appropriate for this imbalanced problem.
 - Save small, shareable metrics and figures in `results/`; document large or excluded artifacts.
 
