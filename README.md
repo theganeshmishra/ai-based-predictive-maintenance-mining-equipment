@@ -27,7 +27,7 @@ Develop and evaluate a reproducible proof of concept that predicts whether a mai
 ## Current work to review
 
 For the Week 3 review, start with the project's **single TiNA notebook**,
-[Notebook 01](notebooks/01_TiNA_Data_Understanding.ipynb), and the
+[TiNA Predictive Maintenance notebook](notebooks/TiNA_Predictive_Maintenance.ipynb), and the
 [short findings report](reports/week-03-data-quality-and-events.md).
 Future weeks will extend this notebook and keep reusable code in `src/`.
 The scripts and data notes support reproducibility. The submitted
@@ -64,7 +64,7 @@ export TINA_DATA_PATH="data/raw/tina_sample_2017-09-06.parquet"
 export TINA_TIME_COLUMN="unix"
 ```
 
-The one-day file is only an environment starter. Notebook 01 now uses the
+The one-day file is only an environment starter. The TiNA notebook now uses the
 documented **September 8–10 three-day pilot** and requires that file locally.
 
 Before committing the TiNA notebook, restart its kernel and run all cells from top to bottom.
@@ -78,7 +78,7 @@ chmod +x run_local.sh
 
 The launcher creates `.venv` when needed, installs the requirements, builds the
 pinned three-day pilot if it is missing, and starts JupyterLab locally. The
-one-day starter remains optional for a quick environment check, but Notebook 01
+one-day starter remains optional for a quick environment check, but the TiNA notebook
 uses the three-day pilot.
 
 For the verified Week 2 event-preserving pilot, run
@@ -88,7 +88,7 @@ and [data dictionary](reports/data_dictionary.md) document the exact source,
 checksum, selection rationale, and observed schema.
 
 To reproduce the Week 3 findings, open
-[`notebooks/01_TiNA_Data_Understanding.ipynb`](notebooks/01_TiNA_Data_Understanding.ipynb)
+[`notebooks/TiNA_Predictive_Maintenance.ipynb`](notebooks/TiNA_Predictive_Maintenance.ipynb)
 in VS Code, select the project's `.venv` Python kernel, and run all cells.
 
 The [Week 3 data-quality and event-level report](reports/week-03-data-quality-and-events.md)
@@ -112,7 +112,7 @@ limits, and the selected candidate image dataset for the separate CV module.
 |---|---|---|
 | 1 | Scope, roles, repository, success criteria | Approved project charter and collaboration workflow |
 | 2 | Data acquisition and data dictionary | Reproducible local data setup and bounded subset plan |
-| 3 | Data understanding | Completed notebook 01 and data-quality log |
+| 3 | Data understanding | Completed TiNA notebook's Week 3 analysis and data-quality log |
 | 4 | Cleaning and preprocessing | Initial preprocessing code and a section in the single TiNA notebook |
 | 5 | Exploratory analysis | Time-series, missingness, alarm, and maintenance findings |
 | 6 | Target and feature design | Leakage-safe target definition and feature catalogue |
