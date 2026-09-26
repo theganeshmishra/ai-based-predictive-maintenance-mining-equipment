@@ -24,36 +24,14 @@ Develop and evaluate a reproducible proof of concept that predicts whether a mai
 3. How do prediction horizon, class imbalance, and decision threshold affect operational usefulness?
 4. Which features make the model's warnings interpretable to a maintenance team?
 
-## Repository structure
+## Current work to review
 
-```text
-.
-├── data/
-│   └── README.md
-├── notebooks/
-│   ├── 01_TiNA_Data_Understanding.ipynb
-│   ├── 02_TiNA_Preprocessing_EDA.ipynb
-│   ├── 03_Feature_Engineering.ipynb
-│   └── 04_Baseline_Models.ipynb
-├── src/
-│   ├── __init__.py
-│   ├── build_week2_subset.py
-│   └── data_utils.py
-├── reports/
-│   ├── README.md
-│   ├── data_dictionary.md
-│   ├── week-02-data-acquisition.md
-│   └── week-03-data-quality-and-events.md
-├── presentation/
-│   └── README.md
-├── results/
-│   └── README.md
-├── .gitignore
-├── CONTRIBUTING.md
-├── LICENSE
-├── README.md
-└── requirements.txt
-```
+For the Week 3 review, start with [Notebook 01](notebooks/01_TiNA_Data_Understanding.ipynb)
+and the [short findings report](reports/week-03-data-quality-and-events.md).
+The other notebooks are retained for later weeks; the scripts and data notes
+support reproducibility. The submitted [proposal](reports/Group_9_Capstone_Project_Proposal.pdf)
+and [proposal slides](presentation/Group_9_Capstone_Project_Proposal_Presentation.pptx)
+remain available without separate folder-index files.
 
 ## Data policy
 
