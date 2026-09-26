@@ -15,7 +15,7 @@ This repository is shared by Ganesh Mishra, Lakshya Sharma, and Sagar Patel for 
 
 ## Notebook rules
 
-- One person owns a notebook at a time; record ownership in the related issue.
+- One person owns the single TiNA notebook at a time; record ownership in the related issue.
 - Restart the kernel and run all cells before requesting review.
 - Keep cells short, add Markdown interpretation, and remove accidental/debug output.
 - Do not store secrets, personal paths, the TiNA data, large tables, or fitted models in notebooks.
