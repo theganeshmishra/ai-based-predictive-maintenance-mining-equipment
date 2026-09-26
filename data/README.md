@@ -35,7 +35,7 @@ export TINA_DATA_PATH="data/raw/tina_sample_2017-09-06.parquet"
 export TINA_TIME_COLUMN="unix"
 ```
 
-This sample is suitable for verifying the environment only. Notebook 01 now
+This sample is suitable for verifying the environment only. The TiNA notebook now
 uses the three-day pilot below; the one-day starter is not event-diverse enough
 even for the pilot event-level analysis.
 
@@ -72,7 +72,7 @@ Expected SHA-256:
 `19365a40e99083c37c9909f25b281caad6e47430c52b255c4c24b0db874db947`.
 See [`reports/week-02-data-acquisition.md`](../reports/week-02-data-acquisition.md)
 for the selection rationale, verification results, and limitations.
-Run [`notebooks/01_TiNA_Data_Understanding.ipynb`](../notebooks/01_TiNA_Data_Understanding.ipynb)
+Run [`notebooks/TiNA_Predictive_Maintenance.ipynb`](../notebooks/TiNA_Predictive_Maintenance.ipynb)
 to reproduce the data-quality checks, maintenance episodes, recovery-gap
 checks, and chronological split warning summarized in
 [`reports/week-03-data-quality-and-events.md`](../reports/week-03-data-quality-and-events.md).

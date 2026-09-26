@@ -66,7 +66,7 @@ for final model conclusions.
 
 ## Week 3 handoff
 
-Complete Notebook 01 using this selected period, convert consecutive maintenance
+Complete the TiNA notebook using this selected period, convert consecutive maintenance
 rows into event episodes, document recovery gaps, and add the data-quality log.
 The detailed schema and pilot observations are in
 [`data_dictionary.md`](data_dictionary.md).
