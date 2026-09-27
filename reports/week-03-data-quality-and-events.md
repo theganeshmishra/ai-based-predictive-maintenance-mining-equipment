@@ -4,6 +4,10 @@
 
 **Analysis date:** 2026-09-25; notebook revalidated 2026-09-26
 
+**Revalidation environment:** Python 3.9.6, Polars 1.36.1, pandas 2.3.3,
+Matplotlib 3.9.4, and PyArrow 21.0.0. See `requirements.txt` for supported
+version ranges.
+
 **Input:** `data/raw/tina_sample_2017-09-08_to_10.parquet` from the pinned
 [official TiNA source](https://github.com/ari-dasci/OD-TINA) documented in the
 [Week 2 acquisition record](week-02-data-acquisition.md). The Parquet file is
@@ -72,12 +76,13 @@ period before using one for modeling.
 
 ## Modeling readiness and professor feedback
 
-A chronological 70/15/15 row split of this pilot puts **4 / 2 / 0 distinct
-maintenance onsets** into training / validation / test. The test segment has
-no maintenance episode; model accuracy there would not measure the ability to
-warn before maintenance. A classifier predicting that maintenance is never
-active would already be correct on 98.07% of *all pilot rows*, while detecting
-no maintenance. This is only an imbalance illustration, not a future-warning
+A provisional chronological 70/15/15 **row** split starts validation at
+2017-09-10 02:24:00 UTC and test at 2017-09-10 13:12:00 UTC. It puts
+**4 / 2 / 0 distinct maintenance onsets** into training / validation / test.
+The test segment has no maintenance episode; model accuracy there would not
+measure the ability to warn before maintenance. A classifier predicting that
+maintenance is never active would already be correct on 98.07% of *all pilot
+rows*, while detecting no maintenance. This is only an imbalance illustration, not a future-warning
 model result.
 
 Before the requested **Naive Bayes, feature selection, and accuracy-based
@@ -104,8 +109,9 @@ For Sagar's separate, preliminary visible-defect module, the selected
 candidate is the [official Kolektor Surface-Defect Dataset 2 (KSDD2)](https://www2.vicos.si/resources/kolektorsdd2/).
 The publisher describes 356 images with visible defects and 2,979 without,
 including an existing train/test split and surface flaws such as scratches
-and spots. Its license is **CC BY-NC-SA 4.0**; the images must not be copied
-into this MIT-licensed repository. It is a controlled industrial-production
-dataset, **not mining equipment**, so any CV result would demonstrate a
-method, not validated transfer to mining machinery. Download and class-label
-checks are still pending; no CV model has been trained.
+and spots. Its license is **CC BY-NC-SA 4.0**. It is a controlled
+industrial-production dataset, **not mining equipment**, so any CV result
+would demonstrate a method, not validated transfer to mining machinery. Keep
+the images local and preserve their separate license and attribution; do not
+relicense them as MIT. Download and class-label checks are still pending; no
+CV model has been trained.

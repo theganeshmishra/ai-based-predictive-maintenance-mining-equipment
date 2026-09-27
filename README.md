@@ -9,7 +9,7 @@ Saskatchewan Polytechnic — PROJ 613 Capstone Project
 
 This capstone investigates whether anonymized industrial sensor and alarm data can be used to identify operating patterns that precede maintenance events on mining equipment. The work uses the **Time-series Industrial Anomaly (TiNA)** dataset published by the DaSCI research group from sensor data collected on an ArcelorMittal mining machine.
 
-The official dataset contains more than 38 million observations and 108 features at an approximately two-second sampling interval. It covers about 468 days from September 2017 to December 2018. Maintenance events are represented by `m_id` and `m_subid`; alarm events are represented by `alarms`.
+The official dataset describes more than 38 million observations and 108 variables over about 468 days, from September 2017 to December 2018. In our pilot file, those are 105 anonymized `FEATURE` columns plus `m_id`, `m_subid`, and `alarms`, alongside a `unix` timestamp (109 columns total). The source describes a two-second overall time step; the selected three-day pilot has a verified one-second cadence.
 
 Official source: [ari-dasci/OD-TINA](https://github.com/ari-dasci/OD-TINA)
 
@@ -37,7 +37,7 @@ remain available without separate folder-index files.
 
 ## Data policy
 
-**Do not commit the full TiNA dataset, extracts, trained models, or generated artifacts to Git.** The source data is much too large for normal GitHub storage and has its own CC BY-SA 4.0 license.
+**Do not commit TiNA source data, extracts, or trained models to Git.** The full dataset is too large for normal GitHub storage and has its own CC BY-SA 4.0 license. Small reviewed figures and metrics are allowed; raw data is not.
 
 Each team member should download TiNA from the [official repository](https://github.com/ari-dasci/OD-TINA) and keep it in a local `data/raw/` directory. The repository's `.gitignore` excludes `data/raw/`, `data/interim/`, `data/processed/`, common tabular data formats, and model artifacts. See [data/README.md](data/README.md) for setup and sampling guidance.
 
@@ -47,25 +47,39 @@ The analysis should begin with a bounded, event-preserving time period. Record t
 
 Python 3.11 is recommended.
 
+`requirements.txt` contains the dependencies needed for the current Week 3
+notebook; modeling packages will be added when a valid target and evaluation
+period are ready.
+
+On macOS or Linux:
+
 ```bash
 git clone https://github.com/theganeshmishra/ai-based-predictive-maintenance-mining-equipment.git
 cd ai-based-predictive-maintenance-mining-equipment
-python -m venv .venv
-source .venv/bin/activate        # Windows: .venv\Scripts\activate
-python -m pip install --upgrade pip
-pip install -r requirements.txt
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install -r requirements.txt
+python src/build_week2_subset.py
 jupyter lab
 ```
 
-Place the downloaded data under `data/raw/`. The local starter sample uses the official September 6, 2017 Parquet partition and the source timestamp field `unix`:
+On Windows PowerShell, use the same repository and a local environment:
 
-```bash
-export TINA_DATA_PATH="data/raw/tina_sample_2017-09-06.parquet"
-export TINA_TIME_COLUMN="unix"
+```powershell
+git clone https://github.com/theganeshmishra/ai-based-predictive-maintenance-mining-equipment.git
+cd ai-based-predictive-maintenance-mining-equipment
+py -3.11 -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install -r requirements.txt
+python src\build_week2_subset.py
+jupyter lab
 ```
 
-The one-day file is only an environment starter. The TiNA notebook now uses the
-documented **September 8–10 three-day pilot** and requires that file locally.
+If PowerShell blocks environment activation, run the same Python commands
+through `.\.venv\Scripts\python.exe` and launch
+`.\.venv\Scripts\jupyter.exe lab`; no execution-policy change is needed.
+The notebook uses the pinned **September 8–10 three-day pilot**, not an
+arbitrary local data file.
 
 Before committing the TiNA notebook, restart its kernel and run all cells from top to bottom.
 
@@ -77,13 +91,9 @@ chmod +x run_local.sh
 ```
 
 The launcher creates `.venv` when needed, installs the requirements, builds the
-pinned three-day pilot if it is missing, and starts JupyterLab locally. The
-one-day starter remains optional for a quick environment check, but the TiNA notebook
-uses the three-day pilot.
+pinned three-day pilot if it is missing, and starts JupyterLab locally.
 
-For the verified Week 2 event-preserving pilot, run
-`python src/build_week2_subset.py` and point `TINA_DATA_PATH` to the generated
-three-day Parquet file. The [Week 2 acquisition record](reports/week-02-data-acquisition.md)
+The [Week 2 acquisition record](reports/week-02-data-acquisition.md)
 and [data dictionary](reports/data_dictionary.md) document the exact source,
 checksum, selection rationale, and observed schema.
 

@@ -8,7 +8,7 @@ from pathlib import Path
 import polars as pl
 
 
-DEFAULT_DATA_PATH = Path("data/raw/tina_sample_2017-09-06.parquet")
+DEFAULT_DATA_PATH = Path("data/raw/tina_sample_2017-09-08_to_10.parquet")
 EVENT_COLUMNS = ("m_id", "m_subid", "alarms")
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
