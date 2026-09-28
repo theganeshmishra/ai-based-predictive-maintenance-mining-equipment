@@ -9,7 +9,7 @@ Saskatchewan Polytechnic — PROJ 613 Capstone Project
 
 This capstone investigates whether anonymized industrial sensor and alarm data can be used to identify operating patterns that precede maintenance events on mining equipment. The work uses the **Time-series Industrial Anomaly (TiNA)** dataset published by the DaSCI research group from sensor data collected on an ArcelorMittal mining machine.
 
-The official dataset contains more than 38 million observations and 108 features at an approximately two-second sampling interval. It covers about 468 days from September 2017 to December 2018. Maintenance events are represented by `m_id` and `m_subid`; alarm events are represented by `alarms`.
+The official dataset describes more than 38 million observations and 108 variables over about 468 days, from September 2017 to December 2018. In our pilot file, those are 105 anonymized `FEATURE` columns plus `m_id`, `m_subid`, and `alarms`, alongside a `unix` timestamp (109 columns total). The source describes a two-second overall time step; the selected three-day pilot has a verified one-second cadence.
 
 Official source: [ari-dasci/OD-TINA](https://github.com/ari-dasci/OD-TINA)
 
@@ -24,40 +24,20 @@ Develop and evaluate a reproducible proof of concept that predicts whether a mai
 3. How do prediction horizon, class imbalance, and decision threshold affect operational usefulness?
 4. Which features make the model's warnings interpretable to a maintenance team?
 
-## Repository structure
+## Current work to review
 
-```text
-.
-├── data/
-│   └── README.md
-├── notebooks/
-│   ├── 01_TiNA_Data_Understanding.ipynb
-│   ├── 02_TiNA_Preprocessing_EDA.ipynb
-│   ├── 03_Feature_Engineering.ipynb
-│   └── 04_Baseline_Models.ipynb
-├── src/
-│   ├── __init__.py
-│   ├── build_week2_subset.py
-│   └── data_utils.py
-├── reports/
-│   ├── README.md
-│   ├── data_dictionary.md
-│   ├── week-02-data-acquisition.md
-│   └── week-03-data-quality-and-events.md
-├── presentation/
-│   └── README.md
-├── results/
-│   └── README.md
-├── .gitignore
-├── CONTRIBUTING.md
-├── LICENSE
-├── README.md
-└── requirements.txt
-```
+For the Week 3 review, start with the project's **single TiNA notebook**,
+[TiNA Predictive Maintenance notebook](notebooks/TiNA_Predictive_Maintenance.ipynb), and the
+[short findings report](reports/week-03-data-quality-and-events.md).
+Future weeks will extend this notebook and keep reusable code in `src/`.
+The scripts and data notes support reproducibility. The submitted
+[proposal](reports/Group_9_Capstone_Project_Proposal.pdf)
+and [proposal slides](presentation/Group_9_Capstone_Project_Proposal_Presentation.pptx)
+remain available without separate folder-index files.
 
 ## Data policy
 
-**Do not commit the full TiNA dataset, extracts, trained models, or generated artifacts to Git.** The source data is much too large for normal GitHub storage and has its own CC BY-SA 4.0 license.
+**Do not commit TiNA source data, extracts, or trained models to Git.** The full dataset is too large for normal GitHub storage and has its own CC BY-SA 4.0 license. Small reviewed figures and metrics are allowed; raw data is not.
 
 Each team member should download TiNA from the [official repository](https://github.com/ari-dasci/OD-TINA) and keep it in a local `data/raw/` directory. The repository's `.gitignore` excludes `data/raw/`, `data/interim/`, `data/processed/`, common tabular data formats, and model artifacts. See [data/README.md](data/README.md) for setup and sampling guidance.
 
@@ -67,27 +47,41 @@ The analysis should begin with a bounded, event-preserving time period. Record t
 
 Python 3.11 is recommended.
 
+`requirements.txt` contains the dependencies needed for the current Week 3
+notebook; modeling packages will be added when a valid target and evaluation
+period are ready.
+
+On macOS or Linux:
+
 ```bash
 git clone https://github.com/theganeshmishra/ai-based-predictive-maintenance-mining-equipment.git
 cd ai-based-predictive-maintenance-mining-equipment
-python -m venv .venv
-source .venv/bin/activate        # Windows: .venv\Scripts\activate
-python -m pip install --upgrade pip
-pip install -r requirements.txt
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install -r requirements.txt
+python src/build_week2_subset.py
 jupyter lab
 ```
 
-Place the downloaded data under `data/raw/`. The local starter sample uses the official September 6, 2017 Parquet partition and the source timestamp field `unix`:
+On Windows PowerShell, use the same repository and a local environment:
 
-```bash
-export TINA_DATA_PATH="data/raw/tina_sample_2017-09-06.parquet"
-export TINA_TIME_COLUMN="unix"
+```powershell
+git clone https://github.com/theganeshmishra/ai-based-predictive-maintenance-mining-equipment.git
+cd ai-based-predictive-maintenance-mining-equipment
+py -3.11 -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install -r requirements.txt
+python src\build_week2_subset.py
+jupyter lab
 ```
 
-The one-day file is only an environment starter. Notebook 01 now uses the
-documented **September 8–10 three-day pilot** and requires that file locally.
+If PowerShell blocks environment activation, run the same Python commands
+through `.\.venv\Scripts\python.exe` and launch
+`.\.venv\Scripts\jupyter.exe lab`; no execution-policy change is needed.
+The notebook uses the pinned **September 8–10 three-day pilot**, not an
+arbitrary local data file.
 
-The notebooks are intended to run in numerical order. Before committing a notebook, restart its kernel and run all cells from top to bottom.
+Before committing the TiNA notebook, restart its kernel and run all cells from top to bottom.
 
 For a one-command local setup on macOS or Linux, run:
 
@@ -97,18 +91,14 @@ chmod +x run_local.sh
 ```
 
 The launcher creates `.venv` when needed, installs the requirements, builds the
-pinned three-day pilot if it is missing, and starts JupyterLab locally. The
-one-day starter remains optional for a quick environment check, but Notebook 01
-uses the three-day pilot.
+pinned three-day pilot if it is missing, and starts JupyterLab locally.
 
-For the verified Week 2 event-preserving pilot, run
-`python src/build_week2_subset.py` and point `TINA_DATA_PATH` to the generated
-three-day Parquet file. The [Week 2 acquisition record](reports/week-02-data-acquisition.md)
+The [Week 2 acquisition record](reports/week-02-data-acquisition.md)
 and [data dictionary](reports/data_dictionary.md) document the exact source,
 checksum, selection rationale, and observed schema.
 
 To reproduce the Week 3 findings, open
-[`notebooks/01_TiNA_Data_Understanding.ipynb`](notebooks/01_TiNA_Data_Understanding.ipynb)
+[`notebooks/TiNA_Predictive_Maintenance.ipynb`](notebooks/TiNA_Predictive_Maintenance.ipynb)
 in VS Code, select the project's `.venv` Python kernel, and run all cells.
 
 The [Week 3 data-quality and event-level report](reports/week-03-data-quality-and-events.md)
@@ -132,12 +122,12 @@ limits, and the selected candidate image dataset for the separate CV module.
 |---|---|---|
 | 1 | Scope, roles, repository, success criteria | Approved project charter and collaboration workflow |
 | 2 | Data acquisition and data dictionary | Reproducible local data setup and bounded subset plan |
-| 3 | Data understanding | Completed notebook 01 and data-quality log |
-| 4 | Cleaning and preprocessing | Initial preprocessing pipeline in notebook 02 |
+| 3 | Data understanding | Completed TiNA notebook's Week 3 analysis and data-quality log |
+| 4 | Cleaning and preprocessing | Initial preprocessing code and a section in the single TiNA notebook |
 | 5 | Exploratory analysis | Time-series, missingness, alarm, and maintenance findings |
 | 6 | Target and feature design | Leakage-safe target definition and feature catalogue |
-| 7 | Feature engineering | Completed notebook 03 and modelling table |
-| 8 | Baseline modelling | Dummy, linear, and tree-based baselines in notebook 04 |
+| 7 | Feature engineering | Reproducible features and a modelling-table summary in the TiNA notebook |
+| 8 | Baseline modelling | Dummy, linear, and tree-based baseline results in the TiNA notebook |
 | 9 | Validation and interpretation | Threshold analysis, error analysis, and feature importance |
 | 10 | Final results and report | Reproducible results, limitations, and report draft |
 | 11 | Presentation and review | Slide deck, demo flow, peer review, and revisions |

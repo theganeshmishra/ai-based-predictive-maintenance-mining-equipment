@@ -7,17 +7,13 @@ cd "$project_dir"
 if [[ ! -x .venv/bin/python ]]; then
   python3 -m venv .venv
   .venv/bin/python -m pip install --upgrade pip
-  .venv/bin/pip install -r requirements.txt
 fi
+.venv/bin/python -m pip install -r requirements.txt
 
 sample_path="data/raw/tina_sample_2017-09-08_to_10.parquet"
 if [[ ! -f "$sample_path" ]]; then
   .venv/bin/python src/build_week2_subset.py
 fi
-
-export TINA_DATA_PATH="${TINA_DATA_PATH:-$sample_path}"
-export TINA_TIME_COLUMN="${TINA_TIME_COLUMN:-unix}"
-export TINA_MAX_SENSOR_FEATURES="${TINA_MAX_SENSOR_FEATURES:-5}"
 
 exec .venv/bin/jupyter lab \
   --no-browser \
