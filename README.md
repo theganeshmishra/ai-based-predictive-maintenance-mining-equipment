@@ -103,7 +103,9 @@ in VS Code, select the project's `.venv` Python kernel, and run all cells.
 
 The [Week 3 data-quality and event-level report](reports/week-03-data-quality-and-events.md)
 documents six maintenance episodes, provisional recovery gaps, model-readiness
-limits, and the selected candidate image dataset for the separate CV module.
+limits, and the mining-equipment data scope. TiNA contains sensor and event
+records, not images. OpenCV work requires actual mining-equipment images or
+video and is not part of the current TiNA analysis.
 
 ## Analytical approach
 
