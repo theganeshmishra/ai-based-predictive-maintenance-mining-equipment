@@ -12,7 +12,7 @@
 - Pinned source commit: `927b1584ea4aeac2ac7daa084a82f899b114419b`
 - Download date: 2026-09-21
 - Local combined file: `data/raw/tina_sample_2017-09-08_to_10.parquet`
-- SHA-256: `19365a40e99083c37c9909f25b281caad6e47430c52b255c4c24b0db874db947`
+- Original local output SHA-256: `19365a40e99083c37c9909f25b281caad6e47430c52b255c4c24b0db874db947` (reference only; combined Parquet bytes can vary by writer version)
 - Local file size: approximately 2.5 MB Parquet
 - In-memory size during verification: approximately 220.7 MB
 
@@ -21,14 +21,18 @@ rebuild it from the pinned source by running:
 
 ```bash
 python src/build_week2_subset.py
-export TINA_DATA_PATH="data/raw/tina_sample_2017-09-08_to_10.parquet"
 ```
 
-On Windows PowerShell, set the data path with:
+The Week 3 notebook uses this pinned path directly. On Windows PowerShell,
+run `python src\build_week2_subset.py` after activating `.venv`.
+The script verifies these official daily-partition SHA-256 checksums before
+combining them:
 
-```powershell
-$env:TINA_DATA_PATH="data/raw/tina_sample_2017-09-08_to_10.parquet"
-```
+| Date | Source partition SHA-256 |
+|---|---|
+| 2017-09-08 | `7389a5347a95b6a03018879380859b68ac811fec939be297732696dd46157977` |
+| 2017-09-09 | `ca44e34ec06dcccb76be106d095b725a1926659911623bae9d0b907a1ddc3bb5` |
+| 2017-09-10 | `a427206041323dfe4e5e61a0eb4a6ab204059540fbed056cffdfde4e3f196223` |
 
 ## Selected bounded period
 
@@ -64,9 +68,10 @@ for final model conclusions.
 - Findings from this three-day period must be rechecked on broader chronological
   splits before they appear as final capstone claims.
 
-## Week 3 handoff
+## Week 3 follow-up
 
-Complete Notebook 01 using this selected period, convert consecutive maintenance
-rows into event episodes, document recovery gaps, and add the data-quality log.
-The detailed schema and pilot observations are in
-[`data_dictionary.md`](data_dictionary.md).
+The [TiNA notebook](../notebooks/TiNA_Predictive_Maintenance.ipynb) uses this
+period to group maintenance rows into episodes, document recovery gaps, and
+check data quality. Its findings and modeling limitations are in the
+[Week 3 report](week-03-data-quality-and-events.md). The detailed schema and
+pilot observations remain in [`data_dictionary.md`](data_dictionary.md).

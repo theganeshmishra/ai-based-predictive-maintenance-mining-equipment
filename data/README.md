@@ -15,29 +15,12 @@ Record the upstream commit or download date in the experiment notes. Do not copy
 
 ```text
 data/
-├── raw/          # untouched source files
+├── raw/          # downloaded source partitions and verified local pilot
 ├── interim/      # temporary cleaned or sampled files
 └── processed/    # model-ready feature tables
 ```
 
 These directories and common data formats are ignored by Git. Create the directories locally as needed.
-
-## One-day local starter sample
-
-The official dataset is partitioned by day. To run the notebooks without downloading the full dataset, start with the September 6, 2017 partition (about 74,000 rows):
-
-```bash
-mkdir -p data/raw
-curl -fL \
-  "https://raw.githubusercontent.com/ari-dasci/OD-TINA/main/data/day%3D2017-09-06/data.parquet" \
-  -o data/raw/tina_sample_2017-09-06.parquet
-export TINA_DATA_PATH="data/raw/tina_sample_2017-09-06.parquet"
-export TINA_TIME_COLUMN="unix"
-```
-
-This sample is suitable for verifying the environment only. Notebook 01 now
-uses the three-day pilot below; the one-day starter is not event-diverse enough
-even for the pilot event-level analysis.
 
 ## Recommended first subset
 
@@ -59,20 +42,21 @@ file directly from the pinned official source:
 
 ```bash
 python src/build_week2_subset.py
-export TINA_DATA_PATH="data/raw/tina_sample_2017-09-08_to_10.parquet"
 ```
 
-On Windows PowerShell, set the data path with:
+On Windows PowerShell, run `python src\build_week2_subset.py` after activating
+the project's `.venv`. The notebook always uses this pinned pilot path; no
+`TINA_DATA_PATH` setting is needed for the Week 3 analysis.
 
-```powershell
-$env:TINA_DATA_PATH="data/raw/tina_sample_2017-09-08_to_10.parquet"
-```
-
-Expected SHA-256:
-`19365a40e99083c37c9909f25b281caad6e47430c52b255c4c24b0db874db947`.
+The build script checks the SHA-256 of each pinned official daily partition,
+as well as the pilot's timestamps and event counts. The original local output
+had SHA-256
+`19365a40e99083c37c9909f25b281caad6e47430c52b255c4c24b0db874db947`;
+the combined Parquet bytes can vary with the writer version, so this output
+hash is a reference rather than a required match.
 See [`reports/week-02-data-acquisition.md`](../reports/week-02-data-acquisition.md)
 for the selection rationale, verification results, and limitations.
-Run [`notebooks/01_TiNA_Data_Understanding.ipynb`](../notebooks/01_TiNA_Data_Understanding.ipynb)
+Run [`notebooks/TiNA_Predictive_Maintenance.ipynb`](../notebooks/TiNA_Predictive_Maintenance.ipynb)
 to reproduce the data-quality checks, maintenance episodes, recovery-gap
 checks, and chronological split warning summarized in
 [`reports/week-03-data-quality-and-events.md`](../reports/week-03-data-quality-and-events.md).
