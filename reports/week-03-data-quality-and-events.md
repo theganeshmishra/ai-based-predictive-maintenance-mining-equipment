@@ -103,15 +103,11 @@ comparison**:
 
 No predictive model or performance score is claimed for Week 3.
 
-## Computer-vision dataset decision
+## Mining-equipment scope clarification
 
-For Sagar's separate, preliminary visible-defect module, the selected
-candidate is the [official Kolektor Surface-Defect Dataset 2 (KSDD2)](https://www2.vicos.si/resources/kolektorsdd2/).
-The publisher describes 356 images with visible defects and 2,979 without,
-including an existing train/test split and surface flaws such as scratches
-and spots. Its license is **CC BY-NC-SA 4.0**. It is a controlled
-industrial-production dataset, **not mining equipment**, so any CV result
-would demonstrate a method, not validated transfer to mining machinery. Keep
-the images local and preserve their separate license and attribution; do not
-relicense them as MIT. Download and class-label checks are still pending; no
-CV model has been trained.
+The capstone's current evidence is TiNA sensor, alarm, and maintenance data
+from mining equipment. TiNA does not provide equipment images or video, so
+OpenCV image analysis cannot be run on this dataset. A separate visual module
+should only be considered if the team obtains a relevant mining-equipment
+image source and defines labels and permissions. No computer-vision model or
+performance result is claimed for Week 3.
