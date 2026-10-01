@@ -7,7 +7,7 @@ Saskatchewan Polytechnic — PROJ 613 Capstone Project
 
 ## Project overview
 
-This capstone investigates whether anonymized industrial sensor and alarm data can be used to identify operating patterns that precede maintenance events on mining equipment. The work uses the **Time-series Industrial Anomaly (TiNA)** dataset published by the DaSCI research group from sensor data collected on an ArcelorMittal mining machine.
+This capstone has two independent tracks: predicting upcoming maintenance from mining-machine sensor data, and assessing visible mining-equipment damage with OpenCV. The sensor track uses the **Time-series Industrial Anomaly (TiNA)** dataset published by the DaSCI research group from an ArcelorMittal mining machine. The image track will use a separately sourced, labelled image dataset; the two tracks do not describe the same machine and their records will not be linked.
 
 The official dataset describes more than 38 million observations and 108 variables over about 468 days, from September 2017 to December 2018. In our pilot file, those are 105 anonymized `FEATURE` columns plus `m_id`, `m_subid`, and `alarms`, alongside a `unix` timestamp (109 columns total). The source describes a two-second overall time step; the selected three-day pilot has a verified one-second cadence.
 
@@ -15,7 +15,7 @@ Official source: [ari-dasci/OD-TINA](https://github.com/ari-dasci/OD-TINA)
 
 ## Capstone objective
 
-Develop and evaluate a reproducible proof of concept that predicts whether a maintenance event will occur within a defined future time window. The final model should support early-warning analysis while avoiding time-series leakage and clearly documenting practical limitations.
+Develop and evaluate a reproducible proof of concept that predicts whether a maintenance event will occur within a defined future time window. Separately, use OpenCV to investigate visible damage on specific mining-equipment components. A still image can support current-damage detection; predicting future damage requires dated follow-up images or repair outcomes from the same equipment. Neither track should claim more than its labels support.
 
 ### Research questions
 
@@ -30,6 +30,9 @@ For the Week 3 review, start with the project's **single TiNA notebook**,
 [TiNA Predictive Maintenance notebook](notebooks/TiNA_Predictive_Maintenance.ipynb), and the
 [short findings report](reports/week-03-data-quality-and-events.md).
 Future weeks will extend this notebook and keep reusable code in `src/`.
+The separate [OpenCV damage notebook](notebooks/OpenCV_Mining_Equipment_Damage.ipynb)
+is an image-intake and preprocessing starter. It has no training data or
+performance result yet; it does not add a second TiNA notebook.
 The scripts and data notes support reproducibility. The submitted
 [proposal](reports/Group_9_Capstone_Project_Proposal.pdf)
 and [proposal slides](presentation/Group_9_Capstone_Project_Proposal_Presentation.pptx)
@@ -47,9 +50,9 @@ The analysis should begin with a bounded, event-preserving time period. Record t
 
 Python 3.11 is recommended.
 
-`requirements.txt` contains the dependencies needed for the current Week 3
-notebook; modeling packages will be added when a valid target and evaluation
-period are ready.
+`requirements.txt` contains the dependencies needed for the Week 3 TiNA
+notebook and the separate OpenCV image-intake starter; modeling packages will
+be added when valid targets and evaluation data are ready.
 
 On macOS or Linux:
 
@@ -104,8 +107,28 @@ in VS Code, select the project's `.venv` Python kernel, and run all cells.
 The [Week 3 data-quality and event-level report](reports/week-03-data-quality-and-events.md)
 documents six maintenance episodes, provisional recovery gaps, model-readiness
 limits, and the mining-equipment data scope. TiNA contains sensor and event
-records, not images. OpenCV work requires actual mining-equipment images or
-video and is not part of the current TiNA analysis.
+records, not images. The OpenCV notebook is independent: it looks for local
+images under `data/raw/opencv/` and an optional local label file at
+`data/raw/opencv/image_labels.csv`. These are ignored by Git. The notebook
+can audit and preview images but makes no damage or future-failure prediction
+until a suitable, labelled dataset is obtained.
+
+## Separate OpenCV track
+
+The team wants to assess more than one kind of mining equipment. Each image
+must therefore identify its equipment type and component, and a model must be
+evaluated separately for each equipment type before any broad claim is made.
+The image source, usage permission, damage labels, and capture conditions must
+be recorded. Candidate datasets are not treated as mining-machine evidence
+merely because their components could also appear in a mine.
+
+Use the [OpenCV notebook](notebooks/OpenCV_Mining_Equipment_Damage.ipynb) in VS
+Code with the same `.venv` kernel as the TiNA notebook. It checks local image
+files and optional labels, then shows preprocessing examples. For genuine
+future-damage prediction, collect repeated dated inspections of the same
+machine plus later damage or repair outcomes. Until then, report this track
+as **visual damage detection/condition assessment**, not time-to-failure
+prediction. Do not combine its records or metrics with TiNA.
 
 ## Analytical approach
 
