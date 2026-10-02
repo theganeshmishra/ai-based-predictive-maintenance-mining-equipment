@@ -61,6 +61,22 @@ to reproduce the data-quality checks, maintenance episodes, recovery-gap
 checks, and chronological split warning summarized in
 [`reports/week-03-data-quality-and-events.md`](../reports/week-03-data-quality-and-events.md).
 
+## Week 3 exploratory extension
+
+The single TiNA notebook also runs a provisional maintenance-warning baseline
+on six complete days, September 7–12, 2017. After installing
+`requirements.txt`, run the whole notebook or only the baseline from the
+repository root:
+
+```bash
+python -m src.week3_baseline
+```
+
+The baseline downloads and checks the three extra partitions from the pinned
+official source, then compares a most-frequent dummy with Gaussian Naive
+Bayes. It does not commit source files or model artifacts. Its two test events
+are far too few for a final performance claim; see the Week 3 report.
+
 ## Reproducibility record
 
 For every shared result, note:
