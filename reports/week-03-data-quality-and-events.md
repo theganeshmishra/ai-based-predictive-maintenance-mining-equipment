@@ -1,12 +1,12 @@
-# Week 3 — TiNA data quality and event-level EDA
+# Week 3 — TiNA data quality, events, and exploratory baseline
 
-**Status:** Completed for the three-day pilot; broader-period validation remains open.
+**Status:** Week 3 pilot analysis and a six-day exploratory baseline completed. Final model validation remains open.
 
-**Analysis date:** 2026-09-25; notebook revalidated 2026-09-26
+**Analysis dates:** Three-day pilot analyzed 2026-09-25 and revalidated 2026-09-26; six-day baseline analyzed 2026-10-01 (America/Regina).
 
 **Revalidation environment:** Python 3.9.6, Polars 1.36.1, pandas 2.3.3,
-Matplotlib 3.9.4, and PyArrow 21.0.0. See `requirements.txt` for supported
-version ranges.
+Matplotlib 3.9.4, PyArrow 21.0.0, and scikit-learn 1.6.1 for the baseline.
+See `requirements.txt` for supported version ranges.
 
 **Input:** `data/raw/tina_sample_2017-09-08_to_10.parquet` from the pinned
 [official TiNA source](https://github.com/ari-dasci/OD-TINA) documented in the
@@ -101,7 +101,87 @@ comparison**:
    F1, PR-AUC, and event-level warning coverage; inspect missed events and
    false-alarm episodes. Report the untouched test result once.
 
-No predictive model or performance score is claimed for Week 3.
+This explains why the original three-day pilot cannot support a model score.
+The six-day exploratory baseline below is a separate extension, not a score
+from the three-day split.
+
+## Six-day exploratory baseline
+
+To address the professor's **Naive Bayes, feature selection, and accuracy**
+feedback, the team extended the bounded source period to **2017-09-07
+00:00:00 through 2017-09-12 23:59:59 UTC**. It uses six complete one-day
+Parquet partitions from the same [pinned official TiNA commit](https://github.com/ari-dasci/OD-TINA/tree/927b1584ea4aeac2ac7daa084a82f899b114419b).
+`src/build_week2_subset.py` verifies each partition's SHA-256 before use;
+`python -m src.week3_baseline` reproduces the modeling results. Source data
+remain under ignored `data/raw/`, not on GitHub. The three newly required
+partition hashes are:
+
+| Date | SHA-256 |
+|---|---|
+| 2017-09-07 | `031380fd9c6655579b53bcafb7e485a681ea5d978ab8beeba2414b92090a1fb0` |
+| 2017-09-11 | `713db757201caff72efb91b0b123697304a188380fe7c6051a6d2f4954d728b1` |
+| 2017-09-12 | `4ef82756e263b4198d4e635d348d4482e80cde443878dd3c1824138de086487b` |
+
+The extension contains **518,400 rows, 109 columns, 103 numeric and two
+string sensor features, 8,135 maintenance-coded rows, 34,070 alarm-coded
+rows, and nine distinct maintenance episodes**. Timestamps are unique and
+exactly one second apart after sorting. We found no null, NaN, or infinite
+values and no sensor constant across the full six days. The six-day findings
+do **not** erase the eight features that were constant in the earlier
+three-day pilot; constancy depends on the period inspected.
+
+### Exploratory method
+
+- Aggregate the numeric sensors to one row per complete minute using that
+  minute's mean and standard deviation (206 candidate predictors). A warning
+  made at second 59 uses no later sensor data. Exclude `m_id`, `m_subid`, and
+  `alarms` from predictors. String sensors are not encoded in this baseline.
+- Set the target to **a new maintenance episode beginning within the next
+  30 minutes**, not current maintenance. Exclude active-maintenance minutes
+  and the following 30 minutes as a provisional recovery rule. Purge the last
+  30 minutes of each chronological split so labels never cross split bounds.
+- Train on September 7–10 (**six onsets**), validate on September 11 (**one**),
+  and evaluate on September 12 (**two**). This split is fixed by date, not a
+  shuffled row split. These dates were chosen after inspecting the event
+  distribution, so the test day is not an independent prospective sample.
+  Eligible training minutes: **5,467**, with **180**
+  positive target minutes.
+- Fit median imputation, zero-variance filtering, scaling, and a top-20
+  univariate ANOVA feature selector using **training data only**. Compare
+  Gaussian Naive Bayes against a most-frequent dummy baseline at a fixed 0.5
+  score threshold; no test-set threshold tuning or calibration. The selected
+  predictors are `FEATURE28_mean`, `FEATURE29_mean`, `FEATURE30_mean`,
+  `FEATURE33_mean`, `FEATURE35_mean`, `FEATURE36_mean`, `FEATURE72_mean`,
+  `FEATURE78_mean`, `FEATURE79_mean`, `FEATURE80_mean`, `FEATURE81_mean`,
+  `FEATURE83_mean`, `FEATURE90_mean`, `FEATURE91_mean`, `FEATURE95_mean`,
+  `FEATURE97_mean`, `FEATURE98_mean`, `FEATURE99_mean`, `FEATURE100_mean`,
+  and `FEATURE103_mean`. Their anonymized names do not identify components.
+
+| Split / model | Eligible min (positive) | Accuracy | Balanced acc. | Precision | Recall | F1 | PR-AUC | Episodes warned | False-alarm min / runs |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| Validation / dummy | 1,342 (30) | 0.9776 | 0.5000 | 0 | 0 | 0 | 0.0224 | 0/1 | 0 / 0 |
+| Validation / Gaussian NB | 1,342 (30) | 0.0484 | 0.5133 | 0.0230 | 1.0000 | 0.0449 | 0.0230 | 1/1 | 1,277 / 4 |
+| Test / dummy | 1,335 (60) | 0.9551 | 0.5000 | 0 | 0 | 0 | 0.0449 | 0/2 | 0 / 0 |
+| Test / Gaussian NB | 1,335 (60) | 0.5311 | 0.7545 | 0.0875 | 1.0000 | 0.1609 | 0.0875 | 2/2 | 626 / 8 |
+
+The dummy's **95.5% test accuracy misses both events**. Gaussian Naive Bayes
+flags both, but **626 false-alarm minutes** and only **8.8% precision** make
+it operationally unsuitable at this threshold. Episode coverage is only
+`2/2`, not evidence of general sensitivity. PR-AUC is average precision over
+minute-level scores; overlapping 30-minute windows are highly dependent, so
+minute counts must not be interpreted as independent trials. False-alarm runs
+are consecutive false-positive eligible minutes, separated when the gap is
+over one minute.
+
+**Decision:** This completes the requested Week 3 *exploratory* model and
+feature-selection work, but not a validated maintenance predictor. Nine total
+episodes, one validation event, two test events, date selection after inspecting
+events, and a short single-machine period cannot establish stable performance.
+Before final modeling, expand
+chronological coverage substantially, revisit the 30-minute horizon and
+recovery rule, assess drift and feature stability, and reduce false alarms.
+Do not tune repeatedly on the September 12 test day or infer a repair type
+from anonymized sensors.
 
 ## Mining-equipment scope clarification
 
