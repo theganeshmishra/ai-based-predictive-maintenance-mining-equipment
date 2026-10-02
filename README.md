@@ -29,7 +29,8 @@ Develop and evaluate a reproducible proof of concept that predicts whether a mai
 For the Week 3 review, start with the project's **single TiNA notebook**,
 [TiNA Predictive Maintenance notebook](notebooks/TiNA_Predictive_Maintenance.ipynb), and the
 [short findings report](reports/week-03-data-quality-and-events.md).
-Future weeks will extend this notebook and keep reusable code in `src/`.
+The report now includes a six-day exploratory Naive Bayes comparison. Future
+weeks will extend this notebook and keep reusable code in `src/`.
 The separate [OpenCV damage notebook](notebooks/OpenCV_Mining_Equipment_Damage.ipynb)
 is an image-intake and preprocessing starter. It has no training data or
 performance result yet; it does not add a second TiNA notebook.
@@ -50,9 +51,8 @@ The analysis should begin with a bounded, event-preserving time period. Record t
 
 Python 3.11 is recommended.
 
-`requirements.txt` contains the dependencies needed for the Week 3 TiNA
-notebook and the separate OpenCV image-intake starter; modeling packages will
-be added when valid targets and evaluation data are ready.
+`requirements.txt` contains the dependencies for the Week 3 TiNA notebook,
+its exploratory baseline, and the separate OpenCV image-intake starter.
 
 On macOS or Linux:
 
@@ -103,10 +103,13 @@ checksum, selection rationale, and observed schema.
 To reproduce the Week 3 findings, open
 [`notebooks/TiNA_Predictive_Maintenance.ipynb`](notebooks/TiNA_Predictive_Maintenance.ipynb)
 in VS Code, select the project's `.venv` Python kernel, and run all cells.
+The notebook verifies the three-day pilot and then downloads/verifies the
+additional daily partitions for its six-day exploratory baseline. To run only
+that baseline from the repository root, use `python -m src.week3_baseline`.
 
 The [Week 3 data-quality and event-level report](reports/week-03-data-quality-and-events.md)
-documents six maintenance episodes, provisional recovery gaps, model-readiness
-limits, and the mining-equipment data scope. TiNA contains sensor and event
+documents six episodes in the pilot, nine in the six-day extension, preliminary
+model results, recovery gaps, and the mining-equipment data scope. TiNA contains sensor and event
 records, not images. The OpenCV notebook is independent: it looks for local
 images under `data/raw/opencv/` and an optional local label file at
 `data/raw/opencv/image_labels.csv`. These are ignored by Git. The notebook
