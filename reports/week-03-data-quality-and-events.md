@@ -191,3 +191,8 @@ OpenCV image analysis cannot be run on this dataset. A separate visual module
 should only be considered if the team obtains a relevant mining-equipment
 image source and defines labels and permissions. No computer-vision model or
 performance result is claimed for Week 3.
+
+## Addendum
+
+The master catalogue, the 8-class TiNA machine-state evaluation and the prototype demo are in
+[`week-03-prototype-addendum.md`](week-03-prototype-addendum.md).
