@@ -1,0 +1,9 @@
+state,test_minutes,test_episodes,precision,recall,f1
+normal,7263,0,0.805,1.0,0.892
+alarm,1255,0,0.0,0.0,0.0
+M4/MS3,34,1,0.0,0.0,0.0
+M4/MS5,341,4,0.0,0.0,0.0
+M9/MS1,78,4,0.0,0.0,0.0
+M9/MS6,0,0,0.0,0.0,0.0
+M2,0,0,0.0,0.0,0.0
+other_maintenance,52,1,0.0,0.0,0.0
