@@ -2,15 +2,25 @@
 
 Saskatchewan Polytechnic AIDA / PROJ 613. Working title: **Machine Learning-Based Condition Monitoring of Mining Equipment Using Multi-Sensor Data and Computer Vision**.
 
-This work stays inside the team's existing local repository checkout; nothing here has been committed or pushed. Its eight category folders are a research map, **not** a claim that eight validated mining-machine fault models exist. Source files and derived training tables live in ignored local folders; the small manifest, code, results, and figures are suitable for review. The [folder-specific ignore rules](.gitignore) keep source downloads, raw images/events, caches, and model binaries out of a future GitHub commit while allowing the reviewed figures.
+This capstone remains an eight-equipment research project, **not** a claim that eight validated mining-machine fault models exist. Source files and derived training tables live in ignored local folders; the small manifest, code, results, and figures are suitable for review. The [folder-specific ignore rules](.gitignore) keep source downloads, raw images/events, caches, and model binaries out of GitHub while allowing the reviewed figures.
 
 Start with the [eight-category dataset matrix](Dataset_Manifest/manifest.md),
-[cross-equipment methodology](Documentation/methodology.md), and
-[completed Pump comparison](Results/pump_sensor_visual_comparison.md). The
+[cross-equipment methodology](Documentation/methodology.md),
+[completed Pump comparison](Results/pump_sensor_visual_comparison.md), and
+[Belt Conveyor geared-drive comparison](Results/belt_conveyor_sensor_visual_comparison.md),
+and [Week 4 progress checkpoint](Documentation/week_04_progress.md). The
 equipment folders are currently empty local placeholders; the matrix and
 methodology preserve all eight categories without inventing results for them.
 
-## Current evidence (October 5, 2026)
+## Week 4 checkpoint (October 5, 2026)
+
+The eight equipment categories and component/fault dataset matrix are mapped.
+Only **Pump** and **Belt Conveyor** have completed sensor-versus-image fault
+experiments. The other six categories—Haul/Dump Truck, Excavator, Dozer, Wheel
+Loader, Drill Rig, and Grader—are **planned, not implemented** as matched
+sensor/image experiments. No Equipment #3 modelling is part of Week 4.
+
+### Current evidence
 
 | Experiment | Source domain | Task and evaluation | Held-out result | What it does not show |
 |---|---|---|---|---|
@@ -27,6 +37,8 @@ Two comparisons that *are* made on the same data and split are:
 
 The three rows above are **sensor-only** findings. The Pump support-bearing experiment now has separately tested sensor and visual branches on the same four current-fault classes. The University of Ottawa bearing-rig sensor proxy scored **0.958 accuracy and macro F1 on 24 recording-held-out runs**; the XJTU Pump event-camera/OpenCV branch scored **1.000 accuracy and macro F1 on 24 recording-held-out runs**. Secondary held-out-operating/camera checks scored 0.958 and 0.855 macro F1, respectively. These are **not** a controlled head-to-head modality comparison: sources and operating shifts differ. The original centrifugal-pump XLSX model remains a same-recording diagnostic and is excluded from the independent comparison. See the [full Pump metrics, per-class results, confusion matrices and limitations](Results/pump_sensor_visual_comparison.md).
 
+The Belt Conveyor geared-drive analogue now has a **same-CORA-run sensor/infrared comparison** across 16 stationary experiments, with each of four speeds held out in turn. The T1-temperature model reached **0.625 accuracy / 0.564 macro F1**; the infrared/OpenCV model reached **0.500 / 0.418**. Both were below the **0.750 majority-class accuracy** control. This is a completed, leakage-aware component-level experiment, **not** an effective fault detector or a mining-conveyor validation. See the [full run-level comparison](Results/belt_conveyor_sensor_visual_comparison.md).
+
 ## Eight-category map
 
 | Category | Selected comparable component target | Verification grade |
@@ -42,17 +54,33 @@ The three rows above are **sensor-only** findings. The Pump support-bearing expe
 
 See the [eight-row verification table and dataset manifest](Dataset_Manifest/manifest.md) for exact sources, counts, licences, matching labels, OEM component justification, and confidence. The **locked research architecture has only three component targets**, not eight independent machine datasets: CORA gear wear is reused across six categories; UODS/XJTU-Rotor serves electric-motor bearing; centrifugal-pump/XJTU-Pump serves pump bearing. The Ottawa bearing dataset is an additional **Pump sensor-evaluation proxy**, not a fourth equipment category or pump recording. CORA is same-rig sensor-plus-infrared at experiment level, pending timestamp validation for frame-level analysis. The other pairs are different physical rigs and are comparable **only by component/fault taxonomy**. No unrelated sensor row and image is joined. These experiments classify present condition, not time-to-repair or remaining useful life.
 
-The existing UCI hydraulic benchmark and PHM drill-pressure benchmark remain useful **sensor-only** work. Internal hydraulic pump leakage, valve lag, accumulator faults, and drill hydraulic faults still have **RED visual coverage** and are not claimed as solved by a gearbox or bearing image dataset. Equipment-identification images also remain out of the fault comparison.
+The existing UCI hydraulic benchmark and PHM drill-pressure benchmark remain useful **sensor-only** work, not completed paired experiments for Excavator, Dozer, Wheel Loader, Grader, or Drill Rig. Internal hydraulic pump leakage, valve lag, accumulator faults, and drill hydraulic faults still have **RED visual coverage** and are not claimed as solved by a gearbox or bearing image dataset. Equipment-identification images also remain out of the fault comparison.
 
 The shared CORA gear/infrared source for six category mappings has bounded
 [file-inventory](Preprocessing/cora_manifest.py) and
 [sensor/thermal preprocessing](Preprocessing/cora_preprocessing.py) helpers in
-this folder. They do not train six equipment-specific models or infer
-sample-level sensor/image alignment. From the repository root, run
+this folder. The Belt Conveyor [intake](Preprocessing/cora_gear_intake.py) and
+[baseline](Models/belt_conveyor_cora_baseline.py) scripts use 16 selected runs;
+they do not train six equipment-specific models or infer sample-level
+sensor/image alignment. From the repository root, run
 `python Mining_Equipment_Condition_Monitoring_Capstone/Preprocessing/cora_manifest.py /path/to/Information_about_database_files.txt`
 to inspect a locally held publisher file guide, or run
 `python Mining_Equipment_Condition_Monitoring_Capstone/Preprocessing/cora_preprocessing.py --thermal /path/to/BD_F15_S.mat`
-for a bounded thermal smoke test. Raw CORA files remain ignored.
+for a bounded thermal smoke test. To reproduce Equipment #2 after installing
+the requirements below, run:
+
+```bash
+python Mining_Equipment_Condition_Monitoring_Capstone/Preprocessing/cora_gear_intake.py
+python Mining_Equipment_Condition_Monitoring_Capstone/Models/belt_conveyor_cora_baseline.py
+```
+
+This intake requests only the 16 specified thermal MAT stacks (about 391 MB)
+and bounded byte ranges of their 16 original T1 CSVs (about 34 MB requested),
+not the complete 38.8 GB release. It writes the ignored local sensor cache,
+the [file/provenance record](Results/belt_conveyor_cora_intake.json),
+[metrics](Results/belt_conveyor_cora.json), and
+[confusion matrices](Figures/belt_conveyor_cora_confusions.png). Raw CORA files
+remain ignored.
 
 ## Reproduce the first two baselines
 
@@ -95,4 +123,4 @@ python Mining_Equipment_Condition_Monitoring_Capstone/Models/pump_compare_modali
 
 The intake script downloads only the 48 selected Ottawa MAT files (about **631 MB**) and checks each against the publisher's SHA-256; its [file manifest](Results/pump_uottawa_intake.json) records source identifiers and hashes. The sensor model uses 0.1-second non-overlapping vibration windows, trains on 24 complete A/B speed-profile recordings and tests on 24 disjoint C/D recordings, with one averaged prediction per recording. Its [result](Results/pump_bearing_independent.json) includes Accuracy, macro Precision/Recall/F1, per-class metrics, a most-frequent control, shuffled-run-label control, and held-out-profile folds. The visual script converts event streams into 250 ms event-count images, extracts OpenCV HOG features, trains on 20 Hz recordings and tests on separate 30 Hz recordings; its existing cached result is unchanged. The comparison script writes the [readable report](Results/pump_sensor_visual_comparison.md) and [confusion-matrix figure](Figures/pump_sensor_visual_confusions.png).
 
-The original [centrifugal-pump vibration script](Models/pump_bearing_baseline.py) is retained solely for provenance and can be run if its four source XLSX files are placed in ignored `Raw_Data/pump_bearing/`; its same-file score is **not** used in the independent comparison. Both main branches now use whole-run test units, but their different rigs and operating shifts still prohibit a numerical claim that one modality is better. There is no row-level sensor/image pairing or future-repair prediction. Within the professor's stated allowance for **sufficiently similar components on different machines**, this is a completed four-class, component-level sensor-plus-visual comparison—not mining-pump validation. A compact proposed GitHub file list will be reviewed with the team before any **Pump files** are staged, committed or pushed.
+The original [centrifugal-pump vibration script](Models/pump_bearing_baseline.py) is retained solely for provenance and can be run if its four source XLSX files are placed in ignored `Raw_Data/pump_bearing/`; its same-file score is **not** used in the independent comparison. Both main branches now use whole-run test units, but their different rigs and operating shifts still prohibit a numerical claim that one modality is better. There is no row-level sensor/image pairing or future-repair prediction. Within the professor's stated allowance for **sufficiently similar components on different machines**, this is a completed four-class, component-level sensor-plus-visual comparison—not mining-pump validation.
