@@ -5,17 +5,24 @@ that a single model has been validated on eight mining fleets. The complete
 [source/label verification matrix](../Dataset_Manifest/manifest.md) is the
 authority for dataset provenance, access, licence, sample counts, and confidence.
 
+**Week 4 implementation boundary (October 5, 2026):** all eight equipment
+categories are mapped, and the component/dataset matrix is complete. Only the
+Pump and Belt Conveyor sensor-versus-image experiments are complete. The six
+other categories are planned but have **no completed matched-modality
+experiment**. No Equipment #3 modelling begins in Week 4; see the
+[progress checkpoint](week_04_progress.md).
+
 ## Component-level scope
 
 | Equipment category | Selected monitored component and target | Experiment status |
 |---|---|---|
-| Haul/Dump Truck | Electric-drive wheel-motor bearing; healthy/inner/outer fault | B1 sensor–event-camera sources verified; **no paired model result yet** |
-| Excavator | Swing-drive gear wear; healthy/worn | Shared CORA gear/infrared source verified; no model yet |
-| Dozer | Final-drive gear wear; healthy/worn | Same CORA source, not a separate dozer dataset; no model yet |
-| Wheel Loader | Final-drive/transmission gear wear; healthy/worn | Same CORA source; no model yet |
-| Drill Rig | Rotary-head reduction gear wear; healthy/worn | Same CORA source; no matched visual model yet; the PHM rock-drill result is **sensor-only and a different fault target** |
-| Grader | Circle-drive gear wear; healthy/worn | Same CORA source with a large mechanical-transfer caveat; no model yet |
-| Belt Conveyor | **Geared** drive-reducer wear; healthy/worn | Same CORA source; not belt-crack or idler diagnosis; no model yet |
+| Haul/Dump Truck | Electric-drive wheel-motor bearing; healthy/inner/outer fault | Planned: B1 sensor–event-camera sources verified; **no paired model result yet** |
+| Excavator | Swing-drive gear wear; healthy/worn | Planned: shared CORA gear/infrared source verified; no excavator experiment yet |
+| Dozer | Final-drive gear wear; healthy/worn | Planned: same CORA source, not a separate dozer dataset; no dozer experiment yet |
+| Wheel Loader | Final-drive/transmission gear wear; healthy/worn | Planned: same CORA source; no loader experiment yet |
+| Drill Rig | Rotary-head reduction gear wear; healthy/worn | Planned: same CORA source; no matched drill-rig visual experiment yet; the PHM rock-drill result is **sensor-only and a different fault target** |
+| Grader | Circle-drive gear wear; healthy/worn | Planned: same CORA source with a large mechanical-transfer caveat; no grader experiment yet |
+| Belt Conveyor | **Geared** drive-reducer wear; healthy/worn | Separate T1-temperature and infrared models complete on the same 16 CORA runs with whole-speed held-out testing; weak scores below majority-class accuracy; see [Belt Conveyor report](../Results/belt_conveyor_sensor_visual_comparison.md) |
 | Pump | Support-bearing healthy/inner/outer/ball fault | Separate recording-held-out vibration and event-camera models complete at component level; see [Pump report](../Results/pump_sensor_visual_comparison.md) |
 
 The six CORA mappings reuse **one** laboratory gearbox dataset. They must never
@@ -51,6 +58,17 @@ mechanically similar component proxy. It is not direct mining-pump evidence.
 5. For CORA, preserve the published experiment key (health condition, speed,
    stationary/transient regime). Do not join an infrared frame to a sensor
    window until their timestamps and acquisition alignment are verified.
+6. For the Belt Conveyor geared-drive analogue, use the 16 selected CORA
+   stationary runs (`H`, `W25`, `W50`, `W75` at `F5`, `F15`, `F50`, `F60`).
+   Download only their 16 infrared MATLAB stacks and eight deterministic
+   256-KiB ranges per original T1-temperature CSV, retaining 6,000 complete
+   readings per range. The range sample is roughly 4.3% of T1 source bytes,
+   not the full signal. Verify file IDs, expected names, structural validity,
+   450 frames per stack, range responses, and finite sensor samples. Record
+   local SHA-256 hashes; only `H_F5_S.mat` also has a publisher MD5 check.
+   Summarize each modality to **one feature vector per source run**. Infrared
+   pseudo-colour pixels are OpenCV image descriptors, not calibrated Celsius
+   temperatures. Do not claim frame/window synchronization.
 
 ## Evaluation and leakage controls
 
@@ -65,6 +83,16 @@ mechanically similar component proxy. It is not direct mining-pump evidence.
   camera-configuration analysis checks sensitivity. Fixed random forests,
   most-frequent controls and shuffled **run-label** controls are recorded in
   the result JSON files. Hyperparameters were not selected using test runs.
+- The Belt Conveyor CORA comparison has four leave-one-speed-out folds. For
+  each speed, all four condition runs at that speed are test data and the 12
+  other runs are training data. No sensor range or infrared frame from a test
+  run enters training; scaling is fitted only on training runs. Separate fixed
+  class-balanced logistic regressions yield one prediction per run, with the
+  same folds and labels for both modalities. Pool the 16 out-of-fold run
+  predictions for Accuracy, macro Precision/Recall/F1, per-class performance,
+  and confusion matrices, and show the 75%-accuracy most-frequent control.
+  This tests speed transfer on one laboratory rig, **not** transfer to an
+  unseen gearbox or mining conveyor.
 - Report Accuracy, macro Precision/Recall/F1, per-class support and metrics,
   and run-level confusion matrices. The Pump primary tests both have 24 test
   recordings, but their rigs and operating-condition shifts differ. Their
@@ -84,3 +112,9 @@ life. No mining fleet, unseen physical pump, or eight-machine deployment test
 has been completed. The Pump result satisfies a component-level sensor-plus-
 visual comparison only under the professor's stated allowance for sufficiently
 similar components measured on different physical rigs.
+
+The Belt Conveyor experiment also completes a component-level sensor-plus-
+infrared comparison, conditional on accepting CORA's laboratory geared drive
+as a sufficiently similar reducer. Its sensor and infrared accuracies are
+0.625 and 0.500, both below the 0.750 majority-class control; this is **not**
+evidence of a reliable fault detector, mine deployment, or repair prediction.
