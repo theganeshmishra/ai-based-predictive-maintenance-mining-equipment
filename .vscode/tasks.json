@@ -1,0 +1,53 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Week 4: Pump sensor",
+      "type": "process",
+      "command": "${workspaceFolder}/.venv/bin/python",
+      "windows": { "command": "${workspaceFolder}\\.venv\\Scripts\\python.exe" },
+      "args": ["${workspaceFolder}/Mining_Equipment_Condition_Monitoring_Capstone/Models/pump_bearing_independent_baseline.py"],
+      "problemMatcher": [],
+      "presentation": { "reveal": "always", "panel": "shared" }
+    },
+    {
+      "label": "Week 4: Pump visual",
+      "type": "process",
+      "command": "${workspaceFolder}/.venv/bin/python",
+      "windows": { "command": "${workspaceFolder}\\.venv\\Scripts\\python.exe" },
+      "args": ["${workspaceFolder}/Mining_Equipment_Condition_Monitoring_Capstone/Models/pump_event_visual_baseline.py"],
+      "problemMatcher": [],
+      "presentation": { "reveal": "always", "panel": "shared" }
+    },
+    {
+      "label": "Week 4: Pump comparison report",
+      "type": "process",
+      "command": "${workspaceFolder}/.venv/bin/python",
+      "windows": { "command": "${workspaceFolder}\\.venv\\Scripts\\python.exe" },
+      "args": ["${workspaceFolder}/Mining_Equipment_Condition_Monitoring_Capstone/Models/pump_compare_modalities.py"],
+      "problemMatcher": [],
+      "presentation": { "reveal": "always", "panel": "shared" }
+    },
+    {
+      "label": "Week 4: Belt Conveyor",
+      "type": "process",
+      "command": "${workspaceFolder}/.venv/bin/python",
+      "windows": { "command": "${workspaceFolder}\\.venv\\Scripts\\python.exe" },
+      "args": ["${workspaceFolder}/Mining_Equipment_Condition_Monitoring_Capstone/Models/belt_conveyor_cora_baseline.py"],
+      "problemMatcher": [],
+      "presentation": { "reveal": "always", "panel": "shared" }
+    },
+    {
+      "label": "Week 4: Run completed Pump and Belt Conveyor work",
+      "dependsOrder": "sequence",
+      "dependsOn": [
+        "Week 4: Pump sensor",
+        "Week 4: Pump visual",
+        "Week 4: Pump comparison report",
+        "Week 4: Belt Conveyor"
+      ],
+      "group": { "kind": "build", "isDefault": true },
+      "problemMatcher": []
+    }
+  ]
+}
