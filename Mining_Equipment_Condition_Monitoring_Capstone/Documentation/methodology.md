@@ -37,7 +37,7 @@ mechanically similar component proxy. It is not direct mining-pump evidence.
 1. Keep publisher source files and all derived feature caches under ignored
    `Raw_Data/` and `Processed_Data/`. Record source URL/DOI, version, licence,
    file identity, hashes when provided, channel meanings, conditions, and unit
-   of observation. Never upload the large TiNA, CORA, Ottawa, or XJTU media.
+   of observation. Never upload the large CORA, Ottawa, or XJTU media.
 2. Choose a **condition-monitoring component and fault label** before using a
    sensor or image source. Equipment-identification photographs cannot stand in
    for fault-labelled images. Exclude compound or confounded labels when they

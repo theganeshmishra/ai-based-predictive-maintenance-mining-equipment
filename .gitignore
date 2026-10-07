@@ -1,4 +1,4 @@
-# Python environments and caches
+# Local Python and editor state
 .venv/
 venv/
 __pycache__/
@@ -6,43 +6,60 @@ __pycache__/
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
-
-# Jupyter
+.cache/
 .ipynb_checkpoints/
-
-# Editors and operating systems
 .DS_Store
 .idea/
-.vscode/
+.vscode/*
+!.vscode/tasks.json
 
-# Secrets and local configuration
+# Credentials and local configuration
 .env
 .env.*
 !.env.example
 
-# TiNA and derived data: never commit the full dataset
-data/raw/
-data/interim/
-data/processed/
+# Source datasets and derived features are local-only
+**/Raw_Data/
+**/Processed_Data/
+data/
 *.csv
 *.csv.gz
 *.tsv
 *.parquet
 *.feather
 *.arrow
+*.xlsx
+*.xls
 *.h5
 *.hdf5
+*.mat
+*.dat
+*.npy
+*.npz
+*.zip
+*.7z
+*.rar
+*.tar
+*.tar.gz
+*.wav
+*.flac
+*.mp4
+*.avi
+*.mov
 
-# Allow small, reviewed metric tables in the dedicated results folder
-!results/*.csv
-
-# Fitted models and large generated artifacts
+# Fitted models and scratch files
 *.joblib
 *.pkl
 *.pickle
 *.onnx
-models/
-
-# Local logs and scratch output
+*.pt
+*.pth
+*.ckpt
+*.safetensors
 *.log
+*.tmp
+*.part
+*.swp
+*~
+~$*
 work/

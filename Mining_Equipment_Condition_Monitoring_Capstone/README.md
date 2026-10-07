@@ -84,12 +84,12 @@ remain ignored.
 
 ## Reproduce the first two baselines
 
-Use the capstone's own [dependency list](requirements.txt). From the repository root:
+Use the repository's single [dependency list](../requirements.txt). From the repository root:
 
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
-python -m pip install -r Mining_Equipment_Condition_Monitoring_Capstone/requirements.txt
+python -m pip install -r requirements.txt
 ```
 
 On Windows, activate with `.venv\Scripts\Activate.ps1` (or call `.venv\Scripts\python.exe` directly). Obtain these **small official archives** and leave them under ignored `Raw_Data/`:
