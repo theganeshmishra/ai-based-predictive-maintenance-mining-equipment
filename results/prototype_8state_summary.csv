@@ -1,4 +1,0 @@
-evaluation,macro_f1_present_classes,balanced_accuracy,accuracy,maint_episodes_type_correct,maint_episodes_any_maint_flag
-5-block day CV,0.1111,0.1261,0.7708,0/52,0/52
-hold-out 2017-09-23..09-30,0.1487,0.1667,0.8049,0/10,0/10
-LEAKY random-minute CV (comparison only),0.9351,0.9459,0.9748,n/a,n/a
