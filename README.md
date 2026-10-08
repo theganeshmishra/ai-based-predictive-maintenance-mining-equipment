@@ -7,7 +7,7 @@ This repository has **one active dataset architecture**: component-level sensor 
 ## Repository layout
 
 ```text
-Notebook/          one notebook per experiment script, plus the full overview notebook
+Notebook/          one notebook per machine: Pump.ipynb, Belt_Conveyor.ipynb
 Models/            experiment scripts (training and evaluation)
 Preprocessing/     data intake and preprocessing scripts
 Results/           committed metrics (JSON) and written comparisons
@@ -45,7 +45,12 @@ On Windows PowerShell, use `py -3.11 -m venv .venv` followed by `.venv\Scripts\p
 
 ## Notebooks
 
-The [`Notebook/`](Notebook/) folder has one notebook per experiment script. Each notebook runs its script unchanged and shows the results, so notebooks and code cannot drift apart. Start with `00_data_setup.ipynb` to check which datasets are present, or open `Mining_Equipment_Condition_Monitoring.ipynb` for the full Week 4 story in one place. To use them in VS Code, install the notebook kernel once with `.venv\Scripts\python.exe -m pip install ipykernel` and select `.venv` as the kernel. When all data is local, the notebooks block network access, so a clean run proves the work is reproducible offline.
+The [`Notebook/`](Notebook/) folder has one notebook per completed machine, each holding both its sensor branch and its computer-vision branch:
+
+- [`Pump.ipynb`](Notebook/Pump.ipynb): vibration vs event camera, plus the sensor-only pump baselines (original pump XLSX, UCI hydraulic, ESPset).
+- [`Belt_Conveyor.ipynb`](Notebook/Belt_Conveyor.ipynb): T1 temperature vs infrared on the CORA geared-drive rig.
+
+Each notebook first lists which of its datasets are present, then runs the project's scripts unchanged, so notebooks and code cannot drift apart. Notebooks for the six planned machines will be added once their experiments are done. The PHM rock-drill baseline (`Models/rock_drill_baseline.py`) is sensor-only and belongs to the planned Drill Rig, so it has no notebook yet. To use them in VS Code, install the notebook kernel once with `.venv\Scripts\python.exe -m pip install ipykernel` and select `.venv` as the kernel. When all data is local, the notebooks block network access, so a clean run proves the work is reproducible offline.
 
 For detailed acquisition, evaluation and scientific limitations, use [capstone details](Documentation/capstone_details.md). Large source archives, event recordings, raw and processed data, fitted models, virtual environments and caches must stay out of Git. The [collaboration guide](CONTRIBUTING.md) explains how to contribute without overstating results.
 
