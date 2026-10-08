@@ -3,7 +3,7 @@
 The filename provides an experiment-level key, not a one-to-one pairing of
 individual sensor samples and thermal frames. Run from the repository root:
 
-    python Mining_Equipment_Condition_Monitoring_Capstone/Preprocessing/cora_manifest.py /path/to/CORA/files
+    python Preprocessing/cora_manifest.py /path/to/CORA/files
 
 Pass either a directory of downloaded files or the repository's
 ``Information_about_database_files.txt`` guide. No files are downloaded,

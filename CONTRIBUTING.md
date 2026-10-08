@@ -3,7 +3,7 @@
 This is the shared Saskatchewan Polytechnic PROJ 613 capstone of Ganesh Mishra, Lakshya Sharma, and Sagar Patel. Work in this **one repository** and follow the [active project README](README.md).
 
 1. Pull current `main`, claim or create a GitHub Issue, and make a focused branch.
-2. Record dataset provenance, licence, comparable component/fault labels, and independent test units in the [matrix](Mining_Equipment_Condition_Monitoring_Capstone/Dataset_Manifest/manifest.md) before new modelling.
+2. Record dataset provenance, licence, comparable component/fault labels, and independent test units in the [matrix](Dataset_Manifest/manifest.md) before new modelling.
 3. Keep downloaded datasets, raw images/events, processed tables, virtual environments, caches, and model binaries local. Do not add credentials or personal filesystem paths.
 4. Use group-aware held-out evaluation. Keep frames/windows from a test run entirely out of training, and report per-class metrics and confusion matrices.
 5. Distinguish a shared laboratory component benchmark from data collected on the named mining equipment. Do not pair samples from unrelated physical machines or claim future-repair prediction without future outcome labels.
