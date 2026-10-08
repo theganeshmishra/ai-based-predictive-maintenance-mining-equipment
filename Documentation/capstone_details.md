@@ -20,6 +20,10 @@ experiments. The other six categories—Haul/Dump Truck, Excavator, Dozer, Wheel
 Loader, Drill Rig, and Grader—are **planned, not implemented** as matched
 sensor/image experiments. No Equipment #3 modelling is part of Week 4.
 
+**After Week 4:** the Haul/Dump Truck (electric wheel-motor bearing) was added
+as Equipment #3; see [its comparison](../Results/haul_truck_sensor_visual_comparison.md)
+and `Notebook/Haul_Truck.ipynb`. Five categories remain planned.
+
 ### Current evidence
 
 | Experiment | Source domain | Task and evaluation | Held-out result | What it does not show |
