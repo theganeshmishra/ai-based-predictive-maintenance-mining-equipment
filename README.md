@@ -8,8 +8,7 @@ This repository has **one active dataset architecture**: component-level sensor 
 
 ```text
 Notebook/          one notebook per machine: Pump, Belt_Conveyor, Haul_Truck
-Models/            experiment scripts (training and evaluation)
-Preprocessing/     data intake and preprocessing scripts
+capstone_code.py   all experiment and data-intake code in one file (backup; run: python capstone_code.py <command>)
 Results/           committed metrics (JSON) and written comparisons
 Figures/           committed result figures
 Dataset_Manifest/  eight-equipment dataset verification matrix
@@ -53,7 +52,7 @@ The [`Notebook/`](Notebook/) folder has one notebook per completed machine, each
 - [`Belt_Conveyor.ipynb`](Notebook/Belt_Conveyor.ipynb): T1 temperature vs infrared on the CORA geared-drive rig.
 - [`Haul_Truck.ipynb`](Notebook/Haul_Truck.ipynb): UODS vibration vs XJTU-Rotor event camera for the electric wheel-motor bearing.
 
-Each notebook first lists which of its datasets are present, then runs the project's scripts unchanged, so notebooks and code cannot drift apart. Notebooks for the five planned machines will be added once their experiments are done. The PHM rock-drill baseline (`Models/rock_drill_baseline.py`) is sensor-only and belongs to the planned Drill Rig, so it has no notebook yet. To use them in VS Code, install the notebook kernel once with `.venv\Scripts\python.exe -m pip install ipykernel` and select `.venv` as the kernel. When all data is local, the notebooks block network access, so a clean run proves the work is reproducible offline.
+Each notebook is self-contained: all the code is inside it, in numbered steps (load data, build features, train and test, compare), with a plain-English note above each step. The last step checks that the notebook reproduces the saved results in `Results/`. `capstone_code.py` keeps all the original code in one file as a backup; it is what writes those saved results (for example `python capstone_code.py haul-truck`). Notebooks for the five planned machines will be added once their experiments are done. The PHM rock-drill baseline (`capstone_code.py rock-drill`) is sensor-only and belongs to the planned Drill Rig, so it has no notebook yet. To use them in VS Code, install the notebook kernel once with `.venv\Scripts\python.exe -m pip install ipykernel` and select `.venv` as the kernel. The notebooks read only local files in `Raw_Data/` and `Processed_Data/`, so they run offline once the data is downloaded.
 
 For detailed acquisition, evaluation and scientific limitations, use [capstone details](Documentation/capstone_details.md). Large source archives, event recordings, raw and processed data, fitted models, virtual environments and caches must stay out of Git. The [collaboration guide](CONTRIBUTING.md) explains how to contribute without overstating results.
 
