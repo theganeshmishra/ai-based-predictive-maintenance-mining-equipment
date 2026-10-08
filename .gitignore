@@ -63,3 +63,12 @@ data/
 *~
 ~$*
 work/
+
+# Images stay local, except the reviewed result figures
+*.jpg
+*.jpeg
+*.tif
+*.tiff
+*.bmp
+*.png
+!/Figures/*.png
