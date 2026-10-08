@@ -29,10 +29,68 @@ Raw data stays in Raw_Data/ and Processed_Data/ (not in Git).
 
 from __future__ import annotations
 
+import json
 import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
+
+# Saved results: one JSON file per machine in Results/, one section per experiment.
+MACHINE_SECTIONS = {
+    "pump": ('sensor_intake', 'sensor', 'camera', 'original_xlsx_diagnostic', 'uci_hydraulic', 'espset'),
+    "belt_conveyor": ('intake', 'experiment'),
+    "haul_truck": ('intake', 'experiment'),
+    "drill_rig": ('rock_drill_sensor_only',),
+}
+
+
+class _NoParent:
+    def mkdir(self, *args, **kwargs) -> None:
+        pass
+
+
+class ResultSection:
+    """One section of Results/<machine>.json.
+
+    It offers the few pathlib.Path methods the experiment code uses (read_text, write_text,
+    exists, is_file), so each experiment still reads and writes its own JSON document,
+    which is now stored as one section of its machine's file.
+    """
+
+    parent = _NoParent()
+
+    def __init__(self, machine: str, section: str) -> None:
+        self.machine, self.section = machine, section
+        self.file = ROOT / "Results" / f"{machine}.json"
+
+    def _load(self) -> dict:
+        return json.loads(self.file.read_text(encoding="utf-8")) if self.file.is_file() else {}
+
+    def exists(self) -> bool:
+        return self.section in self._load()
+
+    is_file = exists
+
+    def read_text(self, encoding: str = "utf-8") -> str:
+        data = self._load()
+        if self.section not in data:
+            raise FileNotFoundError(f"{self} has not been created yet")
+        return json.dumps(data[self.section])
+
+    def write_text(self, text: str, encoding: str = "utf-8") -> None:
+        data = self._load()
+        data[self.section] = json.loads(text)
+        order = MACHINE_SECTIONS[self.machine]
+        ordered = {key: data[key] for key in order if key in data}
+        ordered.update({key: value for key, value in data.items() if key not in ordered})
+        self.file.parent.mkdir(parents=True, exist_ok=True)
+        self.file.write_text(json.dumps(ordered, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+
+    def relative_to(self, *args) -> "ResultSection":
+        return self
+
+    def __str__(self) -> str:
+        return f"Results/{self.machine}.json [{self.section}]"
 
 # ==================================================================================================
 # pump-sensor-intake: Pump: download the 48 Ottawa vibration recordings
@@ -60,7 +118,7 @@ def pump_sensor_intake(run: bool = True) -> dict:
 
     CAPSTONE = ROOT
     RAW = CAPSTONE / "Raw_Data" / "uottawa_bearing"
-    MANIFEST = CAPSTONE / "Results" / "pump_uottawa_intake.json"
+    MANIFEST = ResultSection("pump", "sensor_intake")
     BASE = "https://data.mendeley.com/public-api/datasets/v43hmbwxpm"
     FOLDERS = {
         "H": "1 Data collected from a healthy bearing",
@@ -203,10 +261,10 @@ def pump_sensor(run: bool = True) -> dict:
 
 
     CAPSTONE = ROOT
-    INTAKE = CAPSTONE / "Results" / "pump_uottawa_intake.json"
+    INTAKE = ResultSection("pump", "sensor_intake")
     RAW = CAPSTONE / "Raw_Data" / "uottawa_bearing"
     CACHE = CAPSTONE / "Processed_Data" / "pump_bearing_independent_features.npz"
-    RESULT = CAPSTONE / "Results" / "pump_bearing_independent.json"
+    RESULT = ResultSection("pump", "sensor")
     FIGURE = CAPSTONE / "Figures" / "pump_bearing_independent_confusions.png"
     CLASSES = ("healthy", "inner", "outer", "ball")
     CODE_TO_CLASS = {"H": "healthy", "I": "inner", "O": "outer", "B": "ball"}
@@ -449,7 +507,7 @@ def pump_camera(run: bool = True) -> dict:
     CAPSTONE = ROOT
     CACHE = CAPSTONE / "Processed_Data" / "pump_event_features.npz"
     RUN_CACHE = CAPSTONE / "Processed_Data" / "pump_event_runs"
-    RESULT = CAPSTONE / "Results" / "pump_event_visual.json"
+    RESULT = ResultSection("pump", "camera")
     FIGURE = CAPSTONE / "Figures" / "pump_event_visual_confusion.png"
     ZENODO = "https://zenodo.org/api/records/17447083/files/"
     CLASSES = ("healthy", "inner", "outer", "ball")
@@ -764,9 +822,9 @@ def pump_compare(run: bool = True) -> dict:
 
 
     CAPSTONE = ROOT
-    SENSOR = CAPSTONE / "Results" / "pump_bearing_independent.json"
-    SENSOR_DIAGNOSTIC = CAPSTONE / "Results" / "pump_bearing_exploratory.json"
-    VISUAL = CAPSTONE / "Results" / "pump_event_visual.json"
+    SENSOR = ResultSection("pump", "sensor")
+    SENSOR_DIAGNOSTIC = ResultSection("pump", "original_xlsx_diagnostic")
+    VISUAL = ResultSection("pump", "camera")
     REPORT = CAPSTONE / "Results" / "pump_sensor_visual_comparison.md"
     FIGURE = CAPSTONE / "Figures" / "pump_sensor_visual_confusions.png"
     CLASSES = ("healthy", "inner", "outer", "ball")
@@ -908,7 +966,7 @@ def pump_compare(run: bool = True) -> dict:
         lines.extend([
             "## Method and provenance",
             "",
-            "- **Sensor source:** [Huang and Baddour, University of Ottawa bearing vibration V2](https://data.mendeley.com/datasets/v43hmbwxpm/2), DOI 10.17632/v43hmbwxpm.2, CC BY 4.0. Four single-condition classes, four speed profiles and three trials per profile yield 48 source MAT files. The [verified intake record](pump_uottawa_intake.json) contains publisher SHA-256 values for every file. The compound-fault fifth class is excluded.",
+            "- **Sensor source:** [Huang and Baddour, University of Ottawa bearing vibration V2](https://data.mendeley.com/datasets/v43hmbwxpm/2), DOI 10.17632/v43hmbwxpm.2, CC BY 4.0. Four single-condition classes, four speed profiles and three trials per profile yield 48 source MAT files. The [verified intake record](pump.json) contains publisher SHA-256 values for every file. The compound-fault fifth class is excluded.",
             "- **Sensor preprocessing:** only accelerometer `Channel_1` at 200 kHz is used; encoder `Channel_2` and file names are not predictors. Each 10 s run becomes 100 non-overlapping 0.1 s windows, with 16 time/spectral features. A fixed random forest is fit only on A/B runs. Window probabilities are averaged before **one prediction per held-out C/D recording**; no window from a test recording appears in training. Hyperparameters were not selected on the test runs.",
             "- **Visual source and unchanged experiment:** [XJTU-DV-Pump](https://zenodo.org/records/17447083), CC BY 4.0. The first two seconds of each of 48 relevant released recordings become eight 250 ms polarity-count event images. OpenCV HOG feeds a fixed random forest trained on 20 Hz runs; average frame probabilities produce one prediction per separate 30 Hz recording. These are event-camera motion images, **not RGB photographs of visible surface damage**. Full-file CRCs were not checked because only bounded intervals were read remotely.",
             "- **Original pump-vibration source:** [Jiang centrifugal-pump multi-fault V1](https://data.mendeley.com/datasets/63gjxpn7s6/1) was retained as a pump-domain pipeline diagnostic, but it has one file per selected class. Its within-file window score is **excluded from the independent comparison**. The Ottawa rig supplies repeat-run evidence at the same bearing-fault taxonomy, not direct pump-domain validation.",
@@ -960,7 +1018,7 @@ def pump_original_xlsx(run: bool = True) -> dict:
 
     CAPSTONE = ROOT
     RAW = CAPSTONE / "Raw_Data" / "pump_bearing"
-    OUTPUT = CAPSTONE / "Results" / "pump_bearing_exploratory.json"
+    OUTPUT = ResultSection("pump", "original_xlsx_diagnostic")
     SAMPLE_RATE_HZ = 2_000
     WINDOW_SAMPLES = 1_024  # 0.512 seconds; non-overlapping
     CLASSES = ("healthy", "inner", "outer", "ball")
@@ -1147,7 +1205,7 @@ def belt_intake(run: bool = True) -> dict:
     CAPSTONE = ROOT
     RAW = CAPSTONE / "Raw_Data" / "cora_gear_wear"
     PROCESSED = CAPSTONE / "Processed_Data" / "cora_gear_wear"
-    INTAKE = CAPSTONE / "Results" / "belt_conveyor_cora_intake.json"
+    INTAKE = ResultSection("belt_conveyor", "intake")
     BASE = "https://dataverse.csuc.cat/api/access/datafile"
     CHUNK_BYTES = 256 * 1024
     N_RANGES = 8
@@ -1676,8 +1734,8 @@ def belt_conveyor(run: bool = True) -> dict:
     CAPSTONE = ROOT
     RAW = CAPSTONE / "Raw_Data" / "cora_gear_wear"
     PROCESSED = CAPSTONE / "Processed_Data" / "cora_gear_wear"
-    INTAKE = CAPSTONE / "Results" / "belt_conveyor_cora_intake.json"
-    RESULT = CAPSTONE / "Results" / "belt_conveyor_cora.json"
+    INTAKE = ResultSection("belt_conveyor", "intake")
+    RESULT = ResultSection("belt_conveyor", "experiment")
     REPORT = CAPSTONE / "Results" / "belt_conveyor_sensor_visual_comparison.md"
     FIGURE = CAPSTONE / "Figures" / "belt_conveyor_cora_confusions.png"
     CLASSES = ("healthy", "gear_worn")
@@ -1891,7 +1949,7 @@ def belt_conveyor(run: bool = True) -> dict:
             "",
             "## Data and reproducibility",
             "",
-            "- [CORA version 2.1](https://doi.org/10.34810/DATA2500), CC BY 4.0. The [intake record](belt_conveyor_cora_intake.json) lists exact publisher file IDs, local SHA-256 checksums, source sizes and selected sensor byte ranges. All 16 MAT stacks passed filename/structure checks; H_F5_S also matched the publisher's MD5. The other 15 local SHA-256 values establish future local integrity but were not compared with publisher checksums. All source MAT stacks and sampled values remain in Git-ignored `Raw_Data/` and `Processed_Data/`.",
+            "- [CORA version 2.1](https://doi.org/10.34810/DATA2500), CC BY 4.0. The [intake record](belt_conveyor.json) lists exact publisher file IDs, local SHA-256 checksums, source sizes and selected sensor byte ranges. All 16 MAT stacks passed filename/structure checks; H_F5_S also matched the publisher's MD5. The other 15 local SHA-256 values establish future local integrity but were not compared with publisher checksums. All source MAT stacks and sampled values remain in Git-ignored `Raw_Data/` and `Processed_Data/`.",
             "- **Sensor branch:** T1 is a source temperature channel sampled at 1 kHz. For each run we request eight deterministic, equally spaced 256-KiB ranges from the original CSV and retain the first 6,000 complete readings of each range. This is about 4.3% of source bytes and is **not full-signal modelling**. Eight predeclared time/variation features summarize each run.",
             "- **Visual branch:** all 450 published infrared frames per run are converted with OpenCV to grayscale intensity/spatial descriptors and summarized to one run-level vector. Pixel levels are not calibrated degrees Celsius. Publisher MATLAB files are used rather than equipment-identification photographs.",
             "- **No artificial pairing:** the two modalities share an experiment ID and fault condition, but their individual samples are not joined. Both branches have the same held-out speed/experiment units, making the run-level comparison more directly aligned than the earlier Pump cross-rig comparison.",
@@ -1990,7 +2048,7 @@ def haul_truck_intake(run: bool = True) -> dict:
     CAPSTONE = ROOT
     SENSOR_RAW = CAPSTONE / "Raw_Data" / "uods_vafdc"
     VISUAL_RAW = CAPSTONE / "Raw_Data" / "xjtu_dv_rotor"
-    MANIFEST = CAPSTONE / "Results" / "haul_truck_intake.json"
+    MANIFEST = ResultSection("haul_truck", "intake")
     MENDELEY = "https://data.mendeley.com/public-api/datasets/y2px5tg92h"
     FOLDERS = {"H": "1_Healthy", "I": "2_Inner_Race_Faults", "O": "3_Outer_Race_Faults"}
     NAME = re.compile(r"^([HIO])_(\d+)_([012])\.mat$")
@@ -2208,13 +2266,13 @@ def haul_truck(run: bool = True) -> dict:
 
 
     CAPSTONE = ROOT
-    INTAKE = CAPSTONE / "Results" / "haul_truck_intake.json"
+    INTAKE = ResultSection("haul_truck", "intake")
     SENSOR_RAW = CAPSTONE / "Raw_Data" / "uods_vafdc"
     ROTOR_ZIP = CAPSTONE / "Raw_Data" / "xjtu_dv_rotor" / "XJTU-DV-Rotor.zip"
     ROTOR_URL = "https://zenodo.org/api/records/17447083/files/XJTU-DV-Rotor.zip/content"
     SENSOR_CACHE = CAPSTONE / "Processed_Data" / "haul_truck_sensor_features.npz"
     RUN_CACHE = CAPSTONE / "Processed_Data" / "haul_truck_event_runs"
-    RESULT = CAPSTONE / "Results" / "haul_truck_wheel_motor_bearing.json"
+    RESULT = ResultSection("haul_truck", "experiment")
     REPORT = CAPSTONE / "Results" / "haul_truck_sensor_visual_comparison.md"
     FIGURE = CAPSTONE / "Figures" / "haul_truck_confusions.png"
     CLASSES = ("healthy", "inner", "outer")
@@ -2598,7 +2656,7 @@ def uci_hydraulic(run: bool = True) -> dict:
     PROJECT = ROOT
     ARCHIVE = PROJECT / "Raw_Data/uci_hydraulic/condition_monitoring_of_hydraulic_systems.zip"
     FEATURES = PROJECT / "Processed_Data/uci_hydraulic_cycle_features.npz"
-    RESULTS = PROJECT / "Results/uci_hydraulic_pump_leakage.json"
+    RESULTS = ResultSection("pump", "uci_hydraulic")
     FIGURE = PROJECT / "Figures/uci_hydraulic_pump_leakage.png"
     EXPECTED_SHA256 = "24128aad2ee45eea7e6b63ebbd9992cdf25d0483a2cebefbfc13bc69079af1f2"
     SENSORS = (
@@ -2845,7 +2903,7 @@ def espset(run: bool = True) -> dict:
     PROJECT = ROOT
     ARCHIVE = PROJECT / "Raw_Data/espset_v3/features.zip"
     PROCESSED = PROJECT / "Processed_Data/espset_v3_features.npz"
-    RESULTS = PROJECT / "Results/espset_v3_binary_fault.json"
+    RESULTS = ResultSection("pump", "espset")
     FIGURE = PROJECT / "Figures/espset_v3_binary_fault.png"
     EXPECTED_SHA256 = "b8214c10ba5b5b211c00a058f2fffa3ed7ccc46f67219b4769c907baec9a724d"
     FEATURE_COLUMNS = (
@@ -3033,7 +3091,7 @@ def rock_drill(run: bool = True) -> dict:
     PROJECT = ROOT
     ARCHIVE = PROJECT / "Raw_Data/phm2022_rock_drill/training_data.zip"
     PROCESSED = PROJECT / "Processed_Data/phm2022_rock_drill_features.npz"
-    RESULTS = PROJECT / "Results/phm2022_rock_drill.json"
+    RESULTS = ResultSection("drill_rig", "rock_drill_sensor_only")
     FIGURE = PROJECT / "Figures/phm2022_rock_drill.png"
     EXPECTED_SHA256 = "0a49a31af500e40a00d4949020e41c6b41422ae3fc4895aeb0675c0002427719"
     SOURCE_FOLDER = "Data_Challenge_PHM2022_training_data"

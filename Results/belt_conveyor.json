@@ -1,0 +1,1463 @@
+{
+  "intake": {
+    "source": "https://doi.org/10.34810/DATA2500",
+    "version": "2.1",
+    "license": "CC BY 4.0",
+    "source_domain": "One controlled motor/gearbox laboratory rig, not a mining conveyor",
+    "target": "healthy versus imposed gear-tooth wear (W25/W50/W75)",
+    "selection": "16 stationary runs; four classes by four speeds; one run per class/speed",
+    "sensor_sampling": "Eight equally spaced 256-KiB ranges per original T1 CSV; first 6,000 complete readings in each range",
+    "sensor_sample_fraction_approx": "about 4.3% of bytes per run; not the full signal",
+    "frame_alignment": "No claimed one-to-one frame/window alignment",
+    "runs": {
+      "H_F15_S": {
+        "infrared": {
+          "file_id": 334964,
+          "filename": "H_F15_S.mat",
+          "size_bytes": 36954093,
+          "sha256": "2b59517effee0024025333be2361f7b4168f1a510f357718475074e55551f5ad",
+          "publisher_md5_checked": false,
+          "image_frames": 450
+        },
+        "temperature_sensor": {
+          "file_id": 335059,
+          "source_filename": "H_F15_S_T1.csv",
+          "source_size_bytes": 48300205,
+          "sampled_bytes": 2097152,
+          "sampled_readings": 48000,
+          "ranges": [
+            {
+              "first_byte": 0,
+              "last_byte": 262143,
+              "readings": 14648,
+              "sha256": "bb5222b88be06c774c736f973adb4dff3f70c81864361946bda36e2de623be40"
+            },
+            {
+              "first_byte": 6862580,
+              "last_byte": 7124723,
+              "readings": 14650,
+              "sha256": "c44f530bab833e11b679b3ee03d79aaa2514538e8f23775e2feb37b3843de28f"
+            },
+            {
+              "first_byte": 13725160,
+              "last_byte": 13987303,
+              "readings": 14655,
+              "sha256": "bbbeb63ca2959ff35a56258c6b3aa4904bd73a9eb78401bcef1c931a907dc4a9"
+            },
+            {
+              "first_byte": 20587740,
+              "last_byte": 20849883,
+              "readings": 14652,
+              "sha256": "ae6d88f4ea78e157a615bba095d7dd5c639078f1153937e05ebd22c0c47c1450"
+            },
+            {
+              "first_byte": 27450320,
+              "last_byte": 27712463,
+              "readings": 14656,
+              "sha256": "a3f93e9ee31cdeccb8c83d288bb04d05f8397dd9c93b2b9cc4903f5bb58290ec"
+            },
+            {
+              "first_byte": 34312900,
+              "last_byte": 34575043,
+              "readings": 14653,
+              "sha256": "661a33f6136bf7d256e375b1af7d508d13b726cd91334b6dc96f0aa243a2217a"
+            },
+            {
+              "first_byte": 41175480,
+              "last_byte": 41437623,
+              "readings": 14651,
+              "sha256": "709cd4b3703eb019c525ff81910c6a8b2946a347ef93de447e34b08f2409376e"
+            },
+            {
+              "first_byte": 48038061,
+              "last_byte": 48300204,
+              "readings": 14654,
+              "sha256": "cc0b0534ddaeaf45622f917e1f79f3897031d054400154bc029b879675006021"
+            }
+          ]
+        }
+      },
+      "H_F50_S": {
+        "infrared": {
+          "file_id": 334886,
+          "filename": "H_F50_S.mat",
+          "size_bytes": 17101981,
+          "sha256": "182ccca241aab648338a6528e2bb3f51c0cde176a3d9b8e9cfbeebd48c817e7d",
+          "publisher_md5_checked": false,
+          "image_frames": 450
+        },
+        "temperature_sensor": {
+          "file_id": 335054,
+          "source_filename": "H_F50_S_T1.csv",
+          "source_size_bytes": 48300203,
+          "sampled_bytes": 2097152,
+          "sampled_readings": 48000,
+          "ranges": [
+            {
+              "first_byte": 0,
+              "last_byte": 262143,
+              "readings": 14651,
+              "sha256": "40a13c08189e7f1a7d141fa6002dce08c8c0f712ffc60e990c253128c59ed20b"
+            },
+            {
+              "first_byte": 6862579,
+              "last_byte": 7124722,
+              "readings": 14652,
+              "sha256": "e3ab341fa96ed1542d1e19b2772927a56270a9a451ed3a862e1b218825103af9"
+            },
+            {
+              "first_byte": 13725159,
+              "last_byte": 13987302,
+              "readings": 14654,
+              "sha256": "977d583b33855ce560c9a30dcd422a45eddb1849a3e64a41c9a4a394a1d731f1"
+            },
+            {
+              "first_byte": 20587739,
+              "last_byte": 20849882,
+              "readings": 14658,
+              "sha256": "524dcbf3d0d4995e08cba14ab35bf7f66bd1e0d2229d9dd667f9193eaa383002"
+            },
+            {
+              "first_byte": 27450319,
+              "last_byte": 27712462,
+              "readings": 14655,
+              "sha256": "6085a7c50b536f58b69a16f43ff27b3567cc2e41e96cc0655f703024ee434fcc"
+            },
+            {
+              "first_byte": 34312899,
+              "last_byte": 34575042,
+              "readings": 14653,
+              "sha256": "528f5a3e3f4ce74bae906a24f0f3599d47bb1d82ad498114c55a9ddddfc57bd0"
+            },
+            {
+              "first_byte": 41175479,
+              "last_byte": 41437622,
+              "readings": 14652,
+              "sha256": "a2802ee477d1abd192b308ecf24bcc19c6adc814e28f252c143dcaea1f7c046a"
+            },
+            {
+              "first_byte": 48038059,
+              "last_byte": 48300202,
+              "readings": 14652,
+              "sha256": "a38dc1ff5a7ab0c70c5d14f9e65cb7f590ebbdfcf357c4b91096885dfcc12810"
+            }
+          ]
+        }
+      },
+      "H_F5_S": {
+        "infrared": {
+          "file_id": 334968,
+          "filename": "H_F5_S.mat",
+          "size_bytes": 34149881,
+          "sha256": "18a6429743d2b182de821bed9193efbf5b27ac67d4c7be0d675c446abf51a32e",
+          "publisher_md5_checked": true,
+          "image_frames": 450
+        },
+        "temperature_sensor": {
+          "file_id": 335123,
+          "source_filename": "H_F5_S_T1.csv",
+          "source_size_bytes": 48299196,
+          "sampled_bytes": 2097152,
+          "sampled_readings": 48000,
+          "ranges": [
+            {
+              "first_byte": 0,
+              "last_byte": 262143,
+              "readings": 14662,
+              "sha256": "f33a364fa298a2883bfd5d432ae4afcd19bf5bbc961d80ded7873b3b44db80c2"
+            },
+            {
+              "first_byte": 6862436,
+              "last_byte": 7124579,
+              "readings": 14658,
+              "sha256": "8787c1a2bc35663f9513f0d958139d1a381f3fece5f08bf3302ea14ec5d24978"
+            },
+            {
+              "first_byte": 13724872,
+              "last_byte": 13987015,
+              "readings": 14651,
+              "sha256": "0af15da67c4e3b324bfdccfabb6125cb5a16e0ed385649affb727521eeda4ecd"
+            },
+            {
+              "first_byte": 20587308,
+              "last_byte": 20849451,
+              "readings": 14658,
+              "sha256": "3367bdf608826742d6dd81b8af949d9fd35a390f56155d404a819b3ee0049064"
+            },
+            {
+              "first_byte": 27449744,
+              "last_byte": 27711887,
+              "readings": 14656,
+              "sha256": "d8b89e5a5dedf85f6b31a8527bff2c8bbd02f0d8c48a00cb9bb733ae2bee3b8a"
+            },
+            {
+              "first_byte": 34312180,
+              "last_byte": 34574323,
+              "readings": 14653,
+              "sha256": "f6f5956ccbc7161cb9b385be44c80adc770aa9edf8f9acb75b36b99f44db285c"
+            },
+            {
+              "first_byte": 41174616,
+              "last_byte": 41436759,
+              "readings": 14653,
+              "sha256": "299a85c6f698efbdcd654f8516ff5279e9ed2bdd3b9a5632631b6ae422f3da51"
+            },
+            {
+              "first_byte": 48037052,
+              "last_byte": 48299195,
+              "readings": 14655,
+              "sha256": "5411a8954c4cca6730e4059dff89f29f57f504f4008cecee8f8e124ea586d302"
+            }
+          ]
+        }
+      },
+      "H_F60_S": {
+        "infrared": {
+          "file_id": 334901,
+          "filename": "H_F60_S.mat",
+          "size_bytes": 29959433,
+          "sha256": "4fc46c024d777382804ebbfa7c1faf0cbbdf06d4b9c30ddb2f728b63610ab185",
+          "publisher_md5_checked": false,
+          "image_frames": 450
+        },
+        "temperature_sensor": {
+          "file_id": 335165,
+          "source_filename": "H_F60_S_T1.csv",
+          "source_size_bytes": 48300289,
+          "sampled_bytes": 2097152,
+          "sampled_readings": 48000,
+          "ranges": [
+            {
+              "first_byte": 0,
+              "last_byte": 262143,
+              "readings": 14652,
+              "sha256": "a919c9f48086d8a5d5ab990ebecf48330806a4c9725b06c83d777b03a065cf95"
+            },
+            {
+              "first_byte": 6862592,
+              "last_byte": 7124735,
+              "readings": 14656,
+              "sha256": "4b1fa045ef9e5e9752d2d186faac323eac557f5ba593772f0ef2959c09c3c290"
+            },
+            {
+              "first_byte": 13725184,
+              "last_byte": 13987327,
+              "readings": 14645,
+              "sha256": "f098a6cb9ff0bff4f84797cfa65ab900e33b19c6d4960e061547152c34022678"
+            },
+            {
+              "first_byte": 20587776,
+              "last_byte": 20849919,
+              "readings": 14656,
+              "sha256": "002ad4f76901c1f2d36dd47c3ddeaa141018fb2345afef30ca1779680b2140af"
+            },
+            {
+              "first_byte": 27450368,
+              "last_byte": 27712511,
+              "readings": 14656,
+              "sha256": "34fdef8f3cdee2bcd5dd31dbe1e9c9a8615cbe6227eba86a25fb27597c255361"
+            },
+            {
+              "first_byte": 34312960,
+              "last_byte": 34575103,
+              "readings": 14656,
+              "sha256": "cd3e9d55efb434fbef776c506eec1ee1a3a622e7c2f6ba912416342b6e8e451a"
+            },
+            {
+              "first_byte": 41175552,
+              "last_byte": 41437695,
+              "readings": 14650,
+              "sha256": "d013683dbc4221b698c43806b7a5a26174bb8f9f10be65386ab8d23921bf4ff2"
+            },
+            {
+              "first_byte": 48038145,
+              "last_byte": 48300288,
+              "readings": 14655,
+              "sha256": "920d432be5b4519b9b9d2d7075bcd133d4091e159cdf4cb5fc1161aab8bc531b"
+            }
+          ]
+        }
+      },
+      "W25_F15_S": {
+        "infrared": {
+          "file_id": 334958,
+          "filename": "W25_F15_S.mat",
+          "size_bytes": 38176425,
+          "sha256": "5f9fa989f640f9bd999e95f499d095a2a75957fff674dd4ab043adeaf4cafbef",
+          "publisher_md5_checked": false,
+          "image_frames": 450
+        },
+        "temperature_sensor": {
+          "file_id": 335494,
+          "source_filename": "W25_F15_S_T1.csv",
+          "source_size_bytes": 48299551,
+          "sampled_bytes": 2097152,
+          "sampled_readings": 48000,
+          "ranges": [
+            {
+              "first_byte": 0,
+              "last_byte": 262143,
+              "readings": 14659,
+              "sha256": "62684c7576899fee7503047a346eb0166fa46b8dd045b445afed0887c972a1c3"
+            },
+            {
+              "first_byte": 6862486,
+              "last_byte": 7124629,
+              "readings": 14655,
+              "sha256": "1756c6506ac57dc3694bf64f36b4cca410d351f1bd2e19a1adca0f2cdf5d0156"
+            },
+            {
+              "first_byte": 13724973,
+              "last_byte": 13987116,
+              "readings": 14650,
+              "sha256": "c6e58943710116faf0b40f94ca23841df4215bb1680a864e6222f38cf7ff9b2b"
+            },
+            {
+              "first_byte": 20587460,
+              "last_byte": 20849603,
+              "readings": 14659,
+              "sha256": "5f293fe5d6b5df492339ad1b71168df361f306fd28060feb14dd50a55bd2c739"
+            },
+            {
+              "first_byte": 27449946,
+              "last_byte": 27712089,
+              "readings": 14654,
+              "sha256": "20dd45bfa836a2407c8451d1dbe4f8371c3b93f8ea3a1522028ebb4b1d5c2200"
+            },
+            {
+              "first_byte": 34312433,
+              "last_byte": 34574576,
+              "readings": 14653,
+              "sha256": "237b7a350c73adba7afea2aff96e8e43e44fb1b91895a26a82cccf091d1fa43f"
+            },
+            {
+              "first_byte": 41174920,
+              "last_byte": 41437063,
+              "readings": 14651,
+              "sha256": "5ba7ef312f6b1e0a30aa0b678d53460f7dbf9ad3a6f7d8834b65f928b6c165f0"
+            },
+            {
+              "first_byte": 48037407,
+              "last_byte": 48299550,
+              "readings": 14651,
+              "sha256": "4d805c7ef0ae608ed421b229eca58853aa687219f65c37fb96f97cf057b15e4f"
+            }
+          ]
+        }
+      },
+      "W25_F50_S": {
+        "infrared": {
+          "file_id": 334909,
+          "filename": "W25_F50_S.mat",
+          "size_bytes": 28770612,
+          "sha256": "2d3db7066dffbd00b2d8d147b0186de0250c2cf04ab395e0494760da2642e866",
+          "publisher_md5_checked": false,
+          "image_frames": 450
+        },
+        "temperature_sensor": {
+          "file_id": 335479,
+          "source_filename": "W25_F50_S_T1.csv",
+          "source_size_bytes": 48299801,
+          "sampled_bytes": 2097152,
+          "sampled_readings": 48000,
+          "ranges": [
+            {
+              "first_byte": 0,
+              "last_byte": 262143,
+              "readings": 14655,
+              "sha256": "554ae116cafa1419b0048d5bfdb6c87f6d6123c07de7e753abd2243ba8980d86"
+            },
+            {
+              "first_byte": 6862522,
+              "last_byte": 7124665,
+              "readings": 14656,
+              "sha256": "8562df5682932fd533a2504c3b821c55df80eac23ca0a7982abd3f76a9aaaa77"
+            },
+            {
+              "first_byte": 13725044,
+              "last_byte": 13987187,
+              "readings": 14654,
+              "sha256": "07c3d3130495900dd8006867f3e7b984999218a8af245ab0c8a3e03c46b2e8a8"
+            },
+            {
+              "first_byte": 20587567,
+              "last_byte": 20849710,
+              "readings": 14654,
+              "sha256": "d2cd1f81279a7fd5edcbaf5d3d2977a2fb70651e8deaac800a67898133066bf2"
+            },
+            {
+              "first_byte": 27450089,
+              "last_byte": 27712232,
+              "readings": 14654,
+              "sha256": "6b8629a5672e50ae48ffb6a1aa66b58d38f8043f2c4af9953078f8a732552ad1"
+            },
+            {
+              "first_byte": 34312612,
+              "last_byte": 34574755,
+              "readings": 14654,
+              "sha256": "a6a39931cba9384726bccceb8b0dd747e0ef94ad0b70f6f8888be66e75b1fe87"
+            },
+            {
+              "first_byte": 41175134,
+              "last_byte": 41437277,
+              "readings": 14653,
+              "sha256": "2da8feb20d04741a7c344f789ac41a2921f768da5b7edb1e56540338b24c9ff5"
+            },
+            {
+              "first_byte": 48037657,
+              "last_byte": 48299800,
+              "readings": 14655,
+              "sha256": "31e8505666f35d79fefcb7f8359396bf8a8d88da8ad2438c3fec2a371a17cfa6"
+            }
+          ]
+        }
+      },
+      "W25_F5_S": {
+        "infrared": {
+          "file_id": 334980,
+          "filename": "W25_F5_S.mat",
+          "size_bytes": 15697869,
+          "sha256": "aedde3ab451aa5c1515fbaea256fe8ed2ebf50a6f4d2b800a652d1a24709a435",
+          "publisher_md5_checked": false,
+          "image_frames": 450
+        },
+        "temperature_sensor": {
+          "file_id": 335370,
+          "source_filename": "W25_F5_S_T1.csv",
+          "source_size_bytes": 48299365,
+          "sampled_bytes": 2097152,
+          "sampled_readings": 48000,
+          "ranges": [
+            {
+              "first_byte": 0,
+              "last_byte": 262143,
+              "readings": 14658,
+              "sha256": "950b75e60352a32ed7b2a67a839c68c866d1610221ba6c558a49ccdae42be585"
+            },
+            {
+              "first_byte": 6862460,
+              "last_byte": 7124603,
+              "readings": 14658,
+              "sha256": "0729317c2524aba844dee7d5d40551210de019e68f01dbeebae15d64cc92f3a7"
+            },
+            {
+              "first_byte": 13724920,
+              "last_byte": 13987063,
+              "readings": 14656,
+              "sha256": "918da69619b7d603ac651a4d99028062d9c67fc4d62fdab3125737cd31836e78"
+            },
+            {
+              "first_byte": 20587380,
+              "last_byte": 20849523,
+              "readings": 14654,
+              "sha256": "7e76708aa939c4fcc5d2a13881bd3acdccc6bc341c7d247195d3b4b651183bf7"
+            },
+            {
+              "first_byte": 27449840,
+              "last_byte": 27711983,
+              "readings": 14654,
+              "sha256": "c8c5f2a68746c040592c13cebc3483d752d836b741768e73af4468408ca61788"
+            },
+            {
+              "first_byte": 34312300,
+              "last_byte": 34574443,
+              "readings": 14654,
+              "sha256": "271983103abdd5dfb5310d6e06c521c14e19df82acb377df2253023bb0f6ba64"
+            },
+            {
+              "first_byte": 41174760,
+              "last_byte": 41436903,
+              "readings": 14658,
+              "sha256": "9297b4f6e04ef7aaba0b1a130b5cc7ef49bdb5128f5661f018baed6d70e6f957"
+            },
+            {
+              "first_byte": 48037221,
+              "last_byte": 48299364,
+              "readings": 14653,
+              "sha256": "e4d38e201ae488eedf4fb77a963bcf3a5a93a419ebab3a53e3311de39d8b8597"
+            }
+          ]
+        }
+      },
+      "W25_F60_S": {
+        "infrared": {
+          "file_id": 334991,
+          "filename": "W25_F60_S.mat",
+          "size_bytes": 31502966,
+          "sha256": "f3d25b8d334be137de79a66feb8989826a7a551e3d219d6756c3c0d3b64d96d8",
+          "publisher_md5_checked": false,
+          "image_frames": 450
+        },
+        "temperature_sensor": {
+          "file_id": 335458,
+          "source_filename": "W25_F60_S_T1.csv",
+          "source_size_bytes": 48301673,
+          "sampled_bytes": 2097152,
+          "sampled_readings": 48000,
+          "ranges": [
+            {
+              "first_byte": 0,
+              "last_byte": 262143,
+              "readings": 14654,
+              "sha256": "430998fc667da6fd1e58cbb82050473ec3a6d729ce0b22c6018cacaaddac8a36"
+            },
+            {
+              "first_byte": 6862789,
+              "last_byte": 7124932,
+              "readings": 14654,
+              "sha256": "3e4441eb170e3bcaf65e21063c7c708e68fb2e09e8eccaa77faceb269ddc7b92"
+            },
+            {
+              "first_byte": 13725579,
+              "last_byte": 13987722,
+              "readings": 14655,
+              "sha256": "acb00973206cee35abdd3d50d62fb1736bdc22b193c09c9ca5aa0159b3d5adc6"
+            },
+            {
+              "first_byte": 20588369,
+              "last_byte": 20850512,
+              "readings": 14652,
+              "sha256": "6f678bcf37df988a0ad0fc0d7328f2058636931286680728cf6baf5b8335cb21"
+            },
+            {
+              "first_byte": 27451159,
+              "last_byte": 27713302,
+              "readings": 14657,
+              "sha256": "727b212152dc6dc5ee63d8027cf6641737be60dacb12ebeed01807669e30b8ce"
+            },
+            {
+              "first_byte": 34313949,
+              "last_byte": 34576092,
+              "readings": 14650,
+              "sha256": "9797af8bd92f53e44be8e76e608a377c988a7b28283dc7f1a7460eea9a0187ee"
+            },
+            {
+              "first_byte": 41176739,
+              "last_byte": 41438882,
+              "readings": 14655,
+              "sha256": "006c4d089a61235cfc456e4d162336537e750937e14847c8444fee53df28728c"
+            },
+            {
+              "first_byte": 48039529,
+              "last_byte": 48301672,
+              "readings": 14651,
+              "sha256": "09b170b737345019b788cffbd2d9992495659f94ec281bc8755b8fc2efea975f"
+            }
+          ]
+        }
+      },
+      "W50_F15_S": {
+        "infrared": {
+          "file_id": 334982,
+          "filename": "W50_F15_S.mat",
+          "size_bytes": 14530944,
+          "sha256": "22f28c1f9c9caa9844027ecd0c2910566a2b891b45473eb33db28f695c6a4298",
+          "publisher_md5_checked": false,
+          "image_frames": 450
+        },
+        "temperature_sensor": {
+          "file_id": 335438,
+          "source_filename": "W50_F15_S_T1.csv",
+          "source_size_bytes": 48299973,
+          "sampled_bytes": 2097152,
+          "sampled_readings": 48000,
+          "ranges": [
+            {
+              "first_byte": 0,
+              "last_byte": 262143,
+              "readings": 14654,
+              "sha256": "bc454f612e8dd8cdcdacdc01410070c3ca8a9a1761b30e9f9ecc36507bfa9d87"
+            },
+            {
+              "first_byte": 6862547,
+              "last_byte": 7124690,
+              "readings": 14652,
+              "sha256": "ac43ace49e87c461d7e2bf607947a6b4c4652e9ed9fd4f410bc68f3fc4895b0a"
+            },
+            {
+              "first_byte": 13725094,
+              "last_byte": 13987237,
+              "readings": 14653,
+              "sha256": "0db115016e365c2347d50b47ed46cf35f2958dd6959b2734b434652bea3fece8"
+            },
+            {
+              "first_byte": 20587641,
+              "last_byte": 20849784,
+              "readings": 14655,
+              "sha256": "3e68ce0e2f685be54a6cd8d3f67fdfa3a458eb26bba97bbac7f502955287773d"
+            },
+            {
+              "first_byte": 27450188,
+              "last_byte": 27712331,
+              "readings": 14656,
+              "sha256": "9c895bfbfcb93b60546c2a13c8465032ac83ba2cf2a0295b2c1ecb7e04538a31"
+            },
+            {
+              "first_byte": 34312735,
+              "last_byte": 34574878,
+              "readings": 14650,
+              "sha256": "a2f07b98fe01929573a83f535c148528f717c357c373cbcd2e0f5baff6705a84"
+            },
+            {
+              "first_byte": 41175282,
+              "last_byte": 41437425,
+              "readings": 14653,
+              "sha256": "e938cb6a2f27de0bd46f8b626b8ec35a0767c846ba9059f929fc543ac56ee0aa"
+            },
+            {
+              "first_byte": 48037829,
+              "last_byte": 48299972,
+              "readings": 14656,
+              "sha256": "29772652aaa25a9f9e8cd840c02fa0bfaede61269bea6338d5269c6c567c0396"
+            }
+          ]
+        }
+      },
+      "W50_F50_S": {
+        "infrared": {
+          "file_id": 334950,
+          "filename": "W50_F50_S.mat",
+          "size_bytes": 13053951,
+          "sha256": "eac32d4fba0043fd82dc3ffeb326d8f3a59d838bc967f54631d384de455de8ee",
+          "publisher_md5_checked": false,
+          "image_frames": 450
+        },
+        "temperature_sensor": {
+          "file_id": 335415,
+          "source_filename": "W50_F50_S_T1.csv",
+          "source_size_bytes": 48299703,
+          "sampled_bytes": 2097152,
+          "sampled_readings": 48000,
+          "ranges": [
+            {
+              "first_byte": 0,
+              "last_byte": 262143,
+              "readings": 14652,
+              "sha256": "bbcf02173209bd392288542ba2c18a5bacf3912a90332ef0fff3adbb013ae3a1"
+            },
+            {
+              "first_byte": 6862508,
+              "last_byte": 7124651,
+              "readings": 14652,
+              "sha256": "529076aaa863824e0249d12fb1c38a13f32adb1e49432846701ed54794fb2834"
+            },
+            {
+              "first_byte": 13725016,
+              "last_byte": 13987159,
+              "readings": 14654,
+              "sha256": "d23de26033a4f4619ae98764bfab6b246aa9ac11a82b257a98d7db0ee0995d33"
+            },
+            {
+              "first_byte": 20587525,
+              "last_byte": 20849668,
+              "readings": 14656,
+              "sha256": "6de6e3557e4787502e7543882a3b7a2a5a37a46301a9fd8398c83b9edbcb5484"
+            },
+            {
+              "first_byte": 27450033,
+              "last_byte": 27712176,
+              "readings": 14649,
+              "sha256": "ef573f6670689201159d729de56b886fe53e8a446052746079337c41ea1ad007"
+            },
+            {
+              "first_byte": 34312542,
+              "last_byte": 34574685,
+              "readings": 14657,
+              "sha256": "3f194a0ce002857a9b5333534e3b4a59fa8a547cb92f103756c7d0557a3c457c"
+            },
+            {
+              "first_byte": 41175050,
+              "last_byte": 41437193,
+              "readings": 14657,
+              "sha256": "f7e39b57c3376c82b89f7d017297c8f70d121f8f38a20b1701e765853211a87c"
+            },
+            {
+              "first_byte": 48037559,
+              "last_byte": 48299702,
+              "readings": 14650,
+              "sha256": "0aecd18f63a09497fe918529f70b503bcc29fc219455d6401d187a922f89ec70"
+            }
+          ]
+        }
+      },
+      "W50_F5_S": {
+        "infrared": {
+          "file_id": 334971,
+          "filename": "W50_F5_S.mat",
+          "size_bytes": 15483611,
+          "sha256": "26bc0a57996105dc147d69bb14bfc6f4c75f5283f09bdff8ed21ae51488a1310",
+          "publisher_md5_checked": false,
+          "image_frames": 450
+        },
+        "temperature_sensor": {
+          "file_id": 335495,
+          "source_filename": "W50_F5_S_T1.csv",
+          "source_size_bytes": 48299587,
+          "sampled_bytes": 2097152,
+          "sampled_readings": 48000,
+          "ranges": [
+            {
+              "first_byte": 0,
+              "last_byte": 262143,
+              "readings": 14653,
+              "sha256": "ac63b41a57d9337ac8e9be48e3db1e894a7d54d23a669e4788d7be8c61f79eca"
+            },
+            {
+              "first_byte": 6862491,
+              "last_byte": 7124634,
+              "readings": 14654,
+              "sha256": "c67cf393877974e59e1acb1a516028b06087eb8c213792426003c3f225f35886"
+            },
+            {
+              "first_byte": 13724983,
+              "last_byte": 13987126,
+              "readings": 14652,
+              "sha256": "457db240e0bf1bc755f9090c7e1ca927fe95e3b9afb25c4767bba4d582b0fccc"
+            },
+            {
+              "first_byte": 20587475,
+              "last_byte": 20849618,
+              "readings": 14653,
+              "sha256": "438fb8378b8d709c8e4b0b13bc09d34edc140b97e1190616a57e6bbd66e27a95"
+            },
+            {
+              "first_byte": 27449967,
+              "last_byte": 27712110,
+              "readings": 14655,
+              "sha256": "bce117a3e7bbc75878c4b781d4f1f54297b728394a4df060ba9e615af42fbc4e"
+            },
+            {
+              "first_byte": 34312459,
+              "last_byte": 34574602,
+              "readings": 14658,
+              "sha256": "bbe3a1c32e221a5d21292267f76fbd5a779ec13976e06d7cfc4a9f93eede9ce7"
+            },
+            {
+              "first_byte": 41174951,
+              "last_byte": 41437094,
+              "readings": 14654,
+              "sha256": "e2e9be8a0f71958beafd5100d663bb4ea000e4f836c9a6e1504551b3d3d00bdd"
+            },
+            {
+              "first_byte": 48037443,
+              "last_byte": 48299586,
+              "readings": 14653,
+              "sha256": "f03e605be52f8908b4b1b54f10ce1e570d327c598fa8dbef66df92781f2e2393"
+            }
+          ]
+        }
+      },
+      "W50_F60_S": {
+        "infrared": {
+          "file_id": 334937,
+          "filename": "W50_F60_S.mat",
+          "size_bytes": 28778157,
+          "sha256": "26aec28eab2039e88fe856cb0e9ba31b58c29e476600e353f446eabb741bda55",
+          "publisher_md5_checked": false,
+          "image_frames": 450
+        },
+        "temperature_sensor": {
+          "file_id": 335423,
+          "source_filename": "W50_F60_S_T1.csv",
+          "source_size_bytes": 48298124,
+          "sampled_bytes": 2097152,
+          "sampled_readings": 48000,
+          "ranges": [
+            {
+              "first_byte": 0,
+              "last_byte": 262143,
+              "readings": 14653,
+              "sha256": "bdc5faac8b7aa0c1cd55f665d7be4f24d1e4a39b6269e7566494fbd6505e890d"
+            },
+            {
+              "first_byte": 6862282,
+              "last_byte": 7124425,
+              "readings": 14654,
+              "sha256": "2a934bba6659771c5d3d081becaed9fa6331e01ee5699b5c533e4061afdfeca3"
+            },
+            {
+              "first_byte": 13724565,
+              "last_byte": 13986708,
+              "readings": 14653,
+              "sha256": "f48c817446dea16c3ebe9861b63eca63a442df7116ab898589f1c70b2b91c432"
+            },
+            {
+              "first_byte": 20586848,
+              "last_byte": 20848991,
+              "readings": 14654,
+              "sha256": "5da001245731e02f287274301999a95beeb52707b88cbd49cd5e4417788aa5ea"
+            },
+            {
+              "first_byte": 27449131,
+              "last_byte": 27711274,
+              "readings": 14660,
+              "sha256": "a95b6ea2193251d382ff0e8c797f5e0633f6edc0a29bef09fe21503339a5931a"
+            },
+            {
+              "first_byte": 34311414,
+              "last_byte": 34573557,
+              "readings": 14656,
+              "sha256": "dfa7a2edc452b2640e0890d46a0e8d3a273f6b307dc48b439b638cc5e20157ee"
+            },
+            {
+              "first_byte": 41173697,
+              "last_byte": 41435840,
+              "readings": 14655,
+              "sha256": "40112d32103e49f14ee0c0a7589b1207c5b460a5fc8b5a352279a6d8f593be9d"
+            },
+            {
+              "first_byte": 48035980,
+              "last_byte": 48298123,
+              "readings": 14656,
+              "sha256": "f02f8fb33c1826febc43beff8a2c6e84704311f4d8509857b6a2afadf014542e"
+            }
+          ]
+        }
+      },
+      "W75_F15_S": {
+        "infrared": {
+          "file_id": 334977,
+          "filename": "W75_F15_S.mat",
+          "size_bytes": 9090306,
+          "sha256": "07165f3f0f003fdc4e13617fb6c32d574c01f1b0daee2e2751780143f4426c3a",
+          "publisher_md5_checked": false,
+          "image_frames": 450
+        },
+        "temperature_sensor": {
+          "file_id": 335391,
+          "source_filename": "W75_F15_S_T1.csv",
+          "source_size_bytes": 48300996,
+          "sampled_bytes": 2097152,
+          "sampled_readings": 48000,
+          "ranges": [
+            {
+              "first_byte": 0,
+              "last_byte": 262143,
+              "readings": 14654,
+              "sha256": "61154117a6735aa20b65d1c6a8b89f11d21b3482df7d23be5ddbfa2a551e2c8c"
+            },
+            {
+              "first_byte": 6862693,
+              "last_byte": 7124836,
+              "readings": 14651,
+              "sha256": "c73027fb3e2dc2c6c6f60a540cd03c5da3348d244a37726a4d0bb5725ad34115"
+            },
+            {
+              "first_byte": 13725386,
+              "last_byte": 13987529,
+              "readings": 14653,
+              "sha256": "2f14033ec8fc59c7eb97b54954f83e0d1d58ef4bb05114e77ee3eb0390524d46"
+            },
+            {
+              "first_byte": 20588079,
+              "last_byte": 20850222,
+              "readings": 14650,
+              "sha256": "f8bb83715d46d63be179a9d04a5e539f899c0d4f0e9f0c5023eb5879fe556528"
+            },
+            {
+              "first_byte": 27450772,
+              "last_byte": 27712915,
+              "readings": 14653,
+              "sha256": "972cb28f5601d2a80db3f4721038d315efcd3eabbe794028ade7beab3af13a8d"
+            },
+            {
+              "first_byte": 34313465,
+              "last_byte": 34575608,
+              "readings": 14660,
+              "sha256": "6e2e4da6575dbf9e10d086969ce8baf3708e6732327a15063e87f01f3c642c78"
+            },
+            {
+              "first_byte": 41176158,
+              "last_byte": 41438301,
+              "readings": 14653,
+              "sha256": "d8332675618b106d57fd0ffd7f2ae1806daa0c9e5f430bc3f73b71c902ce4d8d"
+            },
+            {
+              "first_byte": 48038852,
+              "last_byte": 48300995,
+              "readings": 14651,
+              "sha256": "c4712594aeae5e1367aab44f45f979e498826e2284f53aa57c2fa3b9a8c36e6c"
+            }
+          ]
+        }
+      },
+      "W75_F50_S": {
+        "infrared": {
+          "file_id": 334993,
+          "filename": "W75_F50_S.mat",
+          "size_bytes": 23110536,
+          "sha256": "8f2b1c846cb1aebeb7b40ce9f7d53bd6127f4b022d9ad4b73abeb15eebcb43d3",
+          "publisher_md5_checked": false,
+          "image_frames": 450
+        },
+        "temperature_sensor": {
+          "file_id": 335488,
+          "source_filename": "W75_F50_S_T1.csv",
+          "source_size_bytes": 48300188,
+          "sampled_bytes": 2097152,
+          "sampled_readings": 48000,
+          "ranges": [
+            {
+              "first_byte": 0,
+              "last_byte": 262143,
+              "readings": 14656,
+              "sha256": "7615be3ee7533908e558858d71e7ded0aef7dffc17de95e89695842edf976353"
+            },
+            {
+              "first_byte": 6862577,
+              "last_byte": 7124720,
+              "readings": 14647,
+              "sha256": "b11ce96beb05279019fa779efc31163ba583ea6ee40df28eacf36b0404697558"
+            },
+            {
+              "first_byte": 13725155,
+              "last_byte": 13987298,
+              "readings": 14660,
+              "sha256": "0aa0498b1a2930a22159cfd21f59ec0fc556c4ad0c04f9e35e65f36e9f9e2da9"
+            },
+            {
+              "first_byte": 20587733,
+              "last_byte": 20849876,
+              "readings": 14653,
+              "sha256": "fa0f4397da56de39f649244e0b972e1ac0a64c81fc48106adc478cd862e16418"
+            },
+            {
+              "first_byte": 27450310,
+              "last_byte": 27712453,
+              "readings": 14653,
+              "sha256": "be780c9531581e28e781d6293ac67fb6fee07adfcfa8bfbd61478c45707f6fc4"
+            },
+            {
+              "first_byte": 34312888,
+              "last_byte": 34575031,
+              "readings": 14654,
+              "sha256": "3065efacc5054cd08f13ea3582b139ac70373e9e093e3352d550f5a08dd4a1ab"
+            },
+            {
+              "first_byte": 41175466,
+              "last_byte": 41437609,
+              "readings": 14654,
+              "sha256": "067fcda09d9efbcf4ef45b0cbd0c5233904859fa0f9faf9f418256b507cd2813"
+            },
+            {
+              "first_byte": 48038044,
+              "last_byte": 48300187,
+              "readings": 14657,
+              "sha256": "9507f4a44eddbe47c7ead912db38997a56f18d1fa8cca5fcdb5908527bd89ba6"
+            }
+          ]
+        }
+      },
+      "W75_F5_S": {
+        "infrared": {
+          "file_id": 334949,
+          "filename": "W75_F5_S.mat",
+          "size_bytes": 24564913,
+          "sha256": "d5cf5d90b1e7c21fca3b0552ac03fad9bae5cb64dcc3db57d447f08d0c027be0",
+          "publisher_md5_checked": false,
+          "image_frames": 450
+        },
+        "temperature_sensor": {
+          "file_id": 335449,
+          "source_filename": "W75_F5_S_T1.csv",
+          "source_size_bytes": 48300620,
+          "sampled_bytes": 2097152,
+          "sampled_readings": 48000,
+          "ranges": [
+            {
+              "first_byte": 0,
+              "last_byte": 262143,
+              "readings": 14654,
+              "sha256": "63311e17dae98d00c16c568656572c5685ec70a0f3dbd055e460f3e60b04f401"
+            },
+            {
+              "first_byte": 6862639,
+              "last_byte": 7124782,
+              "readings": 14653,
+              "sha256": "8627a4f1e459cf488eddaf0c9014838be4ad6a3d3291b8cc4b71b19a893af460"
+            },
+            {
+              "first_byte": 13725278,
+              "last_byte": 13987421,
+              "readings": 14650,
+              "sha256": "8c685c728f3ab8bc07974c3f26694a0ce6e973bf6db226a9a3171fbaf0a0161e"
+            },
+            {
+              "first_byte": 20587918,
+              "last_byte": 20850061,
+              "readings": 14653,
+              "sha256": "3f4c005895cd26e4bc4967f9cefbde36faf28b67e749928c60a163154f82a9ff"
+            },
+            {
+              "first_byte": 27450557,
+              "last_byte": 27712700,
+              "readings": 14650,
+              "sha256": "fcb1a7b2187336e3dd59535b7a648d241a9fe6b07a4a1a780c3994a5052f6da5"
+            },
+            {
+              "first_byte": 34313197,
+              "last_byte": 34575340,
+              "readings": 14646,
+              "sha256": "3544e864f3ac09ec2a05fd9c036ab3ad4a1e1467bd3cb402939d459bb41b54ae"
+            },
+            {
+              "first_byte": 41175836,
+              "last_byte": 41437979,
+              "readings": 14653,
+              "sha256": "30ec8090f13c50d2698e88f6d7bbd6bbf2b524fc8f776bb6d3a7bd531dd6a652"
+            },
+            {
+              "first_byte": 48038476,
+              "last_byte": 48300619,
+              "readings": 14654,
+              "sha256": "7565d7118a927a5ca304ec700e7cedbdbd9813806a4a2464ea6b2f26e2a0c8a9"
+            }
+          ]
+        }
+      },
+      "W75_F60_S": {
+        "infrared": {
+          "file_id": 334918,
+          "filename": "W75_F60_S.mat",
+          "size_bytes": 29602038,
+          "sha256": "38c81468936aeb33f411281bb5199a03e2e35b7e0b50d0b24bee6454fe207234",
+          "publisher_md5_checked": false,
+          "image_frames": 450
+        },
+        "temperature_sensor": {
+          "file_id": 335400,
+          "source_filename": "W75_F60_S_T1.csv",
+          "source_size_bytes": 48300944,
+          "sampled_bytes": 2097152,
+          "sampled_readings": 48000,
+          "ranges": [
+            {
+              "first_byte": 0,
+              "last_byte": 262143,
+              "readings": 14650,
+              "sha256": "a17f3b4997984fc7170e01e748d5397f1a3b1d5b0397564b479d61107c5cf27c"
+            },
+            {
+              "first_byte": 6862685,
+              "last_byte": 7124828,
+              "readings": 14653,
+              "sha256": "171cf3c01886ab13810b37f73ae8e248e6f04a5c1abf5fad476b6d31cde39df7"
+            },
+            {
+              "first_byte": 13725371,
+              "last_byte": 13987514,
+              "readings": 14657,
+              "sha256": "7b35e0261c5463007f0a05745a7f1ed6e4736155e06f8877cc6db1fc89233704"
+            },
+            {
+              "first_byte": 20588057,
+              "last_byte": 20850200,
+              "readings": 14656,
+              "sha256": "d067f3f61891ba23e857d6f89a2c2c3fa1cc7b05ad231fb6833d1bc2f07454d7"
+            },
+            {
+              "first_byte": 27450742,
+              "last_byte": 27712885,
+              "readings": 14653,
+              "sha256": "51e61b1446a3c01eed75d74a2da17076b632ac54711a287610cbc2daf808aa08"
+            },
+            {
+              "first_byte": 34313428,
+              "last_byte": 34575571,
+              "readings": 14658,
+              "sha256": "db79c335d3c8fc38048af0c035560e5a38f8b2e6007a86acb1c0df84edfa22a5"
+            },
+            {
+              "first_byte": 41176114,
+              "last_byte": 41438257,
+              "readings": 14650,
+              "sha256": "e88f34f936901323040ac455f251e4f3e3738986dd1bfe16d1e16882544c0c83"
+            },
+            {
+              "first_byte": 48038800,
+              "last_byte": 48300943,
+              "readings": 14650,
+              "sha256": "8c569f1573967397b3d5e27607319fc7e420af051f4f83129fad1736f21ab79c"
+            }
+          ]
+        }
+      }
+    }
+  },
+  "experiment": {
+    "status": "complete_component_analogue_held_out_speed_evaluation",
+    "equipment": "Belt Conveyor with a geared drive reducer",
+    "source_domain": "Single controlled CORA motor/gearbox laboratory rig, not a mining conveyor",
+    "source": "https://doi.org/10.34810/DATA2500",
+    "target": "healthy versus imposed gear-tooth wear (W25/W50/W75)",
+    "class_order": [
+      "healthy",
+      "gear_worn"
+    ],
+    "original_conditions": [
+      "H",
+      "W25",
+      "W50",
+      "W75"
+    ],
+    "runs": [
+      "H_F5_S",
+      "H_F15_S",
+      "H_F50_S",
+      "H_F60_S",
+      "W25_F5_S",
+      "W25_F15_S",
+      "W25_F50_S",
+      "W25_F60_S",
+      "W50_F5_S",
+      "W50_F15_S",
+      "W50_F50_S",
+      "W50_F60_S",
+      "W75_F5_S",
+      "W75_F15_S",
+      "W75_F50_S",
+      "W75_F60_S"
+    ],
+    "split": "Four leave-one-speed-out folds; one held-out full run per original state in each fold",
+    "independent_physical_machines": 1,
+    "sensor": {
+      "model": {
+        "accuracy": 0.625,
+        "balanced_accuracy": 0.5833333333333333,
+        "macro_precision": 0.5666666666666667,
+        "macro_recall": 0.5833333333333333,
+        "macro_f1": 0.5636363636363637,
+        "correct_runs": 10,
+        "test_runs": 16,
+        "exploratory_accuracy_interval_95_percent": [
+          0.35434609430207786,
+          0.848016324918838
+        ],
+        "confusion_matrix": [
+          [
+            2,
+            2
+          ],
+          [
+            4,
+            8
+          ]
+        ],
+        "per_class": {
+          "healthy": {
+            "precision": 0.3333333333333333,
+            "recall": 0.5,
+            "f1": 0.4,
+            "support": 4
+          },
+          "gear_worn": {
+            "precision": 0.8,
+            "recall": 0.6666666666666666,
+            "f1": 0.7272727272727273,
+            "support": 12
+          }
+        }
+      },
+      "most_frequent_control": {
+        "accuracy": 0.75,
+        "balanced_accuracy": 0.5,
+        "macro_precision": 0.375,
+        "macro_recall": 0.5,
+        "macro_f1": 0.42857142857142855,
+        "correct_runs": 12,
+        "test_runs": 16,
+        "exploratory_accuracy_interval_95_percent": [
+          0.4762291801038724,
+          0.9273379617471178
+        ],
+        "confusion_matrix": [
+          [
+            0,
+            4
+          ],
+          [
+            0,
+            12
+          ]
+        ],
+        "per_class": {
+          "healthy": {
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1": 0.0,
+            "support": 4
+          },
+          "gear_worn": {
+            "precision": 0.75,
+            "recall": 1.0,
+            "f1": 0.8571428571428571,
+            "support": 12
+          }
+        }
+      },
+      "folds": [
+        {
+          "held_out_speed": "F5",
+          "train_runs": 12,
+          "test_runs": 4,
+          "actual": [
+            0,
+            1,
+            1,
+            1
+          ],
+          "predicted": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "accuracy": 0.75
+        },
+        {
+          "held_out_speed": "F15",
+          "train_runs": 12,
+          "test_runs": 4,
+          "actual": [
+            0,
+            1,
+            1,
+            1
+          ],
+          "predicted": [
+            1,
+            1,
+            1,
+            0
+          ],
+          "accuracy": 0.5
+        },
+        {
+          "held_out_speed": "F50",
+          "train_runs": 12,
+          "test_runs": 4,
+          "actual": [
+            0,
+            1,
+            1,
+            1
+          ],
+          "predicted": [
+            0,
+            0,
+            1,
+            0
+          ],
+          "accuracy": 0.5
+        },
+        {
+          "held_out_speed": "F60",
+          "train_runs": 12,
+          "test_runs": 4,
+          "actual": [
+            0,
+            1,
+            1,
+            1
+          ],
+          "predicted": [
+            0,
+            1,
+            1,
+            0
+          ],
+          "accuracy": 0.75
+        }
+      ],
+      "predictions": {
+        "H_F5_S": 1,
+        "H_F15_S": 1,
+        "H_F50_S": 0,
+        "H_F60_S": 0,
+        "W25_F5_S": 1,
+        "W25_F15_S": 1,
+        "W25_F50_S": 0,
+        "W25_F60_S": 1,
+        "W50_F5_S": 1,
+        "W50_F15_S": 1,
+        "W50_F50_S": 1,
+        "W50_F60_S": 1,
+        "W75_F5_S": 1,
+        "W75_F15_S": 0,
+        "W75_F50_S": 0,
+        "W75_F60_S": 0
+      }
+    },
+    "infrared": {
+      "model": {
+        "accuracy": 0.5,
+        "balanced_accuracy": 0.4166666666666667,
+        "macro_precision": 0.4333333333333333,
+        "macro_recall": 0.4166666666666667,
+        "macro_f1": 0.4181818181818182,
+        "correct_runs": 8,
+        "test_runs": 16,
+        "exploratory_accuracy_interval_95_percent": [
+          0.24651011149050545,
+          0.7534898885094946
+        ],
+        "confusion_matrix": [
+          [
+            1,
+            3
+          ],
+          [
+            5,
+            7
+          ]
+        ],
+        "per_class": {
+          "healthy": {
+            "precision": 0.16666666666666666,
+            "recall": 0.25,
+            "f1": 0.2,
+            "support": 4
+          },
+          "gear_worn": {
+            "precision": 0.7,
+            "recall": 0.5833333333333334,
+            "f1": 0.6363636363636364,
+            "support": 12
+          }
+        }
+      },
+      "most_frequent_control": {
+        "accuracy": 0.75,
+        "balanced_accuracy": 0.5,
+        "macro_precision": 0.375,
+        "macro_recall": 0.5,
+        "macro_f1": 0.42857142857142855,
+        "correct_runs": 12,
+        "test_runs": 16,
+        "exploratory_accuracy_interval_95_percent": [
+          0.4762291801038724,
+          0.9273379617471178
+        ],
+        "confusion_matrix": [
+          [
+            0,
+            4
+          ],
+          [
+            0,
+            12
+          ]
+        ],
+        "per_class": {
+          "healthy": {
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1": 0.0,
+            "support": 4
+          },
+          "gear_worn": {
+            "precision": 0.75,
+            "recall": 1.0,
+            "f1": 0.8571428571428571,
+            "support": 12
+          }
+        }
+      },
+      "folds": [
+        {
+          "held_out_speed": "F5",
+          "train_runs": 12,
+          "test_runs": 4,
+          "actual": [
+            0,
+            1,
+            1,
+            1
+          ],
+          "predicted": [
+            1,
+            1,
+            1,
+            0
+          ],
+          "accuracy": 0.5
+        },
+        {
+          "held_out_speed": "F15",
+          "train_runs": 12,
+          "test_runs": 4,
+          "actual": [
+            0,
+            1,
+            1,
+            1
+          ],
+          "predicted": [
+            1,
+            1,
+            1,
+            0
+          ],
+          "accuracy": 0.5
+        },
+        {
+          "held_out_speed": "F50",
+          "train_runs": 12,
+          "test_runs": 4,
+          "actual": [
+            0,
+            1,
+            1,
+            1
+          ],
+          "predicted": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "accuracy": 0.75
+        },
+        {
+          "held_out_speed": "F60",
+          "train_runs": 12,
+          "test_runs": 4,
+          "actual": [
+            0,
+            1,
+            1,
+            1
+          ],
+          "predicted": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "accuracy": 0.25
+        }
+      ],
+      "predictions": {
+        "H_F5_S": 1,
+        "H_F15_S": 1,
+        "H_F50_S": 1,
+        "H_F60_S": 0,
+        "W25_F5_S": 1,
+        "W25_F15_S": 1,
+        "W25_F50_S": 1,
+        "W25_F60_S": 0,
+        "W50_F5_S": 1,
+        "W50_F15_S": 1,
+        "W50_F50_S": 1,
+        "W50_F60_S": 0,
+        "W75_F5_S": 0,
+        "W75_F15_S": 0,
+        "W75_F50_S": 1,
+        "W75_F60_S": 0
+      }
+    },
+    "same_experiment_level_ids": true,
+    "sample_level_alignment_verified": false,
+    "future_maintenance_prediction": false
+  }
+}

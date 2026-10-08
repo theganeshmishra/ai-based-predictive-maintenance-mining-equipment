@@ -22,7 +22,7 @@ maintenance or eight completed equipment models.
   F1**; infrared/OpenCV scored **0.500 / 0.418**. Both accuracies are below the
   **0.750 majority-class control**. This is a completed comparison with weak
   generalization, **not** a successful fault detector or a mining-conveyor
-  validation. The [run-level metrics](../Results/belt_conveyor_cora.json) and
+  validation. The [run-level metrics](../Results/belt_conveyor.json) and
   [confusion matrices](../Figures/belt_conveyor_cora_confusions.png) preserve
   the measured findings.
 

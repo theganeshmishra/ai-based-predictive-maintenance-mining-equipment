@@ -81,8 +81,8 @@ python capstone_code.py belt-conveyor
 This intake requests only the 16 specified thermal MAT stacks (about 391 MB)
 and bounded byte ranges of their 16 original T1 CSVs (about 34 MB requested),
 not the complete 38.8 GB release. It writes the ignored local sensor cache,
-the [file/provenance record](../Results/belt_conveyor_cora_intake.json),
-[metrics](../Results/belt_conveyor_cora.json), and
+the [file/provenance record](../Results/belt_conveyor.json),
+[metrics](../Results/belt_conveyor.json), and
 [confusion matrices](../Figures/belt_conveyor_cora_confusions.png). Raw CORA files
 remain ignored.
 
@@ -125,6 +125,6 @@ python capstone_code.py pump-camera
 python capstone_code.py pump-compare
 ```
 
-The intake script downloads only the 48 selected Ottawa MAT files (about **631 MB**) and checks each against the publisher's SHA-256; its [file manifest](../Results/pump_uottawa_intake.json) records source identifiers and hashes. The sensor model uses 0.1-second non-overlapping vibration windows, trains on 24 complete A/B speed-profile recordings and tests on 24 disjoint C/D recordings, with one averaged prediction per recording. Its [result](../Results/pump_bearing_independent.json) includes Accuracy, macro Precision/Recall/F1, per-class metrics, a most-frequent control, shuffled-run-label control, and held-out-profile folds. The visual script converts event streams into 250 ms event-count images, extracts OpenCV HOG features, trains on 20 Hz recordings and tests on separate 30 Hz recordings; its existing cached result is unchanged. The comparison script writes the [readable report](../Results/pump_sensor_visual_comparison.md) and [confusion-matrix figure](../Figures/pump_sensor_visual_confusions.png).
+The intake script downloads only the 48 selected Ottawa MAT files (about **631 MB**) and checks each against the publisher's SHA-256; its [file manifest](../Results/pump.json) records source identifiers and hashes. The sensor model uses 0.1-second non-overlapping vibration windows, trains on 24 complete A/B speed-profile recordings and tests on 24 disjoint C/D recordings, with one averaged prediction per recording. Its [result](../Results/pump.json) includes Accuracy, macro Precision/Recall/F1, per-class metrics, a most-frequent control, shuffled-run-label control, and held-out-profile folds. The visual script converts event streams into 250 ms event-count images, extracts OpenCV HOG features, trains on 20 Hz recordings and tests on separate 30 Hz recordings; its existing cached result is unchanged. The comparison script writes the [readable report](../Results/pump_sensor_visual_comparison.md) and [confusion-matrix figure](../Figures/pump_sensor_visual_confusions.png).
 
 The original [centrifugal-pump vibration script](../capstone_code.py) is retained solely for provenance and can be run if its four source XLSX files are placed in ignored `Raw_Data/pump_bearing/`; its same-file score is **not** used in the independent comparison. Both main branches now use whole-run test units, but their different rigs and operating shifts still prohibit a numerical claim that one modality is better. There is no row-level sensor/image pairing or future-repair prediction. Within the professor's stated allowance for **sufficiently similar components on different machines**, this is a completed four-class, component-level sensor-plus-visual comparison—not mining-pump validation.
