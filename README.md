@@ -8,8 +8,9 @@ This repository has **one active dataset architecture**: component-level sensor 
 
 ```text
 Notebook/          one notebook per machine: Pump, Belt_Conveyor, Haul_Truck
-capstone_code.py   all experiment and data-intake code in one file (backup; run: python capstone_code.py <command>)
-Results/           one JSON per machine (pump, belt_conveyor, haul_truck) plus written comparisons
+Models/            experiment scripts (training and evaluation)
+Preprocessing/     data intake and preprocessing scripts
+Results/           committed metrics (JSON) and written comparisons
 Figures/           committed result figures
 Dataset_Manifest/  eight-equipment dataset verification matrix
 Documentation/     methodology, Week 4 checkpoint, capstone details
@@ -42,7 +43,7 @@ python3 -m venv .venv
 .venv/bin/python -m pip install -r requirements.txt
 ```
 
-On Windows PowerShell, use `py -3.11 -m venv .venv` followed by `.venv\Scripts\python.exe -m pip install -r requirements.txt`. VS Code's default build task (`Cmd+Shift+B` on macOS; `Ctrl+Shift+B` on Windows) runs the **completed Week 4 Pump and Belt Conveyor analyses** in sequence. It uses the local `.venv` and does not fetch full source archives; the Pump visual script may fetch bounded remote event ranges if its cache is absent. Prepare the required local source files/caches first by following the [capstone reproduction instructions](Documentation/capstone_details.md). The four individual tasks are also available through **Terminal → Run Task**. Do not mistake a missing local dataset for a model failure.
+On Windows PowerShell, use `py -3.11 -m venv .venv` followed by `.venv\Scripts\python.exe -m pip install -r requirements.txt`. VS Code's default build task (`Cmd+Shift+B` on macOS; `Ctrl+Shift+B` on Windows), **Run all 3 machines**, runs the completed Pump, Belt Conveyor and Haul Truck experiments in sequence. It uses the local `.venv` and does not fetch full source archives; the Pump visual script may fetch bounded remote event ranges if its cache is absent. Prepare the required local source files/caches first by following the [capstone reproduction instructions](Documentation/capstone_details.md). **Run Pump**, **Run Belt Conveyor** and **Run Haul Truck** are also available separately through **Terminal → Run Task**. Do not mistake a missing local dataset for a model failure.
 
 ## Notebooks
 
@@ -52,7 +53,7 @@ The [`Notebook/`](Notebook/) folder has one notebook per completed machine, each
 - [`Belt_Conveyor.ipynb`](Notebook/Belt_Conveyor.ipynb): T1 temperature vs infrared on the CORA geared-drive rig.
 - [`Haul_Truck.ipynb`](Notebook/Haul_Truck.ipynb): UODS vibration vs XJTU-Rotor event camera for the electric wheel-motor bearing.
 
-Each notebook is self-contained: all the code is inside it, in numbered steps (load data, build features, train and test, compare), with a plain-English note above each step. The last step checks that the notebook reproduces the saved results in `Results/`. `capstone_code.py` keeps all the original code in one file as a backup; it is what writes those saved results (for example `python capstone_code.py haul-truck`). Notebooks for the five planned machines will be added once their experiments are done. To use them in VS Code, install the notebook kernel once with `.venv\Scripts\python.exe -m pip install ipykernel` and select `.venv` as the kernel. The notebooks read only local files in `Raw_Data/` and `Processed_Data/`, so they run offline once the data is downloaded.
+Each notebook first lists which of its datasets are present, then runs the project's scripts unchanged, so notebooks and code cannot drift apart. Notebooks for the five planned machines will be added once their experiments are done. To use them in VS Code, install the notebook kernel once with `.venv\Scripts\python.exe -m pip install ipykernel` and select `.venv` as the kernel. When all data is local, the notebooks block network access, so a clean run proves the work is reproducible offline.
 
 For detailed acquisition, evaluation and scientific limitations, use [capstone details](Documentation/capstone_details.md). Large source archives, event recordings, raw and processed data, fitted models, virtual environments and caches must stay out of Git. The [collaboration guide](CONTRIBUTING.md) explains how to contribute without overstating results.
 

@@ -1,0 +1,884 @@
+{
+  "status": "haul_truck_wheel_motor_bearing_sensor_vs_event_camera",
+  "target": "present bearing condition: healthy / inner race / outer race",
+  "class_order": [
+    "healthy",
+    "inner",
+    "outer"
+  ],
+  "sensor": {
+    "source": "UODS-VAFDC, https://data.mendeley.com/datasets/y2px5tg92h/1, CC BY 4.0",
+    "selection": "bearings 1-10: healthy stage 0 (10 recordings), final stage 2 inner (bearings 1-5) and outer (bearings 6-10)",
+    "sample_rate_hz": 42000,
+    "window_samples": 4200,
+    "feature_names": [
+      "std",
+      "peak_to_peak",
+      "crest_factor",
+      "skew",
+      "excess_kurtosis",
+      "spectral_centroid_hz",
+      "dominant_frequency_hz",
+      "spectral_entropy",
+      "power_0_1000_hz",
+      "power_1000_2000_hz",
+      "power_2000_5000_hz",
+      "power_5000_10000_hz",
+      "power_10000_21000_hz"
+    ],
+    "preprocessing_note": "Each window is mean-removed and the raw mean is not a feature, because inner-race recordings carry a DC offset near +50 that is a recording artefact.",
+    "split": "5 folds; fold k holds out bearings k (inner) and k+5 (outer) with both their healthy and fault recordings; one averaged prediction per recording",
+    "source_recordings": [
+      {
+        "file": "H_1_0.mat",
+        "label": "healthy",
+        "bearing": 1,
+        "stage": 0,
+        "source_sha256": "b2c48f72aa560f2d8ce5a2ee9505743885386df8b16b9c6fb958145f625f4dba",
+        "samples": 420000,
+        "windows": 100
+      },
+      {
+        "file": "I_1_2.mat",
+        "label": "inner",
+        "bearing": 1,
+        "stage": 2,
+        "source_sha256": "009f6090d6c2a4796217d968b4ecf84bef53a4477a0c13bfee388efa442a4fd2",
+        "samples": 420000,
+        "windows": 100
+      },
+      {
+        "file": "H_2_0.mat",
+        "label": "healthy",
+        "bearing": 2,
+        "stage": 0,
+        "source_sha256": "3d0d05a4d2502acdf0b00b4427c9464eb159429bf450387f959a1270159a8856",
+        "samples": 420000,
+        "windows": 100
+      },
+      {
+        "file": "I_2_2.mat",
+        "label": "inner",
+        "bearing": 2,
+        "stage": 2,
+        "source_sha256": "0e38be5acfd17f4493b716d45d364584e52c740a875360449621a7fafaedb533",
+        "samples": 420000,
+        "windows": 100
+      },
+      {
+        "file": "H_3_0.mat",
+        "label": "healthy",
+        "bearing": 3,
+        "stage": 0,
+        "source_sha256": "14c304063d32d38303b806c022ddf9347a22729b49d4e82acd53001ba0bf8c49",
+        "samples": 420000,
+        "windows": 100
+      },
+      {
+        "file": "I_3_2.mat",
+        "label": "inner",
+        "bearing": 3,
+        "stage": 2,
+        "source_sha256": "aabdf2595d3c1ced55148a37b7d4c92b10e37275a6b340728c19494d7fa892a8",
+        "samples": 420000,
+        "windows": 100
+      },
+      {
+        "file": "H_4_0.mat",
+        "label": "healthy",
+        "bearing": 4,
+        "stage": 0,
+        "source_sha256": "b8d03ae09a0ef8020d4b918158f8df1f5b722a354f781c69cd22cce200fc4c2a",
+        "samples": 420000,
+        "windows": 100
+      },
+      {
+        "file": "I_4_2.mat",
+        "label": "inner",
+        "bearing": 4,
+        "stage": 2,
+        "source_sha256": "611e31d2cecde06f26780dcad7cc69b8f8421c08e323b793c6d964675fb08049",
+        "samples": 420000,
+        "windows": 100
+      },
+      {
+        "file": "H_5_0.mat",
+        "label": "healthy",
+        "bearing": 5,
+        "stage": 0,
+        "source_sha256": "b474da7e4a94ddeb21a4dae32f13b36bc185bc45beb7106fcab014cae7ead52a",
+        "samples": 420000,
+        "windows": 100
+      },
+      {
+        "file": "I_5_2.mat",
+        "label": "inner",
+        "bearing": 5,
+        "stage": 2,
+        "source_sha256": "4bd0b3ec080448a60cdaf35122816f80d3d8bc9ecc4c982e4c03b1f132377dbd",
+        "samples": 420000,
+        "windows": 100
+      },
+      {
+        "file": "H_6_0.mat",
+        "label": "healthy",
+        "bearing": 6,
+        "stage": 0,
+        "source_sha256": "ede3067d0bc3f38a98efb0ea43e36a23e46fe733ffad9cde8a6b4efb455e6c87",
+        "samples": 420000,
+        "windows": 100
+      },
+      {
+        "file": "O_6_2.mat",
+        "label": "outer",
+        "bearing": 6,
+        "stage": 2,
+        "source_sha256": "4c5788fb2a91e396acc7b59763c5541123ff657f4d1eab820fc4aa664bffe597",
+        "samples": 420000,
+        "windows": 100
+      },
+      {
+        "file": "H_7_0.mat",
+        "label": "healthy",
+        "bearing": 7,
+        "stage": 0,
+        "source_sha256": "14b1d998426e576828c742cef6b4603b0d9e495f7113192969e075e2cbc6ea3d",
+        "samples": 420000,
+        "windows": 100
+      },
+      {
+        "file": "O_7_2.mat",
+        "label": "outer",
+        "bearing": 7,
+        "stage": 2,
+        "source_sha256": "9b2db08dc72322f3afa68c94207cd0e2dada2d30610a8ee1020de580a114eb4f",
+        "samples": 420000,
+        "windows": 100
+      },
+      {
+        "file": "H_8_0.mat",
+        "label": "healthy",
+        "bearing": 8,
+        "stage": 0,
+        "source_sha256": "54aceeb465403dc20f6b27e073852d2f87225753d893f55a34a148d8bb6bad29",
+        "samples": 420000,
+        "windows": 100
+      },
+      {
+        "file": "O_8_2.mat",
+        "label": "outer",
+        "bearing": 8,
+        "stage": 2,
+        "source_sha256": "28dcca3fb806b3eb80c489239be4b31bd019015f71eb324bafa241a01c9743d6",
+        "samples": 420000,
+        "windows": 100
+      },
+      {
+        "file": "H_9_0.mat",
+        "label": "healthy",
+        "bearing": 9,
+        "stage": 0,
+        "source_sha256": "b3db588d055d91fa7bbfb2ca1ba7ea6942b7e645481fbd7594b9595287ffa624",
+        "samples": 420000,
+        "windows": 100
+      },
+      {
+        "file": "O_9_2.mat",
+        "label": "outer",
+        "bearing": 9,
+        "stage": 2,
+        "source_sha256": "110143d2b0a3ff0d0d260a51ac5024ebbee1c874844b9fb174b4eb54bbe3dc96",
+        "samples": 420000,
+        "windows": 100
+      },
+      {
+        "file": "H_10_0.mat",
+        "label": "healthy",
+        "bearing": 10,
+        "stage": 0,
+        "source_sha256": "2b2b11ae9a4b1bc1dfa867c9f2278856d8748d9df964e9917a4eff003cf63a94",
+        "samples": 420000,
+        "windows": 100
+      },
+      {
+        "file": "O_10_2.mat",
+        "label": "outer",
+        "bearing": 10,
+        "stage": 2,
+        "source_sha256": "71df3c43b623ae620c4d5247b2e6161f761aa0569acd030bffea902dd03ae856",
+        "samples": 420000,
+        "windows": 100
+      }
+    ],
+    "held_out_bearings": {
+      "model": {
+        "test_recordings": 20,
+        "accuracy": 0.9,
+        "macro_precision": 0.9141,
+        "macro_recall": 0.8667,
+        "macro_f1": 0.8705,
+        "confusion_matrix": [
+          [
+            10,
+            0,
+            0
+          ],
+          [
+            0,
+            5,
+            0
+          ],
+          [
+            1,
+            1,
+            3
+          ]
+        ],
+        "per_class": {
+          "healthy": {
+            "precision": 0.9091,
+            "recall": 1.0,
+            "f1": 0.9524,
+            "support": 10
+          },
+          "inner": {
+            "precision": 0.8333,
+            "recall": 1.0,
+            "f1": 0.9091,
+            "support": 5
+          },
+          "outer": {
+            "precision": 1.0,
+            "recall": 0.6,
+            "f1": 0.75,
+            "support": 5
+          }
+        }
+      },
+      "most_frequent_control": {
+        "test_recordings": 20,
+        "accuracy": 0.5,
+        "macro_precision": 0.1667,
+        "macro_recall": 0.3333,
+        "macro_f1": 0.2222,
+        "confusion_matrix": [
+          [
+            10,
+            0,
+            0
+          ],
+          [
+            5,
+            0,
+            0
+          ],
+          [
+            5,
+            0,
+            0
+          ]
+        ],
+        "per_class": {
+          "healthy": {
+            "precision": 0.5,
+            "recall": 1.0,
+            "f1": 0.6667,
+            "support": 10
+          },
+          "inner": {
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1": 0.0,
+            "support": 5
+          },
+          "outer": {
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1": 0.0,
+            "support": 5
+          }
+        }
+      },
+      "shuffled_training_labels_control": {
+        "test_recordings": 20,
+        "accuracy": 0.2,
+        "macro_precision": 0.1333,
+        "macro_recall": 0.1333,
+        "macro_f1": 0.1333,
+        "confusion_matrix": [
+          [
+            4,
+            3,
+            3
+          ],
+          [
+            3,
+            0,
+            2
+          ],
+          [
+            3,
+            2,
+            0
+          ]
+        ],
+        "per_class": {
+          "healthy": {
+            "precision": 0.4,
+            "recall": 0.4,
+            "f1": 0.4,
+            "support": 10
+          },
+          "inner": {
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1": 0.0,
+            "support": 5
+          },
+          "outer": {
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1": 0.0,
+            "support": 5
+          }
+        }
+      }
+    }
+  },
+  "visual": {
+    "source": "XJTU-DV-Rotor, https://zenodo.org/records/17447083, CC BY 4.0",
+    "selection": "18 recordings: healthy/inner/outer x camera angles 1-3 x 1000/2000 rpm; ball excluded to match the sensor classes",
+    "preprocessing": "first 2 s, eight 250 ms event-count images, signed log contrast, OpenCV 64x64 HOG (same code as the Pump event-camera branch)",
+    "split": "primary: train 1000 rpm, test 2000 rpm; check: hold out each camera angle across both speeds",
+    "source_recordings": [
+      {
+        "member": "Data/Healthy/angle1_Healthy_1000.dat",
+        "label": "healthy",
+        "camera_angle": 1,
+        "speed_rpm": 1000,
+        "frames": 8,
+        "events_in_interval": 4630527,
+        "event_type": 12,
+        "zip_member_crc32": "29801102",
+        "analysis_interval_us": [
+          0,
+          2000000
+        ]
+      },
+      {
+        "member": "Data/Healthy/angle1_Healthy_2000.dat",
+        "label": "healthy",
+        "camera_angle": 1,
+        "speed_rpm": 2000,
+        "frames": 8,
+        "events_in_interval": 7312214,
+        "event_type": 12,
+        "zip_member_crc32": "e6584a95",
+        "analysis_interval_us": [
+          0,
+          2000000
+        ]
+      },
+      {
+        "member": "Data/Healthy/angle2_Healthy_1000.dat",
+        "label": "healthy",
+        "camera_angle": 2,
+        "speed_rpm": 1000,
+        "frames": 8,
+        "events_in_interval": 3120868,
+        "event_type": 12,
+        "zip_member_crc32": "45442c60",
+        "analysis_interval_us": [
+          0,
+          2000000
+        ]
+      },
+      {
+        "member": "Data/Healthy/angle2_Healthy_2000.dat",
+        "label": "healthy",
+        "camera_angle": 2,
+        "speed_rpm": 2000,
+        "frames": 8,
+        "events_in_interval": 4701319,
+        "event_type": 12,
+        "zip_member_crc32": "b65d1c9b",
+        "analysis_interval_us": [
+          0,
+          2000000
+        ]
+      },
+      {
+        "member": "Data/Healthy/angle3_Healthy_1000.dat",
+        "label": "healthy",
+        "camera_angle": 3,
+        "speed_rpm": 1000,
+        "frames": 8,
+        "events_in_interval": 2346998,
+        "event_type": 12,
+        "zip_member_crc32": "75c31069",
+        "analysis_interval_us": [
+          0,
+          2000000
+        ]
+      },
+      {
+        "member": "Data/Healthy/angle3_Healthy_2000.dat",
+        "label": "healthy",
+        "camera_angle": 3,
+        "speed_rpm": 2000,
+        "frames": 8,
+        "events_in_interval": 3888053,
+        "event_type": 12,
+        "zip_member_crc32": "5e8f6a27",
+        "analysis_interval_us": [
+          0,
+          2000000
+        ]
+      },
+      {
+        "member": "Data/Inner/angle1_Inner_1000.dat",
+        "label": "inner",
+        "camera_angle": 1,
+        "speed_rpm": 1000,
+        "frames": 8,
+        "events_in_interval": 4843834,
+        "event_type": 12,
+        "zip_member_crc32": "9184173f",
+        "analysis_interval_us": [
+          0,
+          2000000
+        ]
+      },
+      {
+        "member": "Data/Inner/angle1_Inner_2000.dat",
+        "label": "inner",
+        "camera_angle": 1,
+        "speed_rpm": 2000,
+        "frames": 8,
+        "events_in_interval": 7880526,
+        "event_type": 12,
+        "zip_member_crc32": "61a1aa85",
+        "analysis_interval_us": [
+          0,
+          2000000
+        ]
+      },
+      {
+        "member": "Data/Inner/angle2_Inner_1000.dat",
+        "label": "inner",
+        "camera_angle": 2,
+        "speed_rpm": 1000,
+        "frames": 8,
+        "events_in_interval": 3021158,
+        "event_type": 12,
+        "zip_member_crc32": "6cf04e74",
+        "analysis_interval_us": [
+          0,
+          2000000
+        ]
+      },
+      {
+        "member": "Data/Inner/angle2_Inner_2000.dat",
+        "label": "inner",
+        "camera_angle": 2,
+        "speed_rpm": 2000,
+        "frames": 8,
+        "events_in_interval": 4557108,
+        "event_type": 12,
+        "zip_member_crc32": "16abbcd4",
+        "analysis_interval_us": [
+          0,
+          2000000
+        ]
+      },
+      {
+        "member": "Data/Inner/angle3_Inner_1000.dat",
+        "label": "inner",
+        "camera_angle": 3,
+        "speed_rpm": 1000,
+        "frames": 8,
+        "events_in_interval": 2713987,
+        "event_type": 12,
+        "zip_member_crc32": "58c29129",
+        "analysis_interval_us": [
+          0,
+          2000000
+        ]
+      },
+      {
+        "member": "Data/Inner/angle3_Inner_2000.dat",
+        "label": "inner",
+        "camera_angle": 3,
+        "speed_rpm": 2000,
+        "frames": 8,
+        "events_in_interval": 4131731,
+        "event_type": 12,
+        "zip_member_crc32": "c301833b",
+        "analysis_interval_us": [
+          0,
+          2000000
+        ]
+      },
+      {
+        "member": "Data/Outer/angle1_Outer_1000.dat",
+        "label": "outer",
+        "camera_angle": 1,
+        "speed_rpm": 1000,
+        "frames": 8,
+        "events_in_interval": 5319175,
+        "event_type": 12,
+        "zip_member_crc32": "e99a5ae2",
+        "analysis_interval_us": [
+          0,
+          2000000
+        ]
+      },
+      {
+        "member": "Data/Outer/angle1_Outer_2000.dat",
+        "label": "outer",
+        "camera_angle": 1,
+        "speed_rpm": 2000,
+        "frames": 8,
+        "events_in_interval": 8350067,
+        "event_type": 12,
+        "zip_member_crc32": "c1789d08",
+        "analysis_interval_us": [
+          0,
+          2000000
+        ]
+      },
+      {
+        "member": "Data/Outer/angle2_Outer_1000.dat",
+        "label": "outer",
+        "camera_angle": 2,
+        "speed_rpm": 1000,
+        "frames": 8,
+        "events_in_interval": 2877215,
+        "event_type": 12,
+        "zip_member_crc32": "0dbab326",
+        "analysis_interval_us": [
+          0,
+          2000000
+        ]
+      },
+      {
+        "member": "Data/Outer/angle2_Outer_2000.dat",
+        "label": "outer",
+        "camera_angle": 2,
+        "speed_rpm": 2000,
+        "frames": 8,
+        "events_in_interval": 4592602,
+        "event_type": 12,
+        "zip_member_crc32": "b9b7bd10",
+        "analysis_interval_us": [
+          0,
+          2000000
+        ]
+      },
+      {
+        "member": "Data/Outer/angle3_Outer_1000.dat",
+        "label": "outer",
+        "camera_angle": 3,
+        "speed_rpm": 1000,
+        "frames": 8,
+        "events_in_interval": 2778305,
+        "event_type": 12,
+        "zip_member_crc32": "13c2cb18",
+        "analysis_interval_us": [
+          0,
+          2000000
+        ]
+      },
+      {
+        "member": "Data/Outer/angle3_Outer_2000.dat",
+        "label": "outer",
+        "camera_angle": 3,
+        "speed_rpm": 2000,
+        "frames": 8,
+        "events_in_interval": 4085871,
+        "event_type": 12,
+        "zip_member_crc32": "c1c454db",
+        "analysis_interval_us": [
+          0,
+          2000000
+        ]
+      }
+    ],
+    "train_1000_test_2000_rpm": {
+      "model": {
+        "test_recordings": 9,
+        "accuracy": 0.4444,
+        "macro_precision": 0.3333,
+        "macro_recall": 0.4444,
+        "macro_f1": 0.3556,
+        "confusion_matrix": [
+          [
+            3,
+            0,
+            0
+          ],
+          [
+            2,
+            0,
+            1
+          ],
+          [
+            1,
+            1,
+            1
+          ]
+        ],
+        "per_class": {
+          "healthy": {
+            "precision": 0.5,
+            "recall": 1.0,
+            "f1": 0.6667,
+            "support": 3
+          },
+          "inner": {
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1": 0.0,
+            "support": 3
+          },
+          "outer": {
+            "precision": 0.5,
+            "recall": 0.3333,
+            "f1": 0.4,
+            "support": 3
+          }
+        }
+      },
+      "most_frequent_control": {
+        "test_recordings": 9,
+        "accuracy": 0.3333,
+        "macro_precision": 0.1111,
+        "macro_recall": 0.3333,
+        "macro_f1": 0.1667,
+        "confusion_matrix": [
+          [
+            3,
+            0,
+            0
+          ],
+          [
+            3,
+            0,
+            0
+          ],
+          [
+            3,
+            0,
+            0
+          ]
+        ],
+        "per_class": {
+          "healthy": {
+            "precision": 0.3333,
+            "recall": 1.0,
+            "f1": 0.5,
+            "support": 3
+          },
+          "inner": {
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1": 0.0,
+            "support": 3
+          },
+          "outer": {
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1": 0.0,
+            "support": 3
+          }
+        }
+      },
+      "shuffled_training_labels_control": {
+        "test_recordings": 9,
+        "accuracy": 0.3333,
+        "macro_precision": 0.3333,
+        "macro_recall": 0.3333,
+        "macro_f1": 0.3333,
+        "confusion_matrix": [
+          [
+            1,
+            1,
+            1
+          ],
+          [
+            1,
+            1,
+            1
+          ],
+          [
+            1,
+            1,
+            1
+          ]
+        ],
+        "per_class": {
+          "healthy": {
+            "precision": 0.3333,
+            "recall": 0.3333,
+            "f1": 0.3333,
+            "support": 3
+          },
+          "inner": {
+            "precision": 0.3333,
+            "recall": 0.3333,
+            "f1": 0.3333,
+            "support": 3
+          },
+          "outer": {
+            "precision": 0.3333,
+            "recall": 0.3333,
+            "f1": 0.3333,
+            "support": 3
+          }
+        }
+      }
+    },
+    "held_out_camera_angle": {
+      "model": {
+        "test_recordings": 18,
+        "accuracy": 0.4444,
+        "macro_precision": 0.3,
+        "macro_recall": 0.4444,
+        "macro_f1": 0.3571,
+        "confusion_matrix": [
+          [
+            4,
+            0,
+            2
+          ],
+          [
+            4,
+            0,
+            2
+          ],
+          [
+            2,
+            0,
+            4
+          ]
+        ],
+        "per_class": {
+          "healthy": {
+            "precision": 0.4,
+            "recall": 0.6667,
+            "f1": 0.5,
+            "support": 6
+          },
+          "inner": {
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1": 0.0,
+            "support": 6
+          },
+          "outer": {
+            "precision": 0.5,
+            "recall": 0.6667,
+            "f1": 0.5714,
+            "support": 6
+          }
+        }
+      },
+      "most_frequent_control": {
+        "test_recordings": 18,
+        "accuracy": 0.3333,
+        "macro_precision": 0.1111,
+        "macro_recall": 0.3333,
+        "macro_f1": 0.1667,
+        "confusion_matrix": [
+          [
+            6,
+            0,
+            0
+          ],
+          [
+            6,
+            0,
+            0
+          ],
+          [
+            6,
+            0,
+            0
+          ]
+        ],
+        "per_class": {
+          "healthy": {
+            "precision": 0.3333,
+            "recall": 1.0,
+            "f1": 0.5,
+            "support": 6
+          },
+          "inner": {
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1": 0.0,
+            "support": 6
+          },
+          "outer": {
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1": 0.0,
+            "support": 6
+          }
+        }
+      },
+      "shuffled_training_labels_control": {
+        "test_recordings": 18,
+        "accuracy": 0.2778,
+        "macro_precision": 0.2137,
+        "macro_recall": 0.2778,
+        "macro_f1": 0.2144,
+        "confusion_matrix": [
+          [
+            0,
+            1,
+            5
+          ],
+          [
+            1,
+            1,
+            4
+          ],
+          [
+            1,
+            1,
+            4
+          ]
+        ],
+        "per_class": {
+          "healthy": {
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1": 0.0,
+            "support": 6
+          },
+          "inner": {
+            "precision": 0.3333,
+            "recall": 0.1667,
+            "f1": 0.2222,
+            "support": 6
+          },
+          "outer": {
+            "precision": 0.3077,
+            "recall": 0.6667,
+            "f1": 0.4211,
+            "support": 6
+          }
+        }
+      }
+    }
+  },
+  "limitations": [
+    "Both rigs are laboratory bearing rigs; transfer to a haul truck's electric wheel-motor bearing is a component analogy, not demonstrated truck accuracy.",
+    "Sensor and camera data come from different rigs and are compared by fault label only; there are no paired samples and no fusion.",
+    "Small test sets: 20 sensor recordings from 10 bearings, and 9 camera recordings in the primary test, so one error changes accuracy by 5 to 11 points.",
+    "Each UODS bearing has one healthy and one fault recording, so healthy and fault recordings also differ in test stage and date.",
+    "The camera sees rotor-housing motion, not visible bearing damage; only the first 2 s of each recording are used.",
+    "The models classify present condition, not remaining useful life or a repair date."
+  ]
+}

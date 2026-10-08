@@ -2,51 +2,107 @@
   "version": "2.0.0",
   "tasks": [
     {
-      "label": "Week 4: Pump sensor",
+      "label": "Pump: sensor model",
       "type": "process",
       "command": "${workspaceFolder}/.venv/bin/python",
-      "windows": { "command": "${workspaceFolder}\\.venv\\Scripts\\python.exe" },
-      "args": ["${workspaceFolder}/capstone_code.py", "pump-sensor"],
+      "windows": {
+        "command": "${workspaceFolder}\\.venv\\Scripts\\python.exe"
+      },
+      "args": [
+        "${workspaceFolder}/Models/pump_bearing_independent_baseline.py"
+      ],
       "problemMatcher": [],
-      "presentation": { "reveal": "always", "panel": "shared" }
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      }
     },
     {
-      "label": "Week 4: Pump visual",
+      "label": "Pump: camera model",
       "type": "process",
       "command": "${workspaceFolder}/.venv/bin/python",
-      "windows": { "command": "${workspaceFolder}\\.venv\\Scripts\\python.exe" },
-      "args": ["${workspaceFolder}/capstone_code.py", "pump-camera"],
+      "windows": {
+        "command": "${workspaceFolder}\\.venv\\Scripts\\python.exe"
+      },
+      "args": [
+        "${workspaceFolder}/Models/pump_event_visual_baseline.py"
+      ],
       "problemMatcher": [],
-      "presentation": { "reveal": "always", "panel": "shared" }
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      }
     },
     {
-      "label": "Week 4: Pump comparison report",
+      "label": "Pump: sensor vs camera report",
       "type": "process",
       "command": "${workspaceFolder}/.venv/bin/python",
-      "windows": { "command": "${workspaceFolder}\\.venv\\Scripts\\python.exe" },
-      "args": ["${workspaceFolder}/capstone_code.py", "pump-compare"],
+      "windows": {
+        "command": "${workspaceFolder}\\.venv\\Scripts\\python.exe"
+      },
+      "args": [
+        "${workspaceFolder}/Models/pump_compare_modalities.py"
+      ],
       "problemMatcher": [],
-      "presentation": { "reveal": "always", "panel": "shared" }
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      }
     },
     {
-      "label": "Week 4: Belt Conveyor",
-      "type": "process",
-      "command": "${workspaceFolder}/.venv/bin/python",
-      "windows": { "command": "${workspaceFolder}\\.venv\\Scripts\\python.exe" },
-      "args": ["${workspaceFolder}/capstone_code.py", "belt-conveyor"],
-      "problemMatcher": [],
-      "presentation": { "reveal": "always", "panel": "shared" }
-    },
-    {
-      "label": "Week 4: Run completed Pump and Belt Conveyor work",
+      "label": "Run Pump",
       "dependsOrder": "sequence",
       "dependsOn": [
-        "Week 4: Pump sensor",
-        "Week 4: Pump visual",
-        "Week 4: Pump comparison report",
-        "Week 4: Belt Conveyor"
+        "Pump: sensor model",
+        "Pump: camera model",
+        "Pump: sensor vs camera report"
       ],
-      "group": { "kind": "build", "isDefault": true },
+      "problemMatcher": []
+    },
+    {
+      "label": "Run Belt Conveyor",
+      "type": "process",
+      "command": "${workspaceFolder}/.venv/bin/python",
+      "windows": {
+        "command": "${workspaceFolder}\\.venv\\Scripts\\python.exe"
+      },
+      "args": [
+        "${workspaceFolder}/Models/belt_conveyor_cora_baseline.py"
+      ],
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      }
+    },
+    {
+      "label": "Run Haul Truck",
+      "type": "process",
+      "command": "${workspaceFolder}/.venv/bin/python",
+      "windows": {
+        "command": "${workspaceFolder}\\.venv\\Scripts\\python.exe"
+      },
+      "args": [
+        "${workspaceFolder}/Models/haul_truck_wheel_motor_bearing.py"
+      ],
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      }
+    },
+    {
+      "label": "Run all 3 machines",
+      "dependsOrder": "sequence",
+      "dependsOn": [
+        "Run Pump",
+        "Run Belt Conveyor",
+        "Run Haul Truck"
+      ],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
       "problemMatcher": []
     }
   ]
