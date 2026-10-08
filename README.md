@@ -9,7 +9,7 @@ This repository has **one active dataset architecture**: component-level sensor 
 ```text
 Notebook/          one notebook per machine: Pump, Belt_Conveyor, Haul_Truck
 capstone_code.py   all experiment and data-intake code in one file (backup; run: python capstone_code.py <command>)
-Results/           committed metrics (JSON) and written comparisons
+Results/           one JSON per machine (pump, belt_conveyor, haul_truck, drill_rig) plus written comparisons
 Figures/           committed result figures
 Dataset_Manifest/  eight-equipment dataset verification matrix
 Documentation/     methodology, Week 4 checkpoint, capstone details
