@@ -1,0 +1,193 @@
+{
+  "status": "exploratory_same_file_temporal_split_only",
+  "independent_run_accuracy": null,
+  "independent_run_accuracy_reason": "One sensor recording per class; no independent fault run can be held out.",
+  "dataset": "Mendeley 10.17632/63gjxpn7s6.1; four selected single-condition vibration files",
+  "source_license": "CC BY 4.0",
+  "target": "current pump-bearing condition; healthy/inner/outer/ball",
+  "class_order": [
+    "healthy",
+    "inner",
+    "outer",
+    "ball"
+  ],
+  "source_summary": {
+    "healthy": {
+      "samples": 61440,
+      "seconds": 30.72,
+      "nonoverlapping_windows": 60,
+      "train_windows": 36,
+      "unused_gap_windows": 12,
+      "test_windows": 12,
+      "sha256": "a16aa7cedbd9c471bbb29ae152821177d8bb94d2956a6d25604ff211d2a3d6bf"
+    },
+    "inner": {
+      "samples": 57344,
+      "seconds": 28.672,
+      "nonoverlapping_windows": 56,
+      "train_windows": 33,
+      "unused_gap_windows": 11,
+      "test_windows": 12,
+      "sha256": "b8f63a3925186c78c3100cacc15ce4a12755333f6fa3064da0948cc646843596"
+    },
+    "outer": {
+      "samples": 57344,
+      "seconds": 28.672,
+      "nonoverlapping_windows": 56,
+      "train_windows": 33,
+      "unused_gap_windows": 11,
+      "test_windows": 12,
+      "sha256": "1ef1fbdc195d7c7a66d34b93804c2604c529c80bb3d0e287cb5daed4f4e29307"
+    },
+    "ball": {
+      "samples": 61440,
+      "seconds": 30.72,
+      "nonoverlapping_windows": 60,
+      "train_windows": 36,
+      "unused_gap_windows": 12,
+      "test_windows": 12,
+      "sha256": "49d7ef08b515d092931a8d7d212d686391a855470a713b974a8de8f4337af279"
+    }
+  },
+  "sampling_rate_hz": 2000,
+  "window_samples": 1024,
+  "feature_names": [
+    "mean",
+    "std",
+    "rms",
+    "peak_to_peak",
+    "crest_factor",
+    "skew",
+    "kurtosis",
+    "spectral_centroid_hz",
+    "dominant_frequency_hz",
+    "power_0_250",
+    "power_250_500",
+    "power_500_1000"
+  ],
+  "split": "first 60% train, middle 20% unused gap, final 20% test within each source file",
+  "dummy": {
+    "accuracy": 0.25,
+    "macro_precision": 0.0625,
+    "macro_recall": 0.25,
+    "macro_f1": 0.1,
+    "balanced_accuracy": 0.25,
+    "confusion_matrix": [
+      [
+        0,
+        0,
+        0,
+        12
+      ],
+      [
+        0,
+        0,
+        0,
+        12
+      ],
+      [
+        0,
+        0,
+        0,
+        12
+      ],
+      [
+        0,
+        0,
+        0,
+        12
+      ]
+    ],
+    "per_class": {
+      "healthy": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "support": 12
+      },
+      "inner": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "support": 12
+      },
+      "outer": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "support": 12
+      },
+      "ball": {
+        "precision": 0.25,
+        "recall": 1.0,
+        "f1": 0.4,
+        "support": 12
+      }
+    }
+  },
+  "random_forest": {
+    "accuracy": 1.0,
+    "macro_precision": 1.0,
+    "macro_recall": 1.0,
+    "macro_f1": 1.0,
+    "balanced_accuracy": 1.0,
+    "confusion_matrix": [
+      [
+        12,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        12,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        12,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        12
+      ]
+    ],
+    "per_class": {
+      "healthy": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 12
+      },
+      "inner": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 12
+      },
+      "outer": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 12
+      },
+      "ball": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 12
+      }
+    }
+  },
+  "limitations": [
+    "Only one source recording per class: test windows share the same physical run as training windows.",
+    "These metrics are a pipeline smoke test, not independent-pump/fault generalization or deployment accuracy.",
+    "No visual data are trained here; XJTU-DV-Pump event recordings remain remote and are not paired with these samples.",
+    "This classifies an existing condition; it does not predict a future repair time or remaining useful life."
+  ]
+}
