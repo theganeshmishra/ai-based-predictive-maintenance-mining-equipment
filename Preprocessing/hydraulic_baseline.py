@@ -5,7 +5,7 @@ original ZIP stays under ignored Raw_Data. Features and results are derived
 locally; no raw observations are committed to Git.
 
 Run from the repository root:
-    .venv/bin/python Mining_Equipment_Condition_Monitoring_Capstone/Preprocessing/hydraulic_baseline.py
+    .venv/bin/python Preprocessing/hydraulic_baseline.py
 """
 
 from __future__ import annotations

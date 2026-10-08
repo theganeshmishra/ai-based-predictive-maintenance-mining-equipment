@@ -6,7 +6,7 @@
       "type": "process",
       "command": "${workspaceFolder}/.venv/bin/python",
       "windows": { "command": "${workspaceFolder}\\.venv\\Scripts\\python.exe" },
-      "args": ["${workspaceFolder}/Mining_Equipment_Condition_Monitoring_Capstone/Models/pump_bearing_independent_baseline.py"],
+      "args": ["${workspaceFolder}/Models/pump_bearing_independent_baseline.py"],
       "problemMatcher": [],
       "presentation": { "reveal": "always", "panel": "shared" }
     },
@@ -15,7 +15,7 @@
       "type": "process",
       "command": "${workspaceFolder}/.venv/bin/python",
       "windows": { "command": "${workspaceFolder}\\.venv\\Scripts\\python.exe" },
-      "args": ["${workspaceFolder}/Mining_Equipment_Condition_Monitoring_Capstone/Models/pump_event_visual_baseline.py"],
+      "args": ["${workspaceFolder}/Models/pump_event_visual_baseline.py"],
       "problemMatcher": [],
       "presentation": { "reveal": "always", "panel": "shared" }
     },
@@ -24,7 +24,7 @@
       "type": "process",
       "command": "${workspaceFolder}/.venv/bin/python",
       "windows": { "command": "${workspaceFolder}\\.venv\\Scripts\\python.exe" },
-      "args": ["${workspaceFolder}/Mining_Equipment_Condition_Monitoring_Capstone/Models/pump_compare_modalities.py"],
+      "args": ["${workspaceFolder}/Models/pump_compare_modalities.py"],
       "problemMatcher": [],
       "presentation": { "reveal": "always", "panel": "shared" }
     },
@@ -33,7 +33,7 @@
       "type": "process",
       "command": "${workspaceFolder}/.venv/bin/python",
       "windows": { "command": "${workspaceFolder}\\.venv\\Scripts\\python.exe" },
-      "args": ["${workspaceFolder}/Mining_Equipment_Condition_Monitoring_Capstone/Models/belt_conveyor_cora_baseline.py"],
+      "args": ["${workspaceFolder}/Models/belt_conveyor_cora_baseline.py"],
       "problemMatcher": [],
       "presentation": { "reveal": "always", "panel": "shared" }
     },
