@@ -6,7 +6,7 @@
       "type": "process",
       "command": "${workspaceFolder}/.venv/bin/python",
       "windows": { "command": "${workspaceFolder}\\.venv\\Scripts\\python.exe" },
-      "args": ["${workspaceFolder}/Models/pump_bearing_independent_baseline.py"],
+      "args": ["${workspaceFolder}/capstone_code.py", "pump-sensor"],
       "problemMatcher": [],
       "presentation": { "reveal": "always", "panel": "shared" }
     },
@@ -15,7 +15,7 @@
       "type": "process",
       "command": "${workspaceFolder}/.venv/bin/python",
       "windows": { "command": "${workspaceFolder}\\.venv\\Scripts\\python.exe" },
-      "args": ["${workspaceFolder}/Models/pump_event_visual_baseline.py"],
+      "args": ["${workspaceFolder}/capstone_code.py", "pump-camera"],
       "problemMatcher": [],
       "presentation": { "reveal": "always", "panel": "shared" }
     },
@@ -24,7 +24,7 @@
       "type": "process",
       "command": "${workspaceFolder}/.venv/bin/python",
       "windows": { "command": "${workspaceFolder}\\.venv\\Scripts\\python.exe" },
-      "args": ["${workspaceFolder}/Models/pump_compare_modalities.py"],
+      "args": ["${workspaceFolder}/capstone_code.py", "pump-compare"],
       "problemMatcher": [],
       "presentation": { "reveal": "always", "panel": "shared" }
     },
@@ -33,7 +33,7 @@
       "type": "process",
       "command": "${workspaceFolder}/.venv/bin/python",
       "windows": { "command": "${workspaceFolder}\\.venv\\Scripts\\python.exe" },
-      "args": ["${workspaceFolder}/Models/belt_conveyor_cora_baseline.py"],
+      "args": ["${workspaceFolder}/capstone_code.py", "belt-conveyor"],
       "problemMatcher": [],
       "presentation": { "reveal": "always", "panel": "shared" }
     },

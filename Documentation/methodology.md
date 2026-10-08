@@ -10,13 +10,14 @@ categories are mapped, and the component/dataset matrix is complete. Only the
 Pump and Belt Conveyor sensor-versus-image experiments are complete. The six
 other categories are planned but have **no completed matched-modality
 experiment**. No Equipment #3 modelling begins in Week 4; see the
-[progress checkpoint](week_04_progress.md).
+[progress checkpoint](week_04_progress.md). After Week 4, the Haul/Dump Truck
+was added as Equipment #3 (see the table below).
 
 ## Component-level scope
 
 | Equipment category | Selected monitored component and target | Experiment status |
 |---|---|---|
-| Haul/Dump Truck | Electric-drive wheel-motor bearing; healthy/inner/outer fault | Planned: B1 sensor–event-camera sources verified; **no paired model result yet** |
+| Haul/Dump Truck | Electric-drive wheel-motor bearing; healthy/inner/outer fault | Equipment #3 (after Week 4): separate bearing-held-out vibration and event-camera models complete on two different laboratory rigs; vibration well above its control, event camera near chance; see [Haul Truck report](../Results/haul_truck_sensor_visual_comparison.md) |
 | Excavator | Swing-drive gear wear; healthy/worn | Planned: shared CORA gear/infrared source verified; no excavator experiment yet |
 | Dozer | Final-drive gear wear; healthy/worn | Planned: same CORA source, not a separate dozer dataset; no dozer experiment yet |
 | Wheel Loader | Final-drive/transmission gear wear; healthy/worn | Planned: same CORA source; no loader experiment yet |
