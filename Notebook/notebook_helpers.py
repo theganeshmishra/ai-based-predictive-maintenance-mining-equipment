@@ -1,7 +1,7 @@
 """Shared set-up for the machine notebooks in this folder.
 
-The experiment code lives in Models/ and Preprocessing/. The notebooks only call
-those scripts and show their results, using the small helpers below, so each
+The experiment code lives in Models/ (one .py file per equipment). The notebooks only call
+those files and show their results, using the small helpers below, so each
 notebook stays short.
 """
 
@@ -23,7 +23,7 @@ import pandas as pd
 from IPython.display import display
 
 _here = Path.cwd().resolve()
-ROOT = next(p for p in (_here, *_here.parents) if (p / "Models").is_dir() and (p / "Preprocessing").is_dir())
+ROOT = next(p for p in (_here, *_here.parents) if (p / "Models").is_dir() and (p / "Results").is_dir())
 RAW, PROCESSED, RESULTS = ROOT / "Raw_Data", ROOT / "Processed_Data", ROOT / "Results"
 METRICS = ("accuracy", "balanced_accuracy", "macro_precision", "macro_recall", "macro_f1")
 
@@ -97,7 +97,7 @@ def run_script(relative_path: str, *args: str, tail: int = 3) -> None:
     finally:
         sys.argv = saved
     text = buffer.getvalue().replace(str(ROOT) + os.sep, "").replace(str(ROOT), ".")
-    print(f"[{relative_path}]")
+    print(f"[{' '.join((relative_path, *args))}]")
     for line in [line for line in text.splitlines() if line.strip()][-tail:]:
         print("  " + line)
 

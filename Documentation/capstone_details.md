@@ -59,21 +59,20 @@ See the [eight-row verification table and dataset manifest](../Dataset_Manifest/
 The UCI hydraulic benchmark remains useful **sensor-only** work, not a completed paired experiment for Excavator, Dozer, Wheel Loader or Grader. An earlier PHM 2022 rock-drill pressure benchmark was removed from the repository on October 7, 2026: it has no camera counterpart and a different fault target from the Drill Rig gear-wear mapping (it remains in Git history). Internal hydraulic pump leakage, valve lag, accumulator faults, and drill hydraulic faults still have **RED visual coverage** and are not claimed as solved by a gearbox or bearing image dataset. Equipment-identification images also remain out of the fault comparison.
 
 The shared CORA gear/infrared source for six category mappings has bounded
-[file-inventory](../Preprocessing/cora_manifest.py) and
-[sensor/thermal preprocessing](../Preprocessing/cora_preprocessing.py) helpers in
-this folder. The Belt Conveyor [intake](../Preprocessing/cora_gear_intake.py) and
-[baseline](../Models/belt_conveyor_cora_baseline.py) scripts use 16 selected runs;
+file-inventory (`inspect-file`) and sensor/thermal preprocessing
+(`preprocess`) helpers in [`Models/belt_conveyor.py`](../Models/belt_conveyor.py).
+Its `intake` and `experiment` commands use 16 selected runs;
 they do not train six equipment-specific models or infer sample-level
 sensor/image alignment. From the repository root, run
-`python Preprocessing/cora_manifest.py /path/to/Information_about_database_files.txt`
+`python Models/belt_conveyor.py inspect-file /path/to/Information_about_database_files.txt`
 to inspect a locally held publisher file guide, or run
-`python Preprocessing/cora_preprocessing.py --thermal /path/to/BD_F15_S.mat`
+`python Models/belt_conveyor.py preprocess --thermal /path/to/BD_F15_S.mat`
 for a bounded thermal smoke test. To reproduce Equipment #2 after installing
 the requirements below, run:
 
 ```bash
-python Preprocessing/cora_gear_intake.py
-python Models/belt_conveyor_cora_baseline.py
+python Models/belt_conveyor.py intake
+python Models/belt_conveyor.py experiment
 ```
 
 This intake requests only the 16 specified thermal MAT stacks (about 391 MB)
@@ -102,8 +101,8 @@ On Windows, activate with `.venv\Scripts\Activate.ps1` (or call `.venv\Scripts\p
 Then run:
 
 ```bash
-python Preprocessing/hydraulic_baseline.py
-python Models/espset_baseline.py
+python Models/pump.py uci-hydraulic
+python Models/pump.py espset
 ```
 
 The scripts verify archive hashes, inspect source shapes and missing/non-finite values, build processed features locally, use group-aware splits, fit baseline models, and save JSON metrics plus diagnostic figures. If a source archive changes, the checksum check intentionally stops the run for review.
@@ -115,12 +114,12 @@ The [dataset matrix](../Dataset_Manifest/manifest.md) retains the original Pump-
 Run from the repository root:
 
 ```bash
-python Preprocessing/pump_bearing_independent_intake.py
-python Models/pump_bearing_independent_baseline.py
-python Models/pump_event_visual_baseline.py
-python Models/pump_compare_modalities.py
+python Models/pump.py intake
+python Models/pump.py sensor
+python Models/pump.py camera
+python Models/pump.py compare
 ```
 
 The intake script downloads only the 48 selected Ottawa MAT files (about **631 MB**) and checks each against the publisher's SHA-256; its [file manifest](../Results/pump_uottawa_intake.json) records source identifiers and hashes. The sensor model uses 0.1-second non-overlapping vibration windows, trains on 24 complete A/B speed-profile recordings and tests on 24 disjoint C/D recordings, with one averaged prediction per recording. Its [result](../Results/pump_bearing_independent.json) includes Accuracy, macro Precision/Recall/F1, per-class metrics, a most-frequent control, shuffled-run-label control, and held-out-profile folds. The visual script converts event streams into 250 ms event-count images, extracts OpenCV HOG features, trains on 20 Hz recordings and tests on separate 30 Hz recordings; its existing cached result is unchanged. The comparison script writes the [readable report](../Results/pump_sensor_visual_comparison.md) and [confusion-matrix figure](../Figures/pump_sensor_visual_confusions.png).
 
-The original [centrifugal-pump vibration script](../Models/pump_bearing_baseline.py) is retained solely for provenance and can be run if its four source XLSX files are placed in ignored `Raw_Data/pump_bearing/`; its same-file score is **not** used in the independent comparison. Both main branches now use whole-run test units, but their different rigs and operating shifts still prohibit a numerical claim that one modality is better. There is no row-level sensor/image pairing or future-repair prediction. Within the professor's stated allowance for **sufficiently similar components on different machines**, this is a completed four-class, component-level sensor-plus-visual comparison—not mining-pump validation.
+The original [centrifugal-pump vibration script](../Models/pump.py) is retained solely for provenance and can be run if its four source XLSX files are placed in ignored `Raw_Data/pump_bearing/`; its same-file score is **not** used in the independent comparison. Both main branches now use whole-run test units, but their different rigs and operating shifts still prohibit a numerical claim that one modality is better. There is no row-level sensor/image pairing or future-repair prediction. Within the professor's stated allowance for **sufficiently similar components on different machines**, this is a completed four-class, component-level sensor-plus-visual comparison—not mining-pump validation.
