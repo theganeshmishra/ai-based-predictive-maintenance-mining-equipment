@@ -72,17 +72,9 @@ Dataset keys (each source is a physical test rig, **not** a mine-fleet record):
 - **Limits:** 11 source pumps, no dated repairs/RUL, offshore-to-mining transfer not validated.
 - **Files / output:** ignored `Raw_Data/espset_v3/`, ignored `Processed_Data/`; small local `Results/pump.json` and `Figures/espset_v3_binary_fault.png` are not yet committed.
 
-### PHM 2022 hydraulic rock drill (rockdrill11)
+### PHM 2022 hydraulic rock drill (rockdrill11) — removed
 
-- **Equipment:** a rock drill used on mining drill rigs; source cycles were recorded in a controlled Epiroc test cell, not underground during production.
-- **Source / citation:** Jakobsson, Frisk, Krysander, and Pettersson (2022), [official PHM Society data challenge](https://data.phmsociety.org/2022-phm-conference-data-challenge/), [dataset paper](https://doi.org/10.36001/phmconf.2022.v14i1.3144).
-- **Licence / access:** official public training ZIP downloaded and SHA-256 checked (`0a49a31af500e40a00d4949020e41c6b41422ae3fc4895aeb0675c0002427719`). The paper is CC BY 3.0, but the download page does not clearly specify a separate licence for the CSV files; keep raw files local and do not redistribute them.
-- **Provenance / size:** controlled fault induction on a mining-relevant rock drill. The labelled training archive is 235 MB compressed / 661 MB of CSV, with 34,045 impact cycles from five source configurations (1, 2, 4, 5, 6). Three aligned pressure-signal files per configuration: `pin`, `pdmp`, and `po`. Signals contain 571–748 samples per cycle across the inspected files; source paper reports 50 kHz acquisition and per-cycle normalization.
-- **Modalities / labels:** pressure signals only; label 1 no fault and labels 2–11 ten fault/condition types (including seal leakage, accumulator damage, valve damage, and flow/orifice changes). No missing or non-finite values found in the processed cycles. Each of the 11 labels occurs in every configuration; precise counts are in the result JSON.
-- **Completed task:** 11-class current-condition diagnosis. Per sensor: 32 interpolated shape values plus nine statistical/spectral features, giving 123 features. Configurations 1/2/4 train, 5 validation, 6 test; feature selection uses training data only. The selected 32-feature forest achieved 0.794 accuracy and 0.776 macro F1 on the 3,293-cycle held-out test configuration. Labels 5 and 10 have low recall (0.294 and 0.160), so this is not uniformly reliable across faults. This is a local split of the labelled training set, **not** the challenge's official blind score.
-- **Pairing:** the three pressure channels match by row/cycle within a source configuration. No paired drill photographs or repair records; DsDPM-66 images cannot be joined at sample level.
-- **Limits:** five labelled training configurations and controlled test-cell faults; no field generalization test, dated repairs, future failure horizon, or RUL. Neighbouring cycles are correlated, which is why configurations rather than individual cycles are held out.
-- **Files / output:** ignored `Raw_Data/phm2022_rock_drill/` and `Processed_Data/`; local `Results/drill_rig.json` and `Figures/phm2022_rock_drill.png`.
+Inspected and benchmarked earlier as a sensor-only, 11-class pressure-signal diagnosis (Jakobsson, Frisk, Krysander and Pettersson 2022; [PHM Society data challenge](https://data.phmsociety.org/2022-phm-conference-data-challenge/), [dataset paper](https://doi.org/10.36001/phmconf.2022.v14i1.3144)). **Removed from the repository on October 7, 2026**: it has pressure signals only, no matching fault-labelled camera data, and its hydraulic faults are not the Drill Rig gear-wear target. Its code and result remain in Git history.
 
 ## Candidate datasets and access gates
 
