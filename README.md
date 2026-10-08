@@ -8,8 +8,7 @@ This repository has **one active dataset architecture**: component-level sensor 
 
 ```text
 Notebook/          one notebook per machine: Pump, Belt_Conveyor, Haul_Truck
-Models/            experiment scripts (training and evaluation)
-Preprocessing/     data intake and preprocessing scripts
+Models/            one .py file per equipment: pump.py, belt_conveyor.py, haul_truck.py
 Results/           committed metrics (JSON) and written comparisons
 Figures/           committed result figures
 Dataset_Manifest/  eight-equipment dataset verification matrix

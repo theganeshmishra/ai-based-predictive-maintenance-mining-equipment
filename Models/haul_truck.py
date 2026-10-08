@@ -1,0 +1,643 @@
+"""Haul/Dump Truck: wheel-motor bearing, UODS vibration vs XJTU-Rotor event camera.
+
+All of this machine's code in one file. The notebook Notebook/Haul_Truck.ipynb
+runs these commands and shows the results.
+
+Usage:
+    python Models/haul_truck.py <command> [options]
+    python Models/haul_truck.py <command> --help
+
+Commands:
+    intake          download UODS vibration and the XJTU-Rotor zip
+    experiment      vibration and event-camera models, report and figure
+    all             run experiment
+
+Raw data stays in Raw_Data/ and Processed_Data/ (not in Git).
+"""
+
+from __future__ import annotations
+
+import sys
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+
+# ==================================================================================================
+# intake: download UODS vibration and the XJTU-Rotor zip
+# (formerly Preprocessing/haul_truck_intake.py)
+# ==================================================================================================
+
+def intake(run: bool = True) -> dict:
+    """Acquire the Haul/Dump Truck wheel-motor bearing sources (matrix row B1).
+
+    Sensor: University of Ottawa UODS-VAFDC (Mendeley Data, DOI 10.17632/y2px5tg92h.1),
+    CC BY 4.0. Only bearings 1-10 are selected: their healthy stage-0 recordings and
+    their final stage-2 inner-race (bearings 1-5) or outer-race (bearings 6-10)
+    recordings. Ball faults are excluded because the publisher states they were
+    recorded under no load, while healthy/inner/outer used 400 N. Stage 1
+    (fault developing) has no XJTU counterpart and is also excluded.
+
+    Visual: XJTU-DV-Rotor event-camera ZIP (Zenodo record 17447083), CC BY 4.0,
+    downloaded in full and checked against Zenodo's published MD5.
+
+    Both are laboratory rigs, not haul-truck data. Run with --sensor-only or
+    --visual-only to fetch one source.
+    """
+
+
+    import argparse
+    import hashlib
+    import json
+    import os
+    import re
+    import time
+    from pathlib import Path
+    from urllib.request import Request, urlopen
+
+
+    CAPSTONE = ROOT
+    SENSOR_RAW = CAPSTONE / "Raw_Data" / "uods_vafdc"
+    VISUAL_RAW = CAPSTONE / "Raw_Data" / "xjtu_dv_rotor"
+    MANIFEST = CAPSTONE / "Results" / "haul_truck_intake.json"
+    MENDELEY = "https://data.mendeley.com/public-api/datasets/y2px5tg92h"
+    FOLDERS = {"H": "1_Healthy", "I": "2_Inner_Race_Faults", "O": "3_Outer_Race_Faults"}
+    NAME = re.compile(r"^([HIO])_(\d+)_([012])\.mat$")
+    ROTOR_URL = "https://zenodo.org/api/records/17447083/files/XJTU-DV-Rotor.zip/content"
+    ROTOR_NAME = "XJTU-DV-Rotor.zip"
+    ROTOR_SIZE = 2_812_106_658
+    ROTOR_MD5 = "2dfed028950f3769ae62effa47faaccb"
+    HEADERS = {"User-Agent": "PROJ613-capstone/1.0"}
+
+
+    def get_json(url: str):
+        with urlopen(Request(url, headers=HEADERS), timeout=60) as response:
+            return json.load(response)
+
+
+    def selected(name: str) -> bool:
+        match = NAME.fullmatch(name)
+        if not match:
+            return False
+        code, bearing, stage = match.group(1), int(match.group(2)), int(match.group(3))
+        if code == "H":
+            return 1 <= bearing <= 10 and stage == 0
+        if code == "I":
+            return 1 <= bearing <= 5 and stage == 2
+        return 6 <= bearing <= 10 and stage == 2
+
+
+    def sensor_inventory() -> list[dict]:
+        by_name = {item["name"]: item["id"] for item in get_json(f"{MENDELEY}/folders/1")}
+        if not set(FOLDERS.values()).issubset(by_name):
+            raise ValueError("Expected publisher fault folders are missing")
+        items = []
+        for code, folder in FOLDERS.items():
+            members = get_json(f"{MENDELEY}/files?folder_id={by_name[folder]}&version=1&%24start=0&%24limit=1000")
+            for member in members:
+                name = member["filename"]
+                if not selected(name):
+                    continue
+                details = member["content_details"]
+                if not re.fullmatch(r"[a-f0-9]{64}", details.get("sha256_hash", "")):
+                    raise ValueError(f"Missing publisher SHA-256 for {name}")
+                match = NAME.fullmatch(name)
+                items.append({
+                    "name": name,
+                    "class_code": code,
+                    "bearing": int(match.group(2)),
+                    "stage": int(match.group(3)),
+                    "source_file_id": member["id"],
+                    "source_sha256": details["sha256_hash"],
+                    "source_size_bytes": int(details["size"]),
+                    "url": details["download_url"] + "?version=1",
+                })
+        counts = {code: sum(item["class_code"] == code for item in items) for code in FOLDERS}
+        if counts != {"H": 10, "I": 5, "O": 5}:
+            raise ValueError(f"Unexpected UODS selection: {counts}")
+        return sorted(items, key=lambda item: (item["bearing"], item["stage"]))
+
+
+    def digest(path: Path, algorithm: str) -> str:
+        checksum = hashlib.new(algorithm)
+        with path.open("rb") as handle:
+            for block in iter(lambda: handle.read(1 << 20), b""):
+                checksum.update(block)
+        return checksum.hexdigest()
+
+
+    def fetch_sensor(item: dict) -> str:
+        destination = SENSOR_RAW / item["name"]
+        if destination.is_file():
+            if destination.stat().st_size != item["source_size_bytes"] or digest(destination, "sha256") != item["source_sha256"]:
+                raise ValueError(f"Existing file failed publisher hash check: {destination}")
+            return "cached-and-verified"
+        temporary = destination.with_suffix(".mat.part")
+        for attempt in range(3):
+            try:
+                with urlopen(Request(item["url"], headers=HEADERS), timeout=120) as response, temporary.open("wb") as out:
+                    for block in iter(lambda: response.read(1 << 20), b""):
+                        out.write(block)
+                if temporary.stat().st_size != item["source_size_bytes"] or digest(temporary, "sha256") != item["source_sha256"]:
+                    raise ValueError(f"Publisher hash/size mismatch for {item['name']}")
+                os.replace(temporary, destination)
+                return "downloaded-and-verified"
+            except Exception:
+                if attempt == 2:
+                    raise
+                time.sleep(3 * (attempt + 1))
+        raise AssertionError("Unreachable")
+
+
+    def fetch_rotor() -> str:
+        """Download the full Rotor ZIP, resuming a partial file, then check Zenodo's MD5."""
+        VISUAL_RAW.mkdir(parents=True, exist_ok=True)
+        destination = VISUAL_RAW / ROTOR_NAME
+        if destination.is_file():
+            if destination.stat().st_size != ROTOR_SIZE or digest(destination, "md5") != ROTOR_MD5:
+                raise ValueError(f"Existing Rotor ZIP failed the Zenodo MD5 check: {destination}")
+            return "cached-and-verified"
+        partial = destination.with_suffix(".zip.part")
+        for attempt in range(20):
+            done = partial.stat().st_size if partial.is_file() else 0
+            if done >= ROTOR_SIZE:
+                break
+            try:
+                request = Request(ROTOR_URL, headers={**HEADERS, "Range": f"bytes={done}-"})
+                with urlopen(request, timeout=120) as response, partial.open("ab") as out:
+                    if done and response.status != 206:
+                        raise ValueError("Server ignored the resume request")
+                    last = time.time()
+                    for block in iter(lambda: response.read(1 << 22), b""):
+                        out.write(block)
+                        done += len(block)
+                        if time.time() - last > 30:
+                            print(f"Rotor ZIP: {done / ROTOR_SIZE:.1%}", flush=True)
+                            last = time.time()
+            except Exception as error:
+                print(f"Rotor ZIP interrupted at {done:,} bytes ({error}); resuming", flush=True)
+                time.sleep(min(30, 3 * (attempt + 1)))
+        if partial.stat().st_size != ROTOR_SIZE or digest(partial, "md5") != ROTOR_MD5:
+            raise ValueError("Rotor ZIP failed the Zenodo size/MD5 check; delete the .part file and retry")
+        os.replace(partial, destination)
+        return "downloaded-and-verified"
+
+
+    def main() -> None:
+        parser = argparse.ArgumentParser()
+        group = parser.add_mutually_exclusive_group()
+        group.add_argument("--sensor-only", action="store_true")
+        group.add_argument("--visual-only", action="store_true")
+        args = parser.parse_args()
+        record = json.loads(MANIFEST.read_text(encoding="utf-8")) if MANIFEST.is_file() else {}
+
+        if not args.visual_only:
+            items = sensor_inventory()
+            SENSOR_RAW.mkdir(parents=True, exist_ok=True)
+            for number, item in enumerate(items, 1):
+                item["local_status"] = fetch_sensor(item)
+                item.pop("url")
+                print(f"{number}/{len(items)} {item['name']}: {item['local_status']}", flush=True)
+            record["sensor"] = {
+                "source": "https://data.mendeley.com/datasets/y2px5tg92h/1",
+                "doi": "10.17632/y2px5tg92h.1",
+                "license": "CC BY 4.0",
+                "source_domain": "University of Ottawa laboratory bearing rig, not a haul truck",
+                "selected": "bearings 1-10: healthy stage 0 for all ten, final stage 2 inner (1-5) or outer (6-10); ball, cage and fault-developing stage excluded",
+                "selected_recordings": len(items),
+                "selected_bytes": sum(item["source_size_bytes"] for item in items),
+                "files": items,
+            }
+
+        if not args.sensor_only:
+            status = fetch_rotor()
+            print(f"{ROTOR_NAME}: {status}", flush=True)
+            record["visual"] = {
+                "source": "https://zenodo.org/records/17447083",
+                "doi": "10.5281/zenodo.17447083",
+                "license": "CC BY 4.0",
+                "source_domain": "XJTU laboratory rotor-bearing rig, not a haul truck",
+                "file": ROTOR_NAME,
+                "size_bytes": ROTOR_SIZE,
+                "zenodo_md5": ROTOR_MD5,
+                "local_status": status,
+            }
+
+        MANIFEST.parent.mkdir(parents=True, exist_ok=True)
+        MANIFEST.write_text(json.dumps(record, indent=2) + "\n", encoding="utf-8")
+        print(f"Saved intake record: {MANIFEST.relative_to(CAPSTONE)}")
+
+    if run:
+        main()
+    return locals()
+
+
+# ==================================================================================================
+# experiment: vibration and event-camera models, report and figure
+# (formerly Models/haul_truck_wheel_motor_bearing.py)
+# ==================================================================================================
+
+def experiment(run: bool = True) -> dict:
+    """Haul/Dump Truck electric wheel-motor bearing: vibration sensor vs event camera.
+
+    Matrix row B1. Both sources are laboratory bearing rigs, not haul-truck data;
+    the comparison is at fault-taxonomy level (healthy, inner race, outer race).
+
+    Sensor: UODS-VAFDC accelerometer, bearings 1-10. Each bearing contributes its
+    healthy stage-0 recording and its final stage-2 fault recording, so every
+    fold holds out whole physical bearings (both their recordings).
+    Visual: XJTU-DV-Rotor event camera, 18 recordings (3 classes x 3 camera angles
+    x 2 speeds). Train on 1000 rpm, test on 2000 rpm; a second check holds out
+    each camera angle. Event images reuse the Pump event-camera pipeline.
+    No sensor recording is paired with a camera recording.
+    """
+
+
+    import argparse
+    import hashlib
+    import json
+    import os
+    import re
+    import sys
+    import zipfile
+    from concurrent.futures import ThreadPoolExecutor
+    from pathlib import Path
+
+    import matplotlib.pyplot as plt
+    import numpy as np
+    from remotezip import RemoteZip
+    from scipy.io import loadmat
+    from sklearn.dummy import DummyClassifier
+    from sklearn.ensemble import RandomForestClassifier
+    from sklearn.metrics import accuracy_score, confusion_matrix, precision_recall_fscore_support
+
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    import pump as _pump_file  # noqa: E402  (reuse the Pump event-camera code)
+    _pump = _pump_file.camera(run=False)
+    BIN_US, END_US, START_US = _pump["BIN_US"], _pump["END_US"], _pump["START_US"]
+    event_images, frame_features = _pump["event_images"], _pump["frame_features"]
+
+
+    CAPSTONE = ROOT
+    INTAKE = CAPSTONE / "Results" / "haul_truck_intake.json"
+    SENSOR_RAW = CAPSTONE / "Raw_Data" / "uods_vafdc"
+    ROTOR_ZIP = CAPSTONE / "Raw_Data" / "xjtu_dv_rotor" / "XJTU-DV-Rotor.zip"
+    ROTOR_URL = "https://zenodo.org/api/records/17447083/files/XJTU-DV-Rotor.zip/content"
+    SENSOR_CACHE = CAPSTONE / "Processed_Data" / "haul_truck_sensor_features.npz"
+    RUN_CACHE = CAPSTONE / "Processed_Data" / "haul_truck_event_runs"
+    RESULT = CAPSTONE / "Results" / "haul_truck_wheel_motor_bearing.json"
+    REPORT = CAPSTONE / "Results" / "haul_truck_sensor_visual_comparison.md"
+    FIGURE = CAPSTONE / "Figures" / "haul_truck_confusions.png"
+    CLASSES = ("healthy", "inner", "outer")
+    CODE_TO_CLASS = {"H": "healthy", "I": "inner", "O": "outer"}
+    SAMPLE_RATE_HZ = 42_000
+    WINDOW_SAMPLES = 4_200  # 100 ms; 100 non-overlapping windows per 10 s recording
+    BANDS_HZ = ((0, 1_000), (1_000, 2_000), (2_000, 5_000), (5_000, 10_000), (10_000, 21_000))
+    # The raw mean is excluded on purpose: every inner-race recording carries a DC
+    # offset near +50 (and healthy H_2_0 one near +164), a recording artefact that
+    # would otherwise let the model classify by sensor offset instead of vibration.
+    FEATURE_NAMES = (
+        "std", "peak_to_peak", "crest_factor", "skew", "excess_kurtosis",
+        "spectral_centroid_hz", "dominant_frequency_hz", "spectral_entropy",
+        *(f"power_{low}_{high}_hz" for low, high in BANDS_HZ),
+    )
+    ROTOR_MEMBER = re.compile(r"^Data/(Healthy|Inner|Outer)/angle([123])_(Healthy|Inner|Outer)_(1000|2000)\.dat$")
+
+
+    def forest() -> RandomForestClassifier:
+        return RandomForestClassifier(n_estimators=250, max_features="sqrt", class_weight="balanced_subsample",
+                                      min_samples_leaf=2, random_state=42, n_jobs=-1)
+
+
+    # ----------------------------------------------------------------------------- sensor branch
+    def vibration_features(signal: np.ndarray) -> np.ndarray:
+        count = len(signal) // WINDOW_SAMPLES
+        if count < 90:
+            raise ValueError(f"Recording is unexpectedly short: {len(signal)} samples")
+        windows = signal[:count * WINDOW_SAMPLES].reshape(count, WINDOW_SAMPLES)
+        centered = windows - windows.mean(axis=1, keepdims=True)
+        std = centered.std(axis=1)
+        safe_std = np.maximum(std, 1e-12)
+        crest = np.max(np.abs(centered), axis=1) / safe_std
+        skew = np.mean(centered**3, axis=1) / safe_std**3
+        kurt = np.mean(centered**4, axis=1) / safe_std**4 - 3
+        frequency = np.fft.rfftfreq(WINDOW_SAMPLES, d=1 / SAMPLE_RATE_HZ)
+        power = np.abs(np.fft.rfft(centered, axis=1)) ** 2
+        relative = power / np.maximum(power.sum(axis=1), 1e-12)[:, None]
+        centroid = (relative * frequency[None, :]).sum(axis=1)
+        dominant = frequency[np.argmax(power[:, 1:], axis=1) + 1]
+        entropy = -(relative * np.log(np.maximum(relative, 1e-12))).sum(axis=1)
+        bands = [relative[:, (frequency >= low) & (frequency < high)].sum(axis=1) for low, high in BANDS_HZ]
+        result = np.column_stack([std, np.ptp(centered, axis=1), crest, skew, kurt,
+                                  centroid, dominant, entropy, *bands]).astype(np.float32)
+        if not np.isfinite(result).all():
+            raise ValueError("Non-finite vibration feature")
+        return result
+
+
+    def sensor_data(refresh: bool):
+        if SENSOR_CACHE.is_file() and not refresh:
+            with np.load(SENSOR_CACHE, allow_pickle=False) as saved:
+                return saved["x"], saved["y"], saved["bearing"], saved["run"], json.loads(str(saved["provenance"]))
+        files = json.loads(INTAKE.read_text(encoding="utf-8"))["sensor"]["files"]
+        xs, ys, bearings, runs, provenance = [], [], [], [], []
+        for item in files:
+            name = item["name"]
+            signal = loadmat(SENSOR_RAW / name)[name[:-4]][:, 0].astype(np.float64)  # column 0 = accelerometer
+            x = vibration_features(signal)
+            label = CODE_TO_CLASS[item["class_code"]]
+            xs.append(x)
+            ys += [label] * len(x)
+            bearings += [item["bearing"]] * len(x)
+            runs += [name] * len(x)
+            provenance.append({"file": name, "label": label, "bearing": item["bearing"], "stage": item["stage"],
+                               "source_sha256": item["source_sha256"], "samples": len(signal), "windows": len(x)})
+        x, y, bearing, run = np.vstack(xs), np.asarray(ys), np.asarray(bearings), np.asarray(runs)
+        SENSOR_CACHE.parent.mkdir(parents=True, exist_ok=True)
+        np.savez_compressed(SENSOR_CACHE, x=x, y=y, bearing=bearing, run=run, provenance=np.asarray(json.dumps(provenance)))
+        return x, y, bearing, run, provenance
+
+
+    # ----------------------------------------------------------------------------- visual branch
+    def open_rotor():
+        return zipfile.ZipFile(ROTOR_ZIP) if ROTOR_ZIP.is_file() else RemoteZip(ROTOR_URL)
+
+
+    def rotor_members() -> list[tuple[str, str, int, int, int]]:
+        with open_rotor() as archive:
+            members = []
+            for info in archive.infolist():
+                match = ROTOR_MEMBER.match(info.filename)
+                if match and match.group(1) == match.group(3):
+                    members.append((info.filename, match.group(1).lower(), int(match.group(2)),
+                                    int(match.group(4)), info.CRC))
+        counts = {label: sum(m[1] == label for m in members) for label in CLASSES}
+        if counts != {label: 6 for label in CLASSES}:
+            raise ValueError(f"Expected six Rotor recordings per class; found {counts}")
+        return sorted(members)
+
+
+    REFRESH_EVENTS = False
+
+
+    def event_run(job: tuple[str, str, int, int, int]) -> tuple[np.ndarray, dict]:
+        member, label, angle, rpm, crc = job
+        key = f"rotor|{member}|{START_US}|{END_US}|{BIN_US}"
+        cached = RUN_CACHE / (hashlib.sha256(key.encode()).hexdigest()[:20] + ".npz")
+        if cached.is_file() and not REFRESH_EVENTS:
+            with np.load(cached, allow_pickle=False) as saved:
+                x, record = saved["x"], json.loads(str(saved["record"]))
+            if record["member"] != member or record["zip_member_crc32"] != f"{crc:08x}":
+                raise ValueError(f"Cached event run does not match the source: {member}")
+            return x, record
+        with open_rotor() as archive, archive.open(member) as stream:
+            counts, event_type, retained = event_images(stream)
+        x = frame_features(counts)
+        record = {"member": member, "label": label, "camera_angle": angle, "speed_rpm": rpm,
+                  "frames": len(x), "events_in_interval": retained, "event_type": event_type,
+                  "zip_member_crc32": f"{crc:08x}", "analysis_interval_us": [START_US, END_US]}
+        RUN_CACHE.mkdir(parents=True, exist_ok=True)
+        temporary = cached.with_suffix(".tmp")
+        with temporary.open("wb") as handle:
+            np.savez_compressed(handle, x=x, record=np.asarray(json.dumps(record)))
+        os.replace(temporary, cached)
+        return x, record
+
+
+    def visual_data():
+        xs, ys, angles, speeds, runs, provenance = [], [], [], [], [], []
+        with ThreadPoolExecutor(max_workers=4) as pool:
+            for number, (x, record) in enumerate(pool.map(event_run, rotor_members()), 1):
+                xs.append(x)
+                n = len(x)
+                ys += [record["label"]] * n
+                angles += [record["camera_angle"]] * n
+                speeds += [record["speed_rpm"]] * n
+                runs += [record["member"]] * n
+                provenance.append(record)
+                print(f"Rotor {number}/18: {record['label']} angle {record['camera_angle']} "
+                      f"{record['speed_rpm']} rpm, {record['events_in_interval']:,} events", flush=True)
+        return (np.vstack(xs), np.asarray(ys), np.asarray(angles), np.asarray(speeds), np.asarray(runs), provenance)
+
+
+    # ----------------------------------------------------------------------------- evaluation
+    def run_predictions(model, x, y, run):
+        actual, predicted = [], []
+        for name in sorted(set(run)):
+            mask = run == name
+            if len(set(y[mask])) != 1:
+                raise ValueError(f"Mixed labels within {name}")
+            actual.append(y[mask][0])
+            predicted.append(model.classes_[int(np.argmax(model.predict_proba(x[mask]).mean(axis=0)))])
+        return actual, predicted
+
+
+    def shuffled_labels(y, run, mask, seed):
+        """Permute labels between whole training recordings, never between windows."""
+        names = sorted(set(run[mask]))
+        original = [y[run == name][0] for name in names]
+        mapping = dict(zip(names, np.random.default_rng(seed).permutation(original)))
+        return np.asarray([mapping[name] for name in run[mask]])
+
+
+    def grouped_evaluation(x, y, run, folds):
+        """folds: list of boolean test masks. Returns model, dummy and shuffled-label run predictions."""
+        out = {"model": ([], []), "most_frequent_control": ([], []), "shuffled_training_labels_control": ([], [])}
+        for number, test in enumerate(folds):
+            train = ~test
+            if set(run[train]) & set(run[test]):
+                raise ValueError("A recording appears in both train and test")
+            for key, model, labels in (("model", forest(), y[train]),
+                                       ("most_frequent_control", DummyClassifier(strategy="most_frequent"), y[train]),
+                                       ("shuffled_training_labels_control", forest(), shuffled_labels(y, run, train, 42 + number))):
+                model.fit(x[train], labels)
+                a, p = run_predictions(model, x[test], y[test], run[test])
+                out[key][0].extend(a)
+                out[key][1].extend(p)
+        return {key: metrics(np.asarray(a), np.asarray(p)) for key, (a, p) in out.items()}
+
+
+    def metrics(actual, predicted) -> dict:
+        precision, recall, f1, support = precision_recall_fscore_support(actual, predicted, labels=CLASSES, zero_division=0)
+        return {
+            "test_recordings": int(len(actual)),
+            "accuracy": round(float(accuracy_score(actual, predicted)), 4),
+            "macro_precision": round(float(precision.mean()), 4),
+            "macro_recall": round(float(recall.mean()), 4),
+            "macro_f1": round(float(f1.mean()), 4),
+            "confusion_matrix": confusion_matrix(actual, predicted, labels=CLASSES).tolist(),
+            "per_class": {label: {"precision": round(float(p), 4), "recall": round(float(r), 4),
+                                  "f1": round(float(f), 4), "support": int(n)}
+                          for label, p, r, f, n in zip(CLASSES, precision, recall, f1, support)},
+        }
+
+
+    def plot(panels) -> None:
+        figure, axes = plt.subplots(1, len(panels), figsize=(5 * len(panels), 4.4))
+        for axis, (title, matrix) in zip(axes, panels):
+            array = np.asarray(matrix)
+            axis.imshow(array, cmap="Blues", vmin=0)
+            axis.set_xticks(range(3), CLASSES, rotation=30)
+            axis.set_yticks(range(3), CLASSES)
+            axis.set_xlabel("Predicted")
+            axis.set_ylabel("Actual")
+            axis.set_title(title, fontsize=10)
+            for i in range(3):
+                for j in range(3):
+                    axis.text(j, i, str(array[i, j]), ha="center", va="center",
+                              color="white" if array[i, j] > array.max() / 2 else "black")
+        figure.tight_layout()
+        FIGURE.parent.mkdir(parents=True, exist_ok=True)
+        figure.savefig(FIGURE, dpi=140)
+        plt.close(figure)
+
+
+    def row(name, block):
+        return (f"| {name} | {block['test_recordings']} | {block['accuracy']:.3f} | {block['macro_precision']:.3f} | "
+                f"{block['macro_recall']:.3f} | {block['macro_f1']:.3f} |")
+
+
+    def interpretation(result) -> list[str]:
+        lines = []
+        for name, block in (("Sensor (held-out bearings)", result["sensor"]["held_out_bearings"]),
+                            ("Event camera (2000 rpm test)", result["visual"]["train_1000_test_2000_rpm"]),
+                            ("Event camera (held-out camera angle)", result["visual"]["held_out_camera_angle"])):
+            model, control = block["model"], block["most_frequent_control"]
+            missed = [label for label, stats in model["per_class"].items() if stats["recall"] == 0]
+            extra = round((model["accuracy"] - control["accuracy"]) * model["test_recordings"])
+            if extra <= 0:
+                verdict = "not above"
+            elif extra * 6 <= model["test_recordings"]:
+                verdict = f"only {extra} more correct recording{'s' if extra > 1 else ''} than"
+            else:
+                verdict = "well above"
+            text = (f"{name}: accuracy {model['accuracy']:.3f} on {model['test_recordings']} recordings, "
+                    f"{verdict} the {control['accuracy']:.3f} most-frequent control.")
+            if missed:
+                text += f" Never correctly predicted: {', '.join(missed)}."
+            lines.append(text)
+        lines.append("The two branches use different rigs and very small test sets, so the gap between them is not "
+                     "evidence that one modality is better in general; it describes these two fixed pipelines on these data.")
+        return lines
+
+
+    def write_report(result) -> None:
+        s, v = result["sensor"], result["visual"]
+        lines = [
+            "# Haul/Dump Truck wheel-motor bearing: sensor vs event camera",
+            "",
+            "Generated by `Models/haul_truck.py experiment`. Target: present bearing condition "
+            "(healthy, inner race, outer race). Both sources are **laboratory bearing rigs**, used as an analogue for an "
+            "electric-drive haul truck's wheel-motor bearing; they are not truck data, are not paired, and are not fused.",
+            "",
+            "| Branch and test | Test recordings | Accuracy | Macro precision | Macro recall | Macro F1 |",
+            "|---|---:|---:|---:|---:|---:|",
+            row("Sensor: UODS vibration, held-out bearings (5 folds)", s["held_out_bearings"]["model"]),
+            row("Sensor: most-frequent control", s["held_out_bearings"]["most_frequent_control"]),
+            row("Sensor: shuffled training labels", s["held_out_bearings"]["shuffled_training_labels_control"]),
+            row("CV: XJTU-Rotor event camera, train 1000 rpm, test 2000 rpm", v["train_1000_test_2000_rpm"]["model"]),
+            row("CV: most-frequent control", v["train_1000_test_2000_rpm"]["most_frequent_control"]),
+            row("CV: shuffled training labels", v["train_1000_test_2000_rpm"]["shuffled_training_labels_control"]),
+            row("CV: held-out camera angle (3 folds)", v["held_out_camera_angle"]["model"]),
+            "",
+            "![Confusion matrices](../Figures/haul_truck_confusions.png)",
+            "",
+            "## Interpretation",
+            "",
+            *[f"- {line}" for line in interpretation(result)],
+            "",
+            "## Limits",
+            "",
+            *[f"- {item}" for item in result["limitations"]],
+            "",
+            "Data: UODS-VAFDC, DOI 10.17632/y2px5tg92h.1; XJTU-DV, DOI 10.5281/zenodo.17447083; both CC BY 4.0.",
+        ]
+        REPORT.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
+    def main() -> None:
+        parser = argparse.ArgumentParser()
+        parser.add_argument("--refresh", action="store_true", help="Rebuild all features from the raw source files")
+        args = parser.parse_args()
+        nonlocal REFRESH_EVENTS
+        REFRESH_EVENTS = args.refresh
+
+        # Sensor: fold k holds out inner-race bearing k and outer-race bearing k+5, with both of their recordings.
+        sx, sy, sbearing, srun, sprov = sensor_data(args.refresh)
+        if len(set(srun)) != 20:
+            raise ValueError("Expected 20 UODS recordings")
+        sensor_folds = [np.isin(sbearing, [k, k + 5]) for k in range(1, 6)]
+        sensor = {"held_out_bearings": grouped_evaluation(sx, sy, srun, sensor_folds)}
+
+        vx, vy, vangle, vspeed, vrun, vprov = visual_data()
+        if len(set(vrun)) != 18:
+            raise ValueError("Expected 18 Rotor recordings")
+        visual = {
+            "train_1000_test_2000_rpm": grouped_evaluation(vx, vy, vrun, [vspeed == 2000]),
+            "held_out_camera_angle": grouped_evaluation(vx, vy, vrun, [vangle == a for a in (1, 2, 3)]),
+        }
+
+        result = {
+            "status": "haul_truck_wheel_motor_bearing_sensor_vs_event_camera",
+            "target": "present bearing condition: healthy / inner race / outer race",
+            "class_order": list(CLASSES),
+            "sensor": {
+                "source": "UODS-VAFDC, https://data.mendeley.com/datasets/y2px5tg92h/1, CC BY 4.0",
+                "selection": "bearings 1-10: healthy stage 0 (10 recordings), final stage 2 inner (bearings 1-5) and outer (bearings 6-10)",
+                "sample_rate_hz": SAMPLE_RATE_HZ, "window_samples": WINDOW_SAMPLES, "feature_names": list(FEATURE_NAMES),
+                "preprocessing_note": "Each window is mean-removed and the raw mean is not a feature, because inner-race recordings carry a DC offset near +50 that is a recording artefact.",
+                "split": "5 folds; fold k holds out bearings k (inner) and k+5 (outer) with both their healthy and fault recordings; one averaged prediction per recording",
+                "source_recordings": sprov,
+                **sensor,
+            },
+            "visual": {
+                "source": "XJTU-DV-Rotor, https://zenodo.org/records/17447083, CC BY 4.0",
+                "selection": "18 recordings: healthy/inner/outer x camera angles 1-3 x 1000/2000 rpm; ball excluded to match the sensor classes",
+                "preprocessing": "first 2 s, eight 250 ms event-count images, signed log contrast, OpenCV 64x64 HOG (same code as the Pump event-camera branch)",
+                "split": "primary: train 1000 rpm, test 2000 rpm; check: hold out each camera angle across both speeds",
+                "source_recordings": vprov,
+                **visual,
+            },
+            "limitations": [
+                "Both rigs are laboratory bearing rigs; transfer to a haul truck's electric wheel-motor bearing is a component analogy, not demonstrated truck accuracy.",
+                "Sensor and camera data come from different rigs and are compared by fault label only; there are no paired samples and no fusion.",
+                "Small test sets: 20 sensor recordings from 10 bearings, and 9 camera recordings in the primary test, so one error changes accuracy by 5 to 11 points.",
+                "Each UODS bearing has one healthy and one fault recording, so healthy and fault recordings also differ in test stage and date.",
+                "The camera sees rotor-housing motion, not visible bearing damage; only the first 2 s of each recording are used.",
+                "The models classify present condition, not remaining useful life or a repair date.",
+            ],
+        }
+        RESULT.parent.mkdir(parents=True, exist_ok=True)
+        RESULT.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
+        plot([("Sensor: held-out bearings (20 recordings)", sensor["held_out_bearings"]["model"]["confusion_matrix"]),
+              ("CV: train 1000, test 2000 rpm (9)", visual["train_1000_test_2000_rpm"]["model"]["confusion_matrix"]),
+              ("CV: held-out camera angle (18)", visual["held_out_camera_angle"]["model"]["confusion_matrix"])])
+        write_report(result)
+        print(f"Saved {RESULT.relative_to(CAPSTONE)}, {REPORT.relative_to(CAPSTONE)} and {FIGURE.relative_to(CAPSTONE)}")
+        s, v = sensor["held_out_bearings"]["model"], visual["train_1000_test_2000_rpm"]["model"]
+        print(f"Sensor accuracy {s['accuracy']:.3f}, macro F1 {s['macro_f1']:.3f}; "
+              f"camera accuracy {v['accuracy']:.3f}, macro F1 {v['macro_f1']:.3f}")
+
+    if run:
+        main()
+    return locals()
+
+
+COMMANDS = {
+    "intake": intake,
+    "experiment": experiment,
+}
+RUN_ALL = ['experiment']
+
+
+def cli() -> None:
+    if len(sys.argv) < 2 or sys.argv[1] not in (*COMMANDS, "all"):
+        print(__doc__)
+        raise SystemExit(0 if len(sys.argv) < 2 or sys.argv[1] in ("-h", "--help") else 2)
+    command, options = sys.argv[1], sys.argv[2:]
+    for name in (RUN_ALL if command == "all" else [command]):
+        sys.argv = [f"haul_truck.py {name}", *(options if command != "all" else [])]
+        COMMANDS[name]()
+
+
+if __name__ == "__main__":
+    cli()

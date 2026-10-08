@@ -2,62 +2,21 @@
   "version": "2.0.0",
   "tasks": [
     {
-      "label": "Pump: sensor model",
-      "type": "process",
-      "command": "${workspaceFolder}/.venv/bin/python",
-      "windows": {
-        "command": "${workspaceFolder}\\.venv\\Scripts\\python.exe"
-      },
-      "args": [
-        "${workspaceFolder}/Models/pump_bearing_independent_baseline.py"
-      ],
-      "problemMatcher": [],
-      "presentation": {
-        "reveal": "always",
-        "panel": "shared"
-      }
-    },
-    {
-      "label": "Pump: camera model",
-      "type": "process",
-      "command": "${workspaceFolder}/.venv/bin/python",
-      "windows": {
-        "command": "${workspaceFolder}\\.venv\\Scripts\\python.exe"
-      },
-      "args": [
-        "${workspaceFolder}/Models/pump_event_visual_baseline.py"
-      ],
-      "problemMatcher": [],
-      "presentation": {
-        "reveal": "always",
-        "panel": "shared"
-      }
-    },
-    {
-      "label": "Pump: sensor vs camera report",
-      "type": "process",
-      "command": "${workspaceFolder}/.venv/bin/python",
-      "windows": {
-        "command": "${workspaceFolder}\\.venv\\Scripts\\python.exe"
-      },
-      "args": [
-        "${workspaceFolder}/Models/pump_compare_modalities.py"
-      ],
-      "problemMatcher": [],
-      "presentation": {
-        "reveal": "always",
-        "panel": "shared"
-      }
-    },
-    {
       "label": "Run Pump",
-      "dependsOrder": "sequence",
-      "dependsOn": [
-        "Pump: sensor model",
-        "Pump: camera model",
-        "Pump: sensor vs camera report"
+      "type": "process",
+      "command": "${workspaceFolder}/.venv/bin/python",
+      "windows": {
+        "command": "${workspaceFolder}\\.venv\\Scripts\\python.exe"
+      },
+      "args": [
+        "${workspaceFolder}/Models/pump.py",
+        "all"
       ],
-      "problemMatcher": []
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      }
     },
     {
       "label": "Run Belt Conveyor",
@@ -67,7 +26,8 @@
         "command": "${workspaceFolder}\\.venv\\Scripts\\python.exe"
       },
       "args": [
-        "${workspaceFolder}/Models/belt_conveyor_cora_baseline.py"
+        "${workspaceFolder}/Models/belt_conveyor.py",
+        "all"
       ],
       "problemMatcher": [],
       "presentation": {
@@ -83,7 +43,8 @@
         "command": "${workspaceFolder}\\.venv\\Scripts\\python.exe"
       },
       "args": [
-        "${workspaceFolder}/Models/haul_truck_wheel_motor_bearing.py"
+        "${workspaceFolder}/Models/haul_truck.py",
+        "all"
       ],
       "problemMatcher": [],
       "presentation": {
