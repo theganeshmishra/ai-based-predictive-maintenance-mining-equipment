@@ -52,7 +52,12 @@ def intake(run: bool = True) -> dict:
     from urllib.request import Request, urlopen
 
     import numpy as np
+    import truststore
     from scipy.io import whosmat
+
+    # The CORA server sends an incomplete certificate chain, which Python's own certificate list rejects.
+    # Use the computer's certificate store instead; certificates are still fully verified.
+    truststore.inject_into_ssl()
 
 
     CAPSTONE = ROOT

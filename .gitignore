@@ -12,6 +12,7 @@ __pycache__/
 .idea/
 .vscode/*
 !.vscode/tasks.json
+!.vscode/extensions.json
 
 # Credentials and local configuration
 .env
