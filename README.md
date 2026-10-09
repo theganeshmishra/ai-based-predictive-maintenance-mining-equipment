@@ -4,6 +4,22 @@ Saskatchewan Polytechnic PROJ 613 capstone · Ganesh Mishra, Lakshya Sharma, and
 
 This repository has **one active dataset architecture**: component-level sensor and visual fault-condition monitoring for eight mining-equipment categories. The code, dataset verification matrix, methodology, results, and figures all live at the top level of this repository; [capstone details](Documentation/capstone_details.md) has the full evidence and reproduction notes. Raw downloads and derived feature caches are local-only and are not committed.
 
+## Quick start (5 minutes)
+
+You need [Python 3.11](https://www.python.org/downloads/) (tick **Add python.exe to PATH** when installing), [VS Code](https://code.visualstudio.com/) and [Git](https://git-scm.com/downloads).
+
+1. **Get the project:** in VS Code, press `Ctrl+Shift+P` → **Git: Clone** → paste `https://github.com/theganeshmishra/ai-based-predictive-maintenance-mining-equipment.git` → open the folder.
+2. **Set it up:** open the VS Code terminal (**Terminal → New Terminal**) and run one line:
+   - Windows: `powershell -ExecutionPolicy Bypass -File .\setup.ps1`
+   - Mac/Linux: `bash setup.sh`
+
+   This creates `.venv`, installs everything, and adds the **Capstone (.venv)** notebook kernel.
+3. **Run it:** open `Notebook/Pump.ipynb`, `Belt_Conveyor.ipynb` or `Haul_Truck.ipynb`, check the top right says **Capstone (.venv)** (click it to pick it if not), then click **Run All**. Or press `Ctrl+Shift+B` (`Cmd+Shift+B` on Mac) to run all 3 machines.
+
+Without data the notebooks show the saved results. To download the data (about 1.1 GB) and rerun the models, run the setup again with `-Data` (Windows: `powershell -ExecutionPolicy Bypass -File .\setup.ps1 -Data`; Mac/Linux: `bash setup.sh --data`).
+
+**If something goes wrong:** `No module named cv2` means the notebook is using the wrong Python: click the kernel name at the top right → **Select Another Kernel → Jupyter Kernel → Capstone (.venv)**. If setup says Python was not found, install Python 3.11 with **Add to PATH** ticked and run it again.
+
 ## Repository layout
 
 ```text
@@ -35,14 +51,7 @@ These models classify **current component condition**, not a future repair date 
 
 ## Work locally in VS Code
 
-Open this repository root in VS Code. Create a Python environment and install the [single dependency list](requirements.txt):
-
-```bash
-python3 -m venv .venv
-.venv/bin/python -m pip install -r requirements.txt
-```
-
-On Windows PowerShell, use `py -3.11 -m venv .venv` followed by `.venv\Scripts\python.exe -m pip install -r requirements.txt`. VS Code's default build task (`Cmd+Shift+B` on macOS; `Ctrl+Shift+B` on Windows), **Run all 3 machines**, runs the completed Pump, Belt Conveyor and Haul Truck experiments in sequence. It uses the local `.venv` and does not fetch full source archives; the Pump visual script may fetch bounded remote event ranges if its cache is absent. Prepare the required local source files/caches first by following the [capstone reproduction instructions](Documentation/capstone_details.md). **Run Pump**, **Run Belt Conveyor** and **Run Haul Truck** are also available separately through **Terminal → Run Task**. Do not mistake a missing local dataset for a model failure.
+The setup scripts above do the environment set-up; to do it by hand instead, create `.venv`, install the [single dependency list](requirements.txt), and register the kernel with `python -m ipykernel install --user --name capstone-week4 --display-name "Capstone (.venv)"` using the `.venv` Python. VS Code's default build task (`Cmd+Shift+B` on macOS; `Ctrl+Shift+B` on Windows), **Run all 3 machines**, runs the completed Pump, Belt Conveyor and Haul Truck experiments in sequence. It uses the local `.venv` and does not fetch full source archives; the Pump visual script may fetch bounded remote event ranges if its cache is absent. Prepare the required local source files/caches first by following the [capstone reproduction instructions](Documentation/capstone_details.md). **Run Pump**, **Run Belt Conveyor** and **Run Haul Truck** are also available separately through **Terminal → Run Task**. Do not mistake a missing local dataset for a model failure.
 
 ## Notebooks
 

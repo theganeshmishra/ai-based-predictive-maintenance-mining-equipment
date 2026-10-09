@@ -70,7 +70,8 @@ def setup(data: list[tuple[str, str, str, int]]) -> dict[str, bool]:
         os.environ["NO_PROXY"] = ""
         print("All data is local: running fully offline.")
     else:
-        print("Some data is missing: those steps are skipped. Download routes are in Documentation/capstone_details.md.")
+        print("Some data is missing, so those steps are skipped and the saved results are shown instead.\n"
+              "To download the data, run  .\\setup.ps1 -Data  (Windows) or  bash setup.sh --data  (Mac/Linux) in the project folder.")
     return local
 
 
