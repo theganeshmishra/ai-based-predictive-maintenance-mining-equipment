@@ -28,7 +28,8 @@ Models/            one .py file per equipment: pump.py, belt_conveyor.py, haul_t
 Results/           committed metrics (JSON) and written comparisons
 Figures/           committed result figures
 Dataset_Manifest/  eight-equipment dataset verification matrix
-Documentation/     methodology, Week 4 checkpoint, capstone details
+Documentation/     methodology, Week 4 and Week 5 progress, capstone details
+requirements-lock.txt  exact package versions that reproduce the saved results
 Raw_Data/          local only, git-ignored: downloaded source data
 Processed_Data/    local only, git-ignored: derived feature caches
 ```
@@ -46,6 +47,8 @@ The [eight-equipment matrix](Dataset_Manifest/manifest.md) records source access
 - **Belt Conveyor:** laboratory geared-drive T1 sensor **0.625/0.564** and infrared **0.500/0.418** on 16 run-level, held-out-speed predictions. Both accuracies fall below the **0.750 majority-class control**. This is a completed experiment with weak generalization, not an effective mine-conveyor detector. [Full comparison](Results/belt_conveyor_sensor_visual_comparison.md).
 
 - **Haul/Dump Truck (Equipment #3):** UODS vibration **0.900/0.871** on 20 recordings with whole bearings held out (most-frequent control 0.500); XJTU-Rotor event camera **0.444/0.356** on 9 recordings at an unseen speed (chance 0.333), and it never identifies inner-race faults. Different laboratory rigs and very small test sets; not haul-truck validation. [Full comparison](Results/haul_truck_sensor_visual_comparison.md).
+
+- **Week 5 baseline comparison:** majority-class control, logistic regression, decision tree and random forest on the same held-out tests (`python Models/<machine>.py baselines`). Pump models score 0.875–1.000 in both branches; no Belt Conveyor model beats the 0.750 majority control; Haul Truck vibration models reach 0.750–0.900 while every event-camera model stays near chance. Settings were fixed in advance, so the main models are unchanged. [Week 5 summary](Documentation/week_05_progress.md).
 
 These models classify **current component condition**, not a future repair date or remaining useful life. No image and sensor observation from unrelated sources is falsely paired. The five planned equipment categories do not inherit completed results from the shared gearbox benchmark.
 
