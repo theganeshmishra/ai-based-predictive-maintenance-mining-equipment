@@ -1,0 +1,175 @@
+{
+  "title": "Belt Conveyor: baseline models on held-out speeds",
+  "purpose": "Week 5 baseline model comparison on the same held-out tests as the main experiment",
+  "model_settings": {
+    "Majority class (control)": "always predicts the most common training class",
+    "Logistic regression": "standardised features, C=1, class-balanced, liblinear",
+    "Decision tree": "class-balanced, min_samples_leaf=2",
+    "Random forest": "250 trees, sqrt features, class-balanced subsample, min_samples_leaf=2"
+  },
+  "selection_rule": "settings fixed in advance; no model or setting chosen from these test results",
+  "branches": {
+    "Sensor: T1 temperature": {
+      "test": "four rounds, each holding out one whole speed (4 runs); 16 run-level predictions",
+      "classes": [
+        "healthy",
+        "gear_worn"
+      ],
+      "models": {
+        "Majority class (control)": {
+          "test_units": 16,
+          "accuracy": 0.75,
+          "balanced_accuracy": 0.5,
+          "macro_precision": 0.375,
+          "macro_recall": 0.5,
+          "macro_f1": 0.4286,
+          "confusion_matrix": [
+            [
+              0,
+              4
+            ],
+            [
+              0,
+              12
+            ]
+          ]
+        },
+        "Logistic regression": {
+          "test_units": 16,
+          "accuracy": 0.625,
+          "balanced_accuracy": 0.5833,
+          "macro_precision": 0.5667,
+          "macro_recall": 0.5833,
+          "macro_f1": 0.5636,
+          "confusion_matrix": [
+            [
+              2,
+              2
+            ],
+            [
+              4,
+              8
+            ]
+          ]
+        },
+        "Decision tree": {
+          "test_units": 16,
+          "accuracy": 0.5625,
+          "balanced_accuracy": 0.4583,
+          "macro_precision": 0.4636,
+          "macro_recall": 0.4583,
+          "macro_f1": 0.4589,
+          "confusion_matrix": [
+            [
+              1,
+              3
+            ],
+            [
+              4,
+              8
+            ]
+          ]
+        },
+        "Random forest": {
+          "test_units": 16,
+          "accuracy": 0.625,
+          "balanced_accuracy": 0.4167,
+          "macro_precision": 0.3571,
+          "macro_recall": 0.4167,
+          "macro_f1": 0.3846,
+          "confusion_matrix": [
+            [
+              0,
+              4
+            ],
+            [
+              2,
+              10
+            ]
+          ]
+        }
+      }
+    },
+    "Camera: infrared": {
+      "test": "four rounds, each holding out one whole speed (4 runs); 16 run-level predictions",
+      "classes": [
+        "healthy",
+        "gear_worn"
+      ],
+      "models": {
+        "Majority class (control)": {
+          "test_units": 16,
+          "accuracy": 0.75,
+          "balanced_accuracy": 0.5,
+          "macro_precision": 0.375,
+          "macro_recall": 0.5,
+          "macro_f1": 0.4286,
+          "confusion_matrix": [
+            [
+              0,
+              4
+            ],
+            [
+              0,
+              12
+            ]
+          ]
+        },
+        "Logistic regression": {
+          "test_units": 16,
+          "accuracy": 0.5,
+          "balanced_accuracy": 0.4167,
+          "macro_precision": 0.4333,
+          "macro_recall": 0.4167,
+          "macro_f1": 0.4182,
+          "confusion_matrix": [
+            [
+              1,
+              3
+            ],
+            [
+              5,
+              7
+            ]
+          ]
+        },
+        "Decision tree": {
+          "test_units": 16,
+          "accuracy": 0.6875,
+          "balanced_accuracy": 0.625,
+          "macro_precision": 0.6091,
+          "macro_recall": 0.625,
+          "macro_f1": 0.6135,
+          "confusion_matrix": [
+            [
+              2,
+              2
+            ],
+            [
+              3,
+              9
+            ]
+          ]
+        },
+        "Random forest": {
+          "test_units": 16,
+          "accuracy": 0.6875,
+          "balanced_accuracy": 0.5417,
+          "macro_precision": 0.5513,
+          "macro_recall": 0.5417,
+          "macro_f1": 0.5429,
+          "confusion_matrix": [
+            [
+              1,
+              3
+            ],
+            [
+              2,
+              10
+            ]
+          ]
+        }
+      }
+    }
+  }
+}

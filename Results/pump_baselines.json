@@ -1,0 +1,307 @@
+{
+  "title": "Pump: baseline models on held-out recordings",
+  "purpose": "Week 5 baseline model comparison on the same held-out tests as the main experiment",
+  "model_settings": {
+    "Majority class (control)": "always predicts the most common training class",
+    "Logistic regression": "standardised features, C=1, class-balanced, lbfgs (multi-class)",
+    "Decision tree": "class-balanced, min_samples_leaf=2",
+    "Random forest": "250 trees, sqrt features, class-balanced subsample, min_samples_leaf=2"
+  },
+  "selection_rule": "settings fixed in advance; no model or setting chosen from these test results",
+  "branches": {
+    "Sensor: vibration": {
+      "test": "train on speed profiles A/B; test on 24 separate C/D recordings",
+      "classes": [
+        "healthy",
+        "inner",
+        "outer",
+        "ball"
+      ],
+      "models": {
+        "Majority class (control)": {
+          "test_units": 24,
+          "accuracy": 0.25,
+          "balanced_accuracy": 0.25,
+          "macro_precision": 0.0625,
+          "macro_recall": 0.25,
+          "macro_f1": 0.1,
+          "confusion_matrix": [
+            [
+              0,
+              0,
+              0,
+              6
+            ],
+            [
+              0,
+              0,
+              0,
+              6
+            ],
+            [
+              0,
+              0,
+              0,
+              6
+            ],
+            [
+              0,
+              0,
+              0,
+              6
+            ]
+          ]
+        },
+        "Logistic regression": {
+          "test_units": 24,
+          "accuracy": 0.9583,
+          "balanced_accuracy": 0.9583,
+          "macro_precision": 0.9643,
+          "macro_recall": 0.9583,
+          "macro_f1": 0.958,
+          "confusion_matrix": [
+            [
+              6,
+              0,
+              0,
+              0
+            ],
+            [
+              0,
+              6,
+              0,
+              0
+            ],
+            [
+              0,
+              0,
+              6,
+              0
+            ],
+            [
+              0,
+              1,
+              0,
+              5
+            ]
+          ]
+        },
+        "Decision tree": {
+          "test_units": 24,
+          "accuracy": 1.0,
+          "balanced_accuracy": 1.0,
+          "macro_precision": 1.0,
+          "macro_recall": 1.0,
+          "macro_f1": 1.0,
+          "confusion_matrix": [
+            [
+              6,
+              0,
+              0,
+              0
+            ],
+            [
+              0,
+              6,
+              0,
+              0
+            ],
+            [
+              0,
+              0,
+              6,
+              0
+            ],
+            [
+              0,
+              0,
+              0,
+              6
+            ]
+          ]
+        },
+        "Random forest": {
+          "test_units": 24,
+          "accuracy": 0.9583,
+          "balanced_accuracy": 0.9583,
+          "macro_precision": 0.9643,
+          "macro_recall": 0.9583,
+          "macro_f1": 0.958,
+          "confusion_matrix": [
+            [
+              6,
+              0,
+              0,
+              0
+            ],
+            [
+              0,
+              6,
+              0,
+              0
+            ],
+            [
+              0,
+              0,
+              6,
+              0
+            ],
+            [
+              0,
+              1,
+              0,
+              5
+            ]
+          ]
+        }
+      }
+    },
+    "Camera: event camera": {
+      "test": "train on 24 recordings at 20 Hz; test on 24 separate recordings at 30 Hz",
+      "classes": [
+        "healthy",
+        "inner",
+        "outer",
+        "ball"
+      ],
+      "models": {
+        "Majority class (control)": {
+          "test_units": 24,
+          "accuracy": 0.25,
+          "balanced_accuracy": 0.25,
+          "macro_precision": 0.0625,
+          "macro_recall": 0.25,
+          "macro_f1": 0.1,
+          "confusion_matrix": [
+            [
+              0,
+              0,
+              0,
+              6
+            ],
+            [
+              0,
+              0,
+              0,
+              6
+            ],
+            [
+              0,
+              0,
+              0,
+              6
+            ],
+            [
+              0,
+              0,
+              0,
+              6
+            ]
+          ]
+        },
+        "Logistic regression": {
+          "test_units": 24,
+          "accuracy": 1.0,
+          "balanced_accuracy": 1.0,
+          "macro_precision": 1.0,
+          "macro_recall": 1.0,
+          "macro_f1": 1.0,
+          "confusion_matrix": [
+            [
+              6,
+              0,
+              0,
+              0
+            ],
+            [
+              0,
+              6,
+              0,
+              0
+            ],
+            [
+              0,
+              0,
+              6,
+              0
+            ],
+            [
+              0,
+              0,
+              0,
+              6
+            ]
+          ]
+        },
+        "Decision tree": {
+          "test_units": 24,
+          "accuracy": 0.875,
+          "balanced_accuracy": 0.875,
+          "macro_precision": 0.8869,
+          "macro_recall": 0.875,
+          "macro_f1": 0.8699,
+          "confusion_matrix": [
+            [
+              6,
+              0,
+              0,
+              0
+            ],
+            [
+              0,
+              6,
+              0,
+              0
+            ],
+            [
+              0,
+              1,
+              5,
+              0
+            ],
+            [
+              1,
+              0,
+              1,
+              4
+            ]
+          ]
+        },
+        "Random forest": {
+          "test_units": 24,
+          "accuracy": 1.0,
+          "balanced_accuracy": 1.0,
+          "macro_precision": 1.0,
+          "macro_recall": 1.0,
+          "macro_f1": 1.0,
+          "confusion_matrix": [
+            [
+              6,
+              0,
+              0,
+              0
+            ],
+            [
+              0,
+              6,
+              0,
+              0
+            ],
+            [
+              0,
+              0,
+              6,
+              0
+            ],
+            [
+              0,
+              0,
+              0,
+              6
+            ]
+          ]
+        }
+      }
+    }
+  }
+}
