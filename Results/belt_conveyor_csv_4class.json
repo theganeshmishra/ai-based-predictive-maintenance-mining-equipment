@@ -1,0 +1,149 @@
+{
+  "purpose": "Week 6 professor remark: 4-class sensor model from a CSV feature table",
+  "csv_file": "Processed_Data/belt_conveyor_sensor_features_4class.csv",
+  "rows": 128,
+  "features": [
+    "mean",
+    "std",
+    "p10",
+    "p90",
+    "minimum",
+    "maximum",
+    "slope"
+  ],
+  "classes": [
+    "healthy",
+    "wear25",
+    "wear50",
+    "wear75"
+  ],
+  "test": "four rounds, each holding out one whole speed (4 runs, one per wear level); 16 run-level predictions",
+  "main_model": "Random forest",
+  "selection_rule": "settings fixed in advance; no model or setting chosen from these test results",
+  "notes": [
+    "CORA T1 temperature only (vibration files could not be fetched: the repository now shows a bot check); one row per 6 s window, 8 windows per run",
+    "only one run per wear level and speed, so each class has 3 training runs per round"
+  ],
+  "models": {
+    "Majority class (control)": {
+      "test_units": 16,
+      "accuracy": 0.25,
+      "balanced_accuracy": 0.25,
+      "macro_precision": 0.0625,
+      "macro_recall": 0.25,
+      "macro_f1": 0.1,
+      "confusion_matrix": [
+        [
+          4,
+          0,
+          0,
+          0
+        ],
+        [
+          4,
+          0,
+          0,
+          0
+        ],
+        [
+          4,
+          0,
+          0,
+          0
+        ],
+        [
+          4,
+          0,
+          0,
+          0
+        ]
+      ],
+      "per_class_recall": {
+        "healthy": 1.0,
+        "wear25": 0.0,
+        "wear50": 0.0,
+        "wear75": 0.0
+      }
+    },
+    "Logistic regression": {
+      "test_units": 16,
+      "accuracy": 0.4375,
+      "balanced_accuracy": 0.4375,
+      "macro_precision": 0.4613,
+      "macro_recall": 0.4375,
+      "macro_f1": 0.4251,
+      "confusion_matrix": [
+        [
+          1,
+          0,
+          2,
+          1
+        ],
+        [
+          0,
+          2,
+          1,
+          1
+        ],
+        [
+          0,
+          0,
+          3,
+          1
+        ],
+        [
+          1,
+          1,
+          1,
+          1
+        ]
+      ],
+      "per_class_recall": {
+        "healthy": 0.25,
+        "wear25": 0.5,
+        "wear50": 0.75,
+        "wear75": 0.25
+      }
+    },
+    "Random forest": {
+      "test_units": 16,
+      "accuracy": 0.375,
+      "balanced_accuracy": 0.375,
+      "macro_precision": 0.25,
+      "macro_recall": 0.375,
+      "macro_f1": 0.3,
+      "confusion_matrix": [
+        [
+          0,
+          1,
+          2,
+          1
+        ],
+        [
+          1,
+          0,
+          1,
+          2
+        ],
+        [
+          1,
+          0,
+          3,
+          0
+        ],
+        [
+          1,
+          0,
+          0,
+          3
+        ]
+      ],
+      "per_class_recall": {
+        "healthy": 0.0,
+        "wear25": 0.0,
+        "wear50": 0.75,
+        "wear75": 0.75
+      }
+    }
+  }
+}

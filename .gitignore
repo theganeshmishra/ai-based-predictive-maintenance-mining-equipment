@@ -73,3 +73,6 @@ work/
 *.bmp
 *.png
 !/Figures/*.png
+
+# Named camera images for the CNN (recreated by "export-images"; dataset owners' images)
+Images/

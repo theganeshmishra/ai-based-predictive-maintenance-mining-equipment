@@ -133,3 +133,15 @@ def show_baselines(result: dict) -> None:
     show({f"{branch} | {name}": score
           for branch, block in result["branches"].items()
           for name, score in block["models"].items()})
+
+
+def show_week6(machine: str) -> None:
+    """Display the Week 6 results: 4-class CSV sensor models and the CNN on images."""
+    csv_result, cnn_result = load(f"{machine}_csv_4class.json"), load(f"{machine}_cnn_4class.json")
+    rows = {}
+    if csv_result:
+        rows.update({f"CSV sensor | {name}": score for name, score in csv_result["models"].items()})
+    if cnn_result:
+        rows["Camera images | CNN (per recording)"] = cnn_result["recording_level"]
+        rows["Camera images | CNN (per image)"] = cnn_result["image_level"]
+    show(rows)

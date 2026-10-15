@@ -1,0 +1,101 @@
+{
+  "purpose": "Week 6 professor remark: CNN with data augmentation on named images, 4 classes",
+  "images": 960,
+  "classes": [
+    "healthy",
+    "inner",
+    "outer",
+    "ball"
+  ],
+  "test": "train on the 24 recordings at 20 Hz; test on the 24 separate recordings at 30 Hz",
+  "settings": {
+    "epochs": 20,
+    "batch": 32,
+    "learning_rate": 0.001,
+    "seed": 42,
+    "architecture": "4 conv blocks (16, 32, 64, 64 channels) + global average pool + dropout 0.3",
+    "augmentation": "random horizontal flip, shift up to 8 px, brightness/contrast x0.8-1.2, Gaussian noise 0.05",
+    "normalisation": "each image standardised on its own"
+  },
+  "selection_rule": "settings fixed in advance; the test set is never used to choose epochs or settings",
+  "recording_level": {
+    "test_units": 24,
+    "accuracy": 0.8333,
+    "balanced_accuracy": 0.8333,
+    "macro_precision": 0.9,
+    "macro_recall": 0.8333,
+    "macro_f1": 0.8125,
+    "confusion_matrix": [
+      [
+        6,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        2,
+        0,
+        4
+      ],
+      [
+        0,
+        0,
+        6,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        6
+      ]
+    ],
+    "per_class_recall": {
+      "healthy": 1.0,
+      "inner": 0.3333,
+      "outer": 1.0,
+      "ball": 1.0
+    }
+  },
+  "image_level": {
+    "test_units": 480,
+    "accuracy": 0.8396,
+    "balanced_accuracy": 0.8396,
+    "macro_precision": 0.901,
+    "macro_recall": 0.8396,
+    "macro_f1": 0.8219,
+    "confusion_matrix": [
+      [
+        119,
+        0,
+        1,
+        0
+      ],
+      [
+        0,
+        44,
+        0,
+        76
+      ],
+      [
+        0,
+        0,
+        120,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        120
+      ]
+    ],
+    "per_class_recall": {
+      "healthy": 0.9917,
+      "inner": 0.3667,
+      "outer": 1.0,
+      "ball": 1.0
+    }
+  }
+}
