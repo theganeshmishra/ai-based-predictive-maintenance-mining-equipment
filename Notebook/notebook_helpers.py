@@ -126,3 +126,10 @@ def check(before, after, paths, name: str) -> None:
         return metrics(doc)
     same = before is not None and all(pick(before, p) == pick(after, p) for p in paths)
     print(f"{name}: {'matches' if same else 'DIFFERS from'} the saved result")
+
+
+def show_baselines(result: dict) -> None:
+    """Display the Week 5 baseline comparison: one row per branch and model type."""
+    show({f"{branch} | {name}": score
+          for branch, block in result["branches"].items()
+          for name, score in block["models"].items()})

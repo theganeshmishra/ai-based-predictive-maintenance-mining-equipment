@@ -10,6 +10,7 @@ Usage:
 Commands:
     intake          download UODS vibration and the XJTU-Rotor zip
     experiment      vibration and event-camera models, report and figure
+    baselines       Week 5: compare majority class, logistic regression, decision tree and random forest
     all             run experiment
 
 Raw data stays in Raw_Data/ and Processed_Data/ (not in Git).
@@ -622,9 +623,144 @@ def experiment(run: bool = True) -> dict:
     return locals()
 
 
+# ====================================================================================================
+# baselines: Week 5 baseline model comparison (majority class, logistic regression, decision tree, random forest)
+# ====================================================================================================
+
+def baselines(run: bool = True) -> dict:
+    """Week 5: compare baseline model families on the same held-out tests as the main experiment.
+
+    A majority-class control, logistic regression, a decision tree and a random forest are trained
+    with settings fixed in advance and scored on exactly the same held-out test units. No model or
+    setting is chosen from these test results; the main model of the experiment stays the same.
+    """
+    import json
+
+    import matplotlib
+
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    import numpy as np
+    from sklearn.dummy import DummyClassifier
+    from sklearn.ensemble import RandomForestClassifier
+    from sklearn.linear_model import LogisticRegression
+    from sklearn.metrics import (accuracy_score, balanced_accuracy_score, confusion_matrix,
+                                 precision_recall_fscore_support)
+    from sklearn.pipeline import make_pipeline
+    from sklearn.preprocessing import StandardScaler
+    from sklearn.tree import DecisionTreeClassifier
+
+    RESULT = ROOT / "Results" / "haul_truck_baselines.json"
+    FIGURE = ROOT / "Figures" / "haul_truck_baselines.png"
+    MODELS = {
+        "Majority class (control)": lambda: DummyClassifier(strategy="most_frequent"),
+        "Logistic regression": lambda: make_pipeline(StandardScaler(), LogisticRegression(
+            C=1.0, class_weight="balanced", solver="lbfgs", max_iter=5000, random_state=42)),
+        "Decision tree": lambda: DecisionTreeClassifier(class_weight="balanced", min_samples_leaf=2, random_state=42),
+        "Random forest": lambda: RandomForestClassifier(
+            n_estimators=250, max_features="sqrt", class_weight="balanced_subsample",
+            min_samples_leaf=2, random_state=42, n_jobs=-1),
+    }
+    SETTINGS = {
+        "Majority class (control)": "always predicts the most common training class",
+        "Logistic regression": "standardised features, C=1, class-balanced, lbfgs (multi-class)",
+        "Decision tree": "class-balanced, min_samples_leaf=2",
+        "Random forest": "250 trees, sqrt features, class-balanced subsample, min_samples_leaf=2",
+    }
+
+    def unit_predictions(model, x, y, units):
+        """One prediction per test unit (recording or run): average the model's probabilities over its rows."""
+        actual, predicted = [], []
+        for unit in sorted(set(units)):
+            rows = units == unit
+            if len(set(y[rows])) != 1:
+                raise ValueError(f"Mixed labels within {unit}")
+            actual.append(y[rows][0])
+            predicted.append(model.classes_[int(np.argmax(model.predict_proba(x[rows]).mean(axis=0)))])
+        return actual, predicted
+
+    def evaluate(x, y, units, folds, classes):
+        """`folds` are boolean test masks; every test unit is predicted by a model that never saw it."""
+        scores = {}
+        for name, factory in MODELS.items():
+            actual, predicted = [], []
+            for test in folds:
+                train = ~test
+                if set(units[train]) & set(units[test]):
+                    raise ValueError("A test unit also appears in training")
+                model = factory().fit(x[train], y[train])
+                a, p = unit_predictions(model, x[test], y[test], units[test])
+                actual += list(a)
+                predicted += list(p)
+            precision, recall, f1, _ = precision_recall_fscore_support(
+                actual, predicted, labels=classes, zero_division=0)
+            scores[name] = {
+                "test_units": len(actual),
+                "accuracy": round(float(accuracy_score(actual, predicted)), 4),
+                "balanced_accuracy": round(float(balanced_accuracy_score(actual, predicted)), 4),
+                "macro_precision": round(float(precision.mean()), 4),
+                "macro_recall": round(float(recall.mean()), 4),
+                "macro_f1": round(float(f1.mean()), 4),
+                "confusion_matrix": confusion_matrix(actual, predicted, labels=classes).tolist(),
+            }
+        return scores
+
+    def plot(result):
+        branches, names = list(result["branches"]), list(MODELS)
+        width = 0.8 / len(names)
+        figure, axis = plt.subplots(figsize=(2.2 + 2.8 * len(branches), 4.0))
+        for i, name in enumerate(names):
+            values = [result["branches"][b]["models"][name]["macro_f1"] for b in branches]
+            bars = axis.bar(np.arange(len(branches)) + (i - (len(names) - 1) / 2) * width, values, width, label=name)
+            axis.bar_label(bars, fmt="%.2f", fontsize=7)
+        axis.set_xticks(range(len(branches)), branches)
+        axis.set_ylim(0, 1.15)
+        axis.set_ylabel("Macro F1 on held-out test")
+        axis.set_title(result["title"], fontsize=10)
+        axis.legend(fontsize=8, ncol=2, loc="upper right")
+        figure.tight_layout()
+        FIGURE.parent.mkdir(parents=True, exist_ok=True)
+        figure.savefig(FIGURE, dpi=140)
+        plt.close(figure)
+
+    def main():
+        branches = {}
+        e = experiment(run=False)
+        classes = list(e["CLASSES"])
+        x, y, bearing, units, _ = e["sensor_data"](False)
+        branches["Sensor: vibration"] = {
+            "test": "five rounds, each holding out two whole bearings; 20 recording-level predictions",
+            "classes": classes,
+            "models": evaluate(x, y, units, [np.isin(bearing, [k, k + 5]) for k in range(1, 6)], classes)}
+        vx, vy, angle, speed, vunits, _ = e["visual_data"]()
+        branches["Camera: event camera"] = {
+            "test": "train on 1000 rpm; test on 9 separate recordings at 2000 rpm",
+            "classes": classes,
+            "models": evaluate(vx, vy, vunits, [speed == 2000], classes)}
+        result = {
+            "title": "Haul Truck: baseline models on held-out bearings / speed",
+            "purpose": "Week 5 baseline model comparison on the same held-out tests as the main experiment",
+            "model_settings": SETTINGS,
+            "selection_rule": "settings fixed in advance; no model or setting chosen from these test results",
+            "branches": branches,
+        }
+        RESULT.parent.mkdir(parents=True, exist_ok=True)
+        RESULT.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
+        plot(result)
+        for branch, block in branches.items():
+            for name, score in block["models"].items():
+                print(f"{branch:<24} {name:<26} accuracy {score['accuracy']:.3f}  macro F1 {score['macro_f1']:.3f}")
+        print(f"Saved {RESULT.relative_to(ROOT)} and {FIGURE.relative_to(ROOT)}")
+
+    if run:
+        main()
+    return locals()
+
+
 COMMANDS = {
     "intake": intake,
     "experiment": experiment,
+    "baselines": baselines,
 }
 RUN_ALL = ['experiment']
 

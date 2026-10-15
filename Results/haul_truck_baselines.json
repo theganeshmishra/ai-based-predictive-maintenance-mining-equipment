@@ -1,0 +1,233 @@
+{
+  "title": "Haul Truck: baseline models on held-out bearings / speed",
+  "purpose": "Week 5 baseline model comparison on the same held-out tests as the main experiment",
+  "model_settings": {
+    "Majority class (control)": "always predicts the most common training class",
+    "Logistic regression": "standardised features, C=1, class-balanced, lbfgs (multi-class)",
+    "Decision tree": "class-balanced, min_samples_leaf=2",
+    "Random forest": "250 trees, sqrt features, class-balanced subsample, min_samples_leaf=2"
+  },
+  "selection_rule": "settings fixed in advance; no model or setting chosen from these test results",
+  "branches": {
+    "Sensor: vibration": {
+      "test": "five rounds, each holding out two whole bearings; 20 recording-level predictions",
+      "classes": [
+        "healthy",
+        "inner",
+        "outer"
+      ],
+      "models": {
+        "Majority class (control)": {
+          "test_units": 20,
+          "accuracy": 0.5,
+          "balanced_accuracy": 0.3333,
+          "macro_precision": 0.1667,
+          "macro_recall": 0.3333,
+          "macro_f1": 0.2222,
+          "confusion_matrix": [
+            [
+              10,
+              0,
+              0
+            ],
+            [
+              5,
+              0,
+              0
+            ],
+            [
+              5,
+              0,
+              0
+            ]
+          ]
+        },
+        "Logistic regression": {
+          "test_units": 20,
+          "accuracy": 0.85,
+          "balanced_accuracy": 0.8,
+          "macro_precision": 0.8197,
+          "macro_recall": 0.8,
+          "macro_f1": 0.8063,
+          "confusion_matrix": [
+            [
+              10,
+              0,
+              0
+            ],
+            [
+              0,
+              4,
+              1
+            ],
+            [
+              1,
+              1,
+              3
+            ]
+          ]
+        },
+        "Decision tree": {
+          "test_units": 20,
+          "accuracy": 0.75,
+          "balanced_accuracy": 0.7,
+          "macro_precision": 0.6889,
+          "macro_recall": 0.7,
+          "macro_f1": 0.6906,
+          "confusion_matrix": [
+            [
+              9,
+              0,
+              1
+            ],
+            [
+              0,
+              4,
+              1
+            ],
+            [
+              1,
+              2,
+              2
+            ]
+          ]
+        },
+        "Random forest": {
+          "test_units": 20,
+          "accuracy": 0.9,
+          "balanced_accuracy": 0.8667,
+          "macro_precision": 0.9141,
+          "macro_recall": 0.8667,
+          "macro_f1": 0.8705,
+          "confusion_matrix": [
+            [
+              10,
+              0,
+              0
+            ],
+            [
+              0,
+              5,
+              0
+            ],
+            [
+              1,
+              1,
+              3
+            ]
+          ]
+        }
+      }
+    },
+    "Camera: event camera": {
+      "test": "train on 1000 rpm; test on 9 separate recordings at 2000 rpm",
+      "classes": [
+        "healthy",
+        "inner",
+        "outer"
+      ],
+      "models": {
+        "Majority class (control)": {
+          "test_units": 9,
+          "accuracy": 0.3333,
+          "balanced_accuracy": 0.3333,
+          "macro_precision": 0.1111,
+          "macro_recall": 0.3333,
+          "macro_f1": 0.1667,
+          "confusion_matrix": [
+            [
+              3,
+              0,
+              0
+            ],
+            [
+              3,
+              0,
+              0
+            ],
+            [
+              3,
+              0,
+              0
+            ]
+          ]
+        },
+        "Logistic regression": {
+          "test_units": 9,
+          "accuracy": 0.3333,
+          "balanced_accuracy": 0.3333,
+          "macro_precision": 0.2778,
+          "macro_recall": 0.3333,
+          "macro_f1": 0.3016,
+          "confusion_matrix": [
+            [
+              1,
+              1,
+              1
+            ],
+            [
+              2,
+              0,
+              1
+            ],
+            [
+              0,
+              1,
+              2
+            ]
+          ]
+        },
+        "Decision tree": {
+          "test_units": 9,
+          "accuracy": 0.4444,
+          "balanced_accuracy": 0.4444,
+          "macro_precision": 0.5278,
+          "macro_recall": 0.4444,
+          "macro_f1": 0.473,
+          "confusion_matrix": [
+            [
+              2,
+              1,
+              0
+            ],
+            [
+              0,
+              1,
+              2
+            ],
+            [
+              0,
+              2,
+              1
+            ]
+          ]
+        },
+        "Random forest": {
+          "test_units": 9,
+          "accuracy": 0.4444,
+          "balanced_accuracy": 0.4444,
+          "macro_precision": 0.3333,
+          "macro_recall": 0.4444,
+          "macro_f1": 0.3556,
+          "confusion_matrix": [
+            [
+              3,
+              0,
+              0
+            ],
+            [
+              2,
+              0,
+              1
+            ],
+            [
+              1,
+              1,
+              1
+            ]
+          ]
+        }
+      }
+    }
+  }
+}
