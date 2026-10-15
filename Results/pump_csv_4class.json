@@ -1,0 +1,157 @@
+{
+  "purpose": "Week 6 professor remark: 4-class sensor model from a CSV feature table",
+  "csv_file": "Processed_Data/pump_sensor_features_4class.csv",
+  "rows": 4800,
+  "features": [
+    "mean",
+    "std",
+    "rms",
+    "peak_to_peak",
+    "crest_factor",
+    "skew",
+    "excess_kurtosis",
+    "spectral_centroid_hz",
+    "dominant_frequency_hz",
+    "spectral_entropy",
+    "power_0_2000_hz",
+    "power_2000_5000_hz",
+    "power_5000_10000_hz",
+    "power_10000_20000_hz",
+    "power_20000_50000_hz",
+    "power_50000_100000_hz"
+  ],
+  "classes": [
+    "healthy",
+    "inner",
+    "outer",
+    "ball"
+  ],
+  "test": "train on speed profiles A/B; test on 24 separate C/D recordings",
+  "main_model": "Random forest",
+  "selection_rule": "settings fixed in advance; no model or setting chosen from these test results",
+  "notes": [
+    "Ottawa bearing rig vibration; one row per 0.1 s window, 100 windows per recording"
+  ],
+  "models": {
+    "Majority class (control)": {
+      "test_units": 24,
+      "accuracy": 0.25,
+      "balanced_accuracy": 0.25,
+      "macro_precision": 0.0625,
+      "macro_recall": 0.25,
+      "macro_f1": 0.1,
+      "confusion_matrix": [
+        [
+          0,
+          0,
+          0,
+          6
+        ],
+        [
+          0,
+          0,
+          0,
+          6
+        ],
+        [
+          0,
+          0,
+          0,
+          6
+        ],
+        [
+          0,
+          0,
+          0,
+          6
+        ]
+      ],
+      "per_class_recall": {
+        "healthy": 0.0,
+        "inner": 0.0,
+        "outer": 0.0,
+        "ball": 1.0
+      }
+    },
+    "Logistic regression": {
+      "test_units": 24,
+      "accuracy": 0.9583,
+      "balanced_accuracy": 0.9583,
+      "macro_precision": 0.9643,
+      "macro_recall": 0.9583,
+      "macro_f1": 0.958,
+      "confusion_matrix": [
+        [
+          6,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          6,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          6,
+          0
+        ],
+        [
+          0,
+          1,
+          0,
+          5
+        ]
+      ],
+      "per_class_recall": {
+        "healthy": 1.0,
+        "inner": 1.0,
+        "outer": 1.0,
+        "ball": 0.8333
+      }
+    },
+    "Random forest": {
+      "test_units": 24,
+      "accuracy": 0.9583,
+      "balanced_accuracy": 0.9583,
+      "macro_precision": 0.9643,
+      "macro_recall": 0.9583,
+      "macro_f1": 0.958,
+      "confusion_matrix": [
+        [
+          6,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          6,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          6,
+          0
+        ],
+        [
+          0,
+          1,
+          0,
+          5
+        ]
+      ],
+      "per_class_recall": {
+        "healthy": 1.0,
+        "inner": 1.0,
+        "outer": 1.0,
+        "ball": 0.8333
+      }
+    }
+  }
+}
