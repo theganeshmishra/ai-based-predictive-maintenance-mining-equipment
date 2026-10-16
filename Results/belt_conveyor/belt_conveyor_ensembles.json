@@ -1,0 +1,217 @@
+{
+  "purpose": "Proposal Week 6: advanced ensemble comparison (XGBoost / LightGBM)",
+  "machine": "belt_conveyor",
+  "features": "vibration (13 sensor features, same CSV as Week 6)",
+  "classes": [
+    "healthy",
+    "wear25",
+    "wear50",
+    "wear75"
+  ],
+  "test": "four rounds, each holding out one whole speed (4 runs, one per wear level); 16 run-level predictions",
+  "selection_rule": "settings fixed in advance; no model or setting chosen from these test results",
+  "notes": [
+    "CORA Vx vibration (3 kHz, 1 s windows, every 10th window) in shaft orders, optionally with run-level T1 temperature",
+    "only one run per wear level and speed"
+  ],
+  "models": {
+    "Majority class (control)": {
+      "test_units": 16,
+      "accuracy": 0.25,
+      "balanced_accuracy": 0.25,
+      "macro_f1": 0.1,
+      "train_seconds": 0.0,
+      "confusion_matrix": [
+        [
+          4,
+          0,
+          0,
+          0
+        ],
+        [
+          4,
+          0,
+          0,
+          0
+        ],
+        [
+          4,
+          0,
+          0,
+          0
+        ],
+        [
+          4,
+          0,
+          0,
+          0
+        ]
+      ]
+    },
+    "Random forest": {
+      "test_units": 16,
+      "accuracy": 0.375,
+      "balanced_accuracy": 0.375,
+      "macro_f1": 0.2881,
+      "train_seconds": 4.3,
+      "confusion_matrix": [
+        [
+          1,
+          0,
+          1,
+          2
+        ],
+        [
+          0,
+          0,
+          1,
+          3
+        ],
+        [
+          1,
+          0,
+          1,
+          2
+        ],
+        [
+          0,
+          0,
+          0,
+          4
+        ]
+      ]
+    },
+    "Extra trees": {
+      "test_units": 16,
+      "accuracy": 0.4375,
+      "balanced_accuracy": 0.4375,
+      "macro_f1": 0.3561,
+      "train_seconds": 2.85,
+      "confusion_matrix": [
+        [
+          3,
+          0,
+          0,
+          1
+        ],
+        [
+          1,
+          0,
+          1,
+          2
+        ],
+        [
+          2,
+          0,
+          1,
+          1
+        ],
+        [
+          1,
+          0,
+          0,
+          3
+        ]
+      ]
+    },
+    "Gradient boosting (scikit-learn)": {
+      "test_units": 16,
+      "accuracy": 0.4375,
+      "balanced_accuracy": 0.4375,
+      "macro_f1": 0.3929,
+      "train_seconds": 54.06,
+      "confusion_matrix": [
+        [
+          3,
+          0,
+          1,
+          0
+        ],
+        [
+          2,
+          0,
+          1,
+          1
+        ],
+        [
+          2,
+          0,
+          2,
+          0
+        ],
+        [
+          1,
+          1,
+          0,
+          2
+        ]
+      ]
+    },
+    "XGBoost": {
+      "test_units": 16,
+      "accuracy": 0.4375,
+      "balanced_accuracy": 0.4375,
+      "macro_f1": 0.3725,
+      "train_seconds": 10.06,
+      "confusion_matrix": [
+        [
+          2,
+          0,
+          1,
+          1
+        ],
+        [
+          1,
+          0,
+          1,
+          2
+        ],
+        [
+          1,
+          0,
+          2,
+          1
+        ],
+        [
+          1,
+          0,
+          0,
+          3
+        ]
+      ]
+    },
+    "LightGBM": {
+      "test_units": 16,
+      "accuracy": 0.5625,
+      "balanced_accuracy": 0.5625,
+      "macro_f1": 0.4842,
+      "train_seconds": 14.74,
+      "confusion_matrix": [
+        [
+          4,
+          0,
+          0,
+          0
+        ],
+        [
+          2,
+          0,
+          1,
+          1
+        ],
+        [
+          2,
+          0,
+          2,
+          0
+        ],
+        [
+          1,
+          0,
+          0,
+          3
+        ]
+      ]
+    }
+  }
+}
