@@ -1,4 +1,4 @@
-# Week 6: professor's remarks and first results
+# Week 6: professor's remarks — 4 machines, 4 classes, CSV sensor models and CNNs
 
 **October 2026 — Saskatchewan Polytechnic PROJ 613.** Remarks received after the Week 5 review:
 
@@ -8,32 +8,35 @@
 4. Use **data augmentation**.
 5. **Name each image by its machine** (for example `pump_...`, `belt_...`) so every image has a separate name.
 
+The team also set the goal of **four machines ready by Week 5**; the Excavator was added as machine 4.
+
 ## What was done
 
 | Remark | Implementation |
 |---|---|
-| 4 classes | Pump: healthy / inner / outer / ball (unchanged). Belt Conveyor: healthy / wear25 / wear50 / wear75 (the dataset's own wear levels). Haul Truck: added **ball fault** (10 more UODS files, bearings 11–15, publisher SHA-256 checked) to healthy / inner / outer. |
-| CSV sensor model | `python Models/<machine>.py csv` writes `Processed_Data/<machine>_sensor_features_4class.csv` and trains a majority-class control, logistic regression and a random forest (main model) on it. |
-| Named images | `python Models/<machine>.py export-images` saves PNGs to `Images/<machine>/<class>/`, e.g. `pump_inner_20Hz_15_-30_t07.png`, `haul_truck_ball_2000rpm_angle1_t03.png`, `belt_conveyor_wear50_F15_f123.png`, with an `index.csv`. Local only (git-ignored); the command recreates them. |
-| CNN + augmentation | `python Models/<machine>.py cnn`: 4 convolution blocks, 20 epochs, Adam; augmentation on training images only (horizontal flip, shift up to 8 px, brightness/contrast ×0.8–1.2, Gaussian noise); each image standardised on its own. |
+| 4 classes | Pump: healthy / inner / outer / ball. Haul Truck: healthy / inner / outer / **ball** (10 more UODS files, bearings 11–15). Belt Conveyor: healthy / wear25 / wear50 / wear75. **Excavator (new, machine 4):** healthy / bearing defect / unbalance / misalignment, from the CORA rig's other recorded faults. |
+| CSV sensor model | `python Models/<machine>.py csv` writes `Processed_Data/<machine>_sensor_features_4class.csv` and trains models on it. The feature set and model (random forest, extra trees, gradient boosting, SVM, logistic regression) are **chosen on validation data inside the training set only**, then tested once. |
+| Named images | `python Models/<machine>.py export-images` saves PNGs to `Images/<machine>/<class>/`, e.g. `pump_inner_20Hz_15_-30_t07.png`, `excavator_unbalance_F15_f123.png`, with an `index.csv` (local only, git-ignored). |
+| CNN + augmentation | `cnn` (small CNN from scratch) and `cnn-pretrained` (ImageNet-pretrained **ResNet18**, transfer learning). Augmentation on training images: flip, shift, brightness/contrast, noise. Training length chosen on validation recordings. |
+| New data | Haul Truck ball faults (Mendeley, SHA-256 checked). CORA vibration (Vx) for the Belt Conveyor and Excavator and CORA infrared for the Excavator: the CORA repository now shows a "not a bot" check, so the 40 files were downloaded in a browser and every file was checked against the publisher MD5 (`intake` / `intake-vibration` commands). |
 
-All models keep the same fair test as before: whole recordings (or runs) are held out, and settings were fixed before running. No setting was chosen by looking at test results.
+## Results (accuracy; whole recordings or runs never seen in training)
 
-## Results (accuracy on held-out recordings/runs, 4 classes)
+| Machine | Sensor (CSV) | Images (CNN) | Test | 90% on both? |
+|---|---:|---:|---|---|
+| **Pump** | **0.958** (23/24) | **1.000** (24/24, pretrained ResNet18) | separate recordings / speeds | ✅ |
+| **Haul Truck** | 0.867 (26/30) | 0.417 (5/12) | separate bearings / unseen speed | ❌ |
+| **Belt Conveyor** | 0.625 (10/16) | 0.562 (9/16) | unseen speed | ❌ |
+| **Excavator — main test** | 0.188 (3/16) | 0.312 (5/16) | unseen speed | ❌ |
+| **Excavator — time split (secondary)** | **0.938** (15/16) | **0.938** (15/16) | later part of each run | ✅ (easier test, see below) |
 
-| Machine | CSV sensor (random forest) | CNN on images | Majority-class control | Images |
-|---|---:|---:|---:|---:|
-| Pump | **0.958** (23/24) | 0.833 (20/24) | 0.250 | 960 |
-| Haul Truck | 0.867 (26/30) | 0.250 (3/12) | 0.500 sensor / 0.250 camera | 463 |
-| Belt Conveyor | 0.375 (6/16) | 0.312 (5/16) | 0.250 | 2,400 |
+Majority-class controls: Pump 0.250, Haul Truck 0.500 (sensor) / 0.250 (camera), Belt Conveyor and Excavator 0.250.
 
-- **Pump:** the sensor model meets the 90% target. The CNN reaches 0.833; it misses four of six inner-race recordings (predicted as ball). The earlier OpenCV HOG + random forest model on the same images scored 1.000.
-- **Haul Truck:** the 4-class sensor model reaches 0.867; most errors are outer-race faults (3/5 right). **Caveat:** the ball-fault recordings were made with no load (the load sensor reads zero) while all others ran at about 400 N, so "ball" may partly mean "no load". The CNN stays at chance (0.250), consistent with the event images looking almost identical across classes.
-- **Belt Conveyor:** neither model separates the four wear levels (0.375 and 0.312). Only the temperature channel and infrared frames are available locally: the CORA repository now shows a "not a bot" check that blocks automated download of its vibration files, and we do not bypass it.
+## How to read these results
 
-## Honest status against the targets
+- **Pump** meets the target on both sensor and images under the strict test.
+- **Haul Truck:** the sensor model is close (0.867); most errors are outer-race faults. Ball-fault recordings were made **without load** (load sensor reads zero) while the others ran at about 400 N, so "ball" may partly mean "no load". The camera stays weak: the event images look almost the same for every fault, and a validation check of the camera's motion rhythm was also at chance, so it was not run on the test.
+- **Belt Conveyor and Excavator (CORA rig):** CORA recorded each fault **once per speed**. The fair test holds out a whole speed, so the model must recognise a fault at a speed it never trained on, from three example runs. Adding vibration and per-speed normalisation raised the Belt Conveyor sensor model from 0.375 to 0.625, but neither machine reaches 90% this way.
+- **Excavator time split:** training on the first 60% of every 45-minute run and testing on the last 30% (10% gap) gives 0.938 for both sensor and images. This shows the condition of a machine **already seen** can be recognised later in time. Because each fault comes from one recording, part of this score may come from recognising the recording rather than the fault, so it is reported **separately and labelled**, not as the main result.
 
-Only the Pump sensor model reaches 90% so far. Reaching it elsewhere needs better data or methods, not tuning on the test set:
-
-- **Belt Conveyor:** the CORA vibration channels (VX/VY/VZ) are the most promising route. They would need to be downloaded by hand through the website.
-- **CNNs:** try a pretrained CNN (transfer learning, as listed in the proposal), with epochs and settings chosen on a validation split taken from the training recordings only.
+No setting was chosen by looking at test results. Where an approach failed on validation data (camera motion rhythm for the Haul Truck), it was not tried on the test.

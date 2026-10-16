@@ -1,0 +1,101 @@
+{
+  "purpose": "Week 6 professor remark: CNN with data augmentation on named images, 4 classes",
+  "images": 2400,
+  "classes": [
+    "healthy",
+    "bearing",
+    "unbalance",
+    "misalignment"
+  ],
+  "test": "four rounds, each holding out one whole speed (4 runs, one per class); 16 run-level predictions",
+  "settings": {
+    "epochs": 20,
+    "batch": 32,
+    "learning_rate": 0.001,
+    "seed": 42,
+    "architecture": "4 conv blocks (16, 32, 64, 64 channels) + global average pool + dropout 0.3",
+    "augmentation": "random horizontal flip, shift up to 8 px, brightness/contrast x0.8-1.2, Gaussian noise 0.05",
+    "normalisation": "each image standardised on its own"
+  },
+  "selection_rule": "settings fixed in advance; the test set is never used to choose epochs or settings",
+  "recording_level": {
+    "test_units": 16,
+    "accuracy": 0.3125,
+    "balanced_accuracy": 0.3125,
+    "macro_precision": 0.2708,
+    "macro_recall": 0.3125,
+    "macro_f1": 0.2667,
+    "confusion_matrix": [
+      [
+        0,
+        1,
+        1,
+        2
+      ],
+      [
+        0,
+        1,
+        1,
+        2
+      ],
+      [
+        0,
+        0,
+        2,
+        2
+      ],
+      [
+        0,
+        0,
+        2,
+        2
+      ]
+    ],
+    "per_class_recall": {
+      "healthy": 0.0,
+      "bearing": 0.25,
+      "unbalance": 0.5,
+      "misalignment": 0.5
+    }
+  },
+  "image_level": {
+    "test_units": 2400,
+    "accuracy": 0.3271,
+    "balanced_accuracy": 0.3271,
+    "macro_precision": 0.3664,
+    "macro_recall": 0.3271,
+    "macro_f1": 0.3064,
+    "confusion_matrix": [
+      [
+        51,
+        99,
+        175,
+        275
+      ],
+      [
+        1,
+        188,
+        161,
+        250
+      ],
+      [
+        0,
+        68,
+        237,
+        295
+      ],
+      [
+        73,
+        50,
+        168,
+        309
+      ]
+    ],
+    "per_class_recall": {
+      "healthy": 0.085,
+      "bearing": 0.3133,
+      "unbalance": 0.395,
+      "misalignment": 0.515
+    }
+  }
+}

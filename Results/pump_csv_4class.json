@@ -27,7 +27,7 @@
     "ball"
   ],
   "test": "train on speed profiles A/B; test on 24 separate C/D recordings",
-  "main_model": "Random forest",
+  "main_model": "validation-selected",
   "selection_rule": "settings fixed in advance; no model or setting chosen from these test results",
   "notes": [
     "Ottawa bearing rig vibration; one row per 0.1 s window, 100 windows per recording"
@@ -153,5 +153,75 @@
         "ball": 0.8333
       }
     }
+  },
+  "validation_selected": {
+    "description": "feature set and model chosen per round on validation groups inside the training set only (candidates: Random forest, Extra trees, Gradient boosting, SVM (RBF), Logistic regression; feature sets: base)",
+    "feature_sets": {
+      "base": [
+        "mean",
+        "std",
+        "rms",
+        "peak_to_peak",
+        "crest_factor",
+        "skew",
+        "excess_kurtosis",
+        "spectral_centroid_hz",
+        "dominant_frequency_hz",
+        "spectral_entropy",
+        "power_0_2000_hz",
+        "power_2000_5000_hz",
+        "power_5000_10000_hz",
+        "power_10000_20000_hz",
+        "power_20000_50000_hz",
+        "power_50000_100000_hz"
+      ]
+    },
+    "score": {
+      "test_units": 24,
+      "accuracy": 0.9583,
+      "balanced_accuracy": 0.9583,
+      "macro_precision": 0.9643,
+      "macro_recall": 0.9583,
+      "macro_f1": 0.958,
+      "confusion_matrix": [
+        [
+          6,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          6,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          6,
+          0
+        ],
+        [
+          0,
+          1,
+          0,
+          5
+        ]
+      ],
+      "per_class_recall": {
+        "healthy": 1.0,
+        "inner": 1.0,
+        "outer": 1.0,
+        "ball": 0.8333
+      }
+    },
+    "chosen_per_round": [
+      {
+        "feature_set": "base",
+        "model": "Extra trees",
+        "validation_macro_f1": 1.0
+      }
+    ]
   }
 }

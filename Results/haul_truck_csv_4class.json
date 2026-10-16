@@ -24,7 +24,7 @@
     "ball"
   ],
   "test": "five rounds, each holding out three whole bearings (inner, outer, ball) with their healthy recordings; 30 recording-level predictions",
-  "main_model": "Random forest",
+  "main_model": "validation-selected",
   "selection_rule": "settings fixed in advance; no model or setting chosen from these test results",
   "notes": [
     "UODS vibration, bearings 1-15; one row per 0.1 s window; window mean removed (inner-race files carry a DC offset)",
@@ -151,5 +151,116 @@
         "ball": 0.8
       }
     }
+  },
+  "validation_selected": {
+    "description": "feature set and model chosen per round on validation groups inside the training set only (candidates: Random forest, Extra trees, Gradient boosting, SVM (RBF), Logistic regression; feature sets: base, base+envelope)",
+    "feature_sets": {
+      "base": [
+        "std",
+        "peak_to_peak",
+        "crest_factor",
+        "skew",
+        "excess_kurtosis",
+        "spectral_centroid_hz",
+        "dominant_frequency_hz",
+        "spectral_entropy",
+        "power_0_1000_hz",
+        "power_1000_2000_hz",
+        "power_2000_5000_hz",
+        "power_5000_10000_hz",
+        "power_10000_21000_hz"
+      ],
+      "base+envelope": [
+        "std",
+        "peak_to_peak",
+        "crest_factor",
+        "skew",
+        "excess_kurtosis",
+        "spectral_centroid_hz",
+        "dominant_frequency_hz",
+        "spectral_entropy",
+        "power_0_1000_hz",
+        "power_1000_2000_hz",
+        "power_2000_5000_hz",
+        "power_5000_10000_hz",
+        "power_10000_21000_hz",
+        "envelope_kurtosis",
+        "envelope_peak_hz",
+        "envelope_power_5_50_hz",
+        "envelope_power_50_90_hz",
+        "envelope_power_90_130_hz",
+        "envelope_power_130_180_hz",
+        "envelope_power_180_250_hz",
+        "envelope_power_250_400_hz",
+        "envelope_power_400_800_hz"
+      ]
+    },
+    "score": {
+      "test_units": 30,
+      "accuracy": 0.8667,
+      "balanced_accuracy": 0.8333,
+      "macro_precision": 0.8333,
+      "macro_recall": 0.8333,
+      "macro_f1": 0.8333,
+      "confusion_matrix": [
+        [
+          14,
+          1,
+          0,
+          0
+        ],
+        [
+          0,
+          4,
+          0,
+          1
+        ],
+        [
+          1,
+          0,
+          4,
+          0
+        ],
+        [
+          0,
+          0,
+          1,
+          4
+        ]
+      ],
+      "per_class_recall": {
+        "healthy": 0.9333,
+        "inner": 0.8,
+        "outer": 0.8,
+        "ball": 0.8
+      }
+    },
+    "chosen_per_round": [
+      {
+        "feature_set": "base+envelope",
+        "model": "Random forest",
+        "validation_macro_f1": 0.8125
+      },
+      {
+        "feature_set": "base+envelope",
+        "model": "Random forest",
+        "validation_macro_f1": 0.8125
+      },
+      {
+        "feature_set": "base",
+        "model": "Random forest",
+        "validation_macro_f1": 0.8333
+      },
+      {
+        "feature_set": "base+envelope",
+        "model": "Random forest",
+        "validation_macro_f1": 0.7411
+      },
+      {
+        "feature_set": "base+envelope",
+        "model": "Logistic regression",
+        "validation_macro_f1": 0.7427
+      }
+    ]
   }
 }

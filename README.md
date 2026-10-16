@@ -23,8 +23,8 @@ Without data the notebooks show the saved results. To download the data (about 1
 ## Repository layout
 
 ```text
-Notebook/          one notebook per machine: Pump, Belt_Conveyor, Haul_Truck
-Models/            one .py file per equipment: pump.py, belt_conveyor.py, haul_truck.py
+Notebook/          one notebook per machine: Pump, Belt_Conveyor, Haul_Truck, Excavator
+Models/            one .py file per equipment: pump.py, belt_conveyor.py, haul_truck.py, excavator.py
 Results/           committed metrics (JSON) and written comparisons
 Figures/           committed result figures
 Dataset_Manifest/  eight-equipment dataset verification matrix
@@ -38,8 +38,8 @@ Processed_Data/    local only, git-ignored: derived feature caches
 
 | Status | Equipment |
 |---|---|
-| Sensor-versus-visual experiment completed | Pump support bearing; Belt Conveyor geared-drive analogue; Haul/Dump Truck wheel-motor bearing (Equipment #3, after Week 4) |
-| Dataset/component pair mapped, experiment planned | Excavator, Dozer, Wheel Loader, Drill Rig, Grader |
+| Sensor-versus-visual experiment completed | Pump support bearing; Belt Conveyor geared-drive analogue; Haul/Dump Truck wheel-motor bearing (Equipment #3); Excavator swing-drive motor/gearbox faults (Equipment #4, CORA healthy / bearing defect / unbalance / misalignment) |
+| Dataset/component pair mapped, experiment planned | Dozer, Wheel Loader, Drill Rig, Grader |
 
 The [eight-equipment matrix](Dataset_Manifest/manifest.md) records source access, comparable labels, licences, and limits. Read the [methodology](Documentation/methodology.md) and [Week 4 progress checkpoint](Documentation/week_04_progress.md) before interpreting the scores.
 
@@ -50,7 +50,9 @@ The [eight-equipment matrix](Dataset_Manifest/manifest.md) records source access
 
 - **Week 5 baseline comparison:** majority-class control, logistic regression, decision tree and random forest on the same held-out tests (`python Models/<machine>.py baselines`). Pump models score 0.875–1.000 in both branches; no Belt Conveyor model beats the 0.750 majority control; Haul Truck vibration models reach 0.750–0.900 while every event-camera model stays near chance. Settings were fixed in advance, so the main models are unchanged. [Week 5 summary](Documentation/week_05_progress.md).
 
-These models classify **current component condition**, not a future repair date or remaining useful life. No image and sensor observation from unrelated sources is falsely paired. The five planned equipment categories do not inherit completed results from the shared gearbox benchmark.
+- **Week 6 (professor's remarks):** 4 classes for every machine, CSV sensor models, named images, CNNs with data augmentation and a pretrained ResNet18. Pump reaches 90%+ on both sensor (0.958) and images (1.000). Haul Truck 0.867 / 0.417, Belt Conveyor 0.625 / 0.562 and Excavator 0.188 / 0.312 under the strict tests; the Excavator reaches 0.938 / 0.938 on a separately labelled, easier time-split test. [Week 6 summary](Documentation/week_06_professor_remarks.md).
+
+These models classify **current component condition**, not a future repair date or remaining useful life. No image and sensor observation from unrelated sources is falsely paired. The four planned equipment categories do not inherit completed results from the shared gearbox benchmark.
 
 ## Work locally in VS Code
 
@@ -63,8 +65,9 @@ The [`Notebook/`](Notebook/) folder has one notebook per completed machine, each
 - [`Pump.ipynb`](Notebook/Pump.ipynb): vibration vs event camera, plus the sensor-only pump baselines (original pump XLSX, UCI hydraulic, ESPset).
 - [`Belt_Conveyor.ipynb`](Notebook/Belt_Conveyor.ipynb): T1 temperature vs infrared on the CORA geared-drive rig.
 - [`Haul_Truck.ipynb`](Notebook/Haul_Truck.ipynb): UODS vibration vs XJTU-Rotor event camera for the electric wheel-motor bearing.
+- [`Excavator.ipynb`](Notebook/Excavator.ipynb): CORA vibration vs infrared for drive-train faults (bearing defect, unbalance, misalignment).
 
-Each notebook is short: it lists which of its datasets are present, then runs the project's scripts in `Models/` unchanged and shows the results, so notebooks and code cannot drift apart. The shared notebook set-up (finding the project, checking data, running scripts, showing tables) is in [`Notebook/notebook_helpers.py`](Notebook/notebook_helpers.py). Notebooks for the five planned machines will be added once their experiments are done. To use them in VS Code, select the **Capstone (.venv)** kernel at the top right of the notebook (the set-up cell warns if a different Python is in use). When all data is local, the notebooks block network access, so a clean run proves the work is reproducible offline.
+Each notebook is short: it lists which of its datasets are present, then runs the project's scripts in `Models/` unchanged and shows the results, so notebooks and code cannot drift apart. The shared notebook set-up (finding the project, checking data, running scripts, showing tables) is in [`Notebook/notebook_helpers.py`](Notebook/notebook_helpers.py). Notebooks for the four planned machines will be added once their experiments are done. To use them in VS Code, select the **Capstone (.venv)** kernel at the top right of the notebook (the set-up cell warns if a different Python is in use). When all data is local, the notebooks block network access, so a clean run proves the work is reproducible offline.
 
 For detailed acquisition, evaluation and scientific limitations, use [capstone details](Documentation/capstone_details.md). Large source archives, event recordings, raw and processed data, fitted models, virtual environments and caches must stay out of Git. The [collaboration guide](CONTRIBUTING.md) explains how to contribute without overstating results.
 

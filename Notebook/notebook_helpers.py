@@ -137,11 +137,15 @@ def show_baselines(result: dict) -> None:
 
 def show_week6(machine: str) -> None:
     """Display the Week 6 results: 4-class CSV sensor models and the CNN on images."""
-    csv_result, cnn_result = load(f"{machine}_csv_4class.json"), load(f"{machine}_cnn_4class.json")
+    csv_result = load(f"{machine}_csv_4class.json")
     rows = {}
     if csv_result:
+        if "validation_selected" in csv_result:
+            rows["CSV sensor | validation-selected (main)"] = csv_result["validation_selected"]["score"]
         rows.update({f"CSV sensor | {name}": score for name, score in csv_result["models"].items()})
-    if cnn_result:
-        rows["Camera images | CNN (per recording)"] = cnn_result["recording_level"]
-        rows["Camera images | CNN (per image)"] = cnn_result["image_level"]
+    for name, label in ((f"{machine}_cnn_pretrained_4class.json", "Camera images | pretrained ResNet18 (main)"),
+                        (f"{machine}_cnn_4class.json", "Camera images | small CNN")):
+        result = load(name)
+        if result:
+            rows[f"{label}, per recording"] = result["recording_level"]
     show(rows)

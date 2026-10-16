@@ -1,0 +1,105 @@
+{
+  "purpose": "Week 6: transfer learning (ImageNet-pretrained ResNet18) on named images, 4 classes",
+  "images": 960,
+  "classes": [
+    "healthy",
+    "inner",
+    "outer",
+    "ball"
+  ],
+  "test": "train on the 24 recordings at 20 Hz; test on the 24 separate recordings at 30 Hz",
+  "settings": {
+    "model": "ResNet18, ImageNet weights, all layers fine-tuned",
+    "max_epochs": 15,
+    "batch": 32,
+    "learning_rate": 0.0003,
+    "optimiser": "AdamW",
+    "seed": 42,
+    "epochs_chosen_per_round": [
+      3
+    ],
+    "epoch_selection": "one training recording per class held out for validation; best validation macro F1",
+    "augmentation": "random horizontal flip, shift up to 8 px, brightness/contrast x0.8-1.2, Gaussian noise 0.05"
+  },
+  "selection_rule": "the test set is never used to choose epochs or settings",
+  "recording_level": {
+    "test_units": 24,
+    "accuracy": 1.0,
+    "balanced_accuracy": 1.0,
+    "macro_precision": 1.0,
+    "macro_recall": 1.0,
+    "macro_f1": 1.0,
+    "confusion_matrix": [
+      [
+        6,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        6,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        6,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        6
+      ]
+    ],
+    "per_class_recall": {
+      "healthy": 1.0,
+      "inner": 1.0,
+      "outer": 1.0,
+      "ball": 1.0
+    }
+  },
+  "image_level": {
+    "test_units": 480,
+    "accuracy": 0.9979,
+    "balanced_accuracy": 0.9979,
+    "macro_precision": 0.9979,
+    "macro_recall": 0.9979,
+    "macro_f1": 0.9979,
+    "confusion_matrix": [
+      [
+        119,
+        0,
+        1,
+        0
+      ],
+      [
+        0,
+        120,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        120,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        120
+      ]
+    ],
+    "per_class_recall": {
+      "healthy": 0.9917,
+      "inner": 1.0,
+      "outer": 1.0,
+      "ball": 1.0
+    }
+  }
+}
