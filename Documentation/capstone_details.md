@@ -28,14 +28,14 @@ and `Notebook/Haul_Truck.ipynb`. Five categories remain planned.
 
 | Experiment | Source domain | Task and evaluation | Held-out result | What it does not show |
 |---|---|---|---|---|
-| UCI hydraulic system | Controlled hydraulic test rig | Three-class current pump-leakage severity; complete condition-state combinations held out | Random forest: macro F1 **0.970**, balanced accuracy **0.972** on 299 stable cycles | Mining-vehicle performance or a future repair date |
-| ESPset V3 | Real offshore oil-production pumps | Normal vs abnormal vibration condition; physical pump IDs held out | Random forest: macro F1 **0.918**, abnormal recall **0.842** on 1,503 tests from three pumps | Mining-pump performance, RUL, or image/sensor fusion |
+| UCI hydraulic system | Controlled hydraulic test rig | Three-class current pump-leakage severity; complete condition-state combinations held out | Random forest: macro F1 **0.963**, balanced accuracy **0.963** on 290 stable cycles | Mining-vehicle performance or a future repair date |
+| ESPset V3 | Real offshore oil-production pumps | Normal vs abnormal vibration condition; physical pump IDs held out | Random forest: macro F1 **0.914**, abnormal recall **0.837** on 1,503 tests from three pumps | Mining-pump performance, RUL, or image/sensor fusion |
 
 These scores are **not directly comparable**: the machines, labels, class balance, and test units differ. The source/quality checks, split IDs, candidate-model validation, confusion matrices, and limitations are in [`Results/`](../Results/). The images in [`Figures/`](../Figures/) are diagnostic plots, not equipment photographs.
 
 One comparison that *is* made on the same data and split:
 
-- **Pump baseline value:** on held-out ESPset pumps, the selected forest scored 0.918 macro F1 and 0.842 abnormal recall, versus 0.428 macro F1 and zero abnormal recall for a most-frequent baseline.
+- **Pump baseline value:** on held-out ESPset pumps, the selected forest scored 0.914 macro F1 and 0.837 abnormal recall, versus 0.428 macro F1 and zero abnormal recall for a most-frequent baseline.
 
 The two rows above are **sensor-only** findings. The Pump support-bearing experiment now has separately tested sensor and visual branches on the same four current-fault classes. The University of Ottawa bearing-rig sensor proxy scored **0.958 accuracy and macro F1 on 24 recording-held-out runs**; the XJTU Pump event-camera/OpenCV branch scored **1.000 accuracy and macro F1 on 24 recording-held-out runs**. Secondary held-out-operating/camera checks scored 0.958 and 0.855 macro F1, respectively. These are **not** a controlled head-to-head modality comparison: sources and operating shifts differ. The original centrifugal-pump XLSX model remains a same-recording diagnostic and is excluded from the independent comparison. See the [full Pump metrics, per-class results, confusion matrices and limitations](../Results/pump/pump_sensor_visual_comparison.md).
 
