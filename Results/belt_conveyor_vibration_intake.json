@@ -1,0 +1,120 @@
+{
+  "source": "https://doi.org/10.34810/DATA2500",
+  "license": "CC BY 4.0",
+  "note": "downloaded in a browser (repository bot check); every file checked against the publisher MD5",
+  "files": [
+    {
+      "file": "H_F5_S_Vx.csv",
+      "folder": "Raw_Data/cora_vibration",
+      "size_bytes": 111260279,
+      "md5": "10e3d07a5647058f20d2f3565675baf7",
+      "status": "verified against publisher MD5"
+    },
+    {
+      "file": "H_F15_S_Vx.csv",
+      "folder": "Raw_Data/cora_vibration",
+      "size_bytes": 107470262,
+      "md5": "f75e4537077a2f2c9f8c7303aedc1d1e",
+      "status": "verified against publisher MD5"
+    },
+    {
+      "file": "H_F50_S_Vx.csv",
+      "folder": "Raw_Data/cora_vibration",
+      "size_bytes": 110648041,
+      "md5": "0247574694c415940832698ec0fd0bd3",
+      "status": "verified against publisher MD5"
+    },
+    {
+      "file": "H_F60_S_Vx.csv",
+      "folder": "Raw_Data/cora_vibration",
+      "size_bytes": 110998372,
+      "md5": "9d4549a7cd33d8cfdbf14afa320140ab",
+      "status": "verified against publisher MD5"
+    },
+    {
+      "file": "W25_F5_S_Vx.csv",
+      "folder": "Raw_Data/cora_vibration",
+      "size_bytes": 108428177,
+      "md5": "a47a92fb3172642047c908e828f1c679",
+      "status": "verified against publisher MD5"
+    },
+    {
+      "file": "W25_F15_S_Vx.csv",
+      "folder": "Raw_Data/cora_vibration",
+      "size_bytes": 106848333,
+      "md5": "e5efeff75c21ce8c694ea3a5e8bd30cc",
+      "status": "verified against publisher MD5"
+    },
+    {
+      "file": "W25_F50_S_Vx.csv",
+      "folder": "Raw_Data/cora_vibration",
+      "size_bytes": 110528281,
+      "md5": "fbf90f15b1882681779007964b414e2e",
+      "status": "verified against publisher MD5"
+    },
+    {
+      "file": "W25_F60_S_Vx.csv",
+      "folder": "Raw_Data/cora_vibration",
+      "size_bytes": 112725506,
+      "md5": "ebefd1cd62021596351dd092c8d79401",
+      "status": "verified against publisher MD5"
+    },
+    {
+      "file": "W50_F5_S_Vx.csv",
+      "folder": "Raw_Data/cora_vibration",
+      "size_bytes": 107609236,
+      "md5": "224b82f1b4f625b19b167842f322dba0",
+      "status": "verified against publisher MD5"
+    },
+    {
+      "file": "W50_F15_S_Vx.csv",
+      "folder": "Raw_Data/cora_vibration",
+      "size_bytes": 106611962,
+      "md5": "2cbcc2858cc9c5cd75d5b8649a53211c",
+      "status": "verified against publisher MD5"
+    },
+    {
+      "file": "W50_F50_S_Vx.csv",
+      "folder": "Raw_Data/cora_vibration",
+      "size_bytes": 110525640,
+      "md5": "a46a799430b5ced3953c05d679c5513e",
+      "status": "verified against publisher MD5"
+    },
+    {
+      "file": "W50_F60_S_Vx.csv",
+      "folder": "Raw_Data/cora_vibration",
+      "size_bytes": 111405768,
+      "md5": "b37c7b5ffb01c9e3110f6c19cbb5e1a3",
+      "status": "verified against publisher MD5"
+    },
+    {
+      "file": "W75_F5_S_Vx.csv",
+      "folder": "Raw_Data/cora_vibration",
+      "size_bytes": 109445630,
+      "md5": "70b4d708f21ea66177ad447ecf2b38f4",
+      "status": "verified against publisher MD5"
+    },
+    {
+      "file": "W75_F15_S_Vx.csv",
+      "folder": "Raw_Data/cora_vibration",
+      "size_bytes": 105862619,
+      "md5": "29c2239cb8af5419e8b5d3677ff52a0d",
+      "status": "verified against publisher MD5"
+    },
+    {
+      "file": "W75_F50_S_Vx.csv",
+      "folder": "Raw_Data/cora_vibration",
+      "size_bytes": 111939715,
+      "md5": "7c108c3eb71b7e2de1e8bf624e1e8418",
+      "status": "verified against publisher MD5"
+    },
+    {
+      "file": "W75_F60_S_Vx.csv",
+      "folder": "Raw_Data/cora_vibration",
+      "size_bytes": 112056722,
+      "md5": "ac87f5616ee8e935cf6cb81512c276a7",
+      "status": "verified against publisher MD5"
+    }
+  ],
+  "missing": []
+}

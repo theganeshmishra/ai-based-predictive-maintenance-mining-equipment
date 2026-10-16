@@ -1,0 +1,105 @@
+{
+  "purpose": "Week 6: transfer learning (ImageNet-pretrained ResNet18) on named images, 4 classes",
+  "images": 2160,
+  "classes": [
+    "healthy",
+    "bearing",
+    "unbalance",
+    "misalignment"
+  ],
+  "test": "TIME SPLIT (secondary): first 60% of every run's frames train, last 30% test, 10% gap; 16 run-level predictions; the same recordings appear in training, so this is easier",
+  "settings": {
+    "model": "ResNet18, ImageNet weights, all layers fine-tuned",
+    "max_epochs": 15,
+    "batch": 32,
+    "learning_rate": 0.0003,
+    "optimiser": "AdamW",
+    "seed": 42,
+    "epochs_chosen_per_round": [
+      14
+    ],
+    "epoch_selection": "one training recording per class held out for validation; best validation macro F1",
+    "augmentation": "random horizontal flip, shift up to 8 px, brightness/contrast x0.8-1.2, Gaussian noise 0.05"
+  },
+  "selection_rule": "the test set is never used to choose epochs or settings",
+  "recording_level": {
+    "test_units": 16,
+    "accuracy": 0.9375,
+    "balanced_accuracy": 0.9375,
+    "macro_precision": 0.95,
+    "macro_recall": 0.9375,
+    "macro_f1": 0.9365,
+    "confusion_matrix": [
+      [
+        4,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        4,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        3,
+        1
+      ],
+      [
+        0,
+        0,
+        0,
+        4
+      ]
+    ],
+    "per_class_recall": {
+      "healthy": 1.0,
+      "bearing": 1.0,
+      "unbalance": 0.75,
+      "misalignment": 1.0
+    }
+  },
+  "image_level": {
+    "test_units": 704,
+    "accuracy": 0.902,
+    "balanced_accuracy": 0.902,
+    "macro_precision": 0.9177,
+    "macro_recall": 0.902,
+    "macro_f1": 0.9015,
+    "confusion_matrix": [
+      [
+        172,
+        0,
+        0,
+        4
+      ],
+      [
+        0,
+        157,
+        0,
+        19
+      ],
+      [
+        0,
+        19,
+        130,
+        27
+      ],
+      [
+        0,
+        0,
+        0,
+        176
+      ]
+    ],
+    "per_class_recall": {
+      "healthy": 0.9773,
+      "bearing": 0.892,
+      "unbalance": 0.7386,
+      "misalignment": 1.0
+    }
+  }
+}

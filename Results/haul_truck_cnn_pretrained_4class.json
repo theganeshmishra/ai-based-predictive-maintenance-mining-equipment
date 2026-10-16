@@ -1,0 +1,105 @@
+{
+  "purpose": "Week 6: transfer learning (ImageNet-pretrained ResNet18) on named images, 4 classes",
+  "images": 463,
+  "classes": [
+    "healthy",
+    "inner",
+    "outer",
+    "ball"
+  ],
+  "test": "train on the 12 recordings at 1000 rpm; test on the 12 separate recordings at 2000 rpm",
+  "settings": {
+    "model": "ResNet18, ImageNet weights, all layers fine-tuned",
+    "max_epochs": 15,
+    "batch": 32,
+    "learning_rate": 0.0003,
+    "optimiser": "AdamW",
+    "seed": 42,
+    "epochs_chosen_per_round": [
+      1
+    ],
+    "epoch_selection": "one training recording per class held out for validation; best validation macro F1",
+    "augmentation": "random horizontal flip, shift up to 8 px, brightness/contrast x0.8-1.2, Gaussian noise 0.05"
+  },
+  "selection_rule": "the test set is never used to choose epochs or settings",
+  "recording_level": {
+    "test_units": 12,
+    "accuracy": 0.4167,
+    "balanced_accuracy": 0.4167,
+    "macro_precision": 0.4625,
+    "macro_recall": 0.4167,
+    "macro_f1": 0.3839,
+    "confusion_matrix": [
+      [
+        3,
+        0,
+        0,
+        0
+      ],
+      [
+        1,
+        1,
+        1,
+        0
+      ],
+      [
+        1,
+        2,
+        0,
+        0
+      ],
+      [
+        0,
+        1,
+        1,
+        1
+      ]
+    ],
+    "per_class_recall": {
+      "healthy": 1.0,
+      "inner": 0.3333,
+      "outer": 0.0,
+      "ball": 0.3333
+    }
+  },
+  "image_level": {
+    "test_units": 239,
+    "accuracy": 0.3556,
+    "balanced_accuracy": 0.3549,
+    "macro_precision": 0.4398,
+    "macro_recall": 0.3549,
+    "macro_f1": 0.3061,
+    "confusion_matrix": [
+      [
+        53,
+        4,
+        3,
+        0
+      ],
+      [
+        28,
+        21,
+        11,
+        0
+      ],
+      [
+        20,
+        39,
+        1,
+        0
+      ],
+      [
+        4,
+        32,
+        13,
+        10
+      ]
+    ],
+    "per_class_recall": {
+      "healthy": 0.8833,
+      "inner": 0.35,
+      "outer": 0.0167,
+      "ball": 0.1695
+    }
+  }
+}

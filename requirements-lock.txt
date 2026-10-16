@@ -73,6 +73,7 @@ stack-data==0.6.3
 threadpoolctl==3.7.0
 tinycss2==1.5.1
 torch==2.14.1
+torchvision==0.29.1
 tornado==6.5.10
 traitlets==5.16.1
 truststore==0.10.4
