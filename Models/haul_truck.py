@@ -1016,12 +1016,21 @@ def csv(run: bool = True) -> dict:
         frames = []
         for item in files:
             name = item["name"]
-            signal = loadmat(ROOT / "Raw_Data" / "uods_vafdc" / name)[name[:-4]][:, 0].astype(np.float64)
-            features = e["vibration_features"](signal)  # column 0 = accelerometer; load column not used
+            data = loadmat(ROOT / "Raw_Data" / "uods_vafdc" / name)[name[:-4]]
+            signal = data[:, 0].astype(np.float64)       # column 0 = accelerometer
+            microphone = data[:, 1].astype(np.float64)   # column 1 = microphone; speed and load columns not used
+            features = e["vibration_features"](signal)
             frame = pd.DataFrame(features, columns=list(e["FEATURE_NAMES"]))
             envelope = envelope_features(signal, len(frame))
             for k, column in enumerate(ENVELOPE_NAMES):
                 frame[column] = envelope[:, k]
+            # 0.5 s envelope windows (2 Hz resolution) repeated for their five 0.1 s rows
+            long_envelope = np.repeat(envelope_features(signal, len(frame) // 5, window=21_000), 5, axis=0)
+            for k, column in enumerate(ENVELOPE_NAMES):
+                frame[f"long_{column}"] = long_envelope[: len(frame), k]
+            sound = e["vibration_features"](microphone)
+            for k, column in enumerate(e["FEATURE_NAMES"]):
+                frame[f"mic_{column}"] = sound[: len(frame), k]
             frame.insert(0, "class", codes[item["class_code"]])
             frame.insert(0, "bearing", item["bearing"])
             frame.insert(0, "unit", name[:-4])
@@ -1029,7 +1038,13 @@ def csv(run: bool = True) -> dict:
         table = pd.concat(frames, ignore_index=True)
         folds = lambda t: [t["bearing"].isin([k, k + 5, k + 10]).to_numpy() for k in range(1, 6)]
         base = list(e["FEATURE_NAMES"])
-        return (table, {"base": base, "base+envelope": base + ENVELOPE_NAMES}, ["healthy", "inner", "outer", "ball"], folds,
+        long_env = [f"long_{c}" for c in ENVELOPE_NAMES]
+        mic = [f"mic_{c}" for c in e["FEATURE_NAMES"]]
+        return (table, {"base": base, "base+envelope": base + ENVELOPE_NAMES,
+                        "base+long envelope": base + long_env,
+                        "base+microphone": base + mic,
+                        "base+long envelope+microphone": base + long_env + mic},
+                ["healthy", "inner", "outer", "ball"], folds,
                 "five rounds, each holding out three whole bearings (inner, outer, ball) with their healthy recordings; 30 recording-level predictions",
                 ["UODS vibration, bearings 1-15; one row per 0.1 s window; window mean removed (inner-race files carry a DC offset)",
                  "ball faults were recorded with no load (load sensor reads zero) while all other files ran at about 400 N; the load column is not used, but no-load running also changes the vibration, so ball results may partly reflect load"])
@@ -1095,12 +1110,29 @@ def csv(run: bool = True) -> dict:
 
     def main():
         parser = argparse.ArgumentParser(description=csv.__doc__)
-        parser.parse_args()
+        parser.add_argument("--split", choices=("main", "time"), default="main",
+                            help="main (fair test, as described in the result) or time (secondary, easier): train on "
+                                 "the first 60%% of every recording, test on the last 30%% (10%% gap)")
+        args = parser.parse_args()
+        nonlocal RESULT, FIGURE
         table, feature_names, labels, folds, test_description, notes = build_table()
         feature_sets = feature_names if isinstance(feature_names, dict) else {"base": feature_names}
         feature_names = next(iter(feature_sets.values()))
         CSV_PATH.parent.mkdir(parents=True, exist_ok=True)
         table.to_csv(CSV_PATH, index=False)
+        if args.split == "time":
+            if "window" not in table.columns:
+                table["window"] = table.groupby("unit").cumcount()
+            position = table.groupby("unit")["window"].rank(pct=True)
+            table = table[(position <= 0.6) | (position > 0.7)].copy()
+            late = position.loc[table.index] > 0.7
+            table["unit"] = table["unit"] + np.where(late, "_late", "_early")
+            folds = lambda t: [t["unit"].str.endswith("_late").to_numpy()]
+            test_description = ("TIME SPLIT (secondary): first 60% of every recording trains, last 30% tests, 10% gap; "
+                                "one prediction per recording; the same recordings appear in training, so this is easier "
+                                "than the main test")
+            RESULT = RESULT.with_name(RESULT.stem + "_timesplit.json")
+            FIGURE = FIGURE.with_name(FIGURE.stem + "_timesplit.png")
         x = table[feature_names].to_numpy(dtype=np.float64)
         y = table["class"].to_numpy()
         units = table["unit"].to_numpy()
@@ -1124,6 +1156,16 @@ def csv(run: bool = True) -> dict:
             "selection_rule": "settings fixed in advance; no model or setting chosen from these test results",
             "notes": notes, "models": scores,
         }
+        if args.split == "time":
+            result["split"] = "time (secondary)"
+            RESULT.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
+            main_score = scores["Random forest"]
+            plot_matrix(main_score["confusion_matrix"], labels,
+                        f"{MACHINE}: CSV sensor, TIME SPLIT (random forest), accuracy {main_score['accuracy']:.3f}", FIGURE)
+            for name, s in scores.items():
+                print(f"{name:<26} accuracy {s['accuracy']:.3f}  macro F1 {s['macro_f1']:.3f}  ({s['test_units']} test units, time split)")
+            print(f"Saved {RESULT.relative_to(ROOT)} and {FIGURE.relative_to(ROOT)}")
+            return
         selected, chosen = nested_selection(table, feature_sets, labels, folds(table), INNER_GROUP)
         result["validation_selected"] = {
             "description": "feature set and model chosen per round on validation groups inside the training set only "
@@ -1472,8 +1514,22 @@ def cnn_pretrained(run: bool = True) -> dict:
 
     def main():
         parser = argparse.ArgumentParser(description=cnn_pretrained.__doc__)
-        parser.parse_args()
+        parser.add_argument("--split", choices=("main", "time"), default="main",
+                            help="main (fair test) or time (secondary, easier: first 60%% of each recording's frames "
+                                 "train, last 30%% test, 10%% gap)")
+        args = parser.parse_args()
+        nonlocal RESULT, FIGURE
         rows = read_index()
+        test_description = "train on the 12 recordings at 1000 rpm; test on the 12 separate recordings at 2000 rpm"
+        if args.split == "time":
+            import re
+            position = {row["file"]: int(re.search(r"_t(\d{2})\.png$", row["file"]).group(1)) / 20 for row in rows}
+            rows = [dict(row, unit=row["unit"] + ("_late" if position[row["file"]] > 0.7 else "_early"))
+                    for row in rows if position[row["file"]] <= 0.6 or position[row["file"]] > 0.7]
+            test_description = ("TIME SPLIT (secondary): first 60% of every recording's frames train, last 30% test, 10% gap; "
+                                "one prediction per recording; the same recordings appear in training, so this is easier")
+            RESULT = RESULT.with_name(RESULT.stem + "_timesplit.json")
+            FIGURE = FIGURE.with_name(FIGURE.stem + "_timesplit.png")
         x = load(rows)
         label_index = {label: i for i, label in enumerate(LABELS)}
         y = np.asarray([label_index[row["class"]] for row in rows])
@@ -1482,7 +1538,9 @@ def cnn_pretrained(run: bool = True) -> dict:
         groups = np.asarray([row["group"] for row in rows])
         rng = np.random.default_rng(SEED)
         unit_actual, unit_predicted, image_actual, image_predicted, epochs_chosen = [], [], [], [], []
-        for number, test in enumerate([groups == "2000rpm"], 1):
+        folds = ([np.char.endswith(units.astype(str), "_late")] if args.split == "time"
+                 else [groups == "2000rpm"])
+        for number, test in enumerate(folds, 1):
             train = ~test
             if set(units[train]) & set(units[test]):
                 raise ValueError("A test recording also appears in training")
@@ -1502,7 +1560,7 @@ def cnn_pretrained(run: bool = True) -> dict:
             print(f"fold {number}: validation chose {best_epochs} epochs; tested on {int(test.sum())} images", flush=True)
         result = {
             "purpose": "Week 6: transfer learning (ImageNet-pretrained ResNet18) on named images, 4 classes",
-            "images": int(len(rows)), "classes": LABELS, "test": "train on the 12 recordings at 1000 rpm; test on the 12 separate recordings at 2000 rpm",
+            "images": int(len(rows)), "classes": LABELS, "test": test_description,
             "settings": {"model": "ResNet18, ImageNet weights, all layers fine-tuned", "max_epochs": MAX_EPOCHS,
                          "batch": BATCH, "learning_rate": LEARNING_RATE, "optimiser": "AdamW", "seed": SEED,
                          "epochs_chosen_per_round": epochs_chosen,
