@@ -112,4 +112,4 @@ Rows are actual classes and columns predicted classes, ordered healthy / inner /
 
 **Yes, for the professor's explicitly allowed component/fault-level comparison using sufficiently similar machines:** real vibration and real event-camera images both classify healthy/inner/outer/ball bearing conditions, and both now have recording-held-out Accuracy, Precision, Recall, F1, per-class results and confusion matrices. **No**, if the requirement means paired sensor-plus-camera observations from the *same physical mining pump*, a controlled modality-superiority experiment, image–sensor fusion, or prediction of a future repair date. The sensor proxy is a bearing rig, so this is a defensible component-level Pump proof of concept, **not validated mining-pump deployment**. Confirm that scope with the professor before describing the project as fully predictive maintenance.
 
-![Separate recording-level confusion matrices](../Figures/pump_sensor_visual_confusions.png)
+![Separate recording-level confusion matrices](../../Figures/pump/pump_sensor_visual_confusions.png)

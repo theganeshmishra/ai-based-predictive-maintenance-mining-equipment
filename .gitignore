@@ -72,7 +72,8 @@ work/
 *.tiff
 *.bmp
 *.png
-!/Figures/*.png
+!/Figures/*/*.png
+/Figures/machine_images/
 
 # Named camera images for the CNN (recreated by "export-images"; dataset owners' images)
 Images/

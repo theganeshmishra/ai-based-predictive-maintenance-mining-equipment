@@ -60,7 +60,7 @@ def intake(run: bool = True) -> dict:
 
     CAPSTONE = ROOT
     RAW = CAPSTONE / "Raw_Data" / "uottawa_bearing"
-    MANIFEST = CAPSTONE / "Results" / "pump_uottawa_intake.json"
+    MANIFEST = CAPSTONE / "Results" / "pump" / "pump_uottawa_intake.json"
     BASE = "https://data.mendeley.com/public-api/datasets/v43hmbwxpm"
     FOLDERS = {
         "H": "1 Data collected from a healthy bearing",
@@ -203,11 +203,11 @@ def sensor(run: bool = True) -> dict:
 
 
     CAPSTONE = ROOT
-    INTAKE = CAPSTONE / "Results" / "pump_uottawa_intake.json"
+    INTAKE = CAPSTONE / "Results" / "pump" / "pump_uottawa_intake.json"
     RAW = CAPSTONE / "Raw_Data" / "uottawa_bearing"
     CACHE = CAPSTONE / "Processed_Data" / "pump_bearing_independent_features.npz"
-    RESULT = CAPSTONE / "Results" / "pump_bearing_independent.json"
-    FIGURE = CAPSTONE / "Figures" / "pump_bearing_independent_confusions.png"
+    RESULT = CAPSTONE / "Results" / "pump" / "pump_bearing_independent.json"
+    FIGURE = CAPSTONE / "Figures" / "pump" / "pump_bearing_independent_confusions.png"
     CLASSES = ("healthy", "inner", "outer", "ball")
     CODE_TO_CLASS = {"H": "healthy", "I": "inner", "O": "outer", "B": "ball"}
     SAMPLE_RATE_HZ = 200_000
@@ -449,8 +449,8 @@ def camera(run: bool = True) -> dict:
     CAPSTONE = ROOT
     CACHE = CAPSTONE / "Processed_Data" / "pump_event_features.npz"
     RUN_CACHE = CAPSTONE / "Processed_Data" / "pump_event_runs"
-    RESULT = CAPSTONE / "Results" / "pump_event_visual.json"
-    FIGURE = CAPSTONE / "Figures" / "pump_event_visual_confusion.png"
+    RESULT = CAPSTONE / "Results" / "pump" / "pump_event_visual.json"
+    FIGURE = CAPSTONE / "Figures" / "pump" / "pump_event_visual_confusion.png"
     ZENODO = "https://zenodo.org/api/records/17447083/files/"
     CLASSES = ("healthy", "inner", "outer", "ball")
     SOURCE_FOLDERS = {"healthy": "Healthy", "inner": "Inner", "outer": "Outer", "ball": "Ball"}
@@ -764,11 +764,11 @@ def compare(run: bool = True) -> dict:
 
 
     CAPSTONE = ROOT
-    SENSOR = CAPSTONE / "Results" / "pump_bearing_independent.json"
-    SENSOR_DIAGNOSTIC = CAPSTONE / "Results" / "pump_bearing_exploratory.json"
-    VISUAL = CAPSTONE / "Results" / "pump_event_visual.json"
-    REPORT = CAPSTONE / "Results" / "pump_sensor_visual_comparison.md"
-    FIGURE = CAPSTONE / "Figures" / "pump_sensor_visual_confusions.png"
+    SENSOR = CAPSTONE / "Results" / "pump" / "pump_bearing_independent.json"
+    SENSOR_DIAGNOSTIC = CAPSTONE / "Results" / "pump" / "pump_bearing_exploratory.json"
+    VISUAL = CAPSTONE / "Results" / "pump" / "pump_event_visual.json"
+    REPORT = CAPSTONE / "Results" / "pump" / "pump_sensor_visual_comparison.md"
+    FIGURE = CAPSTONE / "Figures" / "pump" / "pump_sensor_visual_confusions.png"
     CLASSES = ("healthy", "inner", "outer", "ball")
 
 
@@ -918,7 +918,7 @@ def compare(run: bool = True) -> dict:
             "",
             "**Yes, for the professor's explicitly allowed component/fault-level comparison using sufficiently similar machines:** real vibration and real event-camera images both classify healthy/inner/outer/ball bearing conditions, and both now have recording-held-out Accuracy, Precision, Recall, F1, per-class results and confusion matrices. **No**, if the requirement means paired sensor-plus-camera observations from the *same physical mining pump*, a controlled modality-superiority experiment, image–sensor fusion, or prediction of a future repair date. The sensor proxy is a bearing rig, so this is a defensible component-level Pump proof of concept, **not validated mining-pump deployment**. Confirm that scope with the professor before describing the project as fully predictive maintenance.",
             "",
-            f"![Separate recording-level confusion matrices](../Figures/{FIGURE.name})",
+            f"![Separate recording-level confusion matrices](../../Figures/pump/{FIGURE.name})",
             "",
         ])
         REPORT.write_text("\n".join(lines), encoding="utf-8")
@@ -960,7 +960,7 @@ def original_xlsx(run: bool = True) -> dict:
 
     CAPSTONE = ROOT
     RAW = CAPSTONE / "Raw_Data" / "pump_bearing"
-    OUTPUT = CAPSTONE / "Results" / "pump_bearing_exploratory.json"
+    OUTPUT = CAPSTONE / "Results" / "pump" / "pump_bearing_exploratory.json"
     SAMPLE_RATE_HZ = 2_000
     WINDOW_SAMPLES = 1_024  # 0.512 seconds; non-overlapping
     CLASSES = ("healthy", "inner", "outer", "ball")
@@ -1159,8 +1159,8 @@ def uci_hydraulic(run: bool = True) -> dict:
     PROJECT = ROOT
     ARCHIVE = PROJECT / "Raw_Data/uci_hydraulic/condition_monitoring_of_hydraulic_systems.zip"
     FEATURES = PROJECT / "Processed_Data/uci_hydraulic_cycle_features.npz"
-    RESULTS = PROJECT / "Results/uci_hydraulic_pump_leakage.json"
-    FIGURE = PROJECT / "Figures/uci_hydraulic_pump_leakage.png"
+    RESULTS = PROJECT / "Results/pump/uci_hydraulic_pump_leakage.json"
+    FIGURE = PROJECT / "Figures/pump/uci_hydraulic_pump_leakage.png"
     EXPECTED_SHA256 = "24128aad2ee45eea7e6b63ebbd9992cdf25d0483a2cebefbfc13bc69079af1f2"
     SENSORS = (
         "PS1", "PS2", "PS3", "PS4", "PS5", "PS6", "EPS1", "FS1", "FS2",
@@ -1406,8 +1406,8 @@ def espset(run: bool = True) -> dict:
     PROJECT = ROOT
     ARCHIVE = PROJECT / "Raw_Data/espset_v3/features.zip"
     PROCESSED = PROJECT / "Processed_Data/espset_v3_features.npz"
-    RESULTS = PROJECT / "Results/espset_v3_binary_fault.json"
-    FIGURE = PROJECT / "Figures/espset_v3_binary_fault.png"
+    RESULTS = PROJECT / "Results/pump/espset_v3_binary_fault.json"
+    FIGURE = PROJECT / "Figures/pump/espset_v3_binary_fault.png"
     EXPECTED_SHA256 = "b8214c10ba5b5b211c00a058f2fffa3ed7ccc46f67219b4769c907baec9a724d"
     FEATURE_COLUMNS = (
         "median(8,13)", "rms(98,102)", "median(98,102)",
@@ -1586,8 +1586,8 @@ def baselines(run: bool = True) -> dict:
     from sklearn.preprocessing import StandardScaler
     from sklearn.tree import DecisionTreeClassifier
 
-    RESULT = ROOT / "Results" / "pump_baselines.json"
-    FIGURE = ROOT / "Figures" / "pump_baselines.png"
+    RESULT = ROOT / "Results" / "pump" / "pump_baselines.json"
+    FIGURE = ROOT / "Figures" / "pump" / "pump_baselines.png"
     MODELS = {
         "Majority class (control)": lambda: DummyClassifier(strategy="most_frequent"),
         "Logistic regression": lambda: make_pipeline(StandardScaler(), LogisticRegression(
@@ -1838,8 +1838,8 @@ def csv(run: bool = True) -> dict:
 
     MACHINE = "pump"
     CSV_PATH = ROOT / "Processed_Data" / f"{MACHINE}_sensor_features_4class.csv"
-    RESULT = ROOT / "Results" / f"{MACHINE}_csv_4class.json"
-    FIGURE = ROOT / "Figures" / f"{MACHINE}_csv_4class.png"
+    RESULT = ROOT / "Results" / "pump" / f"{MACHINE}_csv_4class.json"
+    FIGURE = ROOT / "Figures" / "pump" / f"{MACHINE}_csv_4class.png"
     MODELS = {
         "Majority class (control)": lambda: DummyClassifier(strategy="most_frequent"),
         "Logistic regression": lambda: make_pipeline(StandardScaler(), LogisticRegression(
@@ -2054,8 +2054,8 @@ def cnn(run: bool = True) -> dict:
 
     MACHINE = "pump"
     IMAGES = ROOT / "Images" / MACHINE
-    RESULT = ROOT / "Results" / f"{MACHINE}_cnn_4class.json"
-    FIGURE = ROOT / "Figures" / f"{MACHINE}_cnn_4class.png"
+    RESULT = ROOT / "Results" / "pump" / f"{MACHINE}_cnn_4class.json"
+    FIGURE = ROOT / "Figures" / "pump" / f"{MACHINE}_cnn_4class.png"
     LABELS = ["healthy", "inner", "outer", "ball"]
     EPOCHS, BATCH, LEARNING_RATE, SEED = 20, 32, 1e-3, 42
 
@@ -2247,8 +2247,8 @@ def cnn_pretrained(run: bool = True) -> dict:
 
     MACHINE = "pump"
     IMAGES = ROOT / "Images" / MACHINE
-    RESULT = ROOT / "Results" / f"{MACHINE}_cnn_pretrained_4class.json"
-    FIGURE = ROOT / "Figures" / f"{MACHINE}_cnn_pretrained_4class.png"
+    RESULT = ROOT / "Results" / "pump" / f"{MACHINE}_cnn_pretrained_4class.json"
+    FIGURE = ROOT / "Figures" / "pump" / f"{MACHINE}_cnn_pretrained_4class.png"
     LABELS = ["healthy", "inner", "outer", "ball"]
     MAX_EPOCHS, BATCH, LEARNING_RATE, SEED = 15, 32, 3e-4, 42
 

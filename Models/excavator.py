@@ -46,7 +46,7 @@ def intake(run: bool = True) -> dict:
     import shutil
     from pathlib import Path
 
-    MANIFEST = ROOT / "Results" / "excavator_intake.json"
+    MANIFEST = ROOT / "Results" / "excavator" / "excavator_intake.json"
     FILES = [  # (file name, destination folder in Raw_Data, size in bytes, publisher MD5)
         ("H_F5_S_Vx.csv", "cora_vibration", 111260279, "10e3d07a5647058f20d2f3565675baf7"),
         ("H_F15_S_Vx.csv", "cora_vibration", 107470262, "f75e4537077a2f2c9f8c7303aedc1d1e"),
@@ -254,8 +254,8 @@ def csv(run: bool = True) -> dict:
 
     MACHINE = "excavator"
     CSV_PATH = ROOT / "Processed_Data" / f"{MACHINE}_sensor_features_4class.csv"
-    RESULT = ROOT / "Results" / f"{MACHINE}_csv_4class.json"
-    FIGURE = ROOT / "Figures" / f"{MACHINE}_csv_4class.png"
+    RESULT = ROOT / "Results" / "excavator" / f"{MACHINE}_csv_4class.json"
+    FIGURE = ROOT / "Figures" / "excavator" / f"{MACHINE}_csv_4class.png"
     MODELS = {
         "Majority class (control)": lambda: DummyClassifier(strategy="most_frequent"),
         "Logistic regression": lambda: make_pipeline(StandardScaler(), LogisticRegression(
@@ -550,8 +550,8 @@ def cnn(run: bool = True) -> dict:
 
     MACHINE = "excavator"
     IMAGES = ROOT / "Images" / MACHINE
-    RESULT = ROOT / "Results" / f"{MACHINE}_cnn_4class.json"
-    FIGURE = ROOT / "Figures" / f"{MACHINE}_cnn_4class.png"
+    RESULT = ROOT / "Results" / "excavator" / f"{MACHINE}_cnn_4class.json"
+    FIGURE = ROOT / "Figures" / "excavator" / f"{MACHINE}_cnn_4class.png"
     LABELS = ["healthy", "bearing", "unbalance", "misalignment"]
     EPOCHS, BATCH, LEARNING_RATE, SEED = 20, 32, 1e-3, 42
 
@@ -743,8 +743,8 @@ def cnn_pretrained(run: bool = True) -> dict:
 
     MACHINE = "excavator"
     IMAGES = ROOT / "Images" / MACHINE
-    RESULT = ROOT / "Results" / f"{MACHINE}_cnn_pretrained_4class.json"
-    FIGURE = ROOT / "Figures" / f"{MACHINE}_cnn_pretrained_4class.png"
+    RESULT = ROOT / "Results" / "excavator" / f"{MACHINE}_cnn_pretrained_4class.json"
+    FIGURE = ROOT / "Figures" / "excavator" / f"{MACHINE}_cnn_pretrained_4class.png"
     LABELS = ["healthy", "bearing", "unbalance", "misalignment"]
     MAX_EPOCHS, BATCH, LEARNING_RATE, SEED = 15, 32, 3e-4, 42
 

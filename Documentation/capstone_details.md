@@ -6,8 +6,8 @@ This capstone remains an eight-equipment research project, **not** a claim that 
 
 Start with the [eight-category dataset matrix](../Dataset_Manifest/manifest.md),
 [cross-equipment methodology](methodology.md),
-[completed Pump comparison](../Results/pump_sensor_visual_comparison.md), and
-[Belt Conveyor geared-drive comparison](../Results/belt_conveyor_sensor_visual_comparison.md),
+[completed Pump comparison](../Results/pump/pump_sensor_visual_comparison.md), and
+[Belt Conveyor geared-drive comparison](../Results/belt_conveyor/belt_conveyor_sensor_visual_comparison.md),
 and [Week 4 progress checkpoint](week_04_progress.md). The
 equipment folders are currently empty local placeholders; the matrix and
 methodology preserve all eight categories without inventing results for them.
@@ -21,7 +21,7 @@ Loader, Drill Rig, and Grader—are **planned, not implemented** as matched
 sensor/image experiments. No Equipment #3 modelling is part of Week 4.
 
 **After Week 4:** the Haul/Dump Truck (electric wheel-motor bearing) was added
-as Equipment #3; see [its comparison](../Results/haul_truck_sensor_visual_comparison.md)
+as Equipment #3; see [its comparison](../Results/haul_truck/haul_truck_sensor_visual_comparison.md)
 and `Notebook/Haul_Truck.ipynb`. Five categories remain planned.
 
 ### Current evidence
@@ -37,9 +37,9 @@ One comparison that *is* made on the same data and split:
 
 - **Pump baseline value:** on held-out ESPset pumps, the selected forest scored 0.918 macro F1 and 0.842 abnormal recall, versus 0.428 macro F1 and zero abnormal recall for a most-frequent baseline.
 
-The two rows above are **sensor-only** findings. The Pump support-bearing experiment now has separately tested sensor and visual branches on the same four current-fault classes. The University of Ottawa bearing-rig sensor proxy scored **0.958 accuracy and macro F1 on 24 recording-held-out runs**; the XJTU Pump event-camera/OpenCV branch scored **1.000 accuracy and macro F1 on 24 recording-held-out runs**. Secondary held-out-operating/camera checks scored 0.958 and 0.855 macro F1, respectively. These are **not** a controlled head-to-head modality comparison: sources and operating shifts differ. The original centrifugal-pump XLSX model remains a same-recording diagnostic and is excluded from the independent comparison. See the [full Pump metrics, per-class results, confusion matrices and limitations](../Results/pump_sensor_visual_comparison.md).
+The two rows above are **sensor-only** findings. The Pump support-bearing experiment now has separately tested sensor and visual branches on the same four current-fault classes. The University of Ottawa bearing-rig sensor proxy scored **0.958 accuracy and macro F1 on 24 recording-held-out runs**; the XJTU Pump event-camera/OpenCV branch scored **1.000 accuracy and macro F1 on 24 recording-held-out runs**. Secondary held-out-operating/camera checks scored 0.958 and 0.855 macro F1, respectively. These are **not** a controlled head-to-head modality comparison: sources and operating shifts differ. The original centrifugal-pump XLSX model remains a same-recording diagnostic and is excluded from the independent comparison. See the [full Pump metrics, per-class results, confusion matrices and limitations](../Results/pump/pump_sensor_visual_comparison.md).
 
-The Belt Conveyor geared-drive analogue now has a **same-CORA-run sensor/infrared comparison** across 16 stationary experiments, with each of four speeds held out in turn. The T1-temperature model reached **0.625 accuracy / 0.564 macro F1**; the infrared/OpenCV model reached **0.500 / 0.418**. Both were below the **0.750 majority-class accuracy** control. This is a completed, leakage-aware component-level experiment, **not** an effective fault detector or a mining-conveyor validation. See the [full run-level comparison](../Results/belt_conveyor_sensor_visual_comparison.md).
+The Belt Conveyor geared-drive analogue now has a **same-CORA-run sensor/infrared comparison** across 16 stationary experiments, with each of four speeds held out in turn. The T1-temperature model reached **0.625 accuracy / 0.564 macro F1**; the infrared/OpenCV model reached **0.500 / 0.418**. Both were below the **0.750 majority-class accuracy** control. This is a completed, leakage-aware component-level experiment, **not** an effective fault detector or a mining-conveyor validation. See the [full run-level comparison](../Results/belt_conveyor/belt_conveyor_sensor_visual_comparison.md).
 
 ## Eight-category map
 
@@ -78,9 +78,9 @@ python Models/belt_conveyor.py experiment
 This intake requests only the 16 specified thermal MAT stacks (about 391 MB)
 and bounded byte ranges of their 16 original T1 CSVs (about 34 MB requested),
 not the complete 38.8 GB release. It writes the ignored local sensor cache,
-the [file/provenance record](../Results/belt_conveyor_cora_intake.json),
-[metrics](../Results/belt_conveyor_cora.json), and
-[confusion matrices](../Figures/belt_conveyor_cora_confusions.png). Raw CORA files
+the [file/provenance record](../Results/belt_conveyor/belt_conveyor_cora_intake.json),
+[metrics](../Results/belt_conveyor/belt_conveyor_cora.json), and
+[confusion matrices](../Figures/belt_conveyor/belt_conveyor_cora_confusions.png). Raw CORA files
 remain ignored.
 
 ## Reproduce the first two baselines
@@ -120,6 +120,6 @@ python Models/pump.py camera
 python Models/pump.py compare
 ```
 
-The intake script downloads only the 48 selected Ottawa MAT files (about **631 MB**) and checks each against the publisher's SHA-256; its [file manifest](../Results/pump_uottawa_intake.json) records source identifiers and hashes. The sensor model uses 0.1-second non-overlapping vibration windows, trains on 24 complete A/B speed-profile recordings and tests on 24 disjoint C/D recordings, with one averaged prediction per recording. Its [result](../Results/pump_bearing_independent.json) includes Accuracy, macro Precision/Recall/F1, per-class metrics, a most-frequent control, shuffled-run-label control, and held-out-profile folds. The visual script converts event streams into 250 ms event-count images, extracts OpenCV HOG features, trains on 20 Hz recordings and tests on separate 30 Hz recordings; its existing cached result is unchanged. The comparison script writes the [readable report](../Results/pump_sensor_visual_comparison.md) and [confusion-matrix figure](../Figures/pump_sensor_visual_confusions.png).
+The intake script downloads only the 48 selected Ottawa MAT files (about **631 MB**) and checks each against the publisher's SHA-256; its [file manifest](../Results/pump/pump_uottawa_intake.json) records source identifiers and hashes. The sensor model uses 0.1-second non-overlapping vibration windows, trains on 24 complete A/B speed-profile recordings and tests on 24 disjoint C/D recordings, with one averaged prediction per recording. Its [result](../Results/pump/pump_bearing_independent.json) includes Accuracy, macro Precision/Recall/F1, per-class metrics, a most-frequent control, shuffled-run-label control, and held-out-profile folds. The visual script converts event streams into 250 ms event-count images, extracts OpenCV HOG features, trains on 20 Hz recordings and tests on separate 30 Hz recordings; its existing cached result is unchanged. The comparison script writes the [readable report](../Results/pump/pump_sensor_visual_comparison.md) and [confusion-matrix figure](../Figures/pump/pump_sensor_visual_confusions.png).
 
 The original [centrifugal-pump vibration script](../Models/pump.py) is retained solely for provenance and can be run if its four source XLSX files are placed in ignored `Raw_Data/pump_bearing/`; its same-file score is **not** used in the independent comparison. Both main branches now use whole-run test units, but their different rigs and operating shifts still prohibit a numerical claim that one modality is better. There is no row-level sensor/image pairing or future-repair prediction. Within the professor's stated allowance for **sufficiently similar components on different machines**, this is a completed four-class, component-level sensor-plus-visual comparison—not mining-pump validation.

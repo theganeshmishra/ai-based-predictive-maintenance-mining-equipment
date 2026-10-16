@@ -19,9 +19,9 @@ dataset was added.
 - Every model is scored on **exactly the same held-out test units** as the main
   experiment (whole recordings, whole bearings or whole speeds), one prediction per
   unit, with accuracy, balanced accuracy, macro precision/recall/F1 and a confusion
-  matrix: [`pump_baselines.json`](../Results/pump_baselines.json),
-  [`belt_conveyor_baselines.json`](../Results/belt_conveyor_baselines.json),
-  [`haul_truck_baselines.json`](../Results/haul_truck_baselines.json).
+  matrix: [`pump_baselines.json`](../Results/pump/pump_baselines.json),
+  [`belt_conveyor_baselines.json`](../Results/belt_conveyor/belt_conveyor_baselines.json),
+  [`haul_truck_baselines.json`](../Results/haul_truck/haul_truck_baselines.json).
 - Pinned the exact package versions in [`requirements-lock.txt`](../requirements-lock.txt).
   With them the three equipment results reproduce exactly.
 - Sanity check: the model type used in each main experiment reproduces its saved
@@ -38,9 +38,9 @@ dataset was added.
 | Haul Truck, vibration sensor | 20 recordings | 0.500 / 0.222 | 0.850 / 0.806 | 0.750 / 0.691 | 0.900 / 0.871 |
 | Haul Truck, event camera | 9 recordings | 0.333 / 0.167 | 0.333 / 0.302 | 0.444 / 0.473 | 0.444 / 0.356 |
 
-![Pump](../Figures/pump_baselines.png)
-![Belt Conveyor](../Figures/belt_conveyor_baselines.png)
-![Haul Truck](../Figures/haul_truck_baselines.png)
+![Pump](../Figures/pump/pump_baselines.png)
+![Belt Conveyor](../Figures/belt_conveyor/belt_conveyor_baselines.png)
+![Haul Truck](../Figures/haul_truck/haul_truck_baselines.png)
 
 ## What it means
 
