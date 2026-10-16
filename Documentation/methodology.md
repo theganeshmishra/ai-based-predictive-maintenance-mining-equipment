@@ -17,14 +17,14 @@ was added as Equipment #3 (see the table below).
 
 | Equipment category | Selected monitored component and target | Experiment status |
 |---|---|---|
-| Haul/Dump Truck | Electric-drive wheel-motor bearing; healthy/inner/outer fault | Equipment #3 (after Week 4): separate bearing-held-out vibration and event-camera models complete on two different laboratory rigs; vibration well above its control, event camera near chance; see [Haul Truck report](../Results/haul_truck_sensor_visual_comparison.md) |
+| Haul/Dump Truck | Electric-drive wheel-motor bearing; healthy/inner/outer fault | Equipment #3 (after Week 4): separate bearing-held-out vibration and event-camera models complete on two different laboratory rigs; vibration well above its control, event camera near chance; see [Haul Truck report](../Results/haul_truck/haul_truck_sensor_visual_comparison.md) |
 | Excavator | Swing-drive gear wear; healthy/worn | Planned: shared CORA gear/infrared source verified; no excavator experiment yet |
 | Dozer | Final-drive gear wear; healthy/worn | Planned: same CORA source, not a separate dozer dataset; no dozer experiment yet |
 | Wheel Loader | Final-drive/transmission gear wear; healthy/worn | Planned: same CORA source; no loader experiment yet |
 | Drill Rig | Rotary-head reduction gear wear; healthy/worn | Planned: same CORA source; no matched drill-rig visual experiment yet; the earlier PHM rock-drill benchmark (since removed) was **sensor-only and a different fault target** |
 | Grader | Circle-drive gear wear; healthy/worn | Planned: same CORA source with a large mechanical-transfer caveat; no grader experiment yet |
-| Belt Conveyor | **Geared** drive-reducer wear; healthy/worn | Separate T1-temperature and infrared models complete on the same 16 CORA runs with whole-speed held-out testing; weak scores below majority-class accuracy; see [Belt Conveyor report](../Results/belt_conveyor_sensor_visual_comparison.md) |
-| Pump | Support-bearing healthy/inner/outer/ball fault | Separate recording-held-out vibration and event-camera models complete at component level; see [Pump report](../Results/pump_sensor_visual_comparison.md) |
+| Belt Conveyor | **Geared** drive-reducer wear; healthy/worn | Separate T1-temperature and infrared models complete on the same 16 CORA runs with whole-speed held-out testing; weak scores below majority-class accuracy; see [Belt Conveyor report](../Results/belt_conveyor/belt_conveyor_sensor_visual_comparison.md) |
+| Pump | Support-bearing healthy/inner/outer/ball fault | Separate recording-held-out vibration and event-camera models complete at component level; see [Pump report](../Results/pump/pump_sensor_visual_comparison.md) |
 
 The six CORA mappings reuse **one** laboratory gearbox dataset. They must never
 be counted as six independent model validations. The original Pump vibration

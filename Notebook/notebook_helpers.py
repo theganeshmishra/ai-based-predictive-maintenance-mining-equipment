@@ -104,8 +104,8 @@ def run_script(relative_path: str, *args: str, tail: int = 3) -> None:
 
 
 def load(name: str):
-    """Read a saved result file from Results/ (None if it does not exist yet)."""
-    path = RESULTS / name
+    """Read a saved result file from Results/<machine>/ (None if it does not exist yet)."""
+    path = next(RESULTS.glob(f"*/{name}"), RESULTS / name)
     return json.loads(path.read_text(encoding="utf-8")) if path.is_file() else None
 
 

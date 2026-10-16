@@ -71,7 +71,7 @@ def intake(run: bool = True) -> dict:
     CAPSTONE = ROOT
     RAW = CAPSTONE / "Raw_Data" / "cora_gear_wear"
     PROCESSED = CAPSTONE / "Processed_Data" / "cora_gear_wear"
-    INTAKE = CAPSTONE / "Results" / "belt_conveyor_cora_intake.json"
+    INTAKE = CAPSTONE / "Results" / "belt_conveyor" / "belt_conveyor_cora_intake.json"
     BASE = "https://dataverse.csuc.cat/api/access/datafile"
     CHUNK_BYTES = 256 * 1024
     N_RANGES = 8
@@ -600,10 +600,10 @@ def experiment(run: bool = True) -> dict:
     CAPSTONE = ROOT
     RAW = CAPSTONE / "Raw_Data" / "cora_gear_wear"
     PROCESSED = CAPSTONE / "Processed_Data" / "cora_gear_wear"
-    INTAKE = CAPSTONE / "Results" / "belt_conveyor_cora_intake.json"
-    RESULT = CAPSTONE / "Results" / "belt_conveyor_cora.json"
-    REPORT = CAPSTONE / "Results" / "belt_conveyor_sensor_visual_comparison.md"
-    FIGURE = CAPSTONE / "Figures" / "belt_conveyor_cora_confusions.png"
+    INTAKE = CAPSTONE / "Results" / "belt_conveyor" / "belt_conveyor_cora_intake.json"
+    RESULT = CAPSTONE / "Results" / "belt_conveyor" / "belt_conveyor_cora.json"
+    REPORT = CAPSTONE / "Results" / "belt_conveyor" / "belt_conveyor_sensor_visual_comparison.md"
+    FIGURE = CAPSTONE / "Figures" / "belt_conveyor" / "belt_conveyor_cora_confusions.png"
     CLASSES = ("healthy", "gear_worn")
     CONDITIONS = ("H", "W25", "W50", "W75")
     SPEEDS = ("F5", "F15", "F50", "F60")
@@ -811,7 +811,7 @@ def experiment(run: bool = True) -> dict:
             lines.append(f"| {name} | {values[0]} | {values[1]} |")
         lines.extend([
             "",
-            f"![Separate run-level confusion matrices](../Figures/{FIGURE.name})",
+            f"![Separate run-level confusion matrices](../../Figures/belt_conveyor/{FIGURE.name})",
             "",
             "## Data and reproducibility",
             "",
@@ -905,8 +905,8 @@ def baselines(run: bool = True) -> dict:
     from sklearn.preprocessing import StandardScaler
     from sklearn.tree import DecisionTreeClassifier
 
-    RESULT = ROOT / "Results" / "belt_conveyor_baselines.json"
-    FIGURE = ROOT / "Figures" / "belt_conveyor_baselines.png"
+    RESULT = ROOT / "Results" / "belt_conveyor" / "belt_conveyor_baselines.json"
+    FIGURE = ROOT / "Figures" / "belt_conveyor" / "belt_conveyor_baselines.png"
     MODELS = {
         "Majority class (control)": lambda: DummyClassifier(strategy="most_frequent"),
         "Logistic regression": lambda: make_pipeline(StandardScaler(), LogisticRegression(
@@ -1151,8 +1151,8 @@ def csv(run: bool = True) -> dict:
 
     MACHINE = "belt_conveyor"
     CSV_PATH = ROOT / "Processed_Data" / f"{MACHINE}_sensor_features_4class.csv"
-    RESULT = ROOT / "Results" / f"{MACHINE}_csv_4class.json"
-    FIGURE = ROOT / "Figures" / f"{MACHINE}_csv_4class.png"
+    RESULT = ROOT / "Results" / "belt_conveyor" / f"{MACHINE}_csv_4class.json"
+    FIGURE = ROOT / "Figures" / "belt_conveyor" / f"{MACHINE}_csv_4class.png"
     MODELS = {
         "Majority class (control)": lambda: DummyClassifier(strategy="most_frequent"),
         "Logistic regression": lambda: make_pipeline(StandardScaler(), LogisticRegression(
@@ -1457,8 +1457,8 @@ def cnn(run: bool = True) -> dict:
 
     MACHINE = "belt_conveyor"
     IMAGES = ROOT / "Images" / MACHINE
-    RESULT = ROOT / "Results" / f"{MACHINE}_cnn_4class.json"
-    FIGURE = ROOT / "Figures" / f"{MACHINE}_cnn_4class.png"
+    RESULT = ROOT / "Results" / "belt_conveyor" / f"{MACHINE}_cnn_4class.json"
+    FIGURE = ROOT / "Figures" / "belt_conveyor" / f"{MACHINE}_cnn_4class.png"
     LABELS = ["healthy", "wear25", "wear50", "wear75"]
     EPOCHS, BATCH, LEARNING_RATE, SEED = 20, 32, 1e-3, 42
 
@@ -1650,8 +1650,8 @@ def cnn_pretrained(run: bool = True) -> dict:
 
     MACHINE = "belt_conveyor"
     IMAGES = ROOT / "Images" / MACHINE
-    RESULT = ROOT / "Results" / f"{MACHINE}_cnn_pretrained_4class.json"
-    FIGURE = ROOT / "Figures" / f"{MACHINE}_cnn_pretrained_4class.png"
+    RESULT = ROOT / "Results" / "belt_conveyor" / f"{MACHINE}_cnn_pretrained_4class.json"
+    FIGURE = ROOT / "Figures" / "belt_conveyor" / f"{MACHINE}_cnn_pretrained_4class.png"
     LABELS = ["healthy", "wear25", "wear50", "wear75"]
     MAX_EPOCHS, BATCH, LEARNING_RATE, SEED = 15, 32, 3e-4, 42
 
@@ -1836,7 +1836,7 @@ def intake_vibration(run: bool = True) -> dict:
     import shutil
     from pathlib import Path
 
-    MANIFEST = ROOT / "Results" / "belt_conveyor_vibration_intake.json"
+    MANIFEST = ROOT / "Results" / "belt_conveyor" / "belt_conveyor_vibration_intake.json"
     FILES = [  # (file name, destination folder in Raw_Data, size in bytes, publisher MD5)
         ("H_F5_S_Vx.csv", "cora_vibration", 111260279, "10e3d07a5647058f20d2f3565675baf7"),
         ("H_F15_S_Vx.csv", "cora_vibration", 107470262, "f75e4537077a2f2c9f8c7303aedc1d1e"),
