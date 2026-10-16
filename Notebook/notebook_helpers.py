@@ -148,4 +148,9 @@ def show_week6(machine: str) -> None:
         result = load(name)
         if result:
             rows[f"{label}, per recording"] = result["recording_level"]
+    time_csv, time_cnn = load(f"{machine}_csv_4class_timesplit.json"), load(f"{machine}_cnn_pretrained_4class_timesplit.json")
+    if time_csv:
+        rows["TIME SPLIT (secondary) | CSV sensor | Random forest"] = time_csv["models"]["Random forest"]
+    if time_cnn:
+        rows["TIME SPLIT (secondary) | Camera images | pretrained ResNet18"] = time_cnn["recording_level"]
     show(rows)
