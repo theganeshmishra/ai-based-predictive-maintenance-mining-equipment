@@ -22,7 +22,7 @@ sensor/image experiments. No Equipment #3 modelling is part of Week 4.
 
 **After Week 4:** the Haul/Dump Truck (electric wheel-motor bearing) was added
 as Equipment #3; see [its comparison](../Results/haul_truck/haul_truck_sensor_visual_comparison.md)
-and `Notebook/Haul_Truck.ipynb`. Five categories remain planned.
+and `Notebook/Haul_Truck.ipynb`. In Week 6 the Excavator (CORA drive-train faults, `Notebook/Excavator.ipynb`) and the Dozer (CORA gear wear as healthy vs worn, the same 16 runs as the Belt Conveyor, `Notebook/Dozer.ipynb`; see [Week 6: Dozer](week_06_dozer.md)) were added. Three categories remain planned: Wheel Loader, Drill Rig and Grader.
 
 ### Current evidence
 
