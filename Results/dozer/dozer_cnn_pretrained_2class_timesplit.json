@@ -1,0 +1,67 @@
+{
+  "purpose": "Week 6: transfer learning (ImageNet-pretrained ResNet18) on named images, 4 classes",
+  "images": 2160,
+  "classes": [
+    "healthy",
+    "worn"
+  ],
+  "test": "TIME SPLIT (secondary): first 60% of every recording's frames train, last 30% test, 10% gap; one prediction per recording; the same recordings appear in training, so this is easier",
+  "settings": {
+    "model": "ResNet18, ImageNet weights, all layers fine-tuned",
+    "max_epochs": 15,
+    "batch": 32,
+    "learning_rate": 0.0003,
+    "optimiser": "AdamW",
+    "seed": 42,
+    "epochs_chosen_per_round": [
+      3
+    ],
+    "epoch_selection": "one training recording per class held out for validation; best validation macro F1",
+    "augmentation": "random horizontal flip, shift up to 8 px, brightness/contrast x0.8-1.2, Gaussian noise 0.05"
+  },
+  "selection_rule": "the test set is never used to choose epochs or settings",
+  "recording_level": {
+    "test_units": 16,
+    "accuracy": 1.0,
+    "balanced_accuracy": 1.0,
+    "macro_precision": 1.0,
+    "macro_recall": 1.0,
+    "macro_f1": 1.0,
+    "confusion_matrix": [
+      [
+        4,
+        0
+      ],
+      [
+        0,
+        12
+      ]
+    ],
+    "per_class_recall": {
+      "healthy": 1.0,
+      "worn": 1.0
+    }
+  },
+  "image_level": {
+    "test_units": 704,
+    "accuracy": 1.0,
+    "balanced_accuracy": 1.0,
+    "macro_precision": 1.0,
+    "macro_recall": 1.0,
+    "macro_f1": 1.0,
+    "confusion_matrix": [
+      [
+        176,
+        0
+      ],
+      [
+        0,
+        528
+      ]
+    ],
+    "per_class_recall": {
+      "healthy": 1.0,
+      "worn": 1.0
+    }
+  }
+}
