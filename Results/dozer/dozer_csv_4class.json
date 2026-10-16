@@ -1,6 +1,6 @@
 {
-  "purpose": "Week 6 professor remark: 2-class (healthy vs worn) sensor model from a CSV feature table",
-  "csv_file": "Processed_Data/dozer_sensor_features_2class.csv",
+  "purpose": "Week 6 professor remark: 4-class sensor model from a CSV feature table",
+  "csv_file": "Processed_Data/dozer_sensor_features_4class.csv",
   "rows": 4800,
   "features": [
     "log_rms",
@@ -19,80 +19,135 @@
   ],
   "classes": [
     "healthy",
-    "worn"
+    "wear25",
+    "wear50",
+    "wear75"
   ],
-  "test": "four rounds, each holding out one whole speed (1 healthy + 3 worn runs); 16 run-level predictions",
+  "test": "four rounds, each holding out one whole speed (4 runs, one per wear level); 16 run-level predictions",
   "main_model": "validation-selected",
   "selection_rule": "settings fixed in advance; no model or setting chosen from these test results",
   "notes": [
-    "CORA motor/gearbox rig, the SAME 16 runs as the Belt Conveyor (not new data); target collapsed to healthy vs gear-worn (W25/W50/W75) as planned for the Dozer final drive",
-    "4 healthy vs 12 worn runs, so always guessing 'worn' already scores 0.750: read balanced accuracy and macro F1"
+    "CORA motor/gearbox rig, the SAME 16 runs, features and 4 wear classes as the Belt Conveyor (not new data), so the scores are expected to equal the Belt Conveyor's; mapped to the Dozer track final drive"
   ],
   "models": {
     "Majority class (control)": {
       "test_units": 16,
-      "accuracy": 0.75,
-      "balanced_accuracy": 0.5,
-      "macro_precision": 0.375,
-      "macro_recall": 0.5,
-      "macro_f1": 0.4286,
+      "accuracy": 0.25,
+      "balanced_accuracy": 0.25,
+      "macro_precision": 0.0625,
+      "macro_recall": 0.25,
+      "macro_f1": 0.1,
       "confusion_matrix": [
         [
+          4,
           0,
-          4
+          0,
+          0
         ],
         [
+          4,
           0,
-          12
+          0,
+          0
+        ],
+        [
+          4,
+          0,
+          0,
+          0
+        ],
+        [
+          4,
+          0,
+          0,
+          0
         ]
       ],
       "per_class_recall": {
-        "healthy": 0.0,
-        "worn": 1.0
+        "healthy": 1.0,
+        "wear25": 0.0,
+        "wear50": 0.0,
+        "wear75": 0.0
       }
     },
     "Logistic regression": {
       "test_units": 16,
-      "accuracy": 0.5625,
-      "balanced_accuracy": 0.625,
-      "macro_precision": 0.5952,
-      "macro_recall": 0.625,
-      "macro_f1": 0.5466,
+      "accuracy": 0.375,
+      "balanced_accuracy": 0.375,
+      "macro_precision": 0.3333,
+      "macro_recall": 0.375,
+      "macro_f1": 0.3297,
       "confusion_matrix": [
         [
           3,
+          0,
+          1,
+          0
+        ],
+        [
+          2,
+          0,
+          1,
           1
         ],
         [
-          6,
-          6
+          3,
+          0,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          0,
+          2
         ]
       ],
       "per_class_recall": {
         "healthy": 0.75,
-        "worn": 0.5
+        "wear25": 0.0,
+        "wear50": 0.25,
+        "wear75": 0.5
       }
     },
     "Random forest": {
       "test_units": 16,
-      "accuracy": 0.8125,
-      "balanced_accuracy": 0.625,
-      "macro_precision": 0.9,
-      "macro_recall": 0.625,
-      "macro_f1": 0.6444,
+      "accuracy": 0.375,
+      "balanced_accuracy": 0.375,
+      "macro_precision": 0.2992,
+      "macro_recall": 0.375,
+      "macro_f1": 0.2881,
       "confusion_matrix": [
         [
+          1,
+          0,
+          1,
+          2
+        ],
+        [
+          0,
+          0,
           1,
           3
         ],
         [
+          1,
           0,
-          12
+          1,
+          2
+        ],
+        [
+          0,
+          0,
+          0,
+          4
         ]
       ],
       "per_class_recall": {
         "healthy": 0.25,
-        "worn": 1.0
+        "wear25": 0.0,
+        "wear50": 0.25,
+        "wear75": 1.0
       }
     }
   },
@@ -154,45 +209,63 @@
     "score": {
       "test_units": 16,
       "accuracy": 0.625,
-      "balanced_accuracy": 0.5833,
-      "macro_precision": 0.5667,
-      "macro_recall": 0.5833,
-      "macro_f1": 0.5636,
+      "balanced_accuracy": 0.625,
+      "macro_precision": 0.625,
+      "macro_recall": 0.625,
+      "macro_f1": 0.625,
       "confusion_matrix": [
         [
-          2,
-          2
+          3,
+          1,
+          0,
+          0
         ],
         [
-          4,
-          8
+          1,
+          1,
+          2,
+          0
+        ],
+        [
+          0,
+          2,
+          2,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          4
         ]
       ],
       "per_class_recall": {
-        "healthy": 0.5,
-        "worn": 0.6667
+        "healthy": 0.75,
+        "wear25": 0.25,
+        "wear50": 0.5,
+        "wear75": 1.0
       }
     },
     "chosen_per_round": [
       {
-        "feature_set": "vibration",
-        "model": "Extra trees",
-        "validation_macro_f1": 0.8333
-      },
-      {
-        "feature_set": "vibration+temperature (per-speed normalised)",
-        "model": "Gradient boosting",
-        "validation_macro_f1": 0.9111
-      },
-      {
         "feature_set": "vibration+temperature (per-speed normalised)",
         "model": "Extra trees",
-        "validation_macro_f1": 0.8095
+        "validation_macro_f1": 0.6944
       },
       {
         "feature_set": "vibration+temperature (per-speed normalised)",
         "model": "Logistic regression",
-        "validation_macro_f1": 0.8333
+        "validation_macro_f1": 0.7222
+      },
+      {
+        "feature_set": "vibration+temperature (per-speed normalised)",
+        "model": "SVM (RBF)",
+        "validation_macro_f1": 0.5139
+      },
+      {
+        "feature_set": "vibration+temperature (per-speed normalised)",
+        "model": "Logistic regression",
+        "validation_macro_f1": 0.6111
       }
     ]
   }
