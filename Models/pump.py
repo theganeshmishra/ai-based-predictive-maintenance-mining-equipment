@@ -20,6 +20,8 @@ Commands:
     csv             Week 6: 4-class sensor model from a CSV feature table
     cnn             Week 6: CNN with data augmentation on the named images (run export-images first)
     cnn-pretrained  Week 6: transfer learning, pretrained ResNet18 on the named images
+    train-final     train the sensor model on all data and save it (--exclude to leave recordings out)
+    predict         predict from any CSV (feature table or raw recording) and show accuracy if labels are known
     all             run sensor, then camera, then compare
 
 Raw data stays in Raw_Data/ and Processed_Data/ (not in Git).
@@ -2398,7 +2400,146 @@ def cnn_pretrained(run: bool = True) -> dict:
     return locals()
 
 
+# ====================================================================================================
+# train-final / predict: use the trained sensor model on any CSV
+# ====================================================================================================
+
+def train_final(run: bool = True) -> dict:
+    """Train the sensor model on all of this machine's data and save it (Processed_Data/models/, not in Git).
+
+    Use --exclude to leave recordings out of training (for example to test on them fairly with `predict`).
+    Model: random forest on the "base" features (fixed settings).
+    """
+    import argparse
+    import json
+
+    import joblib
+    import numpy as np
+    from sklearn.ensemble import RandomForestClassifier
+
+    MODEL_PATH = ROOT / "Processed_Data" / "models" / "pump_sensor_model.joblib"
+
+    def main():
+        parser = argparse.ArgumentParser(description=train_final.__doc__)
+        parser.add_argument("--exclude", nargs="*", default=[], help="recording names to leave out, e.g. B-C-1.mat")
+        args = parser.parse_args()
+        table, feature_sets, labels, *_ = csv(run=False)["build_table"]()
+        feature_sets = feature_sets if isinstance(feature_sets, dict) else {"base": feature_sets}
+        features = feature_sets["base"]
+        unknown = set(args.exclude) - set(table["unit"])
+        if unknown:
+            raise SystemExit(f"Unknown recording names: {sorted(unknown)}")
+        train = ~table["unit"].isin(args.exclude)
+        model = RandomForestClassifier(n_estimators=250, max_features="sqrt", class_weight="balanced_subsample",
+                                       min_samples_leaf=2, random_state=42, n_jobs=-1)
+        model.fit(table.loc[train, features].to_numpy(dtype=np.float64), table.loc[train, "class"])
+        MODEL_PATH.parent.mkdir(parents=True, exist_ok=True)
+        joblib.dump({"model": model, "features": features, "classes": list(labels), "machine": "pump",
+                     "trained_units": sorted(set(table.loc[train, "unit"])), "excluded_units": sorted(args.exclude)},
+                    MODEL_PATH)
+        print(f"Trained on {int(train.sum())} rows from {table.loc[train, 'unit'].nunique()} recordings "
+              f"(excluded: {args.exclude or 'none'}); saved {MODEL_PATH.relative_to(ROOT)}")
+
+    if run:
+        main()
+    return locals()
+
+
+def predict(run: bool = True) -> dict:
+    """Predict the condition from any CSV and, if the true class is known, show the accuracy.
+
+    The CSV can be (1) a feature table with the same columns as Processed_Data/pump_sensor_features_4class.csv
+    (optional 'unit' and 'class' columns), or (2) a raw sensor recording: one column of accelerometer values sampled at 200 kHz (at least 1.6 million values).
+    Give the true class with --label (raw recordings) or a 'class' column (feature tables) to get accuracy.
+    Run `train-final` first (it runs automatically if no saved model exists).
+    """
+    import argparse
+    import json
+    from pathlib import Path
+
+    import joblib
+    import numpy as np
+    import pandas as pd
+    from sklearn.metrics import accuracy_score, confusion_matrix
+
+    MODEL_PATH = ROOT / "Processed_Data" / "models" / "pump_sensor_model.joblib"
+
+    def read_any(path):
+        table = pd.read_csv(path)
+        if all(_is_number(c) for c in table.columns):   # no header row: plain column(s) of numbers
+            table = pd.read_csv(path, header=None)
+        return table
+
+    def _is_number(text):
+        try:
+            float(text)
+            return True
+        except (TypeError, ValueError):
+            return False
+
+    def raw_features(values, args):
+        return sensor(run=False)["extract"](values)
+
+
+    def main():
+        parser = argparse.ArgumentParser(description=predict.__doc__)
+        parser.add_argument("--csv", required=True, help="path to the CSV file")
+        parser.add_argument("--label", help="true class of a raw recording, one of: healthy, inner, outer, ball")
+        parser.add_argument("--column", help="column holding the raw signal (default: first numeric column)")
+        
+        args = parser.parse_args()
+        if not MODEL_PATH.is_file():
+            print("No saved model yet: training it now (train-final).")
+            train_final(run=False)["main"]()
+        saved = joblib.load(MODEL_PATH)
+        model, features = saved["model"], saved["features"]
+        path = Path(args.csv)
+        table = read_any(path)
+        if set(features) <= set(table.columns):
+            mode = "feature table"
+            x = table[features].to_numpy(dtype=np.float64)
+            units = table["unit"].astype(str).to_numpy() if "unit" in table.columns else np.full(len(table), path.stem)
+            truth = table["class"].astype(str).to_numpy() if "class" in table.columns else np.full(len(table), args.label)
+        else:
+            mode = "raw recording"
+            column = args.column if args.column is not None else table.select_dtypes("number").columns[0]
+            values = table[column if column in table.columns else int(column)].to_numpy(dtype=np.float64)
+            x = raw_features(values, args)
+            units = np.full(len(x), path.stem)
+            truth = np.full(len(x), args.label)
+        probabilities = model.predict_proba(x)
+        rows = []
+        for unit in dict.fromkeys(units):
+            mask = units == unit
+            mean = probabilities[mask].mean(axis=0)
+            rows.append({"recording": unit, "predicted": model.classes_[int(mean.argmax())],
+                         "confidence": round(float(mean.max()), 3), "true": truth[mask][0], "rows": int(mask.sum())})
+        report = pd.DataFrame(rows)
+        print(f"Model: {saved['machine']} random forest | input: {mode} | {len(report)} recording(s)")
+        print(report.to_string(index=False))
+        seen = sorted(set(report["recording"]) & set(saved["trained_units"]))
+        if seen:
+            print(f"WARNING: {seen} were used to train this model, so their accuracy is optimistic. "
+                  "Use train-final --exclude ... to test fairly.")
+        known = report["true"].notna() & (report["true"].astype(str) != "None")
+        if known.any():
+            k = report[known]
+            print(f"\nAccuracy: {accuracy_score(k['true'], k['predicted']):.3f} "
+                  f"({int((k['true'] == k['predicted']).sum())}/{len(k)} recordings)")
+            labels = saved["classes"]
+            print("Confusion matrix (rows = true, columns = predicted):", labels)
+            print(confusion_matrix(k["true"], k["predicted"], labels=labels))
+        else:
+            print("\nNo true class given (use --label or a 'class' column) so accuracy cannot be computed.")
+
+    if run:
+        main()
+    return locals()
+
+
 COMMANDS = {
+    "train-final": train_final,
+    "predict": predict,
     "intake": intake,
     "sensor": sensor,
     "camera": camera,

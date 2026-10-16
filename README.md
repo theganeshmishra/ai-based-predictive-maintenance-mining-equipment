@@ -52,6 +52,8 @@ The [eight-equipment matrix](Dataset_Manifest/manifest.md) records source access
 
 - **Week 6 (professor's remarks):** 4 classes for every machine, CSV sensor models, named images, CNNs with data augmentation and a pretrained ResNet18. Pump reaches 90%+ on both sensor (0.958) and images (1.000) under the main test. Under the main test Haul Truck reaches 0.800–0.867 / 0.417, Belt Conveyor 0.625 / 0.562 and Excavator 0.188 / 0.312; on a separately labelled, easier time-split test (later part of recordings already seen) they reach 1.000 / 0.913, 1.000 / 1.000 and 0.938 / 0.938. [Week 6 summary](Documentation/week_06_professor_remarks.md).
 
+- **Test any CSV:** `python Models/<machine>.py train-final` saves the sensor model, and `python Models/<machine>.py predict --csv file.csv [--label CLASS] [--speed F15]` predicts from a feature table or a raw recording and prints the accuracy when the true class is known (each notebook has a matching 'Try your own CSV' cell).
+
 These models classify **current component condition**, not a future repair date or remaining useful life. No image and sensor observation from unrelated sources is falsely paired. The four planned equipment categories do not inherit completed results from the shared gearbox benchmark.
 
 ## Work locally in VS Code
