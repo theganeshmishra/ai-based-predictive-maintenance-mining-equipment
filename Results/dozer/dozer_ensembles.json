@@ -1,0 +1,119 @@
+{
+  "purpose": "Proposal Week 6: advanced ensemble comparison (XGBoost / LightGBM)",
+  "machine": "dozer",
+  "features": "vibration (13 sensor features, same CSV as Week 6)",
+  "classes": [
+    "healthy",
+    "worn"
+  ],
+  "test": "four rounds, each holding out one whole speed (1 healthy + 3 worn runs); 16 run-level predictions",
+  "selection_rule": "settings fixed in advance; no model or setting chosen from these test results",
+  "notes": [
+    "CORA motor/gearbox rig, the SAME 16 runs as the Belt Conveyor (not new data); target collapsed to healthy vs gear-worn (W25/W50/W75) as planned for the Dozer final drive",
+    "4 healthy vs 12 worn runs, so always guessing 'worn' already scores 0.750: read balanced accuracy and macro F1"
+  ],
+  "models": {
+    "Majority class (control)": {
+      "test_units": 16,
+      "accuracy": 0.75,
+      "balanced_accuracy": 0.5,
+      "macro_f1": 0.4286,
+      "train_seconds": 0.0,
+      "confusion_matrix": [
+        [
+          0,
+          4
+        ],
+        [
+          0,
+          12
+        ]
+      ]
+    },
+    "Random forest": {
+      "test_units": 16,
+      "accuracy": 0.8125,
+      "balanced_accuracy": 0.625,
+      "macro_f1": 0.6444,
+      "train_seconds": 3.4,
+      "confusion_matrix": [
+        [
+          1,
+          3
+        ],
+        [
+          0,
+          12
+        ]
+      ]
+    },
+    "Extra trees": {
+      "test_units": 16,
+      "accuracy": 0.75,
+      "balanced_accuracy": 0.75,
+      "macro_f1": 0.7091,
+      "train_seconds": 1.72,
+      "confusion_matrix": [
+        [
+          3,
+          1
+        ],
+        [
+          3,
+          9
+        ]
+      ]
+    },
+    "Gradient boosting (scikit-learn)": {
+      "test_units": 16,
+      "accuracy": 0.6875,
+      "balanced_accuracy": 0.5417,
+      "macro_f1": 0.5429,
+      "train_seconds": 8.15,
+      "confusion_matrix": [
+        [
+          1,
+          3
+        ],
+        [
+          2,
+          10
+        ]
+      ]
+    },
+    "XGBoost": {
+      "test_units": 16,
+      "accuracy": 0.8125,
+      "balanced_accuracy": 0.625,
+      "macro_f1": 0.6444,
+      "train_seconds": 0.97,
+      "confusion_matrix": [
+        [
+          1,
+          3
+        ],
+        [
+          0,
+          12
+        ]
+      ]
+    },
+    "LightGBM": {
+      "test_units": 16,
+      "accuracy": 0.75,
+      "balanced_accuracy": 0.5833,
+      "macro_f1": 0.5897,
+      "train_seconds": 1.11,
+      "confusion_matrix": [
+        [
+          1,
+          3
+        ],
+        [
+          1,
+          11
+        ]
+      ]
+    }
+  }
+}

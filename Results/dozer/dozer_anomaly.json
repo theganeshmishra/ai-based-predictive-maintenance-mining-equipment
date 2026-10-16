@@ -1,0 +1,201 @@
+{
+  "purpose": "Week 7 (proposal): anomaly detection trained on healthy data only",
+  "machine": "dozer",
+  "features": "vibration (13 sensor features, same CSV as Week 6)",
+  "test": "four rounds, each holding out one whole speed (1 healthy + 3 worn runs); 16 run-level predictions",
+  "threshold_rule": "highest leave-one-recording-out score among the healthy TRAINING recordings; no test data and no fault labels are used to train or to set it",
+  "notes": [
+    "CORA motor/gearbox rig, the SAME 16 runs as the Belt Conveyor (not new data); target collapsed to healthy vs gear-worn (W25/W50/W75) as planned for the Dozer final drive",
+    "4 healthy vs 12 worn runs, so always guessing 'worn' already scores 0.750: read balanced accuracy and macro F1"
+  ],
+  "detectors": {
+    "Isolation Forest": {
+      "test_recordings": 16,
+      "healthy": 4,
+      "faulty": 12,
+      "roc_auc": 0.625,
+      "fault_detection_rate": 0.0,
+      "false_alarm_rate": 0.0,
+      "accuracy": 0.25,
+      "detection_rate_per_fault": {
+        "worn": 0.0
+      },
+      "recordings": [
+        {
+          "unit": "H_F5_S",
+          "class": "healthy",
+          "margin": -0.0992
+        },
+        {
+          "unit": "W25_F5_S",
+          "class": "worn",
+          "margin": -0.1152
+        },
+        {
+          "unit": "W50_F5_S",
+          "class": "worn",
+          "margin": -0.1095
+        },
+        {
+          "unit": "W75_F5_S",
+          "class": "worn",
+          "margin": -0.1169
+        },
+        {
+          "unit": "H_F15_S",
+          "class": "healthy",
+          "margin": -0.1874
+        },
+        {
+          "unit": "W25_F15_S",
+          "class": "worn",
+          "margin": -0.1531
+        },
+        {
+          "unit": "W50_F15_S",
+          "class": "worn",
+          "margin": -0.1838
+        },
+        {
+          "unit": "W75_F15_S",
+          "class": "worn",
+          "margin": -0.1659
+        },
+        {
+          "unit": "H_F50_S",
+          "class": "healthy",
+          "margin": -0.0851
+        },
+        {
+          "unit": "W25_F50_S",
+          "class": "worn",
+          "margin": -0.0795
+        },
+        {
+          "unit": "W50_F50_S",
+          "class": "worn",
+          "margin": -0.0729
+        },
+        {
+          "unit": "W75_F50_S",
+          "class": "worn",
+          "margin": -0.0643
+        },
+        {
+          "unit": "H_F60_S",
+          "class": "healthy",
+          "margin": -0.0918
+        },
+        {
+          "unit": "W25_F60_S",
+          "class": "worn",
+          "margin": -0.0422
+        },
+        {
+          "unit": "W50_F60_S",
+          "class": "worn",
+          "margin": -0.0432
+        },
+        {
+          "unit": "W75_F60_S",
+          "class": "worn",
+          "margin": -0.0578
+        }
+      ]
+    },
+    "One-Class SVM": {
+      "test_recordings": 16,
+      "healthy": 4,
+      "faulty": 12,
+      "roc_auc": 0.5833,
+      "fault_detection_rate": 0.3333,
+      "false_alarm_rate": 0.25,
+      "accuracy": 0.4375,
+      "detection_rate_per_fault": {
+        "worn": 0.3333
+      },
+      "recordings": [
+        {
+          "unit": "H_F5_S",
+          "class": "healthy",
+          "margin": -3.336
+        },
+        {
+          "unit": "W25_F5_S",
+          "class": "worn",
+          "margin": -3.6295
+        },
+        {
+          "unit": "W50_F5_S",
+          "class": "worn",
+          "margin": -3.1096
+        },
+        {
+          "unit": "W75_F5_S",
+          "class": "worn",
+          "margin": -3.7163
+        },
+        {
+          "unit": "H_F15_S",
+          "class": "healthy",
+          "margin": -7.8421
+        },
+        {
+          "unit": "W25_F15_S",
+          "class": "worn",
+          "margin": -4.773
+        },
+        {
+          "unit": "W50_F15_S",
+          "class": "worn",
+          "margin": -7.001
+        },
+        {
+          "unit": "W75_F15_S",
+          "class": "worn",
+          "margin": -5.4453
+        },
+        {
+          "unit": "H_F50_S",
+          "class": "healthy",
+          "margin": -2.3982
+        },
+        {
+          "unit": "W25_F50_S",
+          "class": "worn",
+          "margin": -0.1302
+        },
+        {
+          "unit": "W50_F50_S",
+          "class": "worn",
+          "margin": -0.0657
+        },
+        {
+          "unit": "W75_F50_S",
+          "class": "worn",
+          "margin": 1.319
+        },
+        {
+          "unit": "H_F60_S",
+          "class": "healthy",
+          "margin": 1.6304
+        },
+        {
+          "unit": "W25_F60_S",
+          "class": "worn",
+          "margin": 4.5737
+        },
+        {
+          "unit": "W50_F60_S",
+          "class": "worn",
+          "margin": 4.5106
+        },
+        {
+          "unit": "W75_F60_S",
+          "class": "worn",
+          "margin": 4.2129
+        }
+      ]
+    }
+  }
+}

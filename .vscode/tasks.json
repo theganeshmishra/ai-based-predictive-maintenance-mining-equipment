@@ -70,13 +70,31 @@
       }
     },
     {
-      "label": "Run all 4 machines",
+      "label": "Run Dozer",
+      "type": "process",
+      "command": "${workspaceFolder}/.venv/bin/python",
+      "windows": {
+        "command": "${workspaceFolder}\\.venv\\Scripts\\python.exe"
+      },
+      "args": [
+        "${workspaceFolder}/Models/dozer.py",
+        "all"
+      ],
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      }
+    },
+    {
+      "label": "Run all 5 machines",
       "dependsOrder": "sequence",
       "dependsOn": [
         "Run Pump",
         "Run Belt Conveyor",
         "Run Haul Truck",
-        "Run Excavator"
+        "Run Excavator",
+        "Run Dozer"
       ],
       "group": {
         "kind": "build",
