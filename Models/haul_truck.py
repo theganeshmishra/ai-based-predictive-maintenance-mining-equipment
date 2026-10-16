@@ -65,7 +65,7 @@ def intake(run: bool = True) -> dict:
     CAPSTONE = ROOT
     SENSOR_RAW = CAPSTONE / "Raw_Data" / "uods_vafdc"
     VISUAL_RAW = CAPSTONE / "Raw_Data" / "xjtu_dv_rotor"
-    MANIFEST = CAPSTONE / "Results" / "haul_truck_intake.json"
+    MANIFEST = CAPSTONE / "Results" / "haul_truck" / "haul_truck_intake.json"
     MENDELEY = "https://data.mendeley.com/public-api/datasets/y2px5tg92h"
     FOLDERS = {"H": "1_Healthy", "I": "2_Inner_Race_Faults", "O": "3_Outer_Race_Faults"}
     NAME = re.compile(r"^([HIOB])_(\d+)_([012])\.mat$")
@@ -318,15 +318,15 @@ def experiment(run: bool = True) -> dict:
 
 
     CAPSTONE = ROOT
-    INTAKE = CAPSTONE / "Results" / "haul_truck_intake.json"
+    INTAKE = CAPSTONE / "Results" / "haul_truck" / "haul_truck_intake.json"
     SENSOR_RAW = CAPSTONE / "Raw_Data" / "uods_vafdc"
     ROTOR_ZIP = CAPSTONE / "Raw_Data" / "xjtu_dv_rotor" / "XJTU-DV-Rotor.zip"
     ROTOR_URL = "https://zenodo.org/api/records/17447083/files/XJTU-DV-Rotor.zip/content"
     SENSOR_CACHE = CAPSTONE / "Processed_Data" / "haul_truck_sensor_features.npz"
     RUN_CACHE = CAPSTONE / "Processed_Data" / "haul_truck_event_runs"
-    RESULT = CAPSTONE / "Results" / "haul_truck_wheel_motor_bearing.json"
-    REPORT = CAPSTONE / "Results" / "haul_truck_sensor_visual_comparison.md"
-    FIGURE = CAPSTONE / "Figures" / "haul_truck_confusions.png"
+    RESULT = CAPSTONE / "Results" / "haul_truck" / "haul_truck_wheel_motor_bearing.json"
+    REPORT = CAPSTONE / "Results" / "haul_truck" / "haul_truck_sensor_visual_comparison.md"
+    FIGURE = CAPSTONE / "Figures" / "haul_truck" / "haul_truck_confusions.png"
     CLASSES = ("healthy", "inner", "outer")
     CODE_TO_CLASS = {"H": "healthy", "I": "inner", "O": "outer"}
     SAMPLE_RATE_HZ = 42_000
@@ -579,7 +579,7 @@ def experiment(run: bool = True) -> dict:
             row("CV: shuffled training labels", v["train_1000_test_2000_rpm"]["shuffled_training_labels_control"]),
             row("CV: held-out camera angle (3 folds)", v["held_out_camera_angle"]["model"]),
             "",
-            "![Confusion matrices](../Figures/haul_truck_confusions.png)",
+            "![Confusion matrices](../../Figures/haul_truck/haul_truck_confusions.png)",
             "",
             "## Interpretation",
             "",
@@ -689,8 +689,8 @@ def baselines(run: bool = True) -> dict:
     from sklearn.preprocessing import StandardScaler
     from sklearn.tree import DecisionTreeClassifier
 
-    RESULT = ROOT / "Results" / "haul_truck_baselines.json"
-    FIGURE = ROOT / "Figures" / "haul_truck_baselines.png"
+    RESULT = ROOT / "Results" / "haul_truck" / "haul_truck_baselines.json"
+    FIGURE = ROOT / "Figures" / "haul_truck" / "haul_truck_baselines.png"
     MODELS = {
         "Majority class (control)": lambda: DummyClassifier(strategy="most_frequent"),
         "Logistic regression": lambda: make_pipeline(StandardScaler(), LogisticRegression(
@@ -932,8 +932,8 @@ def csv(run: bool = True) -> dict:
 
     MACHINE = "haul_truck"
     CSV_PATH = ROOT / "Processed_Data" / f"{MACHINE}_sensor_features_4class.csv"
-    RESULT = ROOT / "Results" / f"{MACHINE}_csv_4class.json"
-    FIGURE = ROOT / "Figures" / f"{MACHINE}_csv_4class.png"
+    RESULT = ROOT / "Results" / "haul_truck" / f"{MACHINE}_csv_4class.json"
+    FIGURE = ROOT / "Figures" / "haul_truck" / f"{MACHINE}_csv_4class.png"
     MODELS = {
         "Majority class (control)": lambda: DummyClassifier(strategy="most_frequent"),
         "Logistic regression": lambda: make_pipeline(StandardScaler(), LogisticRegression(
@@ -1010,7 +1010,7 @@ def csv(run: bool = True) -> dict:
 
     def build_table():
         e = experiment(run=False)
-        intake = json.loads((ROOT / "Results" / "haul_truck_intake.json").read_text(encoding="utf-8"))
+        intake = json.loads((ROOT / "Results" / "haul_truck" / "haul_truck_intake.json").read_text(encoding="utf-8"))
         if "sensor_ball" not in intake:
             raise SystemExit("Ball-fault files missing: run  python Models/haul_truck.py intake --sensor-only --with-ball")
         files = intake["sensor"]["files"] + intake["sensor_ball"]["files"]
@@ -1223,8 +1223,8 @@ def cnn(run: bool = True) -> dict:
 
     MACHINE = "haul_truck"
     IMAGES = ROOT / "Images" / MACHINE
-    RESULT = ROOT / "Results" / f"{MACHINE}_cnn_4class.json"
-    FIGURE = ROOT / "Figures" / f"{MACHINE}_cnn_4class.png"
+    RESULT = ROOT / "Results" / "haul_truck" / f"{MACHINE}_cnn_4class.json"
+    FIGURE = ROOT / "Figures" / "haul_truck" / f"{MACHINE}_cnn_4class.png"
     LABELS = ["healthy", "inner", "outer", "ball"]
     EPOCHS, BATCH, LEARNING_RATE, SEED = 20, 32, 1e-3, 42
 
@@ -1416,8 +1416,8 @@ def cnn_pretrained(run: bool = True) -> dict:
 
     MACHINE = "haul_truck"
     IMAGES = ROOT / "Images" / MACHINE
-    RESULT = ROOT / "Results" / f"{MACHINE}_cnn_pretrained_4class.json"
-    FIGURE = ROOT / "Figures" / f"{MACHINE}_cnn_pretrained_4class.png"
+    RESULT = ROOT / "Results" / "haul_truck" / f"{MACHINE}_cnn_pretrained_4class.json"
+    FIGURE = ROOT / "Figures" / "haul_truck" / f"{MACHINE}_cnn_pretrained_4class.png"
     LABELS = ["healthy", "inner", "outer", "ball"]
     MAX_EPOCHS, BATCH, LEARNING_RATE, SEED = 15, 32, 3e-4, 42
 

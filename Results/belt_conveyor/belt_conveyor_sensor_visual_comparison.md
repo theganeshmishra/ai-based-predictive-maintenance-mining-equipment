@@ -54,7 +54,7 @@ Rows are actual and columns predicted, in the order **healthy, gear-worn**.
 | Infrared healthy | 1 | 3 |
 | Infrared worn | 5 | 7 |
 
-![Separate run-level confusion matrices](../Figures/belt_conveyor_cora_confusions.png)
+![Separate run-level confusion matrices](../../Figures/belt_conveyor/belt_conveyor_cora_confusions.png)
 
 ## Data and reproducibility
 

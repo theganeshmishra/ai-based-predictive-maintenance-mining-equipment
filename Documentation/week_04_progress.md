@@ -9,21 +9,21 @@ maintenance or eight completed equipment models.
 - Identified eight equipment categories and locked the
   [component/fault dataset matrix](../Dataset_Manifest/manifest.md), including
   source access, labels, licences, sample units, and transfer limitations.
-- Completed the [Pump support-bearing sensor-versus-event-image experiment](../Results/pump_sensor_visual_comparison.md)
+- Completed the [Pump support-bearing sensor-versus-event-image experiment](../Results/pump/pump_sensor_visual_comparison.md)
   on healthy, inner-race, outer-race, and ball-fault conditions. The sensor
   model scored **0.958 accuracy / 0.958 macro F1** on 24 held-out recordings;
   the visual model scored **1.000 / 1.000** on 24 held-out recordings. A harder
   held-out camera-configuration visual check scored **0.854 accuracy / 0.855
   macro F1**. Different rigs and operating shifts prevent a claim that one
   modality is better; neither branch uses mining-pump repair histories.
-- Completed the [Belt Conveyor geared-drive analogue sensor-versus-infrared experiment](../Results/belt_conveyor_sensor_visual_comparison.md)
+- Completed the [Belt Conveyor geared-drive analogue sensor-versus-infrared experiment](../Results/belt_conveyor/belt_conveyor_sensor_visual_comparison.md)
   on the same 16 CORA laboratory runs, with each speed held out in turn.
   Healthy versus gear-worn T1 temperature scored **0.625 accuracy / 0.564 macro
   F1**; infrared/OpenCV scored **0.500 / 0.418**. Both accuracies are below the
   **0.750 majority-class control**. This is a completed comparison with weak
   generalization, **not** a successful fault detector or a mining-conveyor
-  validation. The [run-level metrics](../Results/belt_conveyor_cora.json) and
-  [confusion matrices](../Figures/belt_conveyor_cora_confusions.png) preserve
+  validation. The [run-level metrics](../Results/belt_conveyor/belt_conveyor_cora.json) and
+  [confusion matrices](../Figures/belt_conveyor/belt_conveyor_cora_confusions.png) preserve
   the measured findings.
 
 ## Planned, deliberately not implemented yet
