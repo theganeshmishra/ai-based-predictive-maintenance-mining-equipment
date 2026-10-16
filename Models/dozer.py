@@ -5,7 +5,8 @@ shows the results.
 
 IMPORTANT: there is no public dozer dataset with matching sensor and camera data. As planned in the
 dataset manifest, the Dozer final drive uses the SAME 16 CORA gear-wear runs as the Belt Conveyor
-(not new data), with the Dozer's own target: healthy vs gear-worn (W25/W50/W75 together).
+(not new data), with the same 4 classes: healthy, wear25, wear50, wear75. Its scores are
+therefore expected to match the Belt Conveyor's; it maps that rig to the dozer track final drive.
 The data loading is shared with Models/belt_conveyor.py.
 
 Usage:
@@ -13,7 +14,7 @@ Usage:
     python Models/dozer.py <command> --help
 
 Commands:
-    csv             2-class sensor model from a CSV feature table (--split time for the secondary test)
+    csv             4-class sensor model from a CSV feature table (--split time for the secondary test)
     export-images   save the infrared images as named files in Images/dozer/<class>/ (local only)
     cnn             small CNN with data augmentation on the named images (run export-images first)
     cnn-pretrained  pretrained ResNet18 on the named images (--split time for the secondary test)
@@ -103,7 +104,7 @@ def export_images(run: bool = True) -> dict:
 
     def export():
         rows = []
-        labels = {"H": "healthy", "W25": "worn", "W50": "worn", "W75": "worn"}
+        labels = {"H": "healthy", "W25": "wear25", "W50": "wear50", "W75": "wear75"}
         for condition, label in labels.items():
             for speed in ("F5", "F15", "F50", "F60"):
                 unit = f"{condition}_{speed}_S"
@@ -113,7 +114,7 @@ def export_images(run: bool = True) -> dict:
                     if k % 3:
                         continue  # every 3rd frame: 150 images per run
                     gray = cv2.cvtColor(cv2.resize(np.asarray(frame), (WIDTH, HEIGHT)), cv2.COLOR_RGB2GRAY)
-                    write(rows, label, unit, speed, f"{MACHINE}_{label}_{condition}_{speed}_f{k:03d}.png", gray)
+                    write(rows, label, unit, speed, f"{MACHINE}_{label}_{speed}_f{k:03d}.png", gray)
                 print(f"{unit}: done", flush=True)
         return rows
 
@@ -140,7 +141,7 @@ def export_images(run: bool = True) -> dict:
 
 
 def csv(run: bool = True) -> dict:
-    """Week 6: write the sensor features to a CSV table and train 2-class (healthy vs worn) models on it.
+    """Week 6: write the sensor features to a CSV table and train 4-class models on it.
 
     The CSV has one row per window (or run) with its recording, class and feature values. A
     majority-class control, logistic regression and a random forest (the main model) are trained
@@ -168,9 +169,9 @@ def csv(run: bool = True) -> dict:
     from sklearn.preprocessing import StandardScaler
 
     MACHINE = "dozer"
-    CSV_PATH = ROOT / "Processed_Data" / f"{MACHINE}_sensor_features_2class.csv"
-    RESULT = ROOT / "Results" / "dozer" / f"{MACHINE}_csv_2class.json"
-    FIGURE = ROOT / "Figures" / "dozer" / f"{MACHINE}_csv_2class.png"
+    CSV_PATH = ROOT / "Processed_Data" / f"{MACHINE}_sensor_features_4class.csv"
+    RESULT = ROOT / "Results" / "dozer" / f"{MACHINE}_csv_4class.json"
+    FIGURE = ROOT / "Figures" / "dozer" / f"{MACHINE}_csv_4class.png"
     MODELS = {
         "Majority class (control)": lambda: DummyClassifier(strategy="most_frequent"),
         "Logistic regression": lambda: make_pipeline(StandardScaler(), LogisticRegression(
@@ -284,15 +285,12 @@ def csv(run: bool = True) -> dict:
         return out
 
     def build_table():
-        """Same CORA runs and features as the Belt Conveyor; the planned Dozer target is healthy vs gear-worn."""
-        table, feature_sets, _, folds, _, _ = BELT.csv(run=False)["build_table"]()
-        table["wear_level"] = table["class"]
-        table["class"] = np.where(table["class"] == "healthy", "healthy", "worn")
-        return (table, feature_sets, ["healthy", "worn"], folds,
-                "four rounds, each holding out one whole speed (1 healthy + 3 worn runs); 16 run-level predictions",
-                ["CORA motor/gearbox rig, the SAME 16 runs as the Belt Conveyor (not new data); target collapsed to "
-                 "healthy vs gear-worn (W25/W50/W75) as planned for the Dozer final drive",
-                 "4 healthy vs 12 worn runs, so always guessing 'worn' already scores 0.750: read balanced accuracy and macro F1"])
+        """Same CORA runs, features and 4 wear classes as the Belt Conveyor (no public dozer dataset exists)."""
+        table, feature_sets, labels, folds, _, _ = BELT.csv(run=False)["build_table"]()
+        return (table, feature_sets, labels, folds,
+                "four rounds, each holding out one whole speed (4 runs, one per wear level); 16 run-level predictions",
+                ["CORA motor/gearbox rig, the SAME 16 runs, features and 4 wear classes as the Belt Conveyor (not new "
+                 "data), so the scores are expected to equal the Belt Conveyor's; mapped to the Dozer track final drive"])
     INNER_GROUP = "speed"
 
     def candidate_models():
@@ -392,7 +390,7 @@ def csv(run: bool = True) -> dict:
                 predicted += p
             scores[name] = score(actual, predicted, labels)
         result = {
-            "purpose": "Week 6 professor remark: 2-class (healthy vs worn) sensor model from a CSV feature table",
+            "purpose": "Week 6 professor remark: 4-class sensor model from a CSV feature table",
             "csv_file": str(CSV_PATH.relative_to(ROOT)).replace("\\", "/"),
             "rows": int(len(table)), "features": feature_names, "classes": labels,
             "test": test_description, "main_model": "Random forest",
@@ -461,9 +459,9 @@ def cnn(run: bool = True) -> dict:
 
     MACHINE = "dozer"
     IMAGES = ROOT / "Images" / MACHINE
-    RESULT = ROOT / "Results" / "dozer" / f"{MACHINE}_cnn_2class.json"
-    FIGURE = ROOT / "Figures" / "dozer" / f"{MACHINE}_cnn_2class.png"
-    LABELS = ["healthy", "worn"]
+    RESULT = ROOT / "Results" / "dozer" / f"{MACHINE}_cnn_4class.json"
+    FIGURE = ROOT / "Figures" / "dozer" / f"{MACHINE}_cnn_4class.png"
+    LABELS = ["healthy", "wear25", "wear50", "wear75"]
     EPOCHS, BATCH, LEARNING_RATE, SEED = 20, 32, 1e-3, 42
 
     def unit_predictions(probabilities, classes, y, units):
@@ -602,7 +600,7 @@ def cnn(run: bool = True) -> dict:
             print(f"fold {number}: trained on {int(train_mask.sum())} images, tested on {int(test.sum())}", flush=True)
         result = {
             "purpose": "Week 6 professor remark: CNN with data augmentation on named images, 4 classes",
-            "images": int(len(rows)), "classes": LABELS, "test": "four rounds, each holding out one whole speed (4 runs, one per gear condition); 16 run-level predictions",
+            "images": int(len(rows)), "classes": LABELS, "test": "four rounds, each holding out one whole speed (4 runs, one per wear level); 16 run-level predictions",
             "settings": {"epochs": EPOCHS, "batch": BATCH, "learning_rate": LEARNING_RATE, "seed": SEED,
                          "architecture": "4 conv blocks (16, 32, 64, 64 channels) + global average pool + dropout 0.3",
                          "augmentation": "random horizontal flip, shift up to 8 px, brightness/contrast x0.8-1.2, Gaussian noise 0.05",
@@ -626,7 +624,7 @@ def cnn(run: bool = True) -> dict:
 
 
 def cnn_pretrained(run: bool = True) -> dict:
-    """Week 6: transfer learning, an ImageNet-pretrained ResNet18 fine-tuned on the named images (2 classes).
+    """Week 6: transfer learning, an ImageNet-pretrained ResNet18 fine-tuned on the named images (4 classes).
 
     Same held-out test as before. Inside each training set, one recording per class is held out for
     validation to choose the number of epochs (1-15); the model is then retrained on the whole training
@@ -651,9 +649,9 @@ def cnn_pretrained(run: bool = True) -> dict:
 
     MACHINE = "dozer"
     IMAGES = ROOT / "Images" / MACHINE
-    RESULT = ROOT / "Results" / "dozer" / f"{MACHINE}_cnn_pretrained_2class.json"
-    FIGURE = ROOT / "Figures" / "dozer" / f"{MACHINE}_cnn_pretrained_2class.png"
-    LABELS = ["healthy", "worn"]
+    RESULT = ROOT / "Results" / "dozer" / f"{MACHINE}_cnn_pretrained_4class.json"
+    FIGURE = ROOT / "Figures" / "dozer" / f"{MACHINE}_cnn_pretrained_4class.png"
+    LABELS = ["healthy", "wear25", "wear50", "wear75"]
     MAX_EPOCHS, BATCH, LEARNING_RATE, SEED = 15, 32, 3e-4, 42
 
     def unit_predictions(probabilities, classes, y, units):
@@ -757,7 +755,7 @@ def cnn_pretrained(run: bool = True) -> dict:
         args = parser.parse_args()
         nonlocal RESULT, FIGURE
         rows = read_index()
-        test_description = "four rounds, each holding out one whole speed (4 runs, one per gear condition); 16 run-level predictions"
+        test_description = "four rounds, each holding out one whole speed (4 runs, one per wear level); 16 run-level predictions"
         if args.split == "time":
             import re
             position = {row["file"]: int(re.search(r"_f(\d{3})\.png$", row["file"]).group(1)) / 450 for row in rows}
@@ -866,7 +864,7 @@ def train_final(run: bool = True) -> dict:
 def predict(run: bool = True) -> dict:
     """Predict the condition from any CSV and, if the true class is known, show the accuracy.
 
-    The CSV can be (1) a feature table with the same columns as Processed_Data/dozer_sensor_features_2class.csv
+    The CSV can be (1) a feature table with the same columns as Processed_Data/dozer_sensor_features_4class.csv
     (optional 'unit' and 'class' columns), or (2) a raw sensor recording: one column of CORA Vx vibration values sampled at 3 kHz (give --speed).
     Give the true class with --label (raw recordings) or a 'class' column (feature tables) to get accuracy.
     Run `train-final` first (it runs automatically if no saved model exists).
@@ -905,7 +903,7 @@ def predict(run: bool = True) -> dict:
     def main():
         parser = argparse.ArgumentParser(description=predict.__doc__)
         parser.add_argument("--csv", required=True, help="path to the CSV file")
-        parser.add_argument("--label", help="true class of a raw recording, one of: healthy, worn")
+        parser.add_argument("--label", help="true class of a raw recording, one of: healthy, wear25, wear50, wear75")
         parser.add_argument("--column", help="column holding the raw signal (default: first numeric column)")
         parser.add_argument("--speed", choices=("F5", "F15", "F50", "F60"), help="speed setting of a raw recording")
         args = parser.parse_args()

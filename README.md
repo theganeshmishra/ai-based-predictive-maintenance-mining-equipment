@@ -4,7 +4,7 @@ Saskatchewan Polytechnic PROJ 613 capstone · Ganesh Mishra, Lakshya Sharma and 
 
 For each machine we detect the **current fault condition of one component** two separate ways, from a **sensor** (vibration or temperature, as a CSV of features) and from a **camera** (CNN on images), and compare them. All data are public laboratory datasets used as stand-ins for mining equipment, so the results show the method, not a validated mine-site detector.
 
-## Results (accuracy; 4 classes, Dozer 2)
+## Results (accuracy, 4 classes)
 
 | Machine (component) | Classes | Sensor | Images (CNN) | Sensor, time split | Images, time split |
 |---|---|---:|---:|---:|---:|
@@ -12,11 +12,11 @@ For each machine we detect the **current fault condition of one component** two 
 | **Haul Truck** (wheel-motor bearing) | healthy, inner, outer, ball | 0.800–0.867 | 0.417 | 1.000 | 0.913 |
 | **Belt Conveyor** (geared drive) | healthy, wear 25/50/75% | 0.625 | 0.562 | 1.000 | 1.000 |
 | **Excavator** (swing drive) | healthy, bearing, unbalance, misalignment | 0.188 | 0.312 | 0.938 | 0.938 |
-| **Dozer** (track final drive)* | healthy, worn | 0.625–0.812 (balanced 0.58–0.63) | 0.750 (balanced 0.50) | 1.000 | 1.000 |
+| **Dozer** (track final drive)* | healthy, wear 25/50/75% | 0.625 | CNN retraining | 1.000 | CNN retraining |
 
 - **Main test (columns 3–4):** whole recordings, bearings or speeds the model never saw in training. This is the fair result.
 - **Time split (columns 5–6):** the model trains on the first 60% of each recording and is tested on the last 30%. This test is easier because the same recordings appear in training, so it is reported separately.
-- \*The Dozer reuses the **same 16 CORA runs as the Belt Conveyor** (no public dozer dataset exists) with its planned 2-class target; 12 of 16 runs are worn, so guessing 'worn' already scores 0.750 — see balanced accuracy.
+- \*The Dozer reuses the **same 16 CORA runs, features and 4 classes as the Belt Conveyor** (no public dozer dataset exists), so its scores equal the Belt Conveyor's; it is a mapping, not separate evidence.
 - Only the Pump reaches 90% on the main test. The reasons and caveats are in the [Week 6 summary](Documentation/week_06_professor_remarks.md).
 - XGBoost and LightGBM were compared with the random forest on the same tests and did not beat it ([Week 6 ensembles](Documentation/week_06_ensembles.md)).
 

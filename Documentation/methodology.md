@@ -19,7 +19,7 @@ was added as Equipment #3 (see the table below).
 |---|---|---|
 | Haul/Dump Truck | Electric-drive wheel-motor bearing; healthy/inner/outer fault | Equipment #3 (after Week 4): separate bearing-held-out vibration and event-camera models complete on two different laboratory rigs; vibration well above its control, event camera near chance; see [Haul Truck report](../Results/haul_truck/haul_truck_sensor_visual_comparison.md) |
 | Excavator | Swing-drive motor/gearbox faults; healthy/bearing/unbalance/misalignment | Done in Week 6 on the CORA drive-fault runs (a different CORA task from gear wear); see [Week 6](week_06_professor_remarks.md) |
-| Dozer | Final-drive gear wear; healthy/worn | Done in Week 6 on the **same 16 CORA gear-wear runs as the Belt Conveyor** (not a separate dozer dataset), 2-class target; see [Week 6: Dozer](week_06_dozer.md) |
+| Dozer | Final-drive gear wear; healthy/25/50/75% wear | Done in Week 6 on the **same 16 CORA gear-wear runs and 4 classes as the Belt Conveyor** (not a separate dozer dataset), so the scores equal the Belt Conveyor's; see [Week 6: Dozer](week_06_dozer.md) |
 | Wheel Loader | Final-drive/transmission gear wear; healthy/worn | Planned: same CORA source; no loader experiment yet |
 | Drill Rig | Rotary-head reduction gear wear; healthy/worn | Planned: same CORA source; no matched drill-rig visual experiment yet; the earlier PHM rock-drill benchmark (since removed) was **sensor-only and a different fault target** |
 | Grader | Circle-drive gear wear; healthy/worn | Planned: same CORA source with a large mechanical-transfer caveat; no grader experiment yet |
