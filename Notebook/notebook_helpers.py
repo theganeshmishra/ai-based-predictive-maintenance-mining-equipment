@@ -15,12 +15,16 @@ import platform
 import runpy
 import subprocess
 import sys
+import warnings
 import zipfile
 from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
 
 import pandas as pd
 from IPython.display import display
+
+# Harmless scikit-learn/joblib notice that can repeat thousands of times inside a notebook kernel
+warnings.filterwarnings("ignore", message=r".*sklearn\.utils\.parallel\.delayed.*")
 
 _here = Path.cwd().resolve()
 ROOT = next(p for p in (_here, *_here.parents) if (p / "Models").is_dir() and (p / "Results").is_dir())
@@ -154,3 +158,24 @@ def show_week6(machine: str) -> None:
     if time_cnn:
         rows["TIME SPLIT (secondary) | Camera images | pretrained ResNet18"] = time_cnn["recording_level"]
     show(rows)
+
+
+def show_ensembles(machine: str) -> None:
+    """Display the proposal Week 6 ensemble comparison (XGBoost / LightGBM vs the other models)."""
+    rows = {}
+    for suffix, label in (("", "MAIN"), ("_timesplit", "TIME SPLIT (secondary)")):
+        result = load(f"{machine}_ensembles{suffix}.json")
+        for name, block in (result or {}).get("models", {}).items():
+            rows[f"{label} | {name}"] = {**metrics(block), "train_seconds": block["train_seconds"]}
+    display(pd.DataFrame(rows).T)
+
+
+def show_anomaly(machine: str) -> None:
+    """Display the Week 7 anomaly detection results (trained on healthy data only)."""
+    rows = {}
+    for suffix, label in (("", "MAIN"), ("_timesplit", "TIME SPLIT (secondary)")):
+        result = load(f"{machine}_anomaly{suffix}.json")
+        for name, block in (result or {}).get("detectors", {}).items():
+            rows[f"{label} | {name}"] = {k: block[k] for k in ("roc_auc", "fault_detection_rate", "false_alarm_rate",
+                                                                "accuracy", "test_recordings")}
+    display(pd.DataFrame(rows).T)
