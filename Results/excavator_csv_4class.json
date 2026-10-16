@@ -1,0 +1,252 @@
+{
+  "purpose": "Week 6 professor remark: 4-class sensor model from a CSV feature table",
+  "csv_file": "Processed_Data/excavator_sensor_features_4class.csv",
+  "rows": 4800,
+  "features": [
+    "log_rms",
+    "kurtosis",
+    "skewness",
+    "crest_factor",
+    "peak_order",
+    "log_ratio_2x_1x",
+    "order_power_0.5_1.5",
+    "order_power_1.5_2.5",
+    "order_power_2.5_3.5",
+    "order_power_3.5_5.5",
+    "order_power_5.5_8.5",
+    "order_power_8.5_12.5",
+    "order_power_12.5_20.5"
+  ],
+  "classes": [
+    "healthy",
+    "bearing",
+    "unbalance",
+    "misalignment"
+  ],
+  "test": "four rounds, each holding out one whole speed (4 runs, one per class); 16 run-level predictions",
+  "main_model": "validation-selected",
+  "selection_rule": "settings fixed in advance; no model or setting chosen from these test results",
+  "notes": [
+    "CORA motor/gearbox rig, Vx vibration at 3 kHz; one row per 1 s window, every 10th window of each run",
+    "features in shaft orders (frequency / speed setting) so they line up across the held-out speed"
+  ],
+  "models": {
+    "Majority class (control)": {
+      "test_units": 16,
+      "accuracy": 0.25,
+      "balanced_accuracy": 0.25,
+      "macro_precision": 0.0625,
+      "macro_recall": 0.25,
+      "macro_f1": 0.1,
+      "confusion_matrix": [
+        [
+          0,
+          4,
+          0,
+          0
+        ],
+        [
+          0,
+          4,
+          0,
+          0
+        ],
+        [
+          0,
+          4,
+          0,
+          0
+        ],
+        [
+          0,
+          4,
+          0,
+          0
+        ]
+      ],
+      "per_class_recall": {
+        "healthy": 0.0,
+        "bearing": 1.0,
+        "unbalance": 0.0,
+        "misalignment": 0.0
+      }
+    },
+    "Logistic regression": {
+      "test_units": 16,
+      "accuracy": 0.1875,
+      "balanced_accuracy": 0.1875,
+      "macro_precision": 0.075,
+      "macro_recall": 0.1875,
+      "macro_f1": 0.1071,
+      "confusion_matrix": [
+        [
+          3,
+          0,
+          0,
+          1
+        ],
+        [
+          2,
+          0,
+          0,
+          2
+        ],
+        [
+          2,
+          1,
+          0,
+          1
+        ],
+        [
+          3,
+          0,
+          1,
+          0
+        ]
+      ],
+      "per_class_recall": {
+        "healthy": 0.75,
+        "bearing": 0.0,
+        "unbalance": 0.0,
+        "misalignment": 0.0
+      }
+    },
+    "Random forest": {
+      "test_units": 16,
+      "accuracy": 0.25,
+      "balanced_accuracy": 0.25,
+      "macro_precision": 0.1839,
+      "macro_recall": 0.25,
+      "macro_f1": 0.209,
+      "confusion_matrix": [
+        [
+          2,
+          0,
+          1,
+          1
+        ],
+        [
+          2,
+          0,
+          1,
+          1
+        ],
+        [
+          1,
+          0,
+          1,
+          2
+        ],
+        [
+          2,
+          0,
+          1,
+          1
+        ]
+      ],
+      "per_class_recall": {
+        "healthy": 0.5,
+        "bearing": 0.0,
+        "unbalance": 0.25,
+        "misalignment": 0.25
+      }
+    }
+  },
+  "validation_selected": {
+    "description": "feature set and model chosen per round on validation groups inside the training set only (candidates: Random forest, Extra trees, Gradient boosting, SVM (RBF), Logistic regression; feature sets: vibration, vibration (per-speed normalised))",
+    "feature_sets": {
+      "vibration": [
+        "log_rms",
+        "kurtosis",
+        "skewness",
+        "crest_factor",
+        "peak_order",
+        "log_ratio_2x_1x",
+        "order_power_0.5_1.5",
+        "order_power_1.5_2.5",
+        "order_power_2.5_3.5",
+        "order_power_3.5_5.5",
+        "order_power_5.5_8.5",
+        "order_power_8.5_12.5",
+        "order_power_12.5_20.5"
+      ],
+      "vibration (per-speed normalised)": [
+        "log_rms_per_speed",
+        "kurtosis_per_speed",
+        "skewness_per_speed",
+        "crest_factor_per_speed",
+        "peak_order_per_speed",
+        "log_ratio_2x_1x_per_speed",
+        "order_power_0.5_1.5_per_speed",
+        "order_power_1.5_2.5_per_speed",
+        "order_power_2.5_3.5_per_speed",
+        "order_power_3.5_5.5_per_speed",
+        "order_power_5.5_8.5_per_speed",
+        "order_power_8.5_12.5_per_speed",
+        "order_power_12.5_20.5_per_speed"
+      ]
+    },
+    "score": {
+      "test_units": 16,
+      "accuracy": 0.1875,
+      "balanced_accuracy": 0.1875,
+      "macro_precision": 0.0982,
+      "macro_recall": 0.1875,
+      "macro_f1": 0.1288,
+      "confusion_matrix": [
+        [
+          2,
+          0,
+          1,
+          1
+        ],
+        [
+          1,
+          0,
+          0,
+          3
+        ],
+        [
+          2,
+          0,
+          0,
+          2
+        ],
+        [
+          3,
+          0,
+          0,
+          1
+        ]
+      ],
+      "per_class_recall": {
+        "healthy": 0.5,
+        "bearing": 0.0,
+        "unbalance": 0.0,
+        "misalignment": 0.25
+      }
+    },
+    "chosen_per_round": [
+      {
+        "feature_set": "vibration (per-speed normalised)",
+        "model": "Extra trees",
+        "validation_macro_f1": 0.3333
+      },
+      {
+        "feature_set": "vibration (per-speed normalised)",
+        "model": "Random forest",
+        "validation_macro_f1": 0.2833
+      },
+      {
+        "feature_set": "vibration",
+        "model": "Logistic regression",
+        "validation_macro_f1": 0.1917
+      },
+      {
+        "feature_set": "vibration",
+        "model": "Gradient boosting",
+        "validation_macro_f1": 0.2556
+      }
+    ]
+  }
+}

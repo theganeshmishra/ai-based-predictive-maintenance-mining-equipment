@@ -16,6 +16,8 @@ Commands:
     export-images   Week 6: save the camera images as named files in Images/<machine>/ (local only)
     csv             Week 6: 4-class sensor model from a CSV feature table
     cnn             Week 6: CNN with data augmentation on the named images (run export-images first)
+    cnn-pretrained  Week 6: transfer learning, pretrained ResNet18 on the named images
+    intake-vibration  check the CORA vibration files downloaded in a browser (MD5) and file them
     all             run experiment
 
 Raw data stays in Raw_Data/ and Processed_Data/ (not in Git).
@@ -1201,31 +1203,146 @@ def csv(run: bool = True) -> dict:
         plt.close(figure)
 
 
+    VIB_ORDERS = ((0.5, 1.5), (1.5, 2.5), (2.5, 3.5), (3.5, 5.5), (5.5, 8.5), (8.5, 12.5), (12.5, 20.5))
+    VIB_NAMES = ["log_rms", "kurtosis", "skewness", "crest_factor", "peak_order", "log_ratio_2x_1x",
+                 *(f"order_power_{lo}_{hi}" for lo, hi in VIB_ORDERS)]
+
+    def vibration_rows(run_name, label, speed):
+        """CORA Vx vibration (3 kHz) in 1 s windows (every 10th window), measured in shaft orders.
+
+        Orders = frequency / speed setting, so 1x, 2x and higher multiples line up across speeds:
+        unbalance shows at 1x, misalignment at 2x, bearing and gear damage at higher orders and spikes.
+        """
+        cache = ROOT / "Processed_Data" / "cora_vibration" / f"{run_name}_Vx_features.csv"
+        if cache.is_file():
+            return pd.read_csv(cache)
+        source = ROOT / "Raw_Data" / "cora_vibration" / f"{run_name}_Vx.csv"
+        if not source.is_file():
+            raise SystemExit(f"Missing {source.relative_to(ROOT)}: download it and run the intake command")
+        values = pd.read_csv(source, header=None, dtype=np.float64).iloc[:, 0].to_numpy()
+        rate, shaft = 3000, float(speed[1:])
+        n = len(values) // rate
+        windows = values[: n * rate].reshape(n, rate)[::10]
+        centered = windows - windows.mean(axis=1, keepdims=True)
+        std = np.maximum(centered.std(axis=1), 1e-12)
+        freq = np.fft.rfftfreq(rate, d=1 / rate)
+        power = np.abs(np.fft.rfft(centered * np.hanning(rate), axis=1)) ** 2
+        order = freq / shaft
+        usable = (order >= 0.5) & (order < 20.5)
+        share = power[:, usable] / np.maximum(power[:, usable].sum(axis=1, keepdims=True), 1e-12)
+        o = order[usable]
+        bands = [share[:, (o >= lo) & (o < hi)].sum(axis=1) for lo, hi in VIB_ORDERS]
+        frame = pd.DataFrame(np.column_stack([
+            np.log(std), (centered ** 4).mean(axis=1) / std ** 4, (centered ** 3).mean(axis=1) / std ** 3,
+            np.abs(centered).max(axis=1) / std, o[np.argmax(share, axis=1)],
+            np.log((bands[1] + 1e-9) / (bands[0] + 1e-9)), *bands]), columns=VIB_NAMES)
+        frame.insert(0, "window", np.arange(len(frame)))
+        frame.insert(0, "class", label)
+        frame.insert(0, "speed", speed)
+        frame.insert(0, "unit", run_name)
+        cache.parent.mkdir(parents=True, exist_ok=True)
+        frame.to_csv(cache, index=False)
+        return frame
+
+    def per_speed_normalised(table, names):
+        """Rescale each feature within each speed using all recordings at that speed together (no labels used).
+
+        Removes what each speed 'sounds like', so the model compares machines running at the same speed.
+        It assumes several machines are recorded at each speed, as in this dataset.
+        """
+        out = []
+        for name in names:
+            column = f"{name}_per_speed"
+            grouped = table.groupby("speed")[name]
+            table[column] = (table[name] - grouped.transform("mean")) / grouped.transform("std").replace(0, 1)
+            out.append(column)
+        return out
+
     def build_table():
         e = experiment(run=False)
         samples = np.load(e["PROCESSED"] / "t1_bounded_samples.npz")
         labels = {"H": "healthy", "W25": "wear25", "W50": "wear50", "W75": "wear75"}
-        names = ["mean", "std", "p10", "p90", "minimum", "maximum", "slope"]
-        rows = []
+        frames = []
         for run_name in e["RUNS"]:
             condition, speed = run_name.split("_")[:2]
-            for window, values in enumerate(samples[run_name]):  # 8 windows of 6,000 T1 readings
-                v = values.astype(np.float64)
-                rows.append({"unit": run_name, "speed": speed, "window": window, "class": labels[condition],
-                             "mean": v.mean(), "std": v.std(), "p10": np.percentile(v, 10), "p90": np.percentile(v, 90),
-                             "minimum": v.min(), "maximum": v.max(), "slope": np.polyfit(np.arange(len(v)), v, 1)[0]})
-        table = pd.DataFrame(rows)
+            frame = vibration_rows(run_name, labels[condition], speed)
+            t1 = samples[run_name].astype(np.float64)
+            frame["t1_mean"], frame["t1_std"] = t1.mean(), t1.std()
+            frame["t1_slope"] = np.polyfit(np.arange(8), t1.mean(axis=1), 1)[0]
+            frames.append(frame)
+        table = pd.concat(frames, ignore_index=True)
         folds = lambda t: [(t["speed"] == s).to_numpy() for s in e["SPEEDS"]]
-        return (table, names, ["healthy", "wear25", "wear50", "wear75"], folds,
+        normalised = per_speed_normalised(table, VIB_NAMES + ["t1_mean", "t1_std", "t1_slope"])
+        return (table, {"vibration": VIB_NAMES, "vibration+temperature": VIB_NAMES + ["t1_mean", "t1_std", "t1_slope"],
+                        "vibration+temperature (per-speed normalised)": normalised},
+                ["healthy", "wear25", "wear50", "wear75"], folds,
                 "four rounds, each holding out one whole speed (4 runs, one per wear level); 16 run-level predictions",
-                ["CORA T1 temperature only (vibration files could not be fetched: the repository now shows a bot check); one row per 6 s window, 8 windows per run",
-                 "only one run per wear level and speed, so each class has 3 training runs per round"])
+                ["CORA Vx vibration (3 kHz, 1 s windows, every 10th window) in shaft orders, optionally with run-level T1 temperature",
+                 "only one run per wear level and speed"])
+    INNER_GROUP = "speed"
 
+    def candidate_models():
+        from sklearn.ensemble import ExtraTreesClassifier, HistGradientBoostingClassifier
+        from sklearn.svm import SVC
+        return {
+            "Random forest": lambda: RandomForestClassifier(
+                n_estimators=250, max_features="sqrt", class_weight="balanced_subsample",
+                min_samples_leaf=2, random_state=42, n_jobs=-1),
+            "Extra trees": lambda: ExtraTreesClassifier(
+                n_estimators=300, max_features="sqrt", class_weight="balanced",
+                min_samples_leaf=2, random_state=42, n_jobs=-1),
+            "Gradient boosting": lambda: HistGradientBoostingClassifier(
+                max_iter=200, learning_rate=0.05, class_weight="balanced", random_state=42),
+            "SVM (RBF)": lambda: make_pipeline(StandardScaler(), SVC(
+                C=10.0, gamma="scale", class_weight="balanced", probability=True, random_state=42)),
+            "Logistic regression": lambda: make_pipeline(StandardScaler(), LogisticRegression(
+                C=1.0, class_weight="balanced", solver="lbfgs", max_iter=5000, random_state=42)),
+        }
+
+    def nested_selection(table, feature_sets, labels, outer_folds, inner_group):
+        """Pick a feature set and model on validation data inside each training set, then test once.
+
+        Inner validation holds out whole groups (recordings, bearings or speeds) of the training set
+        only; the outer test units are never used for the choice.
+        """
+        from sklearn.metrics import f1_score
+        from sklearn.model_selection import GroupKFold
+
+        y = table["class"].to_numpy()
+        units = table["unit"].to_numpy()
+        groups = table[inner_group].to_numpy()
+        models = candidate_models()
+        actual, predicted, chosen = [], [], []
+        for test in outer_folds:
+            train_idx = np.flatnonzero(~test)
+            n_splits = min(4, len(set(groups[train_idx])))
+            inner = list(GroupKFold(n_splits=n_splits).split(train_idx, groups=groups[train_idx]))
+            best, best_score = None, -1.0
+            for set_name, names in feature_sets.items():
+                x = table[names].to_numpy(dtype=np.float64)
+                for model_name, factory in models.items():
+                    f1s = []
+                    for fit_part, val_part in inner:
+                        fit_rows, val_rows = train_idx[fit_part], train_idx[val_part]
+                        model = factory().fit(x[fit_rows], y[fit_rows])
+                        a, p = unit_predictions(model.predict_proba(x[val_rows]), model.classes_, y[val_rows], units[val_rows])
+                        f1s.append(f1_score(a, p, labels=labels, average="macro", zero_division=0))
+                    if float(np.mean(f1s)) > best_score:
+                        best, best_score = (set_name, model_name), float(np.mean(f1s))
+            x = table[feature_sets[best[0]]].to_numpy(dtype=np.float64)
+            model = models[best[1]]().fit(x[train_idx], y[train_idx])
+            a, p = unit_predictions(model.predict_proba(x[test]), model.classes_, y[test], units[test])
+            actual += a
+            predicted += p
+            chosen.append({"feature_set": best[0], "model": best[1], "validation_macro_f1": round(best_score, 4)})
+        return score(actual, predicted, labels), chosen
 
     def main():
         parser = argparse.ArgumentParser(description=csv.__doc__)
         parser.parse_args()
         table, feature_names, labels, folds, test_description, notes = build_table()
+        feature_sets = feature_names if isinstance(feature_names, dict) else {"base": feature_names}
+        feature_names = next(iter(feature_sets.values()))
         CSV_PATH.parent.mkdir(parents=True, exist_ok=True)
         table.to_csv(CSV_PATH, index=False)
         x = table[feature_names].to_numpy(dtype=np.float64)
@@ -1251,12 +1368,20 @@ def csv(run: bool = True) -> dict:
             "selection_rule": "settings fixed in advance; no model or setting chosen from these test results",
             "notes": notes, "models": scores,
         }
+        selected, chosen = nested_selection(table, feature_sets, labels, folds(table), INNER_GROUP)
+        result["validation_selected"] = {
+            "description": "feature set and model chosen per round on validation groups inside the training set only "
+                           "(candidates: " + ", ".join(candidate_models()) + "; feature sets: " + ", ".join(feature_sets) + ")",
+            "feature_sets": feature_sets, "score": selected, "chosen_per_round": chosen}
+        result["main_model"] = "validation-selected"
         RESULT.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
-        main_score = scores["Random forest"]
+        main_score = selected
         plot_matrix(main_score["confusion_matrix"], labels,
-                    f"{MACHINE}: CSV sensor model (random forest), accuracy {main_score['accuracy']:.3f}", FIGURE)
+                    f"{MACHINE}: CSV sensor model (validation-selected), accuracy {main_score['accuracy']:.3f}", FIGURE)
         for name, s in scores.items():
             print(f"{name:<26} accuracy {s['accuracy']:.3f}  macro F1 {s['macro_f1']:.3f}  ({s['test_units']} test units)")
+        print(f"Validation-selected model: accuracy {selected['accuracy']:.3f}  macro F1 {selected['macro_f1']:.3f}  "
+              f"(choices: {[c['feature_set'] + ' / ' + c['model'] for c in chosen]})")
         print(f"Saved {CSV_PATH.relative_to(ROOT)}, {RESULT.relative_to(ROOT)} and {FIGURE.relative_to(ROOT)}")
 
     if run:
@@ -1461,6 +1586,265 @@ def cnn(run: bool = True) -> dict:
     return locals()
 
 
+# ====================================================================================================
+# cnn-pretrained: Week 6, transfer learning with a pretrained ResNet18 on the named images
+# ====================================================================================================
+
+def cnn_pretrained(run: bool = True) -> dict:
+    """Week 6: transfer learning, an ImageNet-pretrained ResNet18 fine-tuned on the named images (4 classes).
+
+    Same held-out test as before. Inside each training set, one recording per class is held out for
+    validation to choose the number of epochs (1-15); the model is then retrained on the whole training
+    set for that many epochs and tested once. Augmentation as in `cnn`. Run `export-images` first.
+    """
+    import argparse
+    import csv as csv_module
+    import json
+    import random
+
+    import cv2
+    import matplotlib
+
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    import numpy as np
+    import torch
+    from sklearn.metrics import (accuracy_score, balanced_accuracy_score, confusion_matrix, f1_score,
+                                 precision_recall_fscore_support)
+    from torch import nn
+    from torchvision.models import ResNet18_Weights, resnet18
+
+    MACHINE = "belt_conveyor"
+    IMAGES = ROOT / "Images" / MACHINE
+    RESULT = ROOT / "Results" / f"{MACHINE}_cnn_pretrained_4class.json"
+    FIGURE = ROOT / "Figures" / f"{MACHINE}_cnn_pretrained_4class.png"
+    LABELS = ["healthy", "wear25", "wear50", "wear75"]
+    MAX_EPOCHS, BATCH, LEARNING_RATE, SEED = 15, 32, 3e-4, 42
+
+    def unit_predictions(probabilities, classes, y, units):
+        """One prediction per test unit (recording or run): average the class probabilities of its rows."""
+        actual, predicted = [], []
+        for unit in sorted(set(units)):
+            rows = units == unit
+            if len(set(y[rows])) != 1:
+                raise ValueError(f"Mixed labels within {unit}")
+            actual.append(y[rows][0])
+            predicted.append(classes[int(np.argmax(probabilities[rows].mean(axis=0)))])
+        return actual, predicted
+
+    def score(actual, predicted, labels):
+        precision, recall, f1, support = precision_recall_fscore_support(actual, predicted, labels=labels, zero_division=0)
+        return {
+            "test_units": len(actual),
+            "accuracy": round(float(accuracy_score(actual, predicted)), 4),
+            "balanced_accuracy": round(float(balanced_accuracy_score(actual, predicted)), 4),
+            "macro_precision": round(float(precision.mean()), 4),
+            "macro_recall": round(float(recall.mean()), 4),
+            "macro_f1": round(float(f1.mean()), 4),
+            "confusion_matrix": confusion_matrix(actual, predicted, labels=labels).tolist(),
+            "per_class_recall": {label: round(float(r), 4) for label, r in zip(labels, recall)},
+        }
+
+    def plot_matrix(matrix, labels, title, path):
+        array = np.asarray(matrix)
+        figure, axis = plt.subplots(figsize=(1.4 + 1.1 * len(labels), 1.2 + 1.0 * len(labels)))
+        axis.imshow(array, cmap="Blues", vmin=0)
+        axis.set_xticks(range(len(labels)), labels, rotation=30)
+        axis.set_yticks(range(len(labels)), labels)
+        axis.set_xlabel("Predicted")
+        axis.set_ylabel("Actual")
+        axis.set_title(title, fontsize=9)
+        for i in range(len(labels)):
+            for j in range(len(labels)):
+                axis.text(j, i, str(array[i, j]), ha="center", va="center",
+                          color="white" if array[i, j] > array.max() / 2 else "black")
+        figure.tight_layout()
+        path.parent.mkdir(parents=True, exist_ok=True)
+        figure.savefig(path, dpi=140)
+        plt.close(figure)
+
+    _small = cnn(run=False)
+    read_index, augment = _small["read_index"], _small["augment"]
+
+    def load(rows):
+        images = []
+        for row in rows:
+            image = cv2.imread(str(IMAGES / row["file"]), cv2.IMREAD_COLOR)
+            if image is None:
+                raise FileNotFoundError(f"Missing image {row['file']}: run export-images first")
+            image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB).astype(np.float32).transpose(2, 0, 1)
+            images.append((image - image.mean()) / (image.std() + 1e-6))
+        return np.stack(images)
+
+    def new_model():
+        model = resnet18(weights=ResNet18_Weights.IMAGENET1K_V1)
+        model.fc = nn.Linear(model.fc.in_features, len(LABELS))
+        return model
+
+    def fit(x, y, epochs, val=None):
+        random.seed(SEED)
+        np.random.seed(SEED)
+        torch.manual_seed(SEED)
+        generator = torch.Generator().manual_seed(SEED)
+        model = new_model()
+        counts = np.bincount(y, minlength=len(LABELS)).astype(np.float32)
+        loss_fn = nn.CrossEntropyLoss(weight=torch.tensor(counts.sum() / (len(LABELS) * np.maximum(counts, 1))))
+        optimiser = torch.optim.AdamW(model.parameters(), lr=LEARNING_RATE, weight_decay=1e-4)
+        xs, ys = torch.tensor(x), torch.tensor(y, dtype=torch.long)
+        history = []
+        for _ in range(epochs):
+            model.train()
+            order = torch.randperm(len(xs), generator=generator)
+            for start in range(0, len(xs), BATCH):
+                batch = order[start:start + BATCH]
+                if len(batch) < 2:
+                    continue
+                optimiser.zero_grad()
+                loss_fn(model(augment(xs[batch], generator)), ys[batch]).backward()
+                optimiser.step()
+            if val is not None:
+                vx, vnames, vunits = val
+                a, p = unit_predictions(probabilities(model, vx), np.asarray(LABELS), vnames, vunits)
+                history.append(f1_score(a, p, labels=LABELS, average="macro", zero_division=0))
+        return model, history
+
+    def probabilities(model, x):
+        model.eval()
+        with torch.no_grad():
+            return np.concatenate([torch.softmax(model(torch.tensor(x[i:i + 128])), dim=1).numpy()
+                                   for i in range(0, len(x), 128)])
+
+    def main():
+        parser = argparse.ArgumentParser(description=cnn_pretrained.__doc__)
+        parser.parse_args()
+        rows = read_index()
+        x = load(rows)
+        label_index = {label: i for i, label in enumerate(LABELS)}
+        y = np.asarray([label_index[row["class"]] for row in rows])
+        names = np.asarray([row["class"] for row in rows])
+        units = np.asarray([row["unit"] for row in rows])
+        groups = np.asarray([row["group"] for row in rows])
+        rng = np.random.default_rng(SEED)
+        unit_actual, unit_predicted, image_actual, image_predicted, epochs_chosen = [], [], [], [], []
+        for number, test in enumerate([groups == s for s in ("F5", "F15", "F50", "F60")], 1):
+            train = ~test
+            if set(units[train]) & set(units[test]):
+                raise ValueError("A test recording also appears in training")
+            val_units = [rng.choice(sorted(set(units[train & (names == label)]))) for label in LABELS]
+            val = train & np.isin(units, val_units)
+            fit_part = train & ~val
+            _, history = fit(x[fit_part], y[fit_part], MAX_EPOCHS, (x[val], names[val], units[val]))
+            best_epochs = int(np.argmax(history)) + 1
+            model, _ = fit(x[train], y[train], best_epochs)
+            p = probabilities(model, x[test])
+            a, pr = unit_predictions(p, np.asarray(LABELS), names[test], units[test])
+            unit_actual += a
+            unit_predicted += pr
+            image_actual += list(names[test])
+            image_predicted += [LABELS[i] for i in p.argmax(axis=1)]
+            epochs_chosen.append(best_epochs)
+            print(f"fold {number}: validation chose {best_epochs} epochs; tested on {int(test.sum())} images", flush=True)
+        result = {
+            "purpose": "Week 6: transfer learning (ImageNet-pretrained ResNet18) on named images, 4 classes",
+            "images": int(len(rows)), "classes": LABELS, "test": "four rounds, each holding out one whole speed (4 runs, one per wear level); 16 run-level predictions",
+            "settings": {"model": "ResNet18, ImageNet weights, all layers fine-tuned", "max_epochs": MAX_EPOCHS,
+                         "batch": BATCH, "learning_rate": LEARNING_RATE, "optimiser": "AdamW", "seed": SEED,
+                         "epochs_chosen_per_round": epochs_chosen,
+                         "epoch_selection": "one training recording per class held out for validation; best validation macro F1",
+                         "augmentation": "random horizontal flip, shift up to 8 px, brightness/contrast x0.8-1.2, Gaussian noise 0.05"},
+            "selection_rule": "the test set is never used to choose epochs or settings",
+            "recording_level": score(unit_actual, unit_predicted, LABELS),
+            "image_level": score(image_actual, image_predicted, LABELS),
+        }
+        RESULT.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
+        r = result["recording_level"]
+        plot_matrix(r["confusion_matrix"], LABELS,
+                    f"{MACHINE}: pretrained ResNet18, accuracy {r['accuracy']:.3f} ({r['test_units']} test units)", FIGURE)
+        print(f"Pretrained CNN recording-level accuracy {r['accuracy']:.3f}, macro F1 {r['macro_f1']:.3f}; "
+              f"image-level accuracy {result['image_level']['accuracy']:.3f}")
+        print(f"Saved {RESULT.relative_to(ROOT)} and {FIGURE.relative_to(ROOT)}")
+
+    if run:
+        main()
+    return locals()
+
+
+# ====================================================================================================
+# intake-vibration: check and file the CORA files downloaded in a browser
+# ====================================================================================================
+
+def intake_vibration(run: bool = True) -> dict:
+    """Check the CORA files downloaded in a browser against the repository's MD5 and move them into Raw_Data/.
+
+    The CORA repository (dataverse.csuc.cat, DOI 10.34810/DATA2500, CC BY 4.0) now shows a "not a bot"
+    check, so these files cannot be fetched by code; download them from the dataset page in a browser
+    (API: /api/access/datafile/<id>?format=original) and run this command. Default folder: ~/Downloads.
+    """
+    import argparse
+    import hashlib
+    import json
+    import shutil
+    from pathlib import Path
+
+    MANIFEST = ROOT / "Results" / "belt_conveyor_vibration_intake.json"
+    FILES = [  # (file name, destination folder in Raw_Data, size in bytes, publisher MD5)
+        ("H_F5_S_Vx.csv", "cora_vibration", 111260279, "10e3d07a5647058f20d2f3565675baf7"),
+        ("H_F15_S_Vx.csv", "cora_vibration", 107470262, "f75e4537077a2f2c9f8c7303aedc1d1e"),
+        ("H_F50_S_Vx.csv", "cora_vibration", 110648041, "0247574694c415940832698ec0fd0bd3"),
+        ("H_F60_S_Vx.csv", "cora_vibration", 110998372, "9d4549a7cd33d8cfdbf14afa320140ab"),
+        ("W25_F5_S_Vx.csv", "cora_vibration", 108428177, "a47a92fb3172642047c908e828f1c679"),
+        ("W25_F15_S_Vx.csv", "cora_vibration", 106848333, "e5efeff75c21ce8c694ea3a5e8bd30cc"),
+        ("W25_F50_S_Vx.csv", "cora_vibration", 110528281, "fbf90f15b1882681779007964b414e2e"),
+        ("W25_F60_S_Vx.csv", "cora_vibration", 112725506, "ebefd1cd62021596351dd092c8d79401"),
+        ("W50_F5_S_Vx.csv", "cora_vibration", 107609236, "224b82f1b4f625b19b167842f322dba0"),
+        ("W50_F15_S_Vx.csv", "cora_vibration", 106611962, "2cbcc2858cc9c5cd75d5b8649a53211c"),
+        ("W50_F50_S_Vx.csv", "cora_vibration", 110525640, "a46a799430b5ced3953c05d679c5513e"),
+        ("W50_F60_S_Vx.csv", "cora_vibration", 111405768, "b37c7b5ffb01c9e3110f6c19cbb5e1a3"),
+        ("W75_F5_S_Vx.csv", "cora_vibration", 109445630, "70b4d708f21ea66177ad447ecf2b38f4"),
+        ("W75_F15_S_Vx.csv", "cora_vibration", 105862619, "29c2239cb8af5419e8b5d3677ff52a0d"),
+        ("W75_F50_S_Vx.csv", "cora_vibration", 111939715, "7c108c3eb71b7e2de1e8bf624e1e8418"),
+        ("W75_F60_S_Vx.csv", "cora_vibration", 112056722, "ac87f5616ee8e935cf6cb81512c276a7"),
+    ]
+
+    def md5(path):
+        checksum = hashlib.md5()
+        with path.open("rb") as handle:
+            for chunk in iter(lambda: handle.read(1 << 20), b""):
+                checksum.update(chunk)
+        return checksum.hexdigest()
+
+    def main():
+        parser = argparse.ArgumentParser(description=intake_vibration.__doc__)
+        parser.add_argument("--from", dest="source", default=str(Path.home() / "Downloads"),
+                            help="folder holding the browser downloads")
+        args = parser.parse_args()
+        source = Path(args.source)
+        records, missing = [], []
+        for name, folder, size, expected in FILES:
+            destination = ROOT / "Raw_Data" / folder / name
+            candidate = destination if destination.is_file() else source / name
+            if not candidate.is_file():
+                missing.append(name)
+                continue
+            if candidate.stat().st_size != size or md5(candidate) != expected:
+                raise SystemExit(f"{candidate}: size or MD5 does not match the repository; download it again")
+            if candidate != destination:
+                destination.parent.mkdir(parents=True, exist_ok=True)
+                shutil.move(str(candidate), destination)
+            records.append({"file": name, "folder": f"Raw_Data/{folder}", "size_bytes": size, "md5": expected,
+                            "status": "verified against publisher MD5"})
+            print(f"verified {name}", flush=True)
+        MANIFEST.write_text(json.dumps({
+            "source": "https://doi.org/10.34810/DATA2500", "license": "CC BY 4.0",
+            "note": "downloaded in a browser (repository bot check); every file checked against the publisher MD5",
+            "files": records, "missing": missing}, indent=2) + "\n", encoding="utf-8")
+        print(f"{len(records)} files verified; {len(missing)} still missing" + (f": {missing}" if missing else ""))
+
+    if run:
+        main()
+    return locals()
+
+
 COMMANDS = {
     "intake": intake,
     "inspect-file": inspect_file,
@@ -1470,6 +1854,8 @@ COMMANDS = {
     "export-images": export_images,
     "csv": csv,
     "cnn": cnn,
+    "cnn-pretrained": cnn_pretrained,
+    "intake-vibration": intake_vibration,
 }
 RUN_ALL = ['experiment']
 
