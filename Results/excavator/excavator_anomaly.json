@@ -1,0 +1,205 @@
+{
+  "purpose": "Week 7 (proposal): anomaly detection trained on healthy data only",
+  "machine": "excavator",
+  "features": "vibration (13 sensor features, same CSV as Week 6)",
+  "test": "four rounds, each holding out one whole speed (4 runs, one per class); 16 run-level predictions",
+  "threshold_rule": "highest leave-one-recording-out score among the healthy TRAINING recordings; no test data and no fault labels are used to train or to set it",
+  "notes": [
+    "CORA motor/gearbox rig, Vx vibration at 3 kHz; one row per 1 s window, every 10th window of each run",
+    "features in shaft orders (frequency / speed setting) so they line up across the held-out speed"
+  ],
+  "detectors": {
+    "Isolation Forest": {
+      "test_recordings": 16,
+      "healthy": 4,
+      "faulty": 12,
+      "roc_auc": 0.4167,
+      "fault_detection_rate": 0.0,
+      "false_alarm_rate": 0.0,
+      "accuracy": 0.25,
+      "detection_rate_per_fault": {
+        "bearing": 0.0,
+        "unbalance": 0.0,
+        "misalignment": 0.0
+      },
+      "recordings": [
+        {
+          "unit": "H_F5_S",
+          "class": "healthy",
+          "margin": -0.0992
+        },
+        {
+          "unit": "BD_F5_S",
+          "class": "bearing",
+          "margin": -0.1023
+        },
+        {
+          "unit": "U_F5_S",
+          "class": "unbalance",
+          "margin": -0.107
+        },
+        {
+          "unit": "M_F5_S",
+          "class": "misalignment",
+          "margin": -0.0995
+        },
+        {
+          "unit": "H_F15_S",
+          "class": "healthy",
+          "margin": -0.1874
+        },
+        {
+          "unit": "BD_F15_S",
+          "class": "bearing",
+          "margin": -0.161
+        },
+        {
+          "unit": "U_F15_S",
+          "class": "unbalance",
+          "margin": -0.1792
+        },
+        {
+          "unit": "M_F15_S",
+          "class": "misalignment",
+          "margin": -0.1873
+        },
+        {
+          "unit": "H_F50_S",
+          "class": "healthy",
+          "margin": -0.0851
+        },
+        {
+          "unit": "BD_F50_S",
+          "class": "bearing",
+          "margin": -0.1029
+        },
+        {
+          "unit": "U_F50_S",
+          "class": "unbalance",
+          "margin": -0.082
+        },
+        {
+          "unit": "M_F50_S",
+          "class": "misalignment",
+          "margin": -0.1157
+        },
+        {
+          "unit": "H_F60_S",
+          "class": "healthy",
+          "margin": -0.0918
+        },
+        {
+          "unit": "BD_F60_S",
+          "class": "bearing",
+          "margin": -0.0977
+        },
+        {
+          "unit": "U_F60_S",
+          "class": "unbalance",
+          "margin": -0.0778
+        },
+        {
+          "unit": "M_F60_S",
+          "class": "misalignment",
+          "margin": -0.0942
+        }
+      ]
+    },
+    "One-Class SVM": {
+      "test_recordings": 16,
+      "healthy": 4,
+      "faulty": 12,
+      "roc_auc": 0.5,
+      "fault_detection_rate": 0.1667,
+      "false_alarm_rate": 0.25,
+      "accuracy": 0.3125,
+      "detection_rate_per_fault": {
+        "bearing": 0.25,
+        "unbalance": 0.0,
+        "misalignment": 0.25
+      },
+      "recordings": [
+        {
+          "unit": "H_F5_S",
+          "class": "healthy",
+          "margin": -3.336
+        },
+        {
+          "unit": "BD_F5_S",
+          "class": "bearing",
+          "margin": -3.2263
+        },
+        {
+          "unit": "U_F5_S",
+          "class": "unbalance",
+          "margin": -3.207
+        },
+        {
+          "unit": "M_F5_S",
+          "class": "misalignment",
+          "margin": -3.2486
+        },
+        {
+          "unit": "H_F15_S",
+          "class": "healthy",
+          "margin": -7.8421
+        },
+        {
+          "unit": "BD_F15_S",
+          "class": "bearing",
+          "margin": -4.6857
+        },
+        {
+          "unit": "U_F15_S",
+          "class": "unbalance",
+          "margin": -6.9114
+        },
+        {
+          "unit": "M_F15_S",
+          "class": "misalignment",
+          "margin": -7.3662
+        },
+        {
+          "unit": "H_F50_S",
+          "class": "healthy",
+          "margin": -2.3982
+        },
+        {
+          "unit": "BD_F50_S",
+          "class": "bearing",
+          "margin": -2.4529
+        },
+        {
+          "unit": "U_F50_S",
+          "class": "unbalance",
+          "margin": -2.9623
+        },
+        {
+          "unit": "M_F50_S",
+          "class": "misalignment",
+          "margin": -4.5438
+        },
+        {
+          "unit": "H_F60_S",
+          "class": "healthy",
+          "margin": 1.6304
+        },
+        {
+          "unit": "BD_F60_S",
+          "class": "bearing",
+          "margin": 2.6388
+        },
+        {
+          "unit": "U_F60_S",
+          "class": "unbalance",
+          "margin": -0.3061
+        },
+        {
+          "unit": "M_F60_S",
+          "class": "misalignment",
+          "margin": 0.1499
+        }
+      ]
+    }
+  }
+}

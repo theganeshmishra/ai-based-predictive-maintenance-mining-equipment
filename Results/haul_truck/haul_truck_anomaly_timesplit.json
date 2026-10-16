@@ -1,0 +1,345 @@
+{
+  "purpose": "Week 7 (proposal): anomaly detection trained on healthy data only",
+  "machine": "haul_truck",
+  "features": "base (13 sensor features, same CSV as Week 6)",
+  "test": "TIME SPLIT (secondary): healthy rows from the first 60% of every recording train, the last 30% of every recording is tested (10% gap); easier than the main test",
+  "threshold_rule": "highest leave-one-recording-out score among the healthy TRAINING recordings; no test data and no fault labels are used to train or to set it",
+  "notes": [
+    "UODS vibration, bearings 1-15; one row per 0.1 s window; window mean removed (inner-race files carry a DC offset)",
+    "ball faults were recorded with no load (load sensor reads zero) while all other files ran at about 400 N; the load column is not used, but no-load running also changes the vibration, so ball results may partly reflect load"
+  ],
+  "detectors": {
+    "Isolation Forest": {
+      "test_recordings": 30,
+      "healthy": 15,
+      "faulty": 15,
+      "roc_auc": 0.9956,
+      "fault_detection_rate": 0.6667,
+      "false_alarm_rate": 0.0,
+      "accuracy": 0.8333,
+      "detection_rate_per_fault": {
+        "inner": 0.8,
+        "outer": 1.0,
+        "ball": 0.2
+      },
+      "recordings": [
+        {
+          "unit": "H_1_0_late",
+          "class": "healthy",
+          "margin": -0.1903
+        },
+        {
+          "unit": "I_1_2_late",
+          "class": "inner",
+          "margin": -0.0083
+        },
+        {
+          "unit": "H_2_0_late",
+          "class": "healthy",
+          "margin": -0.1644
+        },
+        {
+          "unit": "I_2_2_late",
+          "class": "inner",
+          "margin": 0.0156
+        },
+        {
+          "unit": "H_3_0_late",
+          "class": "healthy",
+          "margin": -0.2037
+        },
+        {
+          "unit": "I_3_2_late",
+          "class": "inner",
+          "margin": 0.0154
+        },
+        {
+          "unit": "H_4_0_late",
+          "class": "healthy",
+          "margin": -0.1969
+        },
+        {
+          "unit": "I_4_2_late",
+          "class": "inner",
+          "margin": 0.0457
+        },
+        {
+          "unit": "H_5_0_late",
+          "class": "healthy",
+          "margin": -0.2002
+        },
+        {
+          "unit": "I_5_2_late",
+          "class": "inner",
+          "margin": 0.0828
+        },
+        {
+          "unit": "H_6_0_late",
+          "class": "healthy",
+          "margin": -0.1911
+        },
+        {
+          "unit": "O_6_2_late",
+          "class": "outer",
+          "margin": 0.0712
+        },
+        {
+          "unit": "H_7_0_late",
+          "class": "healthy",
+          "margin": -0.1423
+        },
+        {
+          "unit": "O_7_2_late",
+          "class": "outer",
+          "margin": 0.0983
+        },
+        {
+          "unit": "H_8_0_late",
+          "class": "healthy",
+          "margin": -0.0892
+        },
+        {
+          "unit": "O_8_2_late",
+          "class": "outer",
+          "margin": 0.034
+        },
+        {
+          "unit": "H_9_0_late",
+          "class": "healthy",
+          "margin": -0.0881
+        },
+        {
+          "unit": "O_9_2_late",
+          "class": "outer",
+          "margin": 0.1014
+        },
+        {
+          "unit": "H_10_0_late",
+          "class": "healthy",
+          "margin": -0.1652
+        },
+        {
+          "unit": "O_10_2_late",
+          "class": "outer",
+          "margin": 0.0199
+        },
+        {
+          "unit": "H_11_0_late",
+          "class": "healthy",
+          "margin": -0.2065
+        },
+        {
+          "unit": "B_11_2_late",
+          "class": "ball",
+          "margin": -0.0261
+        },
+        {
+          "unit": "H_12_0_late",
+          "class": "healthy",
+          "margin": -0.1976
+        },
+        {
+          "unit": "B_12_2_late",
+          "class": "ball",
+          "margin": -0.0853
+        },
+        {
+          "unit": "H_13_0_late",
+          "class": "healthy",
+          "margin": -0.0531
+        },
+        {
+          "unit": "B_13_2_late",
+          "class": "ball",
+          "margin": -0.0115
+        },
+        {
+          "unit": "H_14_0_late",
+          "class": "healthy",
+          "margin": -0.139
+        },
+        {
+          "unit": "B_14_2_late",
+          "class": "ball",
+          "margin": 0.0774
+        },
+        {
+          "unit": "H_15_0_late",
+          "class": "healthy",
+          "margin": -0.2007
+        },
+        {
+          "unit": "B_15_2_late",
+          "class": "ball",
+          "margin": -0.0491
+        }
+      ]
+    },
+    "One-Class SVM": {
+      "test_recordings": 30,
+      "healthy": 15,
+      "faulty": 15,
+      "roc_auc": 1.0,
+      "fault_detection_rate": 0.3333,
+      "false_alarm_rate": 0.0,
+      "accuracy": 0.6667,
+      "detection_rate_per_fault": {
+        "inner": 0.2,
+        "outer": 0.6,
+        "ball": 0.2
+      },
+      "recordings": [
+        {
+          "unit": "H_1_0_late",
+          "class": "healthy",
+          "margin": -5.0378
+        },
+        {
+          "unit": "I_1_2_late",
+          "class": "inner",
+          "margin": -1.1406
+        },
+        {
+          "unit": "H_2_0_late",
+          "class": "healthy",
+          "margin": -4.766
+        },
+        {
+          "unit": "I_2_2_late",
+          "class": "inner",
+          "margin": -1.868
+        },
+        {
+          "unit": "H_3_0_late",
+          "class": "healthy",
+          "margin": -5.4746
+        },
+        {
+          "unit": "I_3_2_late",
+          "class": "inner",
+          "margin": -1.9902
+        },
+        {
+          "unit": "H_4_0_late",
+          "class": "healthy",
+          "margin": -5.5489
+        },
+        {
+          "unit": "I_4_2_late",
+          "class": "inner",
+          "margin": -0.2126
+        },
+        {
+          "unit": "H_5_0_late",
+          "class": "healthy",
+          "margin": -4.647
+        },
+        {
+          "unit": "I_5_2_late",
+          "class": "inner",
+          "margin": 0.2645
+        },
+        {
+          "unit": "H_6_0_late",
+          "class": "healthy",
+          "margin": -5.1037
+        },
+        {
+          "unit": "O_6_2_late",
+          "class": "outer",
+          "margin": 0.2446
+        },
+        {
+          "unit": "H_7_0_late",
+          "class": "healthy",
+          "margin": -4.62
+        },
+        {
+          "unit": "O_7_2_late",
+          "class": "outer",
+          "margin": 0.2657
+        },
+        {
+          "unit": "H_8_0_late",
+          "class": "healthy",
+          "margin": -4.6879
+        },
+        {
+          "unit": "O_8_2_late",
+          "class": "outer",
+          "margin": -0.7777
+        },
+        {
+          "unit": "H_9_0_late",
+          "class": "healthy",
+          "margin": -4.7051
+        },
+        {
+          "unit": "O_9_2_late",
+          "class": "outer",
+          "margin": 0.2657
+        },
+        {
+          "unit": "H_10_0_late",
+          "class": "healthy",
+          "margin": -5.0229
+        },
+        {
+          "unit": "O_10_2_late",
+          "class": "outer",
+          "margin": -0.4006
+        },
+        {
+          "unit": "H_11_0_late",
+          "class": "healthy",
+          "margin": -4.8807
+        },
+        {
+          "unit": "B_11_2_late",
+          "class": "ball",
+          "margin": -1.8012
+        },
+        {
+          "unit": "H_12_0_late",
+          "class": "healthy",
+          "margin": -5.2253
+        },
+        {
+          "unit": "B_12_2_late",
+          "class": "ball",
+          "margin": -2.4952
+        },
+        {
+          "unit": "H_13_0_late",
+          "class": "healthy",
+          "margin": -4.5048
+        },
+        {
+          "unit": "B_13_2_late",
+          "class": "ball",
+          "margin": -2.6486
+        },
+        {
+          "unit": "H_14_0_late",
+          "class": "healthy",
+          "margin": -4.7318
+        },
+        {
+          "unit": "B_14_2_late",
+          "class": "ball",
+          "margin": 0.2482
+        },
+        {
+          "unit": "H_15_0_late",
+          "class": "healthy",
+          "margin": -5.0891
+        },
+        {
+          "unit": "B_15_2_late",
+          "class": "ball",
+          "margin": -2.2585
+        }
+      ]
+    }
+  }
+}

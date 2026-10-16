@@ -1,0 +1,284 @@
+{
+  "purpose": "Week 7 (proposal): anomaly detection trained on healthy data only",
+  "machine": "pump",
+  "features": "base (16 sensor features, same CSV as Week 6)",
+  "test": "train on speed profiles A/B; test on 24 separate C/D recordings",
+  "threshold_rule": "highest leave-one-recording-out score among the healthy TRAINING recordings; no test data and no fault labels are used to train or to set it",
+  "notes": [
+    "Ottawa bearing rig vibration; one row per 0.1 s window, 100 windows per recording"
+  ],
+  "detectors": {
+    "Isolation Forest": {
+      "test_recordings": 24,
+      "healthy": 6,
+      "faulty": 18,
+      "roc_auc": 0.9815,
+      "fault_detection_rate": 1.0,
+      "false_alarm_rate": 0.1667,
+      "accuracy": 0.9583,
+      "detection_rate_per_fault": {
+        "inner": 1.0,
+        "outer": 1.0,
+        "ball": 1.0
+      },
+      "recordings": [
+        {
+          "unit": "B-C-1.mat",
+          "class": "ball",
+          "margin": 0.1298
+        },
+        {
+          "unit": "B-C-2.mat",
+          "class": "ball",
+          "margin": 0.1228
+        },
+        {
+          "unit": "B-C-3.mat",
+          "class": "ball",
+          "margin": 0.1169
+        },
+        {
+          "unit": "B-D-1.mat",
+          "class": "ball",
+          "margin": 0.127
+        },
+        {
+          "unit": "B-D-2.mat",
+          "class": "ball",
+          "margin": 0.1229
+        },
+        {
+          "unit": "B-D-3.mat",
+          "class": "ball",
+          "margin": 0.1868
+        },
+        {
+          "unit": "H-C-1.mat",
+          "class": "healthy",
+          "margin": -0.0365
+        },
+        {
+          "unit": "H-C-2.mat",
+          "class": "healthy",
+          "margin": -0.0425
+        },
+        {
+          "unit": "H-C-3.mat",
+          "class": "healthy",
+          "margin": -0.0554
+        },
+        {
+          "unit": "H-D-1.mat",
+          "class": "healthy",
+          "margin": -0.0448
+        },
+        {
+          "unit": "H-D-2.mat",
+          "class": "healthy",
+          "margin": -0.0332
+        },
+        {
+          "unit": "H-D-3.mat",
+          "class": "healthy",
+          "margin": 0.0961
+        },
+        {
+          "unit": "I-C-1.mat",
+          "class": "inner",
+          "margin": 0.1912
+        },
+        {
+          "unit": "I-C-2.mat",
+          "class": "inner",
+          "margin": 0.1883
+        },
+        {
+          "unit": "I-C-3.mat",
+          "class": "inner",
+          "margin": 0.18
+        },
+        {
+          "unit": "I-D-1.mat",
+          "class": "inner",
+          "margin": 0.1873
+        },
+        {
+          "unit": "I-D-2.mat",
+          "class": "inner",
+          "margin": 0.1849
+        },
+        {
+          "unit": "I-D-3.mat",
+          "class": "inner",
+          "margin": 0.1834
+        },
+        {
+          "unit": "O-C-1.mat",
+          "class": "outer",
+          "margin": 0.0995
+        },
+        {
+          "unit": "O-C-2.mat",
+          "class": "outer",
+          "margin": 0.1126
+        },
+        {
+          "unit": "O-C-3.mat",
+          "class": "outer",
+          "margin": 0.1097
+        },
+        {
+          "unit": "O-D-1.mat",
+          "class": "outer",
+          "margin": 0.1175
+        },
+        {
+          "unit": "O-D-2.mat",
+          "class": "outer",
+          "margin": 0.0879
+        },
+        {
+          "unit": "O-D-3.mat",
+          "class": "outer",
+          "margin": 0.0883
+        }
+      ]
+    },
+    "One-Class SVM": {
+      "test_recordings": 24,
+      "healthy": 6,
+      "faulty": 18,
+      "roc_auc": 0.9444,
+      "fault_detection_rate": 1.0,
+      "false_alarm_rate": 0.1667,
+      "accuracy": 0.9583,
+      "detection_rate_per_fault": {
+        "inner": 1.0,
+        "outer": 1.0,
+        "ball": 1.0
+      },
+      "recordings": [
+        {
+          "unit": "B-C-1.mat",
+          "class": "ball",
+          "margin": 2.5837
+        },
+        {
+          "unit": "B-C-2.mat",
+          "class": "ball",
+          "margin": 2.5884
+        },
+        {
+          "unit": "B-C-3.mat",
+          "class": "ball",
+          "margin": 2.5986
+        },
+        {
+          "unit": "B-D-1.mat",
+          "class": "ball",
+          "margin": 2.5869
+        },
+        {
+          "unit": "B-D-2.mat",
+          "class": "ball",
+          "margin": 2.5762
+        },
+        {
+          "unit": "B-D-3.mat",
+          "class": "ball",
+          "margin": 2.6409
+        },
+        {
+          "unit": "H-C-1.mat",
+          "class": "healthy",
+          "margin": -1.2494
+        },
+        {
+          "unit": "H-C-2.mat",
+          "class": "healthy",
+          "margin": -1.3686
+        },
+        {
+          "unit": "H-C-3.mat",
+          "class": "healthy",
+          "margin": -1.2711
+        },
+        {
+          "unit": "H-D-1.mat",
+          "class": "healthy",
+          "margin": -1.2503
+        },
+        {
+          "unit": "H-D-2.mat",
+          "class": "healthy",
+          "margin": -1.244
+        },
+        {
+          "unit": "H-D-3.mat",
+          "class": "healthy",
+          "margin": 2.5806
+        },
+        {
+          "unit": "I-C-1.mat",
+          "class": "inner",
+          "margin": 2.6454
+        },
+        {
+          "unit": "I-C-2.mat",
+          "class": "inner",
+          "margin": 2.6454
+        },
+        {
+          "unit": "I-C-3.mat",
+          "class": "inner",
+          "margin": 2.6454
+        },
+        {
+          "unit": "I-D-1.mat",
+          "class": "inner",
+          "margin": 2.6454
+        },
+        {
+          "unit": "I-D-2.mat",
+          "class": "inner",
+          "margin": 2.6454
+        },
+        {
+          "unit": "I-D-3.mat",
+          "class": "inner",
+          "margin": 2.6454
+        },
+        {
+          "unit": "O-C-1.mat",
+          "class": "outer",
+          "margin": 2.6173
+        },
+        {
+          "unit": "O-C-2.mat",
+          "class": "outer",
+          "margin": 2.5575
+        },
+        {
+          "unit": "O-C-3.mat",
+          "class": "outer",
+          "margin": 2.5462
+        },
+        {
+          "unit": "O-D-1.mat",
+          "class": "outer",
+          "margin": 2.5064
+        },
+        {
+          "unit": "O-D-2.mat",
+          "class": "outer",
+          "margin": 2.5315
+        },
+        {
+          "unit": "O-D-3.mat",
+          "class": "outer",
+          "margin": 2.4605
+        }
+      ]
+    }
+  }
+}

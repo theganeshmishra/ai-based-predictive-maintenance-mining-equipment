@@ -20,6 +20,8 @@ Commands:
     intake-vibration  check the CORA vibration files downloaded in a browser (MD5) and file them
     train-final     train the sensor model on all data and save it (--exclude to leave recordings out)
     predict         predict from any CSV (feature table or raw recording) and show accuracy if labels are known
+    ensembles       proposal Week 6: XGBoost / LightGBM vs random forest etc. (--split time for the secondary test)
+    anomaly         Week 7: anomaly detection trained on healthy data only (--split time for the secondary test)
     all             run experiment
 
 Raw data stays in Raw_Data/ and Processed_Data/ (not in Git).
@@ -2035,7 +2037,288 @@ def predict(run: bool = True) -> dict:
     return locals()
 
 
+# ====================================================================================================
+# Proposal Week 6: advanced ensemble models (XGBoost / LightGBM comparison table)
+# ====================================================================================================
+
+def ensembles(run: bool = True) -> dict:
+    """Proposal Week 6: compare advanced ensemble models on the same CSV sensor features and held-out tests.
+
+    Models (settings fixed in advance, nothing tuned on the test): majority-class control, random forest,
+    extra trees, scikit-learn gradient boosting, XGBoost and LightGBM. Same feature set and the same held-out
+    recordings as the Week 6 CSV main test (or --split time). One prediction per recording (mean class
+    probabilities of its windows). Also records how long each model takes to train.
+    """
+    import argparse
+    import json
+    import time
+    import warnings
+
+    import matplotlib
+
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    import numpy as np
+    from sklearn.dummy import DummyClassifier
+    from sklearn.ensemble import ExtraTreesClassifier, HistGradientBoostingClassifier, RandomForestClassifier
+    from sklearn.metrics import accuracy_score, balanced_accuracy_score, confusion_matrix, f1_score
+
+    try:
+        from lightgbm import LGBMClassifier
+        from xgboost import XGBClassifier
+    except ImportError:
+        raise SystemExit("Install the ensemble libraries first:  python -m pip install xgboost lightgbm")
+
+    MACHINE = "belt_conveyor"
+    RESULT = ROOT / "Results" / MACHINE / f"{MACHINE}_ensembles.json"
+    FIGURE = ROOT / "Figures" / MACHINE / f"{MACHINE}_ensembles.png"
+    MODELS = {
+        "Majority class (control)": lambda: DummyClassifier(strategy="most_frequent"),
+        "Random forest": lambda: RandomForestClassifier(
+            n_estimators=250, max_features="sqrt", class_weight="balanced_subsample",
+            min_samples_leaf=2, random_state=42, n_jobs=-1),
+        "Extra trees": lambda: ExtraTreesClassifier(
+            n_estimators=300, max_features="sqrt", class_weight="balanced",
+            min_samples_leaf=2, random_state=42, n_jobs=-1),
+        "Gradient boosting (scikit-learn)": lambda: HistGradientBoostingClassifier(
+            max_iter=200, learning_rate=0.05, class_weight="balanced", random_state=42),
+        "XGBoost": lambda: XGBClassifier(
+            n_estimators=300, max_depth=4, learning_rate=0.05, subsample=0.8, colsample_bytree=0.8,
+            tree_method="hist", random_state=42, n_jobs=-1, verbosity=0),
+        "LightGBM": lambda: LGBMClassifier(
+            n_estimators=300, num_leaves=15, learning_rate=0.05, subsample=0.8, subsample_freq=1,
+            colsample_bytree=0.8, class_weight="balanced", random_state=42, n_jobs=-1, verbose=-1),
+    }
+
+    def main():
+        parser = argparse.ArgumentParser(description=ensembles.__doc__)
+        parser.add_argument("--split", choices=("main", "time"), default="main",
+                            help="main (fair test) or time (secondary: first 60%% of every recording trains, "
+                                 "last 30%% tests, 10%% gap)")
+        args = parser.parse_args()
+        nonlocal RESULT, FIGURE
+        table, feature_sets, labels, folds, test_description, notes = csv(run=False)["build_table"]()
+        feature_sets = feature_sets if isinstance(feature_sets, dict) else {"base": feature_sets}
+        set_name, features = next(iter(feature_sets.items()))
+        if args.split == "time":
+            if "window" not in table.columns:
+                table["window"] = table.groupby("unit").cumcount()
+            position = table.groupby("unit")["window"].rank(pct=True)
+            table = table[(position <= 0.6) | (position > 0.7)].copy()
+            late = position.loc[table.index] > 0.7
+            table["unit"] = table["unit"] + np.where(late, "_late", "_early")
+            folds = lambda t: [t["unit"].str.endswith("_late").to_numpy()]
+            test_description = ("TIME SPLIT (secondary): first 60% of every recording trains, last 30% tests, 10% gap; "
+                                "the same recordings appear in training, so this is easier than the main test")
+            RESULT = RESULT.with_name(RESULT.stem + "_timesplit.json")
+            FIGURE = FIGURE.with_name(FIGURE.stem + "_timesplit.png")
+        x = table[features].to_numpy(dtype=np.float64)
+        code = {label: i for i, label in enumerate(labels)}
+        y = table["class"].map(code).to_numpy()
+        units = table["unit"].astype(str).to_numpy()
+        result = {"purpose": "Proposal Week 6: advanced ensemble comparison (XGBoost / LightGBM)",
+                  "machine": MACHINE, "features": f"{set_name} ({len(features)} sensor features, same CSV as Week 6)",
+                  "classes": list(labels), "test": test_description,
+                  "selection_rule": "settings fixed in advance; no model or setting chosen from these test results",
+                  "notes": notes, "models": {}}
+        for name, make in MODELS.items():
+            actual, predicted, seconds = [], [], 0.0
+            for test in folds(table):
+                model = make()
+                start = time.perf_counter()
+                with warnings.catch_warnings():
+                    warnings.simplefilter("ignore")
+                    model.fit(x[~test], y[~test])
+                seconds += time.perf_counter() - start
+                probabilities = np.zeros((int(test.sum()), len(labels)))
+                probabilities[:, model.classes_] = model.predict_proba(x[test])
+                test_units = units[test]
+                for unit in dict.fromkeys(test_units):
+                    rows = test_units == unit
+                    actual.append(int(y[test][rows][0]))
+                    predicted.append(int(probabilities[rows].mean(axis=0).argmax()))
+            result["models"][name] = {
+                "test_units": len(actual),
+                "accuracy": round(float(accuracy_score(actual, predicted)), 4),
+                "balanced_accuracy": round(float(balanced_accuracy_score(actual, predicted)), 4),
+                "macro_f1": round(float(f1_score(actual, predicted, average="macro", labels=list(range(len(labels))),
+                                                 zero_division=0)), 4),
+                "train_seconds": round(seconds, 2),
+                "confusion_matrix": confusion_matrix(actual, predicted, labels=list(range(len(labels)))).tolist(),
+            }
+            block = result["models"][name]
+            print(f"{name:33s} accuracy {block['accuracy']:.3f}  macro F1 {block['macro_f1']:.3f}  "
+                  f"({block['test_units']} recordings, {seconds:.1f} s to train)")
+        names = list(result["models"])
+        figure, axis = plt.subplots(figsize=(8, 3.6))
+        positions = np.arange(len(names))
+        axis.bar(positions - 0.2, [result["models"][n]["accuracy"] for n in names], 0.4, label="accuracy")
+        axis.bar(positions + 0.2, [result["models"][n]["macro_f1"] for n in names], 0.4, label="macro F1")
+        axis.axhline(0.9, color="grey", ls="--", lw=1)
+        axis.set_xticks(positions, [n.replace(" (", "\n(") for n in names], fontsize=7.5)
+        axis.set_ylim(0, 1.05)
+        axis.legend(fontsize=8)
+        axis.set_title(f"{MACHINE.replace('_', ' ').title()}: ensemble comparison"
+                       + (" - TIME SPLIT" if args.split == "time" else " (main test)"), fontsize=10)
+        figure.tight_layout()
+        FIGURE.parent.mkdir(parents=True, exist_ok=True)
+        figure.savefig(FIGURE, dpi=110)
+        plt.close(figure)
+        RESULT.parent.mkdir(parents=True, exist_ok=True)
+        RESULT.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
+        print(f"Saved {RESULT.relative_to(ROOT)} and {FIGURE.relative_to(ROOT)}")
+
+    if run:
+        main()
+    return locals()
+
+
+# ====================================================================================================
+# Week 7: anomaly detection (proposal Week 7: Isolation Forest / One-Class SVM)
+# ====================================================================================================
+
+def anomaly(run: bool = True) -> dict:
+    """Week 7: anomaly detection. Learn what HEALTHY looks like, then flag anything unusual as a possible fault.
+
+    Isolation Forest and One-Class SVM are trained on healthy rows of the training recordings only (no fault
+    labels are used for training). Same held-out recordings as the CSV main test (or --split time). Each test
+    recording gets one score: the mean window anomaly score. The alarm threshold is fixed before testing:
+    each healthy training recording is scored by a model fitted on the other healthy training recordings, and
+    the highest of those scores is the threshold. Reported: ROC-AUC (healthy vs fault, no threshold needed),
+    fault detection rate (recall), false-alarm rate on healthy recordings, and detection rate per fault class.
+    """
+    import argparse
+    import json
+
+    import matplotlib
+
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    import numpy as np
+    from sklearn.ensemble import IsolationForest
+    from sklearn.metrics import roc_auc_score
+    from sklearn.pipeline import make_pipeline
+    from sklearn.preprocessing import StandardScaler
+    from sklearn.svm import OneClassSVM
+
+    MACHINE = "belt_conveyor"
+    RESULT = ROOT / "Results" / MACHINE / f"{MACHINE}_anomaly.json"
+    FIGURE = ROOT / "Figures" / MACHINE / f"{MACHINE}_anomaly.png"
+    DETECTORS = {
+        "Isolation Forest": lambda: make_pipeline(StandardScaler(), IsolationForest(
+            n_estimators=300, max_samples=256, random_state=42, n_jobs=-1)),
+        "One-Class SVM": lambda: make_pipeline(StandardScaler(), OneClassSVM(kernel="rbf", gamma="scale", nu=0.05)),
+    }
+    MAX_FIT_ROWS = 4000   # One-Class SVM gets slow on many rows; a fixed, evenly spaced subset is used
+
+    def fit(make, x):
+        rows = np.linspace(0, len(x) - 1, min(len(x), MAX_FIT_ROWS)).astype(int)
+        return make().fit(x[rows])
+
+    def recording_scores(model, x, units):
+        window = -model.decision_function(x)   # higher = more unusual
+        return {unit: float(window[units == unit].mean()) for unit in dict.fromkeys(units)}
+
+    def threshold(make, x, units, healthy_units):
+        """Highest score of any healthy training recording when it is left out of fitting (no test data used)."""
+        if len(healthy_units) < 2:
+            raise SystemExit("Need at least two healthy training recordings to set the threshold")
+        scores = []
+        for unit in healthy_units:
+            others = np.isin(units, [u for u in healthy_units if u != unit])
+            model = fit(make, x[others])
+            scores.append(recording_scores(model, x[units == unit], units[units == unit])[unit])
+        return float(max(scores))
+
+    def main():
+        parser = argparse.ArgumentParser(description=anomaly.__doc__)
+        parser.add_argument("--split", choices=("main", "time"), default="main",
+                            help="main (fair: held-out recordings) or time (secondary: first 60%% of every recording "
+                                 "trains, last 30%% tests, 10%% gap)")
+        args = parser.parse_args()
+        nonlocal RESULT, FIGURE
+        table, feature_sets, labels, folds, test_description, notes = csv(run=False)["build_table"]()
+        feature_sets = feature_sets if isinstance(feature_sets, dict) else {"base": feature_sets}
+        set_name, features = next(iter(feature_sets.items()))
+        if args.split == "time":
+            if "window" not in table.columns:
+                table["window"] = table.groupby("unit").cumcount()
+            position = table.groupby("unit")["window"].rank(pct=True)
+            table = table[(position <= 0.6) | (position > 0.7)].copy()
+            late = position.loc[table.index] > 0.7
+            table["unit"] = table["unit"] + np.where(late, "_late", "_early")
+            folds = lambda t: [t["unit"].str.endswith("_late").to_numpy()]
+            test_description = ("TIME SPLIT (secondary): healthy rows from the first 60% of every recording train, "
+                                "the last 30% of every recording is tested (10% gap); easier than the main test")
+            RESULT = RESULT.with_name(RESULT.stem + "_timesplit.json")
+            FIGURE = FIGURE.with_name(FIGURE.stem + "_timesplit.png")
+        x = table[features].to_numpy(dtype=np.float64)
+        y = table["class"].astype(str).to_numpy()
+        units = table["unit"].astype(str).to_numpy()
+        fault_classes = [c for c in labels if c != "healthy"]
+        result = {
+            "purpose": "Week 7 (proposal): anomaly detection trained on healthy data only",
+            "machine": MACHINE, "features": f"{set_name} ({len(features)} sensor features, same CSV as Week 6)",
+            "test": test_description,
+            "threshold_rule": "highest leave-one-recording-out score among the healthy TRAINING recordings; "
+                              "no test data and no fault labels are used to train or to set it",
+            "notes": notes, "detectors": {},
+        }
+        figure, axes = plt.subplots(1, len(DETECTORS), figsize=(5.2 * len(DETECTORS), 3.6))
+        for axis, (name, make) in zip(np.atleast_1d(axes), DETECTORS.items()):
+            rows = []
+            for test in folds(table):
+                train_healthy = sorted(set(units[~test & (y == "healthy")]))
+                cut = threshold(make, x, units, train_healthy)
+                model = fit(make, x[np.isin(units, train_healthy)])
+                scores = recording_scores(model, x[test], units[test])
+                for unit, score in scores.items():
+                    rows.append({"unit": unit, "class": y[units == unit][0], "margin": score - cut})
+            truth = np.array([r["class"] != "healthy" for r in rows])
+            margin = np.array([r["margin"] for r in rows])
+            alarm = margin > 0
+            per_class = {c: round(float(alarm[[r["class"] == c for r in rows]].mean()), 4)
+                         for c in fault_classes if any(r["class"] == c for r in rows)}
+            block = {
+                "test_recordings": len(rows), "healthy": int((~truth).sum()), "faulty": int(truth.sum()),
+                "roc_auc": round(float(roc_auc_score(truth, margin)), 4) if 0 < truth.sum() < len(truth) else None,
+                "fault_detection_rate": round(float(alarm[truth].mean()), 4),
+                "false_alarm_rate": round(float(alarm[~truth].mean()), 4),
+                "accuracy": round(float((alarm == truth).mean()), 4),
+                "detection_rate_per_fault": per_class,
+                "recordings": [{**r, "margin": round(r["margin"], 4)} for r in rows],
+            }
+            result["detectors"][name] = block
+            print(f"{name:17s} ROC-AUC {block['roc_auc']}  faults detected {block['fault_detection_rate']:.3f}  "
+                  f"false alarms {block['false_alarm_rate']:.3f}  ({len(rows)} test recordings)")
+            order = ["healthy", *fault_classes]
+            for k, c in enumerate(order):
+                values = margin[[r["class"] == c for r in rows]]
+                axis.scatter(np.full(len(values), k) + np.linspace(-0.15, 0.15, len(values)), values, s=18,
+                             color="tab:green" if c == "healthy" else "tab:red")
+            axis.axhline(0, color="black", lw=1, ls="--")
+            axis.set_xticks(range(len(order)), order, rotation=20)
+            axis.set_ylabel("score minus alarm threshold")
+            axis.set_title(f"{name}: AUC {block['roc_auc']}, detect {block['fault_detection_rate']:.2f}, "
+                           f"false alarm {block['false_alarm_rate']:.2f}", fontsize=8.5)
+        figure.suptitle(f"{MACHINE.replace('_', ' ').title()} anomaly detection (above the line = alarm)"
+                        + (" - TIME SPLIT" if args.split == "time" else ""), fontsize=10)
+        figure.tight_layout()
+        FIGURE.parent.mkdir(parents=True, exist_ok=True)
+        figure.savefig(FIGURE, dpi=110)
+        plt.close(figure)
+        RESULT.parent.mkdir(parents=True, exist_ok=True)
+        RESULT.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
+        print(f"Saved {RESULT.relative_to(ROOT)} and {FIGURE.relative_to(ROOT)}")
+
+    if run:
+        main()
+    return locals()
+
+
 COMMANDS = {
+    "ensembles": ensembles,
+    "anomaly": anomaly,
     "train-final": train_final,
     "predict": predict,
     "intake": intake,
