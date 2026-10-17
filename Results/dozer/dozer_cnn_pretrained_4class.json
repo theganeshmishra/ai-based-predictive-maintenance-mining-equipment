@@ -1,0 +1,108 @@
+{
+  "purpose": "Week 6: transfer learning (ImageNet-pretrained ResNet18) on named images, 4 classes",
+  "images": 2400,
+  "classes": [
+    "healthy",
+    "wear25",
+    "wear50",
+    "wear75"
+  ],
+  "test": "four rounds, each holding out one whole speed (4 runs, one per wear level); 16 run-level predictions",
+  "settings": {
+    "model": "ResNet18, ImageNet weights, all layers fine-tuned",
+    "max_epochs": 15,
+    "batch": 32,
+    "learning_rate": 0.0003,
+    "optimiser": "AdamW",
+    "seed": 42,
+    "epochs_chosen_per_round": [
+      7,
+      11,
+      1,
+      2
+    ],
+    "epoch_selection": "one training recording per class held out for validation; best validation macro F1",
+    "augmentation": "random horizontal flip, shift up to 8 px, brightness/contrast x0.8-1.2, Gaussian noise 0.05"
+  },
+  "selection_rule": "the test set is never used to choose epochs or settings",
+  "recording_level": {
+    "test_units": 16,
+    "accuracy": 0.5625,
+    "balanced_accuracy": 0.5625,
+    "macro_precision": 0.5625,
+    "macro_recall": 0.5625,
+    "macro_f1": 0.5208,
+    "confusion_matrix": [
+      [
+        1,
+        1,
+        1,
+        1
+      ],
+      [
+        0,
+        4,
+        0,
+        0
+      ],
+      [
+        0,
+        1,
+        3,
+        0
+      ],
+      [
+        1,
+        2,
+        0,
+        1
+      ]
+    ],
+    "per_class_recall": {
+      "healthy": 0.25,
+      "wear25": 1.0,
+      "wear50": 0.75,
+      "wear75": 0.25
+    }
+  },
+  "image_level": {
+    "test_units": 2400,
+    "accuracy": 0.505,
+    "balanced_accuracy": 0.505,
+    "macro_precision": 0.5098,
+    "macro_recall": 0.505,
+    "macro_f1": 0.4818,
+    "confusion_matrix": [
+      [
+        145,
+        194,
+        123,
+        138
+      ],
+      [
+        35,
+        460,
+        68,
+        37
+      ],
+      [
+        0,
+        86,
+        424,
+        90
+      ],
+      [
+        98,
+        297,
+        22,
+        183
+      ]
+    ],
+    "per_class_recall": {
+      "healthy": 0.2417,
+      "wear25": 0.7667,
+      "wear50": 0.7067,
+      "wear75": 0.305
+    }
+  }
+}

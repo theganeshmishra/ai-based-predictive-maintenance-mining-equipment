@@ -12,7 +12,7 @@ For each machine we detect the **current fault condition of one component** two 
 | **Haul Truck** (wheel-motor bearing) | healthy, inner, outer, ball | 0.800–0.867 | 0.417 | 1.000 | 0.913 |
 | **Belt Conveyor** (geared drive) | healthy, wear 25/50/75% | 0.625 | 0.562 | 1.000 | 1.000 |
 | **Excavator** (swing drive) | healthy, bearing, unbalance, misalignment | 0.188 | 0.312 | 0.938 | 0.938 |
-| **Dozer** (track final drive)* | healthy, wear 25/50/75% | 0.625 | CNN retraining | 1.000 | CNN retraining |
+| **Dozer** (track final drive)* | healthy, wear 25/50/75% | 0.625 | 0.562 | 1.000 | 1.000 |
 
 - **Main test (columns 3–4):** whole recordings, bearings or speeds the model never saw in training. This is the fair result.
 - **Time split (columns 5–6):** the model trains on the first 60% of each recording and is tested on the last 30%. This test is easier because the same recordings appear in training, so it is reported separately.
