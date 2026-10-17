@@ -30,7 +30,7 @@ Conveyor's**. It maps that laboratory rig to the dozer final drive; it is **not 
 | Sensor: random forest | 0.375 | 1.000 |
 | Sensor: XGBoost | 0.438 | 1.000 |
 | Sensor: LightGBM | 0.562 | 1.000 |
-| Camera: pretrained ResNet18 | retraining (Belt Conveyor: 0.562) | retraining (Belt Conveyor: 1.000) |
+| Camera: pretrained ResNet18 | 0.562 | 1.000 |
 | Anomaly: Isolation Forest (ROC-AUC) | 0.63 | 0.92 |
 
-All sensor and anomaly numbers are identical to the Belt Conveyor's, as expected.
+All sensor, camera and anomaly numbers are identical to the Belt Conveyor's, as expected.
