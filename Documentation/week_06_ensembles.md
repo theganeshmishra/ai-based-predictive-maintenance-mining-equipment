@@ -31,6 +31,11 @@
 Numbers in brackets after the machine = test recordings. Time split (secondary): every model scores
 1.000 on Haul Truck and Belt Conveyor and 0.938 on Excavator.
 
+**Machine 5 (Dozer):** its ensemble run uses the same 16 CORA gear-wear source runs,
+features and folds as Belt Conveyor. The saved Dozer ensemble scores match the Belt
+Conveyor column; they are not a fifth independent test dataset. See
+[Week 6 Dozer](week_06_dozer.md).
+
 Training time for all test rounds together: 0.3–2.6 s for random forest, extra trees, XGBoost and
 LightGBM; 1.7–8.1 s for scikit-learn gradient boosting (CPU).
 
