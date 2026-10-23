@@ -94,6 +94,16 @@ mechanically similar component proxy. It is not direct mining-pump evidence.
   and confusion matrices, and show the 75%-accuracy most-frequent control.
   This tests speed transfer on one laboratory rig, **not** transfer to an
   unseen gearbox or mining conveyor.
+- The later Week 6 **four-class CORA sensor baselines** use a different feature
+  pipeline from that original two-class comparison. Their per-speed-normalized
+  candidate features are calculated across all recordings at each speed,
+  including the four held-out runs at the test speed. This uses no test labels
+  and the model is still fitted on training runs only, but it is a
+  **batch-transductive preprocessing step**. The Belt Conveyor and Dozer
+  selected scores use it in every fold; the Excavator selected score uses it
+  in some folds. Those scores should not be presented as a fully inductive
+  prediction on a single new machine. A training-only preprocessing rerun is
+  needed before claiming that stronger deployment-style result.
 - Report Accuracy, macro Precision/Recall/F1, per-class support and metrics,
   and run-level confusion matrices. The Pump primary tests both have 24 test
   recordings, but their rigs and operating-condition shifts differ. Their
@@ -103,6 +113,16 @@ mechanically similar component proxy. It is not direct mining-pump evidence.
 - Existing UCI hydraulic and ESPset baselines have their own
   group-aware tests and labels in `Results/`. They must not be inserted into
   the Pump four-class comparison or represented as visual-fault validation.
+- **80% accuracy gate:** require more than 0.80 recording/run-level accuracy
+  in **each** modality for an equipment pair, with the same comparable fault
+  classes, independent held-out units and per-class results. Exactly 0.80 is
+  not above this gate. A high frame/window score, a same-recording time split,
+  or the best of several models chosen after seeing the held-out results does
+  not qualify. The existing CORA speed folds and XJTU Rotor test recordings
+  have already been examined repeatedly; any further tuning on those same
+  units is exploratory until a fresh, untouched test collection is available.
+  One CORA run set reused for several equipment analogues remains **one**
+  experiment, not independent accuracy evidence for each machine.
 
 ## Claim boundary
 

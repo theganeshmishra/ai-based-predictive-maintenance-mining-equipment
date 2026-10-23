@@ -9,7 +9,7 @@ Usage:
     python Models/excavator.py <command> --help
 
 Commands:
-    intake          check the CORA files downloaded in a browser (MD5) and move them into Raw_Data/
+    intake          check selectively downloaded CORA files (MD5) and move them into Raw_Data/
     csv             4-class vibration model from a CSV feature table (validation-selected model)
     export-images   save the infrared images as named files in Images/excavator/ (local only)
     cnn             CNN with data augmentation on the named images
@@ -32,11 +32,11 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 # ====================================================================================================
-# intake: check and file the CORA files downloaded in a browser
+# intake: check and file selectively downloaded CORA files
 # ====================================================================================================
 
 def intake(run: bool = True) -> dict:
-    """Check the CORA files downloaded in a browser against the repository's MD5 and move them into Raw_Data/.
+    """Check downloaded CORA files against the repository's MD5 and move them into Raw_Data/.
 
     The CORA repository (dataverse.csuc.cat, DOI 10.34810/DATA2500, CC BY 4.0) now shows a "not a bot"
     check, so these files cannot be fetched by code; download them from the dataset page in a browser
@@ -110,7 +110,7 @@ def intake(run: bool = True) -> dict:
             print(f"verified {name}", flush=True)
         MANIFEST.write_text(json.dumps({
             "source": "https://doi.org/10.34810/DATA2500", "license": "CC BY 4.0",
-            "note": "downloaded in a browser (repository bot check); every file checked against the publisher MD5",
+            "note": "selectively downloaded from CORA; every file checked against the publisher MD5",
             "files": records, "missing": missing}, indent=2) + "\n", encoding="utf-8")
         print(f"{len(records)} files verified; {len(missing)} still missing" + (f": {missing}" if missing else ""))
 

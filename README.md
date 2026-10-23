@@ -6,18 +6,23 @@ For each machine we detect the **current fault condition of one component** two 
 
 ## Results (accuracy, 4 classes)
 
+**Week 6 presentation scope:** the five machine mappings below. Dozer reuses Belt Conveyor data; Wheel Loader, Drill Rig and Grader remain planned. Existing Week 7 anomaly work is outside this checkpoint.
+
 | Machine (component) | Classes | Sensor | Images (CNN) | Sensor, time split | Images, time split |
 |---|---|---:|---:|---:|---:|
 | **Pump** (support bearing) | healthy, inner, outer, ball | **0.958** | **1.000** | — | — |
 | **Haul Truck** (wheel-motor bearing) | healthy, inner, outer, ball | 0.800–0.867 | 0.417 | 1.000 | 0.913 |
-| **Belt Conveyor** (geared drive) | healthy, wear 25/50/75% | 0.625 | 0.562 | 1.000 | 1.000 |
+| **Belt Conveyor** (geared drive) | healthy, wear 25/50/75% | 0.625 | 0.562 | 1.000 | 0.812 rerun (1.000 saved) |
 | **Excavator** (swing drive) | healthy, bearing, unbalance, misalignment | 0.188 | 0.312 | 0.938 | 0.938 |
 | **Dozer** (track final drive)* | healthy, wear 25/50/75% | 0.625 | 0.562 | 1.000 | 1.000 |
 
-- **Main test (columns 3–4):** whole recordings, bearings or speeds the model never saw in training. This is the fair result.
+- **Main test (columns 3–4):** whole recordings, bearings or speeds the model never saw in training. This is the primary grouped result, subject to the CORA preprocessing caveat below.
+- **CORA preprocessing caveat:** the later four-class Belt Conveyor/Dozer and some Excavator sensor folds normalize features across all recordings at a speed, including the held-out speed. No test labels enter fitting, but these are batch-transductive scores, not estimates for one entirely isolated new machine. See [methodology](Documentation/methodology.md).
 - **Time split (columns 5–6):** the model trains on the first 60% of each recording and is tested on the last 30%. This test is easier because the same recordings appear in training, so it is reported separately.
-- \*The Dozer reuses the **same 16 CORA runs, features and 4 classes as the Belt Conveyor** (no public dozer dataset exists), so its scores equal the Belt Conveyor's; it is a mapping, not separate evidence.
+- **Week 6 reproduction note:** on October 23, the published Belt Conveyor time-split sensor command reproduced 1.000, but the published image command produced 0.8125 (13/16 runs) instead of its earlier saved 1.000. The image score is not exactly reproducible in this local rerun; see the [Week 6 summary](Documentation/week_06_professor_remarks.md). The whole-speed image result remains 0.5625. The Dozer time-split image number below is the earlier saved score on the same CORA runs, not an independent rerun.
+- \*The Dozer reuses the **same 16 CORA runs, features and 4 classes as the Belt Conveyor** (no public dozer dataset exists). Its saved scores matched the Belt Conveyor's saved scores; a later Belt image rerun differed. This is a mapping, not separate evidence.
 - Only the Pump reaches 90% on the main test. The reasons and caveats are in the [Week 6 summary](Documentation/week_06_professor_remarks.md).
+- **More-than-80% in both modalities is currently met only by Pump (1 of 8 equipment mappings).** Wheel Loader, Drill Rig and Grader have no evaluated pair yet. Reusing the Belt Conveyor's CORA runs under another machine name does not create a new validation result; the [methodology](Documentation/methodology.md) defines the accuracy gate.
 - XGBoost and LightGBM were compared with the random forest on the same tests and did not beat it ([Week 6 ensembles](Documentation/week_06_ensembles.md)).
 
 ## Quick start
@@ -25,10 +30,12 @@ For each machine we detect the **current fault condition of one component** two 
 You need [Python 3.11](https://www.python.org/downloads/) (tick **Add python.exe to PATH**), [VS Code](https://code.visualstudio.com/) and [Git](https://git-scm.com/downloads).
 
 1. **Get the project.** In VS Code press `Ctrl+Shift+P` → **Git: Clone**, paste `https://github.com/theganeshmishra/ai-based-predictive-maintenance-mining-equipment.git`, then open the folder.
-2. **Set it up once.** In the terminal run `powershell -ExecutionPolicy Bypass -File .\setup.ps1` (Mac/Linux: `bash setup.sh`). Add `-Data` (`--data`) to also download the data that can be fetched automatically (about 1.1 GB).
-3. **Run it.** Open a notebook in `Notebook/`, pick the **Capstone (.venv)** kernel at the top right and click **Run All**. Or press `Ctrl+Shift+B` to run all 5 machines.
+2. **Set it up once.** In the terminal run `powershell -ExecutionPolicy Bypass -File .\setup.ps1` (Mac/Linux: `bash setup.sh`). Add `-Data` (`--data`) to fetch only the source files available automatically. The CORA vibration files and other publisher-gated inputs need the separate intake steps in the [dataset manifest](Dataset_Manifest/manifest.md).
+3. **Run it.** Open a notebook in `Notebook/`, pick the **Capstone (.venv)** kernel at the top right and click **Run All**. Or press `Ctrl+Shift+B` to run all five model scripts after their required local data are present.
 
 The notebooks still show the saved results when the data is missing. If you get `No module named cv2`, the wrong kernel is selected: choose **Capstone (.venv)**.
+
+On macOS, if an ensemble run cannot load `xgboost` or `lightgbm` because `libomp.dylib` is missing, install the system OpenMP runtime or set `DYLD_LIBRARY_PATH` to the `torch/lib` directory inside this environment before launching Python. This is a local runtime issue, not evidence that the saved model results have been reproduced.
 
 ## Repository layout
 

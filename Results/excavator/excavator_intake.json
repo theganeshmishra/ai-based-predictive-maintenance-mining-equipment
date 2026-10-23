@@ -1,7 +1,7 @@
 {
   "source": "https://doi.org/10.34810/DATA2500",
   "license": "CC BY 4.0",
-  "note": "downloaded in a browser (repository bot check); every file checked against the publisher MD5",
+  "note": "selectively downloaded from CORA; every file checked against the publisher MD5",
   "files": [
     {
       "file": "H_F5_S_Vx.csv",
