@@ -2,6 +2,7 @@
 
 **October 2026 — Saskatchewan Polytechnic PROJ 613.** The proposal's Week 7 deliverable is
 "Isolation Forest / One-Class SVM anomaly results". A first version was built while completing Week 6.
+This is an early exploratory work record, **not part of the five-machine Week 6 checkpoint** or evidence that the remaining three equipment mappings have been evaluated.
 
 ## What was done
 

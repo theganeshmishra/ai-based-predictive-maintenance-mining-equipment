@@ -1,16 +1,16 @@
-# Mining equipment condition monitoring capstone
+# AI-Based Predictive Maintenance for Mining Equipment
 
-Saskatchewan Polytechnic AIDA / PROJ 613. Working title: **Machine Learning-Based Condition Monitoring of Mining Equipment Using Multi-Sensor Data and Computer Vision**.
+Saskatchewan Polytechnic AIDA / PROJ 613. Project title: **AI-Based Predictive Maintenance for Mining Equipment**. The implemented research task is classification of a component's *current condition* from separate sensor and visual models; future repair prediction has not been validated.
 
 This capstone remains an eight-equipment research project, **not** a claim that eight validated mining-machine fault models exist. Source files and derived training tables live in ignored local folders; the small manifest, code, results, and figures are suitable for review. The [folder-specific ignore rules](../.gitignore) keep source downloads, raw images/events, caches, and model binaries out of GitHub while allowing the reviewed figures.
 
 Start with the [eight-category dataset matrix](../Dataset_Manifest/manifest.md),
 [cross-equipment methodology](methodology.md),
-[completed Pump comparison](../Results/pump/pump_sensor_visual_comparison.md), and
+[completed Pump comparison](../Results/pump/pump_sensor_visual_comparison.md),
 [Belt Conveyor geared-drive comparison](../Results/belt_conveyor/belt_conveyor_sensor_visual_comparison.md),
-and [Week 4 progress checkpoint](week_04_progress.md). The
-equipment folders are currently empty local placeholders; the matrix and
-methodology preserve all eight categories without inventing results for them.
+and [Week 4 progress checkpoint](week_04_progress.md). For the current five-mapping
+Week 6 status, see the [README](../README.md) and [Week 6 summary](week_06_professor_remarks.md).
+Wheel Loader, Drill Rig, and Grader remain mapped but unevaluated.
 
 ## Week 4 checkpoint (October 5, 2026)
 
@@ -22,9 +22,9 @@ sensor/image experiments. No Equipment #3 modelling is part of Week 4.
 
 **After Week 4:** the Haul/Dump Truck (electric wheel-motor bearing) was added
 as Equipment #3; see [its comparison](../Results/haul_truck/haul_truck_sensor_visual_comparison.md)
-and `Notebook/Haul_Truck.ipynb`. In Week 6 the Excavator (CORA drive-train faults, `Notebook/Excavator.ipynb`) and the Dozer (CORA gear wear, the same 16 runs and 4 classes as the Belt Conveyor, `Notebook/Dozer.ipynb`; see [Week 6: Dozer](week_06_dozer.md)) were added. Three categories remain planned: Wheel Loader, Drill Rig and Grader.
+and [notebook](../Notebook/Haul_Truck.ipynb). In Week 6 the Excavator (CORA drive-train faults; [notebook](../Notebook/Excavator.ipynb)) and the Dozer (CORA gear wear, the same 16 runs and 4 classes as the Belt Conveyor; [notebook](../Notebook/Dozer.ipynb) and [Week 6 note](week_06_dozer.md)) were added. Three categories remain planned: Wheel Loader, Drill Rig and Grader.
 
-### Current evidence
+### Earlier sensor-only groundwork (separate from the paired comparisons)
 
 | Experiment | Source domain | Task and evaluation | Held-out result | What it does not show |
 |---|---|---|---|---|
@@ -46,7 +46,7 @@ The Belt Conveyor geared-drive analogue now has a **same-CORA-run sensor/infrare
 | Category | Selected comparable component target | Verification grade |
 |---|---|---|
 | Haul / dump truck | Electric-drive wheel-motor bearing: UODS vibration/acoustic vs XJTU event camera | YELLOW — healthy/inner/outer labels align; no truck recordings; exclude UODS ball class because load differs |
-| Excavator | Swing-drive gearbox gear wear: CORA sensor and infrared | YELLOW — shared lab gearbox analogue |
+| Excavator | Swing-drive motor/gearbox fault type: CORA sensor and infrared; Week 6 uses healthy/bearing/unbalance/misalignment rather than the original gear-wear proposal | YELLOW — shared lab drive analogue, not excavator data |
 | Dozer | Final-drive gear wear: CORA sensor and infrared | YELLOW — same shared analogue |
 | Wheel loader | Final-drive/transmission gear wear: CORA sensor and infrared | YELLOW — same shared analogue |
 | Drill rig | Rotary-head reduction gear wear: CORA sensor and infrared | YELLOW — **not** the PHM rock-drill pressure faults |
@@ -54,7 +54,7 @@ The Belt Conveyor geared-drive analogue now has a **same-CORA-run sensor/infrare
 | Belt conveyor | **Geared** drive reducer wear: CORA sensor and infrared | YELLOW — not belt cracks/idler health or gearless conveyors |
 | Pump | Pump support-bearing faults: original centrifugal-pump vibration/XJTU event camera source pair; Ottawa bearing-rig proxy for repeat-run sensor evaluation | GREEN original source-label match; **YELLOW empirical transfer** from generic bearing rig to pump |
 
-See the [eight-row verification table and dataset manifest](../Dataset_Manifest/manifest.md) for exact sources, counts, licences, matching labels, OEM component justification, and confidence. The **locked research architecture has only three component targets**, not eight independent machine datasets: CORA gear wear is reused across six categories; UODS/XJTU-Rotor serves electric-motor bearing; centrifugal-pump/XJTU-Pump serves pump bearing. The Ottawa bearing dataset is an additional **Pump sensor-evaluation proxy**, not a fourth equipment category or pump recording. CORA is same-rig sensor-plus-infrared at experiment level, pending timestamp validation for frame-level analysis. The other pairs are different physical rigs and are comparable **only by component/fault taxonomy**. No unrelated sensor row and image is joined. These experiments classify present condition, not time-to-repair or remaining useful life.
+See the [eight-row verification table and dataset manifest](../Dataset_Manifest/manifest.md) for exact sources, counts, licences, matching labels, OEM component justification, and confidence. The architecture uses three source-pair families, **not eight independent machine datasets**: CORA supports five gear-wear mappings and a separate Excavator drive-fault task; UODS/XJTU-Rotor serves the electric-motor bearing analogy; centrifugal-pump/XJTU-Pump serves the pump-bearing label match. The Ottawa bearing dataset is an additional **Pump sensor-evaluation proxy**, not a fourth equipment category or pump recording. The Dozer repeats the Belt Conveyor's 16 gear-wear runs, so it is not a separate experimental validation. CORA is same-rig sensor-plus-infrared at experiment level, pending timestamp validation for frame-level analysis. The other pairs are different physical rigs and are comparable **only by component/fault taxonomy**. No unrelated sensor row and image is joined. These experiments classify present condition, not time-to-repair or remaining useful life.
 
 The UCI hydraulic benchmark remains useful **sensor-only** work, not a completed paired experiment for Excavator, Dozer, Wheel Loader or Grader. An earlier PHM 2022 rock-drill pressure benchmark was removed from the repository on October 7, 2026: it has no camera counterpart and a different fault target from the Drill Rig gear-wear mapping (it remains in Git history). Internal hydraulic pump leakage, valve lag, accumulator faults, and drill hydraulic faults still have **RED visual coverage** and are not claimed as solved by a gearbox or bearing image dataset. Equipment-identification images also remain out of the fault comparison.
 
