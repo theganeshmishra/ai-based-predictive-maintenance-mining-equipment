@@ -10,7 +10,7 @@ Start with the [eight-category dataset matrix](../Dataset_Manifest/manifest.md),
 [Belt Conveyor geared-drive comparison](../Results/belt_conveyor/belt_conveyor_sensor_visual_comparison.md),
 and [Week 4 progress checkpoint](week_04_progress.md). For the current five-mapping
 Week 6 status, see the [README](../README.md) and [Week 6 summary](week_06_professor_remarks.md).
-Wheel Loader, Drill Rig, and Grader remain mapped but unevaluated.
+Drill Rig and Grader remain mapped but unevaluated. In Week 7 the Wheel Loader was added as an electric-drive-motor analogue using CORA's rotor-bar faults ([Week 7 Wheel Loader](week_07_wheel_loader.md)).
 
 ## Week 4 checkpoint (October 5, 2026)
 
