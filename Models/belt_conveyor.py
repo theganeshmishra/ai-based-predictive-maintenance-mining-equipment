@@ -17,7 +17,7 @@ Commands:
     csv             Week 6: 4-class sensor model from a CSV feature table
     cnn             Week 6: CNN with data augmentation on the named images (run export-images first)
     cnn-pretrained  Week 6: transfer learning, pretrained ResNet18 on the named images
-    intake-vibration  check the CORA vibration files downloaded in a browser (MD5) and file them
+    intake-vibration  check selectively downloaded CORA vibration files (MD5) and file them
     train-final     train the sensor model on all data and save it (--exclude to leave recordings out)
     predict         predict from any CSV (feature table or raw recording) and show accuracy if labels are known
     ensembles       proposal Week 6: XGBoost / LightGBM vs random forest etc. (--split time for the secondary test)
@@ -1822,11 +1822,11 @@ def cnn_pretrained(run: bool = True) -> dict:
 
 
 # ====================================================================================================
-# intake-vibration: check and file the CORA files downloaded in a browser
+# intake-vibration: check and file selectively downloaded CORA files
 # ====================================================================================================
 
 def intake_vibration(run: bool = True) -> dict:
-    """Check the CORA files downloaded in a browser against the repository's MD5 and move them into Raw_Data/.
+    """Check downloaded CORA files against the repository's MD5 and move them into Raw_Data/.
 
     The CORA repository (dataverse.csuc.cat, DOI 10.34810/DATA2500, CC BY 4.0) now shows a "not a bot"
     check, so these files cannot be fetched by code; download them from the dataset page in a browser
@@ -1888,7 +1888,7 @@ def intake_vibration(run: bool = True) -> dict:
             print(f"verified {name}", flush=True)
         MANIFEST.write_text(json.dumps({
             "source": "https://doi.org/10.34810/DATA2500", "license": "CC BY 4.0",
-            "note": "downloaded in a browser (repository bot check); every file checked against the publisher MD5",
+            "note": "selectively downloaded from CORA; every file checked against the publisher MD5",
             "files": records, "missing": missing}, indent=2) + "\n", encoding="utf-8")
         print(f"{len(records)} files verified; {len(missing)} still missing" + (f": {missing}" if missing else ""))
 

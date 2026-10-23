@@ -8,8 +8,9 @@ There is no public dozer dataset with matching sensor and camera data. As planne
 [dataset manifest](../Dataset_Manifest/manifest.md), the Dozer final drive uses the **same 16 CORA
 gear-wear runs as the Belt Conveyor** (CORA v2.1, DOI 10.34810/DATA2500, CC BY 4.0). Following the
 professor's remark ("4 class classification") it uses the **same 4 classes**: healthy, wear 25%, wear 50%
-and wear 75%. Same data, same features and same classes means the Dozer's scores **equal the Belt
-Conveyor's**. It maps that laboratory rig to the dozer final drive; it is **not separate evidence**.
+and wear 75%. The saved Dozer and Belt Conveyor scores matched because they
+used the same inputs and setup; later image reruns can differ. This maps that
+laboratory rig to the dozer final drive; it is **not separate evidence**.
 
 (A first version used the manifest's 2-class target, healthy vs worn; it was replaced by the 4-class version.)
 
@@ -31,6 +32,10 @@ Conveyor's**. It maps that laboratory rig to the dozer final drive; it is **not 
 | Sensor: XGBoost | 0.438 | 1.000 |
 | Sensor: LightGBM | 0.562 | 1.000 |
 | Camera: pretrained ResNet18 | 0.562 | 1.000 |
-| Anomaly: Isolation Forest (ROC-AUC) | 0.63 | 0.92 |
 
-All sensor, camera and anomaly numbers are identical to the Belt Conveyor's, as expected.
+All saved sensor and camera numbers are identical to the Belt Conveyor's, as expected.
+These are the saved Dozer results. A later local rerun of the **Belt Conveyor**
+image time split returned 0.8125 rather than its saved 1.000; the Dozer image
+time split was not independently rerun. Neither time-split value demonstrates
+performance on a new speed or a different dozer.
+The anomaly-detection results belong to Week 7 and are not part of this Week 6 checkpoint.
