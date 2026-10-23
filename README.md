@@ -25,13 +25,21 @@ For each machine we detect the **current fault condition of one component** two 
 - **More-than-80% in both modalities is currently met only by Pump (1 of 8 equipment mappings).** Wheel Loader, Drill Rig and Grader have no evaluated pair yet. Reusing the Belt Conveyor's CORA runs under another machine name does not create a new validation result; the [methodology](Documentation/methodology.md) defines the accuracy gate.
 - XGBoost and LightGBM were compared with the random forest on the same tests and did not beat it ([Week 6 ensembles](Documentation/week_06_ensembles.md)).
 
+**Week 7 addition — Wheel Loader (electric drive motor), machine 6.** New CORA fault data (half-broken and broken rotor bars, not used by any other machine), 4 classes: healthy, bearing defect, half-broken bar, broken bar. Training-data-only preprocessing. [Week 7 Wheel Loader](Documentation/week_07_wheel_loader.md).
+
+| Machine (component) | Classes | Sensor | Images (CNN) | Sensor, time split | Images, time split |
+|---|---|---:|---:|---:|---:|
+| **Wheel Loader** (electric drive motor) | healthy, bearing, half-broken bar, broken bar | 0.312 | 0.312 | 0.938 | 0.812 |
+
+Both branches are at chance (0.250) on the unseen-speed test, as for the Excavator.
+
 ## Quick start
 
 You need [Python 3.11](https://www.python.org/downloads/) (tick **Add python.exe to PATH**), [VS Code](https://code.visualstudio.com/) and [Git](https://git-scm.com/downloads).
 
 1. **Get the project.** In VS Code press `Ctrl+Shift+P` → **Git: Clone**, paste `https://github.com/theganeshmishra/ai-based-predictive-maintenance-mining-equipment.git`, then open the folder.
 2. **Set it up once.** In the terminal run `powershell -ExecutionPolicy Bypass -File .\setup.ps1` (Mac/Linux: `bash setup.sh`). Add `-Data` (`--data`) to fetch only the source files available automatically. The CORA vibration files and other publisher-gated inputs need the separate intake steps in the [dataset manifest](Dataset_Manifest/manifest.md).
-3. **Run it.** Open a notebook in `Notebook/`, pick the **Capstone (.venv)** kernel at the top right and click **Run All**. Or press `Ctrl+Shift+B` to run all five model scripts after their required local data are present.
+3. **Run it.** Open a notebook in `Notebook/`, pick the **Capstone (.venv)** kernel at the top right and click **Run All**. Or press `Ctrl+Shift+B` to run all six model scripts after their required local data are present.
 
 The notebooks still show the saved results when the data is missing. If you get `No module named cv2`, the wrong kernel is selected: choose **Capstone (.venv)**.
 
@@ -40,7 +48,7 @@ On macOS, if an ensemble run cannot load `xgboost` or `lightgbm` because `libomp
 ## Repository layout
 
 ```text
-Models/          one .py file per machine: pump, haul_truck, belt_conveyor, excavator, dozer
+Models/          one .py file per machine: pump, haul_truck, belt_conveyor, excavator, dozer, wheel_loader
 Notebook/        one short notebook per machine that runs its .py file and shows the results
 Results/<machine>/   saved metrics (JSON) and written comparisons
 Figures/<machine>/   result charts
@@ -69,7 +77,7 @@ Run these from the project folder (Windows: `.venv\Scripts\python.exe`, Mac/Linu
 
 ## Documentation
 
-- [Week 4 progress](Documentation/week_04_progress.md), [Week 5 baselines](Documentation/week_05_progress.md), [Week 6 professor's remarks](Documentation/week_06_professor_remarks.md), [Week 6 XGBoost/LightGBM](Documentation/week_06_ensembles.md), [Week 6 Dozer](Documentation/week_06_dozer.md), [Week 7 anomaly detection](Documentation/week_07_anomaly_detection.md)
+- [Week 4 progress](Documentation/week_04_progress.md), [Week 5 baselines](Documentation/week_05_progress.md), [Week 6 professor's remarks](Documentation/week_06_professor_remarks.md), [Week 6 XGBoost/LightGBM](Documentation/week_06_ensembles.md), [Week 6 Dozer](Documentation/week_06_dozer.md), [Week 7 anomaly detection](Documentation/week_07_anomaly_detection.md), [Week 7 Wheel Loader](Documentation/week_07_wheel_loader.md)
 - [Methodology](Documentation/methodology.md) and [capstone details](Documentation/capstone_details.md) (data download, reproduction, limits)
 - [Dataset manifest](Dataset_Manifest/manifest.md) covering all eight planned equipment types, and the [collaboration guide](CONTRIBUTING.md)
 
