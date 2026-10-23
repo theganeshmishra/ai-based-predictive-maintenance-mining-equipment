@@ -22,8 +22,8 @@ dataset was added.
   matrix: [`pump_baselines.json`](../Results/pump/pump_baselines.json),
   [`belt_conveyor_baselines.json`](../Results/belt_conveyor/belt_conveyor_baselines.json),
   [`haul_truck_baselines.json`](../Results/haul_truck/haul_truck_baselines.json).
-- Pinned the exact package versions in [`requirements-lock.txt`](../requirements-lock.txt).
-  With them the three equipment results reproduce exactly.
+- Pinned the package versions used for this checkpoint in [`requirements-lock.txt`](../requirements-lock.txt).
+  This records the environment; it does not guarantee an identical later CNN run. The [Week 6 summary](week_06_professor_remarks.md) documents a Belt Conveyor image rerun that differed from its earlier saved time-split result.
 - Sanity check: the model type used in each main experiment reproduces its saved
   score exactly (Pump and Haul Truck random forest; Belt Conveyor logistic regression).
 
