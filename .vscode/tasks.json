@@ -87,14 +87,32 @@
       }
     },
     {
-      "label": "Run all 5 machines",
+      "label": "Run Wheel Loader",
+      "type": "process",
+      "command": "${workspaceFolder}/.venv/bin/python",
+      "windows": {
+        "command": "${workspaceFolder}\\.venv\\Scripts\\python.exe"
+      },
+      "args": [
+        "${workspaceFolder}/Models/wheel_loader.py",
+        "csv"
+      ],
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      }
+    },
+    {
+      "label": "Run all 6 machines",
       "dependsOrder": "sequence",
       "dependsOn": [
         "Run Pump",
         "Run Belt Conveyor",
         "Run Haul Truck",
         "Run Excavator",
-        "Run Dozer"
+        "Run Dozer",
+        "Run Wheel Loader"
       ],
       "group": {
         "kind": "build",

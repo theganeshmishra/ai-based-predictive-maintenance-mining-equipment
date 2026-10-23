@@ -1,0 +1,206 @@
+{
+  "purpose": "Week 7 (proposal): anomaly detection trained on healthy data only",
+  "machine": "wheel_loader",
+  "features": "vibration (13 sensor features, same CSV as Week 6)",
+  "test": "TIME SPLIT (secondary): healthy rows from the first 60% of every recording train, the last 30% of every recording is tested (10% gap); easier than the main test",
+  "threshold_rule": "highest leave-one-recording-out score among the healthy TRAINING recordings; no test data and no fault labels are used to train or to set it",
+  "notes": [
+    "CORA motor/gearbox rig, Vx vibration at 3 kHz; one row per 1 s window, every 10th window of each run",
+    "features in shaft orders (frequency / speed setting) so they line up across the held-out speed",
+    "no per-speed normalisation: preprocessing never looks at the held-out speed's runs"
+  ],
+  "detectors": {
+    "Isolation Forest": {
+      "test_recordings": 16,
+      "healthy": 4,
+      "faulty": 12,
+      "roc_auc": 0.8958,
+      "fault_detection_rate": 0.0,
+      "false_alarm_rate": 0.0,
+      "accuracy": 0.25,
+      "detection_rate_per_fault": {
+        "bearing": 0.0,
+        "half_broken_bar": 0.0,
+        "broken_bar": 0.0
+      },
+      "recordings": [
+        {
+          "unit": "H_F5_S_late",
+          "class": "healthy",
+          "margin": -0.1178
+        },
+        {
+          "unit": "H_F15_S_late",
+          "class": "healthy",
+          "margin": -0.1677
+        },
+        {
+          "unit": "H_F50_S_late",
+          "class": "healthy",
+          "margin": -0.1297
+        },
+        {
+          "unit": "H_F60_S_late",
+          "class": "healthy",
+          "margin": -0.1282
+        },
+        {
+          "unit": "BD_F5_S_late",
+          "class": "bearing",
+          "margin": -0.1078
+        },
+        {
+          "unit": "BD_F15_S_late",
+          "class": "bearing",
+          "margin": -0.1127
+        },
+        {
+          "unit": "BD_F50_S_late",
+          "class": "bearing",
+          "margin": -0.0719
+        },
+        {
+          "unit": "BD_F60_S_late",
+          "class": "bearing",
+          "margin": -0.0565
+        },
+        {
+          "unit": "HB_F5_S_late",
+          "class": "half_broken_bar",
+          "margin": -0.0973
+        },
+        {
+          "unit": "HB_F15_S_late",
+          "class": "half_broken_bar",
+          "margin": -0.1275
+        },
+        {
+          "unit": "HB_F50_S_late",
+          "class": "half_broken_bar",
+          "margin": -0.0831
+        },
+        {
+          "unit": "HB_F60_S_late",
+          "class": "half_broken_bar",
+          "margin": -0.0343
+        },
+        {
+          "unit": "OB_F5_S_late",
+          "class": "broken_bar",
+          "margin": -0.1078
+        },
+        {
+          "unit": "OB_F15_S_late",
+          "class": "broken_bar",
+          "margin": -0.1484
+        },
+        {
+          "unit": "OB_F50_S_late",
+          "class": "broken_bar",
+          "margin": -0.127
+        },
+        {
+          "unit": "OB_F60_S_late",
+          "class": "broken_bar",
+          "margin": -0.0989
+        }
+      ]
+    },
+    "One-Class SVM": {
+      "test_recordings": 16,
+      "healthy": 4,
+      "faulty": 12,
+      "roc_auc": 0.6875,
+      "fault_detection_rate": 0.1667,
+      "false_alarm_rate": 0.0,
+      "accuracy": 0.375,
+      "detection_rate_per_fault": {
+        "bearing": 0.25,
+        "half_broken_bar": 0.25,
+        "broken_bar": 0.0
+      },
+      "recordings": [
+        {
+          "unit": "H_F5_S_late",
+          "class": "healthy",
+          "margin": -3.1909
+        },
+        {
+          "unit": "H_F15_S_late",
+          "class": "healthy",
+          "margin": -3.6781
+        },
+        {
+          "unit": "H_F50_S_late",
+          "class": "healthy",
+          "margin": -2.5666
+        },
+        {
+          "unit": "H_F60_S_late",
+          "class": "healthy",
+          "margin": -2.0855
+        },
+        {
+          "unit": "BD_F5_S_late",
+          "class": "bearing",
+          "margin": -3.2499
+        },
+        {
+          "unit": "BD_F15_S_late",
+          "class": "bearing",
+          "margin": -0.4415
+        },
+        {
+          "unit": "BD_F50_S_late",
+          "class": "bearing",
+          "margin": -1.6448
+        },
+        {
+          "unit": "BD_F60_S_late",
+          "class": "bearing",
+          "margin": 2.7905
+        },
+        {
+          "unit": "HB_F5_S_late",
+          "class": "half_broken_bar",
+          "margin": -2.9344
+        },
+        {
+          "unit": "HB_F15_S_late",
+          "class": "half_broken_bar",
+          "margin": -2.3842
+        },
+        {
+          "unit": "HB_F50_S_late",
+          "class": "half_broken_bar",
+          "margin": -2.2911
+        },
+        {
+          "unit": "HB_F60_S_late",
+          "class": "half_broken_bar",
+          "margin": 1.3579
+        },
+        {
+          "unit": "OB_F5_S_late",
+          "class": "broken_bar",
+          "margin": -3.069
+        },
+        {
+          "unit": "OB_F15_S_late",
+          "class": "broken_bar",
+          "margin": -3.5564
+        },
+        {
+          "unit": "OB_F50_S_late",
+          "class": "broken_bar",
+          "margin": -3.2089
+        },
+        {
+          "unit": "OB_F60_S_late",
+          "class": "broken_bar",
+          "margin": -1.6025
+        }
+      ]
+    }
+  }
+}
