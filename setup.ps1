@@ -68,11 +68,11 @@ Step "Done"
 Write-Host @"
 Next:
   1. Open this folder in VS Code (File > Open Folder). Install the Python and Jupyter extensions if VS Code asks.
-  2. Open a notebook in Notebook\.
+  2. Open Notebook\Mining_Equipment_Condition_Monitoring.ipynb.
      Check the top right says 'Capstone (.venv)' (click it to choose it if not), then click Run All.
-  3. Or press Ctrl+Shift+B to run all 5 model scripts.
+  3. The notebook shows saved results without raw data. Run model scripts separately when needed.
 
-Without the data the notebooks still show the saved results.
+Without the data the working notebook still shows the saved results.
 To fetch the automatically available source files: .\setup.ps1 -Data
 CORA vibration and other publisher-gated files still require the manual intake
 steps in Dataset_Manifest\manifest.md before every strict experiment can rerun.
