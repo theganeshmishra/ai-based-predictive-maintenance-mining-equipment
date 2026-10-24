@@ -10,7 +10,7 @@ dataset was added.
 
 - Added a `baselines` command to each equipment file
   (`python Models/pump.py baselines`, `belt_conveyor.py baselines`,
-  `haul_truck.py baselines`) and a matching section in each notebook.
+  `haul_truck.py baselines`) and a matching section for each machine in the single notebook.
 - Four model types per branch: a **majority-class control**, **logistic
   regression**, a **decision tree** and a **random forest**. Settings were fixed
   before running and are recorded in each result file. No model or setting was

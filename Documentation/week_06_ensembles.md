@@ -7,7 +7,7 @@
 ## What was done
 
 - New command for every machine: `python Models/<machine>.py ensembles` (add `--split time` for the
-  secondary time-split test). Each notebook has a matching section.
+  secondary time-split test). The single equipment notebook has a matching section for each machine.
 - Models compared on the **same CSV sensor features** and the **same held-out recordings** as the Week 6
   CSV main test: majority-class control, random forest, extra trees, scikit-learn gradient boosting,
   **XGBoost** (3.2.0) and **LightGBM** (4.7.0).

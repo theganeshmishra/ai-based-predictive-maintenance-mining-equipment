@@ -7,7 +7,7 @@ This is an early exploratory work record, **not part of the five-machine Week 6 
 ## What was done
 
 - New command for every machine: `python Models/<machine>.py anomaly` (add `--split time` for the secondary
-  test). Each notebook has a matching section.
+  test). The single equipment notebook has a matching section for each machine.
 - **Isolation Forest** and **One-Class SVM** learn only what *healthy* sensor data looks like. No fault labels
   are used for training. Same CSV features and the same held-out recordings as the Week 6 main test.
 - Each test recording gets one score (mean of its window scores). The alarm threshold is fixed **before

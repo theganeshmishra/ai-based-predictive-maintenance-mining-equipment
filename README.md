@@ -39,9 +39,9 @@ You need [Python 3.11](https://www.python.org/downloads/) (tick **Add python.exe
 
 1. **Get the project.** In VS Code press `Ctrl+Shift+P` → **Git: Clone**, paste `https://github.com/theganeshmishra/ai-based-predictive-maintenance-mining-equipment.git`, then open the folder.
 2. **Set it up once.** In the terminal run `powershell -ExecutionPolicy Bypass -File .\setup.ps1` (Mac/Linux: `bash setup.sh`). Add `-Data` (`--data`) to fetch only the source files available automatically. The CORA vibration files and other publisher-gated inputs need the separate intake steps in the [dataset manifest](Dataset_Manifest/manifest.md).
-3. **Run it.** Open the single working notebook, [Mining_Equipment_Condition_Monitoring.ipynb](Notebook/Mining_Equipment_Condition_Monitoring.ipynb), pick the **Capstone (.venv)** kernel at the top right and click **Run All**. Its one code cell shows saved results for all six evaluated categories without downloading or training. Run an individual model script from `Models/` when local data are available, then append the new result to this notebook.
+3. **Run it.** Open the single working notebook, [Mining_Equipment_Condition_Monitoring.ipynb](Notebook/Mining_Equipment_Condition_Monitoring.ipynb), pick the **Capstone (.venv)** kernel, and click **Run All**. It contains the full code and saved outputs from all six equipment notebooks. In its default saved-results mode, model scripts do not run. Set `ACTIVE_EQUIPMENT` near the top to one equipment name to rerun only that section when its local data are present; CNN training also requires `TRAIN_CNN = True` in that section.
 
-The working notebook still shows saved results when raw data are missing. If you get `No module named cv2`, the wrong kernel is selected: choose **Capstone (.venv)**. The six older per-equipment notebooks are retained as historical records; add future equipment to the single working notebook.
+The working notebook still shows saved results when raw data are missing. If you get `No module named cv2`, the wrong kernel is selected: choose **Capstone (.venv)**. The six old per-equipment notebooks were consolidated into this one file; their prior versions remain recoverable from Git history. Append future equipment as a new section in the same notebook.
 
 On macOS, if an ensemble run cannot load `xgboost` or `lightgbm` because `libomp.dylib` is missing, install the system OpenMP runtime or set `DYLD_LIBRARY_PATH` to the `torch/lib` directory inside this environment before launching Python. This is a local runtime issue, not evidence that the saved model results have been reproduced.
 
@@ -49,7 +49,7 @@ On macOS, if an ensemble run cannot load `xgboost` or `lightgbm` because `libomp
 
 ```text
 Models/          one .py file per machine: pump, haul_truck, belt_conveyor, excavator, dozer, wheel_loader
-Notebook/        one working notebook for all equipment; older per-equipment notebooks retained as history
+Notebook/        one working notebook for all equipment plus its small helper module
 Results/<machine>/   saved metrics (JSON) and written comparisons
 Figures/<machine>/   result charts
 Documentation/   weekly progress, methodology, full capstone details
