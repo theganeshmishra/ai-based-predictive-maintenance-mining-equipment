@@ -70,7 +70,7 @@ Next:
   1. Open this folder in VS Code (File > Open Folder). Install the Python and Jupyter extensions if VS Code asks.
   2. Open Notebook\Mining_Equipment_Condition_Monitoring.ipynb.
      Check the top right says 'Capstone (.venv)' (click it to choose it if not), then click Run All.
-  3. The notebook shows saved results without raw data. Run model scripts separately when needed.
+  3. Run All shows saved results. To rerun one equipment, set ACTIVE_EQUIPMENT near the top.
 
 Without the data the working notebook still shows the saved results.
 To fetch the automatically available source files: .\setup.ps1 -Data
