@@ -1,8 +1,7 @@
-"""Shared set-up for the machine notebooks in this folder.
+"""Shared set-up for the historical per-machine notebooks.
 
-The experiment code lives in Models/ (one .py file per equipment). The notebooks only call
-those files and show their results, using the small helpers below, so each
-notebook stays short.
+The experiment code lives in Models/ (one .py file per equipment). The single
+working notebook reads saved results directly; older notebooks use these helpers.
 """
 
 from __future__ import annotations

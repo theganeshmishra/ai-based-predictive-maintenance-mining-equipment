@@ -22,7 +22,7 @@ For each machine we detect the **current fault condition of one component** two 
 - **Week 6 reproduction note:** on October 23, the published Belt Conveyor time-split sensor command reproduced 1.000, but the published image command produced 0.8125 (13/16 runs) instead of its earlier saved 1.000. The image score is not exactly reproducible in this local rerun; see the [Week 6 summary](Documentation/week_06_professor_remarks.md). The whole-speed image result remains 0.5625. The Dozer time-split image number below is the earlier saved score on the same CORA runs, not an independent rerun.
 - \*The Dozer reuses the **same 16 CORA runs, features and 4 classes as the Belt Conveyor** (no public dozer dataset exists). Its saved scores matched the Belt Conveyor's saved scores; a later Belt image rerun differed. This is a mapping, not separate evidence.
 - Only the Pump reaches 90% on the main test. The reasons and caveats are in the [Week 6 summary](Documentation/week_06_professor_remarks.md).
-- **More-than-80% in both modalities is currently met only by Pump (1 of 8 equipment mappings).** Wheel Loader, Drill Rig and Grader have no evaluated pair yet. Reusing the Belt Conveyor's CORA runs under another machine name does not create a new validation result; the [methodology](Documentation/methodology.md) defines the accuracy gate.
+- **More-than-80% in both modalities is currently met only by Pump (1 of 8 equipment mappings).** Wheel Loader now has an evaluated pair (shown below), while Drill Rig and Grader do not. Reusing the Belt Conveyor's CORA runs under another machine name does not create a new validation result; the [methodology](Documentation/methodology.md) defines the accuracy gate.
 - XGBoost and LightGBM were compared with the random forest on the same tests and did not beat it ([Week 6 ensembles](Documentation/week_06_ensembles.md)).
 
 **Week 7 addition — Wheel Loader (electric drive motor), machine 6.** New CORA fault data (half-broken and broken rotor bars, not used by any other machine), 4 classes: healthy, bearing defect, half-broken bar, broken bar. Training-data-only preprocessing. [Week 7 Wheel Loader](Documentation/week_07_wheel_loader.md).
@@ -39,9 +39,9 @@ You need [Python 3.11](https://www.python.org/downloads/) (tick **Add python.exe
 
 1. **Get the project.** In VS Code press `Ctrl+Shift+P` → **Git: Clone**, paste `https://github.com/theganeshmishra/ai-based-predictive-maintenance-mining-equipment.git`, then open the folder.
 2. **Set it up once.** In the terminal run `powershell -ExecutionPolicy Bypass -File .\setup.ps1` (Mac/Linux: `bash setup.sh`). Add `-Data` (`--data`) to fetch only the source files available automatically. The CORA vibration files and other publisher-gated inputs need the separate intake steps in the [dataset manifest](Dataset_Manifest/manifest.md).
-3. **Run it.** Open a notebook in `Notebook/`, pick the **Capstone (.venv)** kernel at the top right and click **Run All**. Or press `Ctrl+Shift+B` to run all six model scripts after their required local data are present.
+3. **Run it.** Open the single working notebook, [Mining_Equipment_Condition_Monitoring.ipynb](Notebook/Mining_Equipment_Condition_Monitoring.ipynb), pick the **Capstone (.venv)** kernel at the top right and click **Run All**. Its one code cell shows saved results for all six evaluated categories without downloading or training. Run an individual model script from `Models/` when local data are available, then append the new result to this notebook.
 
-The notebooks still show the saved results when the data is missing. If you get `No module named cv2`, the wrong kernel is selected: choose **Capstone (.venv)**.
+The working notebook still shows saved results when raw data are missing. If you get `No module named cv2`, the wrong kernel is selected: choose **Capstone (.venv)**. The six older per-equipment notebooks are retained as historical records; add future equipment to the single working notebook.
 
 On macOS, if an ensemble run cannot load `xgboost` or `lightgbm` because `libomp.dylib` is missing, install the system OpenMP runtime or set `DYLD_LIBRARY_PATH` to the `torch/lib` directory inside this environment before launching Python. This is a local runtime issue, not evidence that the saved model results have been reproduced.
 
@@ -49,7 +49,7 @@ On macOS, if an ensemble run cannot load `xgboost` or `lightgbm` because `libomp
 
 ```text
 Models/          one .py file per machine: pump, haul_truck, belt_conveyor, excavator, dozer, wheel_loader
-Notebook/        one short notebook per machine that runs its .py file and shows the results
+Notebook/        one working notebook for all equipment; older per-equipment notebooks retained as history
 Results/<machine>/   saved metrics (JSON) and written comparisons
 Figures/<machine>/   result charts
 Documentation/   weekly progress, methodology, full capstone details

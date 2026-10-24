@@ -5,7 +5,7 @@ that a single model has been validated on eight mining fleets. The complete
 [source/label verification matrix](../Dataset_Manifest/manifest.md) is the
 authority for dataset provenance, access, licence, sample counts, and confidence.
 
-**Current Week 6 boundary:** five machine mappings have code and saved sensor/image results: Pump, Haul Truck, Belt Conveyor, Excavator, and Dozer. The Dozer uses the same 16 CORA gear-wear runs as Belt Conveyor, not independent equipment data. Wheel Loader, Drill Rig, and Grader remain planned. The main held-out tests clear the more-than-80%-in-both-modalities gate only for Pump; see the [Week 6 summary](week_06_professor_remarks.md). Early Week 7 anomaly work is outside this checkpoint.
+**Current status after the Week 7 Wheel Loader addition:** six machine mappings have code and saved sensor/image results: Pump, Haul Truck, Belt Conveyor, Excavator, Dozer, and Wheel Loader. Drill Rig and Grader remain planned. The Dozer uses the same 16 CORA gear-wear runs as Belt Conveyor, not independent equipment data. The main held-out tests clear the more-than-80%-in-both-modalities gate only for Pump. The historical five-mapping [Week 6 summary](week_06_professor_remarks.md) remains a separate checkpoint. Review all six in the [single working notebook](../Notebook/Mining_Equipment_Condition_Monitoring.ipynb).
 
 **Historical Week 4 implementation boundary (October 5, 2026):** all eight equipment
 categories are mapped, and the component/dataset matrix is complete. Only the
@@ -28,7 +28,7 @@ was added as Equipment #3 (see the table below).
 | Belt Conveyor | **Geared** drive-reducer wear; healthy/worn | Separate T1-temperature and infrared models complete on the same 16 CORA runs with whole-speed held-out testing; weak scores below majority-class accuracy; see [Belt Conveyor report](../Results/belt_conveyor/belt_conveyor_sensor_visual_comparison.md) |
 | Pump | Support-bearing healthy/inner/outer/ball fault | Separate recording-held-out vibration and event-camera models complete at component level; see [Pump report](../Results/pump/pump_sensor_visual_comparison.md) |
 
-The six CORA mappings reuse **one** laboratory motor/gearbox dataset. Five map gear wear; the Excavator experiment instead tests healthy/bearing/unbalance/misalignment on a separate set of CORA runs. They must never be counted as six independent mining-equipment validations, and Dozer repeats the Belt Conveyor's exact gear-wear runs. The original Pump vibration
+The six CORA mappings reuse **one** laboratory motor/gearbox dataset. Four map gear wear (Belt Conveyor, Dozer, and the planned Drill Rig and Grader); Excavator tests healthy/bearing/unbalance/misalignment, and Wheel Loader tests healthy/bearing/rotor-bar faults. They must never be counted as six independent mining-equipment validations, and Dozer repeats the Belt Conveyor's exact gear-wear runs. The original Pump vibration
 source has only one selected recording per class; its within-recording score is
 an exploratory diagnostic, not generalization. The completed Pump sensor model
 instead uses repeated recordings from a separate Ottawa bearing rig as a
