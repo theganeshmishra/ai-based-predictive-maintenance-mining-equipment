@@ -95,24 +95,10 @@
       "status": "verified against publisher MD5"
     },
     {
-      "file": "HB_F5_S_Vx.csv",
-      "folder": "Raw_Data/cora_vibration",
-      "size_bytes": 109501746,
-      "md5": "cee8b92e732d37fae4b37407463df37d",
-      "status": "verified against publisher MD5"
-    },
-    {
       "file": "HB_F15_S.mat",
       "folder": "Raw_Data/cora_drive_faults",
       "size_bytes": 18621990,
       "md5": "0e2ff87d128f6da31b25c991831efe35",
-      "status": "verified against publisher MD5"
-    },
-    {
-      "file": "HB_F15_S_Vx.csv",
-      "folder": "Raw_Data/cora_vibration",
-      "size_bytes": 105889293,
-      "md5": "24bcc1bcb4b4e9cff57b207283e2d935",
       "status": "verified against publisher MD5"
     },
     {
@@ -123,24 +109,10 @@
       "status": "verified against publisher MD5"
     },
     {
-      "file": "HB_F50_S_Vx.csv",
-      "folder": "Raw_Data/cora_vibration",
-      "size_bytes": 110932121,
-      "md5": "ffcf72671ff796984952ac140b8d0716",
-      "status": "verified against publisher MD5"
-    },
-    {
       "file": "HB_F60_S.mat",
       "folder": "Raw_Data/cora_drive_faults",
       "size_bytes": 27227964,
       "md5": "6294749ce6e1d244e47ee33544dcd63a",
-      "status": "verified against publisher MD5"
-    },
-    {
-      "file": "HB_F60_S_Vx.csv",
-      "folder": "Raw_Data/cora_vibration",
-      "size_bytes": 111285344,
-      "md5": "186d5006b2f34377ab3efad7f943a55f",
       "status": "verified against publisher MD5"
     },
     {
@@ -151,24 +123,10 @@
       "status": "verified against publisher MD5"
     },
     {
-      "file": "OB_F5_S_Vx.csv",
-      "folder": "Raw_Data/cora_vibration",
-      "size_bytes": 110381323,
-      "md5": "a8f6cc78a18f170cf6325944a34726e4",
-      "status": "verified against publisher MD5"
-    },
-    {
       "file": "OB_F15_S.mat",
       "folder": "Raw_Data/cora_drive_faults",
       "size_bytes": 14529153,
       "md5": "0b753c46c9305c8d4fd3e493eaa4f951",
-      "status": "verified against publisher MD5"
-    },
-    {
-      "file": "OB_F15_S_Vx.csv",
-      "folder": "Raw_Data/cora_vibration",
-      "size_bytes": 108549523,
-      "md5": "e51708bc36451b96b2edc732b583afb7",
       "status": "verified against publisher MD5"
     },
     {
@@ -179,26 +137,21 @@
       "status": "verified against publisher MD5"
     },
     {
-      "file": "OB_F50_S_Vx.csv",
-      "folder": "Raw_Data/cora_vibration",
-      "size_bytes": 110974447,
-      "md5": "f9718fd790e9b28c9ee669156e2d0378",
-      "status": "verified against publisher MD5"
-    },
-    {
       "file": "OB_F60_S.mat",
       "folder": "Raw_Data/cora_drive_faults",
       "size_bytes": 29139968,
       "md5": "1504ac9b4b028b1da9476766856b119b",
       "status": "verified against publisher MD5"
-    },
-    {
-      "file": "OB_F60_S_Vx.csv",
-      "folder": "Raw_Data/cora_vibration",
-      "size_bytes": 110744307,
-      "md5": "c55c63b37619b98d7b36f1a3896cd274",
-      "status": "verified against publisher MD5"
     }
   ],
-  "missing": []
+  "missing": [
+    "HB_F5_S_Vx.csv",
+    "HB_F15_S_Vx.csv",
+    "HB_F50_S_Vx.csv",
+    "HB_F60_S_Vx.csv",
+    "OB_F5_S_Vx.csv",
+    "OB_F15_S_Vx.csv",
+    "OB_F50_S_Vx.csv",
+    "OB_F60_S_Vx.csv"
+  ]
 }

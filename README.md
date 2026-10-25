@@ -29,9 +29,9 @@ For each machine we detect the **current fault condition of one component** two 
 
 | Machine (component) | Classes | Sensor | Images (CNN) | Sensor, time split | Images, time split |
 |---|---|---:|---:|---:|---:|
-| **Wheel Loader** (electric drive motor) | healthy, bearing, half-broken bar, broken bar | 0.312 | 0.312 | 0.938 | 0.812 |
+| **Wheel Loader** (electric drive motor) | healthy, bearing, half-broken bar, broken bar | 0.312 | 0.188 (7,200 images) | 0.938 | 1.000* |
 
-Both branches are at chance (0.250) on the unseen-speed test, as for the Excavator.
+The Wheel Loader camera result is below the 0.250 chance baseline on the unseen-speed test (3/16 recordings). Its 1.000 time-split score is secondary: train and test frames come from the same recordings. Expanding the training set from 2,400 to 7,200 adjacent frames did not improve unseen-speed performance (the prior run scored 0.312); these frames do not add independent recordings. \*The updated time-split result is 16/16 recordings, but is not evidence of new-recording generalization.
 
 ## Quick start
 
