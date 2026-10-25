@@ -7,7 +7,6 @@ notebook uses these helpers to run a selected model and display saved results.
 from __future__ import annotations
 
 import contextlib
-import io
 import json
 import os
 import platform
@@ -16,6 +15,7 @@ import subprocess
 import sys
 import warnings
 import zipfile
+from collections import deque
 from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
 
@@ -91,19 +91,66 @@ def use_local_pump_zips() -> None:
     remotezip.RemoteZip = local_zip
 
 
+class _RecentOutput:
+    """Keep only the last non-empty output lines from a model run."""
+
+    def __init__(self, limit: int):
+        self.lines: deque[str] = deque(maxlen=limit)
+        self.pending = ""
+
+    def write(self, chunk: str) -> int:
+        text = self.pending + chunk
+        self.pending = ""
+        for line in text.splitlines(keepends=True):
+            if line.endswith(("\n", "\r")):
+                if line.strip():
+                    self.lines.append(line.rstrip("\r\n"))
+            else:
+                self.pending = line
+        return len(chunk)
+
+    def flush(self) -> None:
+        pass
+
+    def recent_lines(self) -> list[str]:
+        if self.pending.strip():
+            self.lines.append(self.pending)
+            self.pending = ""
+        return list(self.lines)
+
+
 def run_script(relative_path: str, *args: str, tail: int = 3) -> None:
-    """Run a project script exactly as `python <script>` would and print its last output lines."""
-    path, buffer, saved = ROOT / relative_path, io.StringIO(), sys.argv
+    """Run a project script and show only its last lines without buffering all output."""
+    if tail < 1:
+        raise ValueError("tail must be positive")
+    path, buffer, saved = ROOT / relative_path, _RecentOutput(tail), sys.argv
     sys.argv = [path.name, *args]
     try:
         with contextlib.redirect_stdout(buffer):
             runpy.run_path(str(path), run_name="__main__")
     finally:
         sys.argv = saved
-    text = buffer.getvalue().replace(str(ROOT) + os.sep, "").replace(str(ROOT), ".")
     print(f"[{' '.join((relative_path, *args))}]")
-    for line in [line for line in text.splitlines() if line.strip()][-tail:]:
-        print("  " + line)
+    for line in buffer.recent_lines():
+        print("  " + line.replace(str(ROOT) + os.sep, "").replace(str(ROOT), "."))
+
+
+def select_equipment(active: str | None, equipment: str):
+    """Return model and score-check functions for one notebook section.
+
+    The returned functions call the module-level helpers directly, so they do
+    not accidentally wrap a previous equipment section's functions.
+    """
+    def run_selected(relative_path: str, *args: str, **kwargs):
+        if active == equipment:
+            return run_script(relative_path, *args, **kwargs)
+
+    def check_selected(before, after, paths, name: str):
+        if active == equipment:
+            return check(before, after, paths, name)
+        print(f"{name}: showing saved results (not rerun).")
+
+    return run_selected, check_selected
 
 
 def load(name: str):
@@ -119,6 +166,41 @@ def metrics(block: dict) -> dict:
 def show(rows: dict) -> None:
     """Display a table of scores: {row name: result block}."""
     display(pd.DataFrame({name: metrics(block) for name, block in rows.items()}).T)
+
+
+def show_overview() -> None:
+    """Summarize the eight planned mappings from their saved result files."""
+    equipment = (
+        ("Pump", "pump"), ("Haul Truck", "haul_truck"),
+        ("Belt Conveyor", "belt_conveyor"), ("Excavator", "excavator"),
+        ("Dozer", "dozer"), ("Wheel Loader", "wheel_loader"),
+        ("Drill Rig", "drill_rig"), ("Grader", "grader"),
+    )
+
+    def result(machine: str, suffix: str) -> dict:
+        path = RESULTS / machine / f"{machine}_{suffix}.json"
+        return json.loads(path.read_text(encoding="utf-8")) if path.is_file() else {}
+
+    def percent(score):
+        return round(score * 100, 2) if score is not None else None
+
+    rows = []
+    for name, machine in equipment:
+        sensor = result(machine, "csv_4class").get("validation_selected", {}).get("score", {})
+        visual = result(machine, "cnn_pretrained_4class").get("recording_level", {})
+        sensor_time = result(machine, "csv_4class_timesplit").get("models", {}).get("Random forest", {})
+        visual_time = result(machine, "cnn_pretrained_4class_timesplit").get("recording_level", {})
+        s, v = sensor.get("accuracy"), visual.get("accuracy")
+        rows.append({
+            "Equipment": name,
+            "Strict sensor %": percent(s),
+            "Strict visual %": percent(v),
+            "Time sensor %": percent(sensor_time.get("accuracy")),
+            "Time visual %": percent(visual_time.get("accuracy")),
+            "Status": "Both >80%" if s is not None and v is not None and s > .8 and v > .8
+                      else "Evaluated" if s is not None and v is not None else "Pending",
+        })
+    display(pd.DataFrame(rows).set_index("Equipment"))
 
 
 def check(before, after, paths, name: str) -> None:
