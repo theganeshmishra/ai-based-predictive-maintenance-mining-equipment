@@ -1,6 +1,6 @@
 {
   "purpose": "Week 6: transfer learning (ImageNet-pretrained ResNet18) on named images, 4 classes",
-  "images": 2160,
+  "images": 6480,
   "classes": [
     "healthy",
     "bearing",
@@ -16,7 +16,7 @@
     "optimiser": "AdamW",
     "seed": 42,
     "epochs_chosen_per_round": [
-      4
+      1
     ],
     "epoch_selection": "one training recording per class held out for validation; best validation macro F1",
     "augmentation": "random horizontal flip, shift up to 8 px, brightness/contrast x0.8-1.2, Gaussian noise 0.05"
@@ -24,11 +24,11 @@
   "selection_rule": "the test set is never used to choose epochs or settings",
   "recording_level": {
     "test_units": 16,
-    "accuracy": 0.8125,
-    "balanced_accuracy": 0.8125,
-    "macro_precision": 0.8333,
-    "macro_recall": 0.8125,
-    "macro_f1": 0.8071,
+    "accuracy": 1.0,
+    "balanced_accuracy": 1.0,
+    "macro_precision": 1.0,
+    "macro_recall": 1.0,
+    "macro_f1": 1.0,
     "confusion_matrix": [
       [
         4,
@@ -38,15 +38,15 @@
       ],
       [
         0,
-        3,
-        1,
+        4,
+        0,
         0
       ],
       [
         0,
         0,
-        2,
-        2
+        4,
+        0
       ],
       [
         0,
@@ -57,49 +57,49 @@
     ],
     "per_class_recall": {
       "healthy": 1.0,
-      "bearing": 0.75,
-      "half_broken_bar": 0.5,
+      "bearing": 1.0,
+      "half_broken_bar": 1.0,
       "broken_bar": 1.0
     }
   },
   "image_level": {
-    "test_units": 704,
-    "accuracy": 0.831,
-    "balanced_accuracy": 0.831,
-    "macro_precision": 0.85,
-    "macro_recall": 0.831,
-    "macro_f1": 0.826,
+    "test_units": 2144,
+    "accuracy": 0.9109,
+    "balanced_accuracy": 0.9109,
+    "macro_precision": 0.9099,
+    "macro_recall": 0.9109,
+    "macro_f1": 0.9089,
     "confusion_matrix": [
       [
-        176,
+        536,
         0,
         0,
         0
       ],
       [
-        3,
-        123,
-        28,
-        22
+        0,
+        473,
+        63,
+        0
       ],
       [
-        16,
-        1,
-        113,
-        46
+        0,
+        72,
+        408,
+        56
       ],
       [
-        3,
         0,
         0,
-        173
+        0,
+        536
       ]
     ],
     "per_class_recall": {
       "healthy": 1.0,
-      "bearing": 0.6989,
-      "half_broken_bar": 0.642,
-      "broken_bar": 0.983
+      "bearing": 0.8825,
+      "half_broken_bar": 0.7612,
+      "broken_bar": 1.0
     }
   }
 }

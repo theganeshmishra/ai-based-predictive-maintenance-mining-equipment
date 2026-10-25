@@ -197,8 +197,6 @@ def export_images(run: bool = True) -> dict:
                 frames = loadmat(ROOT / "Raw_Data" / folder / f"{unit}.mat",
                                  variable_names=["imagenes_celda"])["imagenes_celda"]
                 for k, frame in enumerate(frames.flat):
-                    if k % 3:
-                        continue  # every 3rd frame: 150 images per run
                     gray = cv2.cvtColor(cv2.resize(np.asarray(frame), (WIDTH, HEIGHT)), cv2.COLOR_RGB2GRAY)
                     write(rows, label, unit, speed, f"{MACHINE}_{label}_{speed}_f{k:03d}.png", gray)
                 print(f"{unit}: done", flush=True)
@@ -207,6 +205,17 @@ def export_images(run: bool = True) -> dict:
     def main():
         parser = argparse.ArgumentParser(description=export_images.__doc__)
         parser.parse_args()
+        labels = {"H": "healthy", "BD": "bearing", "HB": "half_broken_bar", "OB": "broken_bar"}
+        missing = []
+        for condition in labels:
+            folder = "cora_gear_wear" if condition == "H" else "cora_drive_faults"
+            for speed in ("F5", "F15", "F50", "F60"):
+                source = ROOT / "Raw_Data" / folder / f"{condition}_{speed}_S.mat"
+                if not source.is_file():
+                    missing.append(source)
+        if missing:
+            paths = ", ".join(str(path.relative_to(ROOT)) for path in missing)
+            raise SystemExit(f"Missing infrared source files; no images were replaced: {paths}")
         if OUT.exists():
             shutil.rmtree(OUT)
         rows = export()
