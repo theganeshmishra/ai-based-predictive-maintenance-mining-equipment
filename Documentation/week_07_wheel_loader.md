@@ -14,11 +14,11 @@ stands in for the loader's drive motor. Lab data, not a wheel loader.
 
 | | Sensor | Camera |
 |---|---|---|
-| Data | CORA Vx vibration (3 kHz, 1 s windows, shaft-order features) | CORA infrared, every 3rd of 450 frames |
+| Data | CORA Vx vibration (3 kHz, 1 s windows, shaft-order features) | CORA infrared, all 450 frames per run |
 | Classes | healthy, bearing defect, half-broken rotor bar, broken rotor bar (4 runs each) | same |
-| New data | 16 files (HB/OB vibration and infrared, about 1.06 GB), downloaded in a browser, all MD5-checked | |
+| New image data | 8 HB/OB infrared stacks, downloaded and MD5-verified | |
 | Shared data | healthy and bearing-defect runs are the same files as the Excavator's | |
-| Images | — | 2,400 named images (`wheel_loader_<class>_<speed>_fNNN.png`), 600 per class |
+| Images | — | 7,200 named images (`wheel_loader_<class>_<speed>_fNNN.png`), 1,800 per class |
 | Main test | one whole speed held out per round (4 runs, one per class), 4 rounds, 16 run-level predictions | same |
 | Code | `python Models/wheel_loader.py csv` | `python Models/wheel_loader.py cnn-pretrained` |
 
@@ -27,22 +27,27 @@ normalisation**: preprocessing never looks at the held-out speed's runs.
 
 ## Results (accuracy, 4 classes; guessing = 0.250)
 
+All 16 infrared stacks were downloaded and verified against the publisher's file sizes and MD5 checksums. The exporter now saves all 450 frames per run and the ResNet18 was retrained on all 7,200 images. The older saved result below has been replaced.
+
+The eight HB/OB vibration CSVs are currently missing locally; the sensor scores in the table are saved results and were not retrained in this run.
+
 | Model | Main test (unseen speed) | Time split |
 |---|---:|---:|
 | Sensor: validation-selected model | 0.312 | — |
 | Sensor: random forest | 0.250 | 0.938 |
 | Sensor: XGBoost / LightGBM | 0.250 / 0.250 | 0.875 / 0.938 |
-| Camera: pretrained ResNet18 | 0.312 | 0.812 |
+| Camera: pretrained ResNet18 (7,200 images) | 0.188 | 1.000 |
 | Anomaly: Isolation Forest (ROC-AUC) | 0.40 | 0.90 |
 
 ## What it means
 
-- **At an unseen speed both branches are at chance** (5 of 16 runs). This is the same CORA limit as the
-  Excavator: one run per fault per speed, so the model cannot learn what a rotor-bar fault looks like at a
-  speed it has never heard.
-- **Within the same recordings (time split)** the sensor model recognises 15 of 16 runs (all rotor-bar
-  runs correct) and the camera 13 of 16, so the faults leave a signal; part of this score may come from
-  recognising the recording.
+- **At an unseen speed the camera gets 3 of 16 recordings (0.188), below the 0.250 four-class chance
+  baseline**; recall is zero for broken-bar faults. The previous 2,400-image run scored 5 of 16, so
+  adding adjacent frames did not improve generalization. There is still only one recording per class
+  and speed; images from one recording are correlated, not independent examples.
+- **The secondary time split gets 16 of 16 recordings (1.000) and 0.911 image-level accuracy**, but
+  train and test frames come from the same recordings. This is not evidence of generalization to a new
+  recording or speed and may reflect recording-specific patterns.
 - Broken rotor bars are classically detected in **motor current** (sidebands around the supply frequency),
   which this experiment does not use; CORA's current files (about 150 MB per run) are a possible next step.
 - Small test set: one run changes accuracy by 6 points. Not above the methodology's 80% gate.
