@@ -1,0 +1,125 @@
+{
+  "purpose": "Week 7: anomaly detection rerun on every CORA sensor, window and recording (trained on healthy data only)",
+  "machine": "belt_conveyor",
+  "features": "vibration + current (78 features)",
+  "test": "MAIN: four rounds, each holding out one whole speed (24 test recordings per round: 6 healthy, 18 faulty). TIME SPLIT (secondary): stationary runs, healthy first 60% trains, last 30% tests",
+  "threshold_rule": "MAIN: leave-one-speed-out inside the training speeds - fit on the healthy recordings of two training speeds, score the healthy recordings of the third; the highest score is the alarm threshold. TIME SPLIT: leave-one-healthy-run-out on the early parts. No test data and no fault labels are used to train or to set the threshold",
+  "detectors": {
+    "Isolation Forest": {
+      "main": {
+        "test_recordings": 96,
+        "healthy": 24,
+        "faulty": 72,
+        "roc_auc": 0.6285,
+        "fault_detection_rate": 0.0,
+        "false_alarm_rate": 0.0,
+        "accuracy": 0.25,
+        "detection_rate_per_fault": {
+          "wear25": 0.0,
+          "wear50": 0.0,
+          "wear75": 0.0
+        }
+      },
+      "main_stationary": {
+        "test_recordings": 16,
+        "healthy": 4,
+        "faulty": 12,
+        "roc_auc": 0.5417,
+        "fault_detection_rate": 0.0,
+        "false_alarm_rate": 0.0,
+        "accuracy": 0.25,
+        "detection_rate_per_fault": {
+          "wear25": 0.0,
+          "wear50": 0.0,
+          "wear75": 0.0
+        }
+      },
+      "main_transient": {
+        "test_recordings": 80,
+        "healthy": 20,
+        "faulty": 60,
+        "roc_auc": 0.6442,
+        "fault_detection_rate": 0.0,
+        "false_alarm_rate": 0.0,
+        "accuracy": 0.25,
+        "detection_rate_per_fault": {
+          "wear25": 0.0,
+          "wear50": 0.0,
+          "wear75": 0.0
+        }
+      },
+      "time_split_stationary": {
+        "test_recordings": 16,
+        "healthy": 4,
+        "faulty": 12,
+        "roc_auc": 0.9375,
+        "fault_detection_rate": 0.0,
+        "false_alarm_rate": 0.0,
+        "accuracy": 0.25,
+        "detection_rate_per_fault": {
+          "wear25": 0.0,
+          "wear50": 0.0,
+          "wear75": 0.0
+        }
+      }
+    },
+    "One-Class SVM": {
+      "main": {
+        "test_recordings": 96,
+        "healthy": 24,
+        "faulty": 72,
+        "roc_auc": 0.6603,
+        "fault_detection_rate": 0.25,
+        "false_alarm_rate": 0.25,
+        "accuracy": 0.375,
+        "detection_rate_per_fault": {
+          "wear25": 0.25,
+          "wear50": 0.25,
+          "wear75": 0.25
+        }
+      },
+      "main_stationary": {
+        "test_recordings": 16,
+        "healthy": 4,
+        "faulty": 12,
+        "roc_auc": 0.6667,
+        "fault_detection_rate": 0.25,
+        "false_alarm_rate": 0.25,
+        "accuracy": 0.375,
+        "detection_rate_per_fault": {
+          "wear25": 0.25,
+          "wear50": 0.25,
+          "wear75": 0.25
+        }
+      },
+      "main_transient": {
+        "test_recordings": 80,
+        "healthy": 20,
+        "faulty": 60,
+        "roc_auc": 0.6592,
+        "fault_detection_rate": 0.25,
+        "false_alarm_rate": 0.25,
+        "accuracy": 0.375,
+        "detection_rate_per_fault": {
+          "wear25": 0.25,
+          "wear50": 0.25,
+          "wear75": 0.25
+        }
+      },
+      "time_split_stationary": {
+        "test_recordings": 16,
+        "healthy": 4,
+        "faulty": 12,
+        "roc_auc": 0.8333,
+        "fault_detection_rate": 0.0,
+        "false_alarm_rate": 0.0,
+        "accuracy": 0.25,
+        "detection_rate_per_fault": {
+          "wear25": 0.0,
+          "wear50": 0.0,
+          "wear75": 0.0
+        }
+      }
+    }
+  }
+}

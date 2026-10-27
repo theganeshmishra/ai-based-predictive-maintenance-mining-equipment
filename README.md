@@ -83,6 +83,7 @@ Run these from the project folder (Windows: `.venv\Scripts\python.exe`, Mac/Linu
 | `python Models/<machine>.py baselines` | Week 5 baseline comparison (Pump, Haul Truck, Belt Conveyor) |
 | `python Models/<machine>.py ensembles` | proposal Week 6: XGBoost and LightGBM vs random forest and others |
 | `python Models/<machine>.py fulldata` | Week 7: every CORA sensor, window and start-up test (Belt Conveyor, Dozer, Excavator, Wheel Loader) |
+| `python Models/<machine>.py fulldata --part all` | Week 7: also rerun the XGBoost/LightGBM comparison and anomaly detection on the full data (same unseen-speed test) |
 | `python Models/<machine>.py cnn-pretrained --all-frames` | Week 7: CNN on every frame (run `export-images --all-frames` first; Belt Conveyor, Excavator, Haul Truck) |
 | `python Models/<machine>.py anomaly` | Week 7: anomaly detection trained on healthy data only (Isolation Forest, One-Class SVM) |
 | `python Models/<machine>.py train-final` | train the sensor model on all data and save it |
