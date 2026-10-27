@@ -1,7 +1,7 @@
 """Haul/Dump Truck: wheel-motor bearing, UODS vibration vs XJTU-Rotor event camera.
 
-All of this machine's code in one file. The notebook Notebook/Haul_Truck.ipynb
-runs these commands and shows the results.
+All of this machine's code in one file. The combined notebook
+Notebook/Mining_Equipment_Condition_Monitoring.ipynb runs these commands and shows the results.
 
 Usage:
     python Models/haul_truck.py <command> [options]
