@@ -20,6 +20,7 @@ Commands:
     ensembles       XGBoost / LightGBM vs random forest etc. (--split time for the secondary test)
     anomaly         anomaly detection trained on healthy data only (--split time for the secondary test)
     fulldata        Week 7: every CORA sensor, window and start-up recording (Models/cora_fulldata.py)
+                    (--part ensembles / anomaly / all: XGBoost-LightGBM comparison, anomaly detection)
     all             run csv, then export-images, then cnn-pretrained
 
 Preprocessing uses training data only (no per-speed normalisation across held-out runs).
@@ -1356,11 +1357,17 @@ def fulldata(run: bool = True) -> dict:
     import importlib.util
 
     def main():
-        argparse.ArgumentParser(description=fulldata.__doc__).parse_args()
+        parser = argparse.ArgumentParser(description=fulldata.__doc__)
+        parser.add_argument("--part", choices=("classify", "ensembles", "anomaly", "all"), default="classify",
+                            help="classify (default), ensembles (XGBoost/LightGBM comparison), anomaly, or all")
+        part = parser.parse_args().part
         spec = importlib.util.spec_from_file_location("cora_fulldata", ROOT / "Models" / "cora_fulldata.py")
         engine = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(engine)
-        engine.run("wheel_loader", {"H": "healthy", "BD": "bearing", "HB": "half_broken_bar", "OB": "broken_bar"})
+        conditions = {"H": "healthy", "BD": "bearing", "HB": "half_broken_bar", "OB": "broken_bar"}
+        for name in ("classify", "ensembles", "anomaly"):
+            if part in (name, "all"):
+                (engine.run if name == "classify" else getattr(engine, name))("wheel_loader", conditions)
 
     if run:
         main()

@@ -281,6 +281,26 @@ def show_fulldata(machine: str) -> None:
           "; ".join(f"{c['held_out_speed']}: {c['feature_set']} / {c['model']}" for c in result["validation_selected"]["choices"]))
 
 
+def show_fulldata_extras(machine: str) -> None:
+    """Display the Week 7 full-data ensemble comparison and anomaly detection (fair test: unseen speed)."""
+    ens, ano = load(f"{machine}_fulldata_ensembles.json"), load(f"{machine}_fulldata_anomaly.json")
+    if not ens and not ano:
+        print(f"No result yet: run  python Models/{machine}.py fulldata --part all")
+        return
+    if ens:
+        display(pd.DataFrame({name: {"MAIN accuracy (unseen speed)": m["main"]["all"]["accuracy"],
+                                     "MAIN macro F1": m["main"]["all"]["macro_f1"],
+                                     "MAIN stationary": m["main"]["stationary"]["accuracy"],
+                                     "MAIN start-up": m["main"]["transient"]["accuracy"],
+                                     "TIME SPLIT (secondary)": m["time_split_stationary"]["all"]["accuracy"],
+                                     "seconds": m["seconds"]} for name, m in ens["models"].items()}).T)
+    if ano:
+        display(pd.DataFrame({f"{label} | {name}": {k: b[part][k] for k in ("roc_auc", "fault_detection_rate",
+                                                                            "false_alarm_rate", "test_recordings")}
+                              for name, b in ano["detectors"].items()
+                              for part, label in (("main", "MAIN"), ("time_split_stationary", "TIME SPLIT"))}).T)
+
+
 def show_allframes(machine: str) -> None:
     """Compare the Week 6 image CNN with the Week 7 run on every frame (separate result files)."""
     rows = {}

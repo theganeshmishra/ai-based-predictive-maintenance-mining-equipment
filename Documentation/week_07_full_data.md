@@ -62,6 +62,44 @@ reported in the result files but are **excluded from model selection**. The same
 CORA modality to a smaller degree: each condition was assembled once, so the unseen-speed test cannot fully
 separate "fault" from "assembly session". Repeated assemblies per condition would be needed to settle it.
 
+### XGBoost / LightGBM and anomaly detection on the full data
+
+Both comparisons were rerun on the full data, using the same fair main test: each whole speed is held out in
+turn, giving 96 test recordings. The inputs are all vibration and current features (temperature is excluded).
+Every model setting was fixed in advance, so nothing was tuned on a test result. Command:
+`python Models/<machine>.py fulldata --part ensembles` (or `--part anomaly`, or `--part all`).
+
+| Main test accuracy (unseen speed) | Belt Conveyor / Dozer | Excavator | Wheel Loader |
+|---|---:|---:|---:|
+| Majority class (control) | 0.250 | 0.250 | 0.250 |
+| Random forest | 0.573 (Week 6: 0.375) | 0.438 (0.250) | 0.333 (0.250) |
+| Extra trees | 0.500 (0.438) | **0.458** (0.312) | 0.323 (0.250) |
+| Gradient boosting (scikit-learn) | **0.594** (0.438) | 0.417 (0.250) | 0.323 (0.250) |
+| XGBoost | 0.531 (0.438) | **0.458** (0.250) | 0.292 (0.250) |
+| LightGBM | 0.583 (0.562) | 0.427 (0.312) | **0.365** (0.250) |
+| Time split (secondary), all five models | 1.000 | 1.000 | 0.938–1.000 |
+
+- With more data, every real model improves on its Week 6 score for every machine.
+- No model wins on all three machines, and the gaps between models (about 2–9 points) are only a few
+  recordings. The best-model figures in bold are therefore **not** a fair pick. The fair single numbers are
+  the validation-selected results in the first table of this section.
+- Still no CORA machine reaches 80–90% on an unseen speed.
+
+| Anomaly detection, ROC-AUC (healthy vs fault) | Belt Conveyor / Dozer | Excavator | Wheel Loader |
+|---|---:|---:|---:|
+| Isolation Forest, main test (Week 7 small data) | 0.63 (0.63) | 0.56 (0.42) | 0.53 (0.40) |
+| One-Class SVM, main test | 0.66 (0.58) | 0.65 (0.50) | 0.59 (0.50) |
+| Time split (secondary), IF / OC-SVM | 0.94 / 0.83 | 0.83 / 0.73 | 0.75 / 0.60 |
+
+- The detectors learn healthy data only. The alarm threshold is set inside the training speeds: fit on two
+  speeds, then use the highest healthy score on the third. No test data or fault labels are used.
+- **The alarm does not work on an unseen speed.** The One-Class SVM flags all 24 recordings at the 5 Hz speed
+  (healthy or not) and none at the other three speeds, so it detects 25% of faults with 25% false alarms. The
+  Isolation Forest never alarms. The detector reacts to the change in speed, not to the fault. ROC-AUC is
+  only slightly above chance (0.53–0.66).
+- A usable alarm would need healthy reference data at the operating speed. That is the normal practice in
+  real monitoring (a baseline per operating point), but it falls outside the fair unseen-speed test.
+
 ## 3. Images: every frame / whole recordings
 
 | Machine | Week 6 images | Main test (unseen speed) | Time split |
