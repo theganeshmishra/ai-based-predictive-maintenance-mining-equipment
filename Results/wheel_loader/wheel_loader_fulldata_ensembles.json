@@ -1,0 +1,549 @@
+{
+  "purpose": "Week 7: ensemble comparison (proposal Week 6) rerun on every CORA sensor, window and recording",
+  "machine": "wheel_loader",
+  "classes": [
+    "healthy",
+    "bearing",
+    "half_broken_bar",
+    "broken_bar"
+  ],
+  "features": "vibration + current (78 features)",
+  "test": "MAIN: four rounds, each holding out one whole speed (24 test recordings per round, 96 in total); one prediction per recording. TIME SPLIT (secondary, easier): stationary runs, first 60% trains, last 30% tests",
+  "selection_rule": "feature set and model settings fixed in advance; nothing chosen on any test result",
+  "models": {
+    "Majority class (control)": {
+      "main": {
+        "all": {
+          "test_recordings": 96,
+          "accuracy": 0.25,
+          "balanced_accuracy": 0.25,
+          "macro_f1": 0.1
+        },
+        "stationary": {
+          "test_recordings": 16,
+          "accuracy": 0.25,
+          "balanced_accuracy": 0.25,
+          "macro_f1": 0.1
+        },
+        "transient": {
+          "test_recordings": 80,
+          "accuracy": 0.25,
+          "balanced_accuracy": 0.25,
+          "macro_f1": 0.1
+        },
+        "confusion_matrix_all": [
+          [
+            24,
+            0,
+            0,
+            0
+          ],
+          [
+            24,
+            0,
+            0,
+            0
+          ],
+          [
+            24,
+            0,
+            0,
+            0
+          ],
+          [
+            24,
+            0,
+            0,
+            0
+          ]
+        ]
+      },
+      "time_split_stationary": {
+        "all": {
+          "test_recordings": 16,
+          "accuracy": 0.25,
+          "balanced_accuracy": 0.25,
+          "macro_f1": 0.1
+        },
+        "stationary": {
+          "test_recordings": 16,
+          "accuracy": 0.25,
+          "balanced_accuracy": 0.25,
+          "macro_f1": 0.1
+        },
+        "confusion_matrix_all": [
+          [
+            4,
+            0,
+            0,
+            0
+          ],
+          [
+            4,
+            0,
+            0,
+            0
+          ],
+          [
+            4,
+            0,
+            0,
+            0
+          ],
+          [
+            4,
+            0,
+            0,
+            0
+          ]
+        ]
+      },
+      "seconds": 0.1
+    },
+    "Random forest": {
+      "main": {
+        "all": {
+          "test_recordings": 96,
+          "accuracy": 0.3333,
+          "balanced_accuracy": 0.3333,
+          "macro_f1": 0.3326
+        },
+        "stationary": {
+          "test_recordings": 16,
+          "accuracy": 0.5,
+          "balanced_accuracy": 0.5,
+          "macro_f1": 0.4881
+        },
+        "transient": {
+          "test_recordings": 80,
+          "accuracy": 0.3,
+          "balanced_accuracy": 0.3,
+          "macro_f1": 0.3003
+        },
+        "confusion_matrix_all": [
+          [
+            7,
+            5,
+            6,
+            6
+          ],
+          [
+            6,
+            7,
+            7,
+            4
+          ],
+          [
+            1,
+            8,
+            6,
+            9
+          ],
+          [
+            0,
+            5,
+            7,
+            12
+          ]
+        ]
+      },
+      "time_split_stationary": {
+        "all": {
+          "test_recordings": 16,
+          "accuracy": 1.0,
+          "balanced_accuracy": 1.0,
+          "macro_f1": 1.0
+        },
+        "stationary": {
+          "test_recordings": 16,
+          "accuracy": 1.0,
+          "balanced_accuracy": 1.0,
+          "macro_f1": 1.0
+        },
+        "confusion_matrix_all": [
+          [
+            4,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            4,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            4,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            4
+          ]
+        ]
+      },
+      "seconds": 4.0
+    },
+    "Extra trees": {
+      "main": {
+        "all": {
+          "test_recordings": 96,
+          "accuracy": 0.3229,
+          "balanced_accuracy": 0.3229,
+          "macro_f1": 0.2891
+        },
+        "stationary": {
+          "test_recordings": 16,
+          "accuracy": 0.3125,
+          "balanced_accuracy": 0.3125,
+          "macro_f1": 0.2063
+        },
+        "transient": {
+          "test_recordings": 80,
+          "accuracy": 0.325,
+          "balanced_accuracy": 0.325,
+          "macro_f1": 0.299
+        },
+        "confusion_matrix_all": [
+          [
+            13,
+            2,
+            0,
+            9
+          ],
+          [
+            12,
+            4,
+            1,
+            7
+          ],
+          [
+            12,
+            3,
+            2,
+            7
+          ],
+          [
+            7,
+            0,
+            5,
+            12
+          ]
+        ]
+      },
+      "time_split_stationary": {
+        "all": {
+          "test_recordings": 16,
+          "accuracy": 1.0,
+          "balanced_accuracy": 1.0,
+          "macro_f1": 1.0
+        },
+        "stationary": {
+          "test_recordings": 16,
+          "accuracy": 1.0,
+          "balanced_accuracy": 1.0,
+          "macro_f1": 1.0
+        },
+        "confusion_matrix_all": [
+          [
+            4,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            4,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            4,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            4
+          ]
+        ]
+      },
+      "seconds": 2.8
+    },
+    "Gradient boosting (scikit-learn)": {
+      "main": {
+        "all": {
+          "test_recordings": 96,
+          "accuracy": 0.3229,
+          "balanced_accuracy": 0.3229,
+          "macro_f1": 0.2867
+        },
+        "stationary": {
+          "test_recordings": 16,
+          "accuracy": 0.3125,
+          "balanced_accuracy": 0.3125,
+          "macro_f1": 0.2659
+        },
+        "transient": {
+          "test_recordings": 80,
+          "accuracy": 0.325,
+          "balanced_accuracy": 0.325,
+          "macro_f1": 0.2911
+        },
+        "confusion_matrix_all": [
+          [
+            8,
+            0,
+            14,
+            2
+          ],
+          [
+            6,
+            0,
+            15,
+            3
+          ],
+          [
+            4,
+            0,
+            12,
+            8
+          ],
+          [
+            0,
+            0,
+            13,
+            11
+          ]
+        ]
+      },
+      "time_split_stationary": {
+        "all": {
+          "test_recordings": 16,
+          "accuracy": 1.0,
+          "balanced_accuracy": 1.0,
+          "macro_f1": 1.0
+        },
+        "stationary": {
+          "test_recordings": 16,
+          "accuracy": 1.0,
+          "balanced_accuracy": 1.0,
+          "macro_f1": 1.0
+        },
+        "confusion_matrix_all": [
+          [
+            4,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            4,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            4,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            4
+          ]
+        ]
+      },
+      "seconds": 32.4
+    },
+    "XGBoost": {
+      "main": {
+        "all": {
+          "test_recordings": 96,
+          "accuracy": 0.2917,
+          "balanced_accuracy": 0.2917,
+          "macro_f1": 0.2781
+        },
+        "stationary": {
+          "test_recordings": 16,
+          "accuracy": 0.25,
+          "balanced_accuracy": 0.25,
+          "macro_f1": 0.2083
+        },
+        "transient": {
+          "test_recordings": 80,
+          "accuracy": 0.3,
+          "balanced_accuracy": 0.3,
+          "macro_f1": 0.292
+        },
+        "confusion_matrix_all": [
+          [
+            8,
+            3,
+            11,
+            2
+          ],
+          [
+            6,
+            2,
+            14,
+            2
+          ],
+          [
+            4,
+            4,
+            12,
+            4
+          ],
+          [
+            2,
+            0,
+            16,
+            6
+          ]
+        ]
+      },
+      "time_split_stationary": {
+        "all": {
+          "test_recordings": 16,
+          "accuracy": 0.9375,
+          "balanced_accuracy": 0.9375,
+          "macro_f1": 0.9365
+        },
+        "stationary": {
+          "test_recordings": 16,
+          "accuracy": 0.9375,
+          "balanced_accuracy": 0.9375,
+          "macro_f1": 0.9365
+        },
+        "confusion_matrix_all": [
+          [
+            4,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            4,
+            0,
+            0
+          ],
+          [
+            0,
+            1,
+            3,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            4
+          ]
+        ]
+      },
+      "seconds": 5.9
+    },
+    "LightGBM": {
+      "main": {
+        "all": {
+          "test_recordings": 96,
+          "accuracy": 0.3646,
+          "balanced_accuracy": 0.3646,
+          "macro_f1": 0.3787
+        },
+        "stationary": {
+          "test_recordings": 16,
+          "accuracy": 0.375,
+          "balanced_accuracy": 0.375,
+          "macro_f1": 0.381
+        },
+        "transient": {
+          "test_recordings": 80,
+          "accuracy": 0.3625,
+          "balanced_accuracy": 0.3625,
+          "macro_f1": 0.3778
+        },
+        "confusion_matrix_all": [
+          [
+            9,
+            2,
+            12,
+            1
+          ],
+          [
+            6,
+            5,
+            13,
+            0
+          ],
+          [
+            5,
+            5,
+            10,
+            4
+          ],
+          [
+            0,
+            0,
+            13,
+            11
+          ]
+        ]
+      },
+      "time_split_stationary": {
+        "all": {
+          "test_recordings": 16,
+          "accuracy": 1.0,
+          "balanced_accuracy": 1.0,
+          "macro_f1": 1.0
+        },
+        "stationary": {
+          "test_recordings": 16,
+          "accuracy": 1.0,
+          "balanced_accuracy": 1.0,
+          "macro_f1": 1.0
+        },
+        "confusion_matrix_all": [
+          [
+            4,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            4,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            4,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            4
+          ]
+        ]
+      },
+      "seconds": 4.4
+    }
+  }
+}

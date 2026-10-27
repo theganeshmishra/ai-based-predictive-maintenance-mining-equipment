@@ -23,6 +23,7 @@ Commands:
     train-final     train the sensor model on all data and save it (--exclude to leave recordings out)
     predict         predict from any CSV (feature table or raw recording) and show accuracy if labels are known
     fulldata        Week 7: every CORA sensor, window and start-up recording (Models/cora_fulldata.py)
+                    (--part ensembles / anomaly / all: XGBoost-LightGBM comparison, anomaly detection)
     all             run csv, ensembles and anomaly
 
 Raw data stays in Raw_Data/ and Processed_Data/ (not in Git).
@@ -1241,11 +1242,17 @@ def fulldata(run: bool = True) -> dict:
     import importlib.util
 
     def main():
-        argparse.ArgumentParser(description=fulldata.__doc__).parse_args()
+        parser = argparse.ArgumentParser(description=fulldata.__doc__)
+        parser.add_argument("--part", choices=("classify", "ensembles", "anomaly", "all"), default="classify",
+                            help="classify (default), ensembles (XGBoost/LightGBM comparison), anomaly, or all")
+        part = parser.parse_args().part
         spec = importlib.util.spec_from_file_location("cora_fulldata", ROOT / "Models" / "cora_fulldata.py")
         engine = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(engine)
-        engine.run("dozer", {"H": "healthy", "W25": "wear25", "W50": "wear50", "W75": "wear75"})
+        conditions = {"H": "healthy", "W25": "wear25", "W50": "wear50", "W75": "wear75"}
+        for name in ("classify", "ensembles", "anomaly"):
+            if part in (name, "all"):
+                (engine.run if name == "classify" else getattr(engine, name))("dozer", conditions)
 
     if run:
         main()

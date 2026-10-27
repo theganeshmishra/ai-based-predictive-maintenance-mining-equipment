@@ -330,3 +330,198 @@ def run(machine: str, conditions: dict[str, str], train_step: int = 3) -> dict:
     print(f"Validation-selected: all {s['all']['accuracy']:.3f} ({s['all']['test_recordings']} recordings); {parts}")
     print(f"Saved {out.relative_to(ROOT)} and {fig.relative_to(ROOT)} in {(time.perf_counter() - start) / 60:.1f} min")
     return result
+
+
+# ---------------------------------------------------------------------------------------------- Week 7 extras
+# The ensemble comparison and the anomaly detection rerun on the full data, with the same fair main test:
+# one whole speed held out per round, nothing chosen or fitted on the held-out speed.
+
+FIXED_SET = "vibration + current"   # every non-temperature sensor; fixed in advance, not chosen on any test
+
+
+def ensemble_models():
+    from lightgbm import LGBMClassifier
+    from sklearn.dummy import DummyClassifier
+    from sklearn.ensemble import ExtraTreesClassifier, HistGradientBoostingClassifier, RandomForestClassifier
+    from xgboost import XGBClassifier
+    return {
+        "Majority class (control)": lambda: DummyClassifier(strategy="most_frequent"),
+        "Random forest": models()["Random forest"],
+        "Extra trees": lambda: ExtraTreesClassifier(n_estimators=300, max_features="sqrt", min_samples_leaf=2,
+                                                    class_weight="balanced", random_state=42, n_jobs=-1),
+        "Gradient boosting (scikit-learn)": lambda: HistGradientBoostingClassifier(max_iter=200, learning_rate=0.05,
+                                                                                   random_state=42),
+        "XGBoost": lambda: XGBClassifier(n_estimators=300, max_depth=4, learning_rate=0.05, subsample=0.8,
+                                         colsample_bytree=0.8, tree_method="hist", random_state=42, n_jobs=-1,
+                                         verbosity=0),
+        "LightGBM": models()["LightGBM"],
+    }
+
+
+class _Encoded:
+    """Wrap a classifier so it trains on integer labels (XGBoost needs them) and reports the class names."""
+
+    def __init__(self, model, labels):
+        self.model, self.labels = model, labels
+
+    def fit(self, x, y, sample_weight=None):
+        code = {label: i for i, label in enumerate(self.labels)}
+        self.model.fit(x, np.array([code[v] for v in y]), sample_weight=sample_weight)
+        self.classes_ = np.array([self.labels[i] for i in self.model.classes_])
+        return self
+
+    def predict_proba(self, x):
+        return self.model.predict_proba(x)
+
+
+def ensembles(machine: str, conditions: dict[str, str], train_step: int = 3) -> dict:
+    """Ensemble comparison on the full data; saves Results/<machine>/<machine>_fulldata_ensembles.json."""
+    start = time.perf_counter()
+    labels = list(conditions.values())
+    print(f"{machine}: ensemble comparison on the full data", flush=True)
+    table = build(conditions)
+    features = feature_sets(table)[FIXED_SET]
+    thin = lambda t: t[(t.regime == "transient") | (t.window % train_step == 0)]
+    stat = table[table.regime == "stationary"]
+    position = stat.groupby("unit")["window"].rank(pct=True)
+    early, late = stat[position <= 0.6], stat[position > 0.7]
+    result = {"purpose": "Week 7: ensemble comparison (proposal Week 6) rerun on every CORA sensor, window and recording",
+              "machine": machine, "classes": labels, "features": f"{FIXED_SET} ({len(features)} features)",
+              "test": "MAIN: four rounds, each holding out one whole speed (24 test recordings per round, 96 in total); "
+                      "one prediction per recording. TIME SPLIT (secondary, easier): stationary runs, first 60% "
+                      "trains, last 30% tests",
+              "selection_rule": "feature set and model settings fixed in advance; nothing chosen on any test result",
+              "models": {}}
+    for name, make in ensemble_models().items():
+        wrapped = lambda make=make: _Encoded(make(), labels)
+        t0 = time.perf_counter()
+        main = pd.concat([_fit_predict(wrapped, thin(table[table.speed != held]), table[table.speed == held],
+                                       features, labels) for held in SPEEDS])
+        seconds = time.perf_counter() - t0
+        result["models"][name] = {"main": _score(main, labels),
+                                  "time_split_stationary": _score(_fit_predict(wrapped, early.iloc[::train_step], late,
+                                                                               features, labels), labels),
+                                  "seconds": round(seconds, 1)}
+        m = result["models"][name]
+        print(f"  {name:33s} main {m['main']['all']['accuracy']:.3f} (stationary "
+              f"{m['main']['stationary']['accuracy']:.3f}, start-up {m['main']['transient']['accuracy']:.3f})  "
+              f"time split {m['time_split_stationary']['all']['accuracy']:.3f}  [{seconds:.0f} s]", flush=True)
+    out = ROOT / "Results" / machine / f"{machine}_fulldata_ensembles.json"
+    out.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
+    _bar_figure(machine, "ensembles", {n: (m["main"]["all"]["accuracy"], m["time_split_stationary"]["all"]["accuracy"])
+                                       for n, m in result["models"].items()},
+                ("main test (unseen speed)", "time split (secondary)"), 1 / len(labels),
+                f"{machine.replace('_', ' ').title()} full data: ensemble comparison (dashed = chance)")
+    print(f"Saved {out.relative_to(ROOT)} in {(time.perf_counter() - start) / 60:.1f} min")
+    return result
+
+
+def _detectors():
+    from sklearn.ensemble import IsolationForest
+    from sklearn.pipeline import make_pipeline
+    from sklearn.preprocessing import StandardScaler
+    from sklearn.svm import OneClassSVM
+    return {"Isolation Forest": lambda: make_pipeline(StandardScaler(), IsolationForest(
+                n_estimators=300, max_samples=256, random_state=42, n_jobs=-1)),
+            "One-Class SVM": lambda: make_pipeline(StandardScaler(), OneClassSVM(kernel="rbf", gamma="scale", nu=0.05))}
+
+
+def _detector_fit(make, frame, features, max_rows=4000):
+    # every healthy recording gets an equal share of the (at most max_rows) training rows
+    per_unit = max(1, max_rows // frame.unit.nunique())
+    keep = np.concatenate([idx[np.linspace(0, len(idx) - 1, min(len(idx), per_unit)).astype(int)]
+                           for idx in frame.groupby("unit").indices.values()])
+    return make().fit(frame[features].to_numpy()[keep])
+
+
+def _recording_scores(model, frame, features):
+    window = -model.decision_function(frame[features].to_numpy())   # higher = more unusual
+    return pd.Series(window, index=frame.index).groupby(frame.unit).mean()
+
+
+def _anomaly_block(rows: pd.DataFrame, labels) -> dict:
+    from sklearn.metrics import roc_auc_score
+    truth = (rows["class"] != "healthy").to_numpy()
+    alarm = rows["margin"].to_numpy() > 0
+    return {"test_recordings": int(len(rows)), "healthy": int((~truth).sum()), "faulty": int(truth.sum()),
+            "roc_auc": round(float(roc_auc_score(truth, rows["margin"])), 4) if 0 < truth.sum() < len(truth) else None,
+            "fault_detection_rate": round(float(alarm[truth].mean()), 4),
+            "false_alarm_rate": round(float(alarm[~truth].mean()), 4),
+            "accuracy": round(float((alarm == truth).mean()), 4),
+            "detection_rate_per_fault": {c: round(float(alarm[(rows["class"] == c).to_numpy()].mean()), 4)
+                                         for c in labels if c != "healthy"}}
+
+
+def anomaly(machine: str, conditions: dict[str, str]) -> dict:
+    """Anomaly detection on the full data; saves Results/<machine>/<machine>_fulldata_anomaly.json."""
+    start = time.perf_counter()
+    labels = list(conditions.values())
+    print(f"{machine}: anomaly detection on the full data", flush=True)
+    table = build(conditions)
+    features = feature_sets(table)[FIXED_SET]
+    result = {"purpose": "Week 7: anomaly detection rerun on every CORA sensor, window and recording "
+                         "(trained on healthy data only)",
+              "machine": machine, "features": f"{FIXED_SET} ({len(features)} features)",
+              "test": "MAIN: four rounds, each holding out one whole speed (24 test recordings per round: 6 healthy, "
+                      "18 faulty). TIME SPLIT (secondary): stationary runs, healthy first 60% trains, last 30% tests",
+              "threshold_rule": "MAIN: leave-one-speed-out inside the training speeds - fit on the healthy recordings "
+                                "of two training speeds, score the healthy recordings of the third; the highest score "
+                                "is the alarm threshold. TIME SPLIT: leave-one-healthy-run-out on the early parts. "
+                                "No test data and no fault labels are used to train or to set the threshold",
+              "detectors": {}}
+    stat = table[table.regime == "stationary"]
+    position = stat.groupby("unit")["window"].rank(pct=True)
+    early, late = stat[position <= 0.6], stat[position > 0.7]
+    for name, make in _detectors().items():
+        rows = []
+        for held in SPEEDS:
+            train = table[(table.speed != held) & (table["class"] == "healthy")]
+            cut = max(_recording_scores(_detector_fit(make, train[train.speed != inner], features),
+                                        train[train.speed == inner], features).max()
+                      for inner in sorted(set(train.speed)))
+            test = table[table.speed == held]
+            scores = _recording_scores(_detector_fit(make, train, features), test, features)
+            rows.append(test.groupby("unit")[["class", "regime"]].first().assign(margin=scores - cut))
+        rows = pd.concat(rows)
+        healthy_early = early[early["class"] == "healthy"]
+        cut = max(_recording_scores(_detector_fit(make, healthy_early[healthy_early.unit != u], features),
+                                    healthy_early[healthy_early.unit == u], features).max()
+                  for u in sorted(set(healthy_early.unit)))
+        ts = _recording_scores(_detector_fit(make, healthy_early, features), late, features)
+        ts_rows = late.groupby("unit")[["class", "regime"]].first().assign(margin=ts - cut)
+        block = {"main": _anomaly_block(rows, labels),
+                 "main_stationary": _anomaly_block(rows[rows.regime == "stationary"], labels),
+                 "main_transient": _anomaly_block(rows[rows.regime == "transient"], labels),
+                 "time_split_stationary": _anomaly_block(ts_rows, labels)}
+        result["detectors"][name] = block
+        m, t = block["main"], block["time_split_stationary"]
+        print(f"  {name:17s} main ROC-AUC {m['roc_auc']}  detected {m['fault_detection_rate']:.3f}  false alarms "
+              f"{m['false_alarm_rate']:.3f} ({m['test_recordings']} recordings) | time split ROC-AUC {t['roc_auc']}",
+              flush=True)
+    out = ROOT / "Results" / machine / f"{machine}_fulldata_anomaly.json"
+    out.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
+    _bar_figure(machine, "anomaly", {n: (b["main"]["roc_auc"], b["time_split_stationary"]["roc_auc"])
+                                     for n, b in result["detectors"].items()},
+                ("main test ROC-AUC (unseen speed)", "time split ROC-AUC (secondary)"), 0.5,
+                f"{machine.replace('_', ' ').title()} full data: anomaly detection (dashed = chance)")
+    print(f"Saved {out.relative_to(ROOT)} in {(time.perf_counter() - start) / 60:.1f} min")
+    return result
+
+
+def _bar_figure(machine, kind, values, legend, chance, title):
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    names = list(values)
+    figure, axis = plt.subplots(figsize=(8, 3.6))
+    pos = np.arange(len(names))
+    for k, offset in enumerate((-0.2, 0.2)):
+        axis.bar(pos + offset, [values[n][k] or 0 for n in names], 0.4, label=legend[k])
+    axis.axhline(chance, color="grey", ls="--", lw=1)
+    axis.set_xticks(pos, [n.replace(" (", "\n(") for n in names], fontsize=7.5)
+    axis.set_ylim(0, 1.05)
+    axis.legend(fontsize=8)
+    axis.set_title(title, fontsize=10)
+    figure.tight_layout()
+    figure.savefig(ROOT / "Figures" / machine / f"{machine}_fulldata_{kind}.png", dpi=110)
+    plt.close(figure)
