@@ -19,6 +19,7 @@ Commands:
     predict         predict from any CSV (feature table or raw recording) and show accuracy if labels are known
     ensembles       proposal Week 6: XGBoost / LightGBM vs random forest etc. (--split time for the secondary test)
     anomaly         Week 7: anomaly detection trained on healthy data only (--split time for the secondary test)
+    fulldata        Week 7: every CORA sensor, window and start-up recording (Models/cora_fulldata.py)
     all             run csv, then export-images, then cnn-pretrained
 
 Raw data stays in Raw_Data/ and Processed_Data/ (not in Git).
@@ -143,6 +144,7 @@ def export_images(run: bool = True) -> dict:
 
     MACHINE = "excavator"
     OUT = ROOT / "Images" / MACHINE
+    STEP = 3  # every 3rd infrared frame (150 per run); --all-frames uses all 450
     HEIGHT, WIDTH = 96, 128
     EVENT = np.dtype([("t", "<u4"), ("xy", "<u4")])
     BIN_US, SECONDS = 250_000, 5
@@ -196,7 +198,7 @@ def export_images(run: bool = True) -> dict:
                 frames = loadmat(ROOT / "Raw_Data" / folder / f"{unit}.mat",
                                  variable_names=["imagenes_celda"])["imagenes_celda"]
                 for k, frame in enumerate(frames.flat):
-                    if k % 3:
+                    if k % STEP:
                         continue  # every 3rd frame: 150 images per run
                     gray = cv2.cvtColor(cv2.resize(np.asarray(frame), (WIDTH, HEIGHT)), cv2.COLOR_RGB2GRAY)
                     write(rows, label, unit, speed, f"{MACHINE}_{label}_{speed}_f{k:03d}.png", gray)
@@ -205,7 +207,12 @@ def export_images(run: bool = True) -> dict:
 
     def main():
         parser = argparse.ArgumentParser(description=export_images.__doc__)
-        parser.parse_args()
+        parser.add_argument("--all-frames", action="store_true",
+                            help="save all 450 frames per run to Images/<machine>_allframes/ (Week 7 full-data run)")
+        args = parser.parse_args()
+        nonlocal OUT, STEP
+        if args.all_frames:
+            OUT, STEP = ROOT / "Images" / f"{MACHINE}_allframes", 1
         if OUT.exists():
             shutil.rmtree(OUT)
         rows = export()
@@ -849,9 +856,15 @@ def cnn_pretrained(run: bool = True) -> dict:
         parser.add_argument("--split", choices=("speed", "time"), default="speed",
                             help="speed (main, fair test) or time (secondary: first 60%% of each run's frames train, "
                                  "last 30%% test, 10%% gap; easier, the same recordings appear in training)")
+        parser.add_argument("--all-frames", action="store_true",
+                            help="use Images/<machine>_allframes/ (all 450 frames per run); results saved as *_allframes")
         args = parser.parse_args()
-        nonlocal RESULT, FIGURE
-        rows = read_index()
+        nonlocal RESULT, FIGURE, IMAGES
+        if args.all_frames:
+            IMAGES = ROOT / "Images" / f"{MACHINE}_allframes"
+            RESULT = RESULT.with_name(RESULT.stem + "_allframes.json")
+            FIGURE = FIGURE.with_name(FIGURE.stem + "_allframes.png")
+        rows = list(csv_module.DictReader((IMAGES / "index.csv").open(encoding="utf-8")))
         test_description = "four rounds, each holding out one whole speed (4 runs, one per class); 16 run-level predictions"
         if args.split == "time":
             import re
@@ -1334,7 +1347,30 @@ def anomaly(run: bool = True) -> dict:
     return locals()
 
 
+# ====================================================================================================
+# Week 7: full-data sensor experiment (every CORA sensor, window and recording)
+# ====================================================================================================
+
+def fulldata(run: bool = True) -> dict:
+    """Week 7: every CORA sensor (vibration X/Y/Z, current C1-C3, temperatures T1-T6), every 1 s window, and the
+    five start-up test repeats per condition and speed. See Models/cora_fulldata.py. Saves *_fulldata.json."""
+    import argparse
+    import importlib.util
+
+    def main():
+        argparse.ArgumentParser(description=fulldata.__doc__).parse_args()
+        spec = importlib.util.spec_from_file_location("cora_fulldata", ROOT / "Models" / "cora_fulldata.py")
+        engine = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(engine)
+        engine.run("excavator", {"H": "healthy", "BD": "bearing", "U": "unbalance", "M": "misalignment"})
+
+    if run:
+        main()
+    return locals()
+
+
 COMMANDS = {
+    "fulldata": fulldata,
     "ensembles": ensembles,
     "anomaly": anomaly,
     "train-final": train_final,

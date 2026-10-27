@@ -822,8 +822,9 @@ def export_images(run: bool = True) -> dict:
     OUT = ROOT / "Images" / MACHINE
     HEIGHT, WIDTH = 96, 128
     EVENT = np.dtype([("t", "<u4"), ("xy", "<u4")])
-    BIN_US, SECONDS = 250_000, 5
+    BIN_US, SECONDS = 250_000, 5   # --all-frames: the whole recording (up to 30 s; recordings are 16-26 s)
     FRAMES = SECONDS * 1_000_000 // BIN_US
+    NAME = "t{k:02d}"
 
     def event_frames(stream):
         """First 5 s of an event recording as 20 images of 250 ms; channel 0 = brighter, 1 = darker events."""
@@ -875,14 +876,20 @@ def export_images(run: bool = True) -> dict:
                         for k, frame in enumerate(counts):
                             if frame.sum() > 0:
                                 write(rows, label, unit, f"{rpm}rpm",
-                                      f"{MACHINE}_{label}_{rpm}rpm_angle{angle}_t{k:02d}.png", event_png(frame))
+                                      f"{MACHINE}_{label}_{rpm}rpm_angle{angle}_" + NAME.format(k=k) + ".png", event_png(frame))
                         print(f"{unit}: done", flush=True)
         return rows
 
 
     def main():
         parser = argparse.ArgumentParser(description=export_images.__doc__)
-        parser.parse_args()
+        parser.add_argument("--all-frames", action="store_true",
+                            help="whole recordings (all 250 ms frames) to Images/haul_truck_allframes/ (Week 7)")
+        args = parser.parse_args()
+        nonlocal OUT, SECONDS, FRAMES, NAME
+        if args.all_frames:
+            OUT, SECONDS, NAME = ROOT / "Images" / f"{MACHINE}_allframes", 30, "t{k:03d}"
+            FRAMES = SECONDS * 1_000_000 // BIN_US
         if OUT.exists():
             shutil.rmtree(OUT)
         rows = export()
@@ -1521,13 +1528,24 @@ def cnn_pretrained(run: bool = True) -> dict:
         parser.add_argument("--split", choices=("main", "time"), default="main",
                             help="main (fair test) or time (secondary, easier: first 60%% of each recording's frames "
                                  "train, last 30%% test, 10%% gap)")
+        parser.add_argument("--all-frames", action="store_true",
+                            help="use Images/haul_truck_allframes/ (whole recordings); results saved as *_allframes")
         args = parser.parse_args()
-        nonlocal RESULT, FIGURE
-        rows = read_index()
+        nonlocal RESULT, FIGURE, IMAGES
+        if args.all_frames:
+            IMAGES = ROOT / "Images" / f"{MACHINE}_allframes"
+            RESULT = RESULT.with_name(RESULT.stem + "_allframes.json")
+            FIGURE = FIGURE.with_name(FIGURE.stem + "_allframes.png")
+        rows = list(csv_module.DictReader((IMAGES / "index.csv").open(encoding="utf-8")))
         test_description = "train on the 12 recordings at 1000 rpm; test on the 12 separate recordings at 2000 rpm"
         if args.split == "time":
             import re
-            position = {row["file"]: int(re.search(r"_t(\d{2})\.png$", row["file"]).group(1)) / 20 for row in rows}
+            frame = {row["file"]: int(re.search(r"_t(\d+)\.png$", row["file"]).group(1)) for row in rows}
+            length = {}
+            for row in rows:
+                length[row["unit"]] = max(length.get(row["unit"], 0), frame[row["file"]] + 1)
+            frames_per = 20 if not args.all_frames else None
+            position = {row["file"]: frame[row["file"]] / (frames_per or length[row["unit"]]) for row in rows}
             rows = [dict(row, unit=row["unit"] + ("_late" if position[row["file"]] > 0.7 else "_early"))
                     for row in rows if position[row["file"]] <= 0.6 or position[row["file"]] > 0.7]
             test_description = ("TIME SPLIT (secondary): first 60% of every recording's frames train, last 30% test, 10% gap; "
