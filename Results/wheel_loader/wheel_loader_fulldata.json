@@ -1,0 +1,886 @@
+{
+  "purpose": "Week 7 full-data sensor experiment: every CORA sensor, every window, stationary + start-up recordings",
+  "machine": "wheel_loader",
+  "classes": [
+    "healthy",
+    "bearing",
+    "half_broken_bar",
+    "broken_bar"
+  ],
+  "test": "four rounds, each holding out one whole speed; test recordings per round = 1 stationary + 5 start-up tests per class; one prediction per recording",
+  "selection_rule": "feature set and model chosen by leave-one-speed-out validation inside the training speeds; test speeds never used for any choice or preprocessing; temperature sets excluded from selection (session confound, see temperature_diagnostic)",
+  "recordings": {
+    "stationary": 16,
+    "transient": 80
+  },
+  "windows": 37600,
+  "validation_selected": {
+    "choices": [
+      {
+        "held_out_speed": "F5",
+        "feature_set": "current C1-C3",
+        "model": "LightGBM",
+        "validation_macro_f1": 0.355
+      },
+      {
+        "held_out_speed": "F15",
+        "feature_set": "current C1-C3",
+        "model": "Random forest",
+        "validation_macro_f1": 0.3315
+      },
+      {
+        "held_out_speed": "F50",
+        "feature_set": "current C1-C3",
+        "model": "LightGBM",
+        "validation_macro_f1": 0.1842
+      },
+      {
+        "held_out_speed": "F60",
+        "feature_set": "current C1-C3",
+        "model": "LightGBM",
+        "validation_macro_f1": 0.1273
+      }
+    ],
+    "score": {
+      "all": {
+        "test_recordings": 96,
+        "accuracy": 0.4062,
+        "balanced_accuracy": 0.4062,
+        "macro_f1": 0.3445
+      },
+      "stationary": {
+        "test_recordings": 16,
+        "accuracy": 0.5,
+        "balanced_accuracy": 0.5,
+        "macro_f1": 0.4417
+      },
+      "transient": {
+        "test_recordings": 80,
+        "accuracy": 0.3875,
+        "balanced_accuracy": 0.3875,
+        "macro_f1": 0.3265
+      },
+      "confusion_matrix_all": [
+        [
+          9,
+          0,
+          5,
+          10
+        ],
+        [
+          5,
+          0,
+          13,
+          6
+        ],
+        [
+          3,
+          0,
+          13,
+          8
+        ],
+        [
+          1,
+          0,
+          6,
+          17
+        ]
+      ]
+    }
+  },
+  "all_combinations": {
+    "vibration X (as Week 6, all windows) | Random forest": {
+      "all": {
+        "test_recordings": 96,
+        "accuracy": 0.3229,
+        "balanced_accuracy": 0.3229,
+        "macro_f1": 0.3276
+      },
+      "stationary": {
+        "test_recordings": 16,
+        "accuracy": 0.25,
+        "balanced_accuracy": 0.25,
+        "macro_f1": 0.225
+      },
+      "transient": {
+        "test_recordings": 80,
+        "accuracy": 0.3375,
+        "balanced_accuracy": 0.3375,
+        "macro_f1": 0.3462
+      },
+      "confusion_matrix_all": [
+        [
+          11,
+          7,
+          6,
+          0
+        ],
+        [
+          11,
+          6,
+          6,
+          1
+        ],
+        [
+          0,
+          10,
+          6,
+          8
+        ],
+        [
+          3,
+          6,
+          7,
+          8
+        ]
+      ]
+    },
+    "vibration X (as Week 6, all windows) | LightGBM": {
+      "all": {
+        "test_recordings": 96,
+        "accuracy": 0.2604,
+        "balanced_accuracy": 0.2604,
+        "macro_f1": 0.2469
+      },
+      "stationary": {
+        "test_recordings": 16,
+        "accuracy": 0.25,
+        "balanced_accuracy": 0.25,
+        "macro_f1": 0.225
+      },
+      "transient": {
+        "test_recordings": 80,
+        "accuracy": 0.2625,
+        "balanced_accuracy": 0.2625,
+        "macro_f1": 0.2517
+      },
+      "confusion_matrix_all": [
+        [
+          11,
+          6,
+          7,
+          0
+        ],
+        [
+          12,
+          6,
+          6,
+          0
+        ],
+        [
+          0,
+          9,
+          6,
+          9
+        ],
+        [
+          7,
+          6,
+          9,
+          2
+        ]
+      ]
+    },
+    "vibration X/Y/Z | Random forest": {
+      "all": {
+        "test_recordings": 96,
+        "accuracy": 0.3229,
+        "balanced_accuracy": 0.3229,
+        "macro_f1": 0.2945
+      },
+      "stationary": {
+        "test_recordings": 16,
+        "accuracy": 0.25,
+        "balanced_accuracy": 0.25,
+        "macro_f1": 0.2083
+      },
+      "transient": {
+        "test_recordings": 80,
+        "accuracy": 0.3375,
+        "balanced_accuracy": 0.3375,
+        "macro_f1": 0.3136
+      },
+      "confusion_matrix_all": [
+        [
+          9,
+          8,
+          2,
+          5
+        ],
+        [
+          6,
+          10,
+          1,
+          7
+        ],
+        [
+          1,
+          11,
+          0,
+          12
+        ],
+        [
+          1,
+          6,
+          5,
+          12
+        ]
+      ]
+    },
+    "vibration X/Y/Z | LightGBM": {
+      "all": {
+        "test_recordings": 96,
+        "accuracy": 0.3125,
+        "balanced_accuracy": 0.3125,
+        "macro_f1": 0.2271
+      },
+      "stationary": {
+        "test_recordings": 16,
+        "accuracy": 0.25,
+        "balanced_accuracy": 0.25,
+        "macro_f1": 0.1556
+      },
+      "transient": {
+        "test_recordings": 80,
+        "accuracy": 0.325,
+        "balanced_accuracy": 0.325,
+        "macro_f1": 0.2441
+      },
+      "confusion_matrix_all": [
+        [
+          8,
+          2,
+          2,
+          12
+        ],
+        [
+          7,
+          1,
+          2,
+          14
+        ],
+        [
+          1,
+          0,
+          0,
+          23
+        ],
+        [
+          1,
+          1,
+          1,
+          21
+        ]
+      ]
+    },
+    "current C1-C3 | Random forest": {
+      "all": {
+        "test_recordings": 96,
+        "accuracy": 0.3229,
+        "balanced_accuracy": 0.3229,
+        "macro_f1": 0.2207
+      },
+      "stationary": {
+        "test_recordings": 16,
+        "accuracy": 0.375,
+        "balanced_accuracy": 0.375,
+        "macro_f1": 0.3098
+      },
+      "transient": {
+        "test_recordings": 80,
+        "accuracy": 0.3125,
+        "balanced_accuracy": 0.3125,
+        "macro_f1": 0.1985
+      },
+      "confusion_matrix_all": [
+        [
+          1,
+          0,
+          6,
+          17
+        ],
+        [
+          6,
+          0,
+          5,
+          13
+        ],
+        [
+          1,
+          0,
+          7,
+          16
+        ],
+        [
+          0,
+          0,
+          1,
+          23
+        ]
+      ]
+    },
+    "current C1-C3 | LightGBM": {
+      "all": {
+        "test_recordings": 96,
+        "accuracy": 0.4062,
+        "balanced_accuracy": 0.4062,
+        "macro_f1": 0.3445
+      },
+      "stationary": {
+        "test_recordings": 16,
+        "accuracy": 0.5,
+        "balanced_accuracy": 0.5,
+        "macro_f1": 0.4417
+      },
+      "transient": {
+        "test_recordings": 80,
+        "accuracy": 0.3875,
+        "balanced_accuracy": 0.3875,
+        "macro_f1": 0.3265
+      },
+      "confusion_matrix_all": [
+        [
+          9,
+          0,
+          5,
+          10
+        ],
+        [
+          5,
+          0,
+          13,
+          6
+        ],
+        [
+          3,
+          0,
+          13,
+          8
+        ],
+        [
+          1,
+          0,
+          6,
+          17
+        ]
+      ]
+    },
+    "vibration + current | Random forest": {
+      "all": {
+        "test_recordings": 96,
+        "accuracy": 0.3333,
+        "balanced_accuracy": 0.3333,
+        "macro_f1": 0.3322
+      },
+      "stationary": {
+        "test_recordings": 16,
+        "accuracy": 0.5,
+        "balanced_accuracy": 0.5,
+        "macro_f1": 0.4881
+      },
+      "transient": {
+        "test_recordings": 80,
+        "accuracy": 0.3,
+        "balanced_accuracy": 0.3,
+        "macro_f1": 0.2997
+      },
+      "confusion_matrix_all": [
+        [
+          7,
+          5,
+          6,
+          6
+        ],
+        [
+          6,
+          7,
+          6,
+          5
+        ],
+        [
+          1,
+          8,
+          6,
+          9
+        ],
+        [
+          0,
+          4,
+          8,
+          12
+        ]
+      ]
+    },
+    "vibration + current | LightGBM": {
+      "all": {
+        "test_recordings": 96,
+        "accuracy": 0.3854,
+        "balanced_accuracy": 0.3854,
+        "macro_f1": 0.4028
+      },
+      "stationary": {
+        "test_recordings": 16,
+        "accuracy": 0.4375,
+        "balanced_accuracy": 0.4375,
+        "macro_f1": 0.4481
+      },
+      "transient": {
+        "test_recordings": 80,
+        "accuracy": 0.375,
+        "balanced_accuracy": 0.375,
+        "macro_f1": 0.3935
+      },
+      "confusion_matrix_all": [
+        [
+          8,
+          3,
+          12,
+          1
+        ],
+        [
+          6,
+          11,
+          7,
+          0
+        ],
+        [
+          5,
+          3,
+          8,
+          8
+        ],
+        [
+          0,
+          1,
+          13,
+          10
+        ]
+      ]
+    },
+    "vibration + current + temperature pattern (stationary only) | Random forest": {
+      "all": {
+        "test_recordings": 16,
+        "accuracy": 0.8125,
+        "balanced_accuracy": 0.8125,
+        "macro_f1": 0.8128
+      },
+      "stationary": {
+        "test_recordings": 16,
+        "accuracy": 0.8125,
+        "balanced_accuracy": 0.8125,
+        "macro_f1": 0.8128
+      },
+      "confusion_matrix_all": [
+        [
+          4,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          2,
+          2,
+          0
+        ],
+        [
+          0,
+          0,
+          4,
+          0
+        ],
+        [
+          0,
+          0,
+          1,
+          3
+        ]
+      ]
+    },
+    "vibration + current + temperature pattern (stationary only) | LightGBM": {
+      "all": {
+        "test_recordings": 16,
+        "accuracy": 0.75,
+        "balanced_accuracy": 0.75,
+        "macro_f1": 0.7571
+      },
+      "stationary": {
+        "test_recordings": 16,
+        "accuracy": 0.75,
+        "balanced_accuracy": 0.75,
+        "macro_f1": 0.7571
+      },
+      "confusion_matrix_all": [
+        [
+          4,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          2,
+          2,
+          0
+        ],
+        [
+          0,
+          1,
+          3,
+          0
+        ],
+        [
+          0,
+          0,
+          1,
+          3
+        ]
+      ]
+    },
+    "vibration + current + temperature incl. absolute (stationary only) | Random forest": {
+      "all": {
+        "test_recordings": 16,
+        "accuracy": 0.625,
+        "balanced_accuracy": 0.625,
+        "macro_f1": 0.5595
+      },
+      "stationary": {
+        "test_recordings": 16,
+        "accuracy": 0.625,
+        "balanced_accuracy": 0.625,
+        "macro_f1": 0.5595
+      },
+      "confusion_matrix_all": [
+        [
+          4,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          4,
+          0
+        ],
+        [
+          0,
+          0,
+          4,
+          0
+        ],
+        [
+          0,
+          0,
+          2,
+          2
+        ]
+      ]
+    },
+    "vibration + current + temperature incl. absolute (stationary only) | LightGBM": {
+      "all": {
+        "test_recordings": 16,
+        "accuracy": 0.75,
+        "balanced_accuracy": 0.75,
+        "macro_f1": 0.7571
+      },
+      "stationary": {
+        "test_recordings": 16,
+        "accuracy": 0.75,
+        "balanced_accuracy": 0.75,
+        "macro_f1": 0.7571
+      },
+      "confusion_matrix_all": [
+        [
+          4,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          2,
+          2,
+          0
+        ],
+        [
+          0,
+          1,
+          3,
+          0
+        ],
+        [
+          0,
+          0,
+          1,
+          3
+        ]
+      ]
+    }
+  },
+  "temperature_diagnostic": {
+    "finding": "if the probe pattern already identifies the condition in the first 5 minutes, it reflects the recording session (probe placement / residual heat after each rebuild), not fault heating; temperature feature sets are therefore reported but never selected",
+    "unseen_speed_scores": {
+      "probe pattern, first 5 minutes only": {
+        "test_recordings": 16,
+        "accuracy": 0.75,
+        "balanced_accuracy": 0.75,
+        "macro_f1": 0.756
+      },
+      "probe pattern, whole run": {
+        "test_recordings": 16,
+        "accuracy": 0.75,
+        "balanced_accuracy": 0.75,
+        "macro_f1": 0.756
+      },
+      "warming since run start, whole run": {
+        "test_recordings": 16,
+        "accuracy": 0.375,
+        "balanced_accuracy": 0.375,
+        "macro_f1": 0.3236
+      }
+    }
+  },
+  "time_split_stationary": {
+    "vibration X (as Week 6, all windows) | Random forest": {
+      "all": {
+        "test_recordings": 16,
+        "accuracy": 0.875,
+        "balanced_accuracy": 0.875,
+        "macro_f1": 0.8786
+      },
+      "stationary": {
+        "test_recordings": 16,
+        "accuracy": 0.875,
+        "balanced_accuracy": 0.875,
+        "macro_f1": 0.8786
+      },
+      "confusion_matrix_all": [
+        [
+          3,
+          0,
+          0,
+          1
+        ],
+        [
+          0,
+          3,
+          0,
+          1
+        ],
+        [
+          0,
+          0,
+          4,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          4
+        ]
+      ]
+    },
+    "vibration X/Y/Z | Random forest": {
+      "all": {
+        "test_recordings": 16,
+        "accuracy": 0.9375,
+        "balanced_accuracy": 0.9375,
+        "macro_f1": 0.9365
+      },
+      "stationary": {
+        "test_recordings": 16,
+        "accuracy": 0.9375,
+        "balanced_accuracy": 0.9375,
+        "macro_f1": 0.9365
+      },
+      "confusion_matrix_all": [
+        [
+          4,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          3,
+          0,
+          1
+        ],
+        [
+          0,
+          0,
+          4,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          4
+        ]
+      ]
+    },
+    "current C1-C3 | Random forest": {
+      "all": {
+        "test_recordings": 16,
+        "accuracy": 1.0,
+        "balanced_accuracy": 1.0,
+        "macro_f1": 1.0
+      },
+      "stationary": {
+        "test_recordings": 16,
+        "accuracy": 1.0,
+        "balanced_accuracy": 1.0,
+        "macro_f1": 1.0
+      },
+      "confusion_matrix_all": [
+        [
+          4,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          4,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          4,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          4
+        ]
+      ]
+    },
+    "vibration + current | Random forest": {
+      "all": {
+        "test_recordings": 16,
+        "accuracy": 1.0,
+        "balanced_accuracy": 1.0,
+        "macro_f1": 1.0
+      },
+      "stationary": {
+        "test_recordings": 16,
+        "accuracy": 1.0,
+        "balanced_accuracy": 1.0,
+        "macro_f1": 1.0
+      },
+      "confusion_matrix_all": [
+        [
+          4,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          4,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          4,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          4
+        ]
+      ]
+    },
+    "vibration + current + temperature pattern (stationary only) | Random forest": {
+      "all": {
+        "test_recordings": 16,
+        "accuracy": 0.9375,
+        "balanced_accuracy": 0.9375,
+        "macro_f1": 0.9365
+      },
+      "stationary": {
+        "test_recordings": 16,
+        "accuracy": 0.9375,
+        "balanced_accuracy": 0.9375,
+        "macro_f1": 0.9365
+      },
+      "confusion_matrix_all": [
+        [
+          4,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          4,
+          0,
+          0
+        ],
+        [
+          0,
+          1,
+          3,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          4
+        ]
+      ]
+    },
+    "vibration + current + temperature incl. absolute (stationary only) | Random forest": {
+      "all": {
+        "test_recordings": 16,
+        "accuracy": 0.9375,
+        "balanced_accuracy": 0.9375,
+        "macro_f1": 0.9365
+      },
+      "stationary": {
+        "test_recordings": 16,
+        "accuracy": 0.9375,
+        "balanced_accuracy": 0.9375,
+        "macro_f1": 0.9365
+      },
+      "confusion_matrix_all": [
+        [
+          4,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          4,
+          0,
+          0
+        ],
+        [
+          0,
+          1,
+          3,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          4
+        ]
+      ]
+    }
+  }
+}

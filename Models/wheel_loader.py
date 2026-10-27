@@ -19,6 +19,7 @@ Commands:
     predict         predict from any CSV (feature table or raw recording) and show accuracy if labels are known
     ensembles       XGBoost / LightGBM vs random forest etc. (--split time for the secondary test)
     anomaly         anomaly detection trained on healthy data only (--split time for the secondary test)
+    fulldata        Week 7: every CORA sensor, window and start-up recording (Models/cora_fulldata.py)
     all             run csv, then export-images, then cnn-pretrained
 
 Preprocessing uses training data only (no per-speed normalisation across held-out runs).
@@ -1344,7 +1345,30 @@ def anomaly(run: bool = True) -> dict:
     return locals()
 
 
+# ====================================================================================================
+# Week 7: full-data sensor experiment (every CORA sensor, window and recording)
+# ====================================================================================================
+
+def fulldata(run: bool = True) -> dict:
+    """Week 7: every CORA sensor (vibration X/Y/Z, current C1-C3, temperatures T1-T6), every 1 s window, and the
+    five start-up test repeats per condition and speed. See Models/cora_fulldata.py. Saves *_fulldata.json."""
+    import argparse
+    import importlib.util
+
+    def main():
+        argparse.ArgumentParser(description=fulldata.__doc__).parse_args()
+        spec = importlib.util.spec_from_file_location("cora_fulldata", ROOT / "Models" / "cora_fulldata.py")
+        engine = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(engine)
+        engine.run("wheel_loader", {"H": "healthy", "BD": "bearing", "HB": "half_broken_bar", "OB": "broken_bar"})
+
+    if run:
+        main()
+    return locals()
+
+
 COMMANDS = {
+    "fulldata": fulldata,
     "ensembles": ensembles,
     "anomaly": anomaly,
     "train-final": train_final,
