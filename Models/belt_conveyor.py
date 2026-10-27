@@ -1,7 +1,7 @@
 """Belt Conveyor: geared drive, CORA T1 temperature vs infrared camera.
 
-All of this machine's code in one file. The notebook Notebook/Belt_Conveyor.ipynb
-runs these commands and shows the results.
+All of this machine's code in one file. The combined notebook
+Notebook/Mining_Equipment_Condition_Monitoring.ipynb runs these commands and shows the results.
 
 Usage:
     python Models/belt_conveyor.py <command> [options]

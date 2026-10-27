@@ -1,7 +1,7 @@
 """Dozer (machine 5): track final-drive gear wear, CORA vibration/temperature vs infrared camera.
 
-All of this machine's code in one file. The notebook Notebook/Dozer.ipynb runs these commands and
-shows the results.
+All of this machine's code in one file. The combined notebook
+Notebook/Mining_Equipment_Condition_Monitoring.ipynb runs these commands and shows the results.
 
 IMPORTANT: there is no public dozer dataset with matching sensor and camera data. As planned in the
 dataset manifest, the Dozer final drive uses the SAME 16 CORA gear-wear runs as the Belt Conveyor
