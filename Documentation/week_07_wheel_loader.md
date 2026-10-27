@@ -29,7 +29,7 @@ normalisation**: preprocessing never looks at the held-out speed's runs.
 
 All 16 infrared stacks were downloaded and verified against the publisher's file sizes and MD5 checksums. The exporter now saves all 450 frames per run and the ResNet18 was retrained on all 7,200 images. The older saved result below has been replaced.
 
-The eight HB/OB vibration CSVs are currently missing locally; the sensor scores in the table are saved results and were not retrained in this run.
+The eight HB/OB vibration CSVs were missing on the laptop used for the image rerun, so the sensor scores were not retrained there. On October 26, 2026 they were re-run on a laptop with all 16 MD5-verified vibration files: the CSV, ensemble and anomaly scores (main test and time split) reproduced the saved values exactly.
 
 | Model | Main test (unseen speed) | Time split |
 |---|---:|---:|

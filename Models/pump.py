@@ -1,7 +1,7 @@
 """Pump: support bearing, vibration sensor vs XJTU event camera.
 
-All of this machine's code in one file. The notebook Notebook/Pump.ipynb
-runs these commands and shows the results.
+All of this machine's code in one file. The combined notebook
+Notebook/Mining_Equipment_Condition_Monitoring.ipynb runs these commands and shows the results.
 
 Usage:
     python Models/pump.py <command> [options]

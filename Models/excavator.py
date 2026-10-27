@@ -2,7 +2,8 @@
 
 4 classes from the CORA motor/gearbox rig: healthy, bearing defect, unbalance, misalignment. This is a
 different task from the Belt Conveyor (gear wear) on the same laboratory rig. All of this machine's code
-is in this file; the notebook Notebook/Excavator.ipynb runs these commands and shows the results.
+is in this file; the combined notebook
+Notebook/Mining_Equipment_Condition_Monitoring.ipynb runs these commands and shows the results.
 
 Usage:
     python Models/excavator.py <command> [options]
