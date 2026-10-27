@@ -260,3 +260,33 @@ def show_anomaly(machine: str) -> None:
             rows[f"{label} | {name}"] = {k: block[k] for k in ("roc_auc", "fault_detection_rate", "false_alarm_rate",
                                                                 "accuracy", "test_recordings")}
     display(pd.DataFrame(rows).T)
+
+
+def show_fulldata(machine: str) -> None:
+    """Display the Week 7 full-data sensor experiment (every CORA sensor, window and start-up recording)."""
+    result = load(f"{machine}_fulldata.json")
+    if not result:
+        print(f"No full-data result yet: run  python Models/{machine}.py fulldata")
+        return
+    def row(block):
+        return {"accuracy (all recordings)": block["all"]["accuracy"], "test recordings": block["all"]["test_recordings"],
+                "stationary runs": block.get("stationary", {}).get("accuracy"),
+                "start-up tests": block.get("transient", {}).get("accuracy"), "macro F1": block["all"]["macro_f1"]}
+    rows = {"MAIN (unseen speed) | validation-selected": row(result["validation_selected"]["score"])}
+    rows.update({f"MAIN | {name}": row(block) for name, block in result["all_combinations"].items()})
+    rows.update({f"TIME SPLIT (stationary) | {name}": row(block)
+                 for name, block in result["time_split_stationary"].items()})
+    display(pd.DataFrame(rows).T)
+    print("Validation choices per held-out speed:",
+          "; ".join(f"{c['held_out_speed']}: {c['feature_set']} / {c['model']}" for c in result["validation_selected"]["choices"]))
+
+
+def show_allframes(machine: str) -> None:
+    """Compare the Week 6 image CNN with the Week 7 run on every frame (separate result files)."""
+    rows = {}
+    for suffix, label in (("", "Week 6 frames"), ("_allframes", "Week 7 all frames")):
+        for split, name in (("", "MAIN"), ("_timesplit", "TIME SPLIT")):
+            result = load(f"{machine}_cnn_pretrained_4class{suffix}{split}.json")
+            if result:
+                rows[f"{name} | {label} ({result['images']} images)"] = result["recording_level"]
+    show(rows)

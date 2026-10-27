@@ -22,6 +22,7 @@ Commands:
     anomaly         anomaly detection trained on healthy data only (--split time for the secondary test)
     train-final     train the sensor model on all data and save it (--exclude to leave recordings out)
     predict         predict from any CSV (feature table or raw recording) and show accuracy if labels are known
+    fulldata        Week 7: every CORA sensor, window and start-up recording (Models/cora_fulldata.py)
     all             run csv, ensembles and anomaly
 
 Raw data stays in Raw_Data/ and Processed_Data/ (not in Git).
@@ -1229,7 +1230,30 @@ def anomaly(run: bool = True) -> dict:
     return locals()
 
 
+# ====================================================================================================
+# Week 7: full-data sensor experiment (every CORA sensor, window and recording)
+# ====================================================================================================
+
+def fulldata(run: bool = True) -> dict:
+    """Week 7: every CORA sensor (vibration X/Y/Z, current C1-C3, temperatures T1-T6), every 1 s window, and the
+    five start-up test repeats per condition and speed. See Models/cora_fulldata.py. Saves *_fulldata.json."""
+    import argparse
+    import importlib.util
+
+    def main():
+        argparse.ArgumentParser(description=fulldata.__doc__).parse_args()
+        spec = importlib.util.spec_from_file_location("cora_fulldata", ROOT / "Models" / "cora_fulldata.py")
+        engine = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(engine)
+        engine.run("dozer", {"H": "healthy", "W25": "wear25", "W50": "wear50", "W75": "wear75"})
+
+    if run:
+        main()
+    return locals()
+
+
 COMMANDS = {
+    "fulldata": fulldata,
     "csv": csv,
     "export-images": export_images,
     "cnn": cnn,

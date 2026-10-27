@@ -33,6 +33,17 @@ For each machine we detect the **current fault condition of one component** two 
 
 The Wheel Loader camera result is below the 0.250 chance baseline on the unseen-speed test (3/16 recordings). Its 1.000 time-split score is secondary: train and test frames come from the same recordings. Expanding the training set from 2,400 to 7,200 adjacent frames did not improve unseen-speed performance (the prior run scored 0.312); these frames do not add independent recordings. \*The updated time-split result is 16/16 recordings, but is not evidence of new-recording generalization.
 
+**Week 7 — all available data.** Every remaining CORA file (1,806 files, about 37 GB, MD5-checked; local only), every image frame, and whole Haul Truck event recordings. New results are saved separately; the Week 6 numbers above are unchanged. [Week 7 full data](Documentation/week_07_full_data.md).
+
+| Machine | Sensor: all CORA sensors + start-up tests (96 test recordings) | Images: every frame / whole recordings |
+|---|---:|---:|
+| Haul Truck | — (all data already used) | **0.750** (was 0.417) |
+| Belt Conveyor / Dozer | 0.521 (stationary runs 0.625) | 0.500 (was 0.562) |
+| Excavator | **0.375** (was 0.188) | 0.250 (was 0.312) |
+| Wheel Loader | **0.406** (was 0.312) | 0.188 (Ganesh's 7,200-image run) |
+
+Unseen-speed (main) test; guessing = 0.250. Motor current helps most. Temperature probes appeared to give 0.75–1.00, but their pattern identifies the condition in the first 5 minutes of a run, before any fault heating, so it reflects the recording session; temperature is reported but excluded from model selection.
+
 ## Quick start
 
 You need [Python 3.11](https://www.python.org/downloads/) (tick **Add python.exe to PATH**), [VS Code](https://code.visualstudio.com/) and [Git](https://git-scm.com/downloads).
@@ -71,13 +82,15 @@ Run these from the project folder (Windows: `.venv\Scripts\python.exe`, Mac/Linu
 | `python Models/<machine>.py cnn-pretrained` | pretrained ResNet18 with data augmentation |
 | `python Models/<machine>.py baselines` | Week 5 baseline comparison (Pump, Haul Truck, Belt Conveyor) |
 | `python Models/<machine>.py ensembles` | proposal Week 6: XGBoost and LightGBM vs random forest and others |
+| `python Models/<machine>.py fulldata` | Week 7: every CORA sensor, window and start-up test (Belt Conveyor, Dozer, Excavator, Wheel Loader) |
+| `python Models/<machine>.py cnn-pretrained --all-frames` | Week 7: CNN on every frame (run `export-images --all-frames` first; Belt Conveyor, Excavator, Haul Truck) |
 | `python Models/<machine>.py anomaly` | Week 7: anomaly detection trained on healthy data only (Isolation Forest, One-Class SVM) |
 | `python Models/<machine>.py train-final` | train the sensor model on all data and save it |
 | `python Models/<machine>.py predict --csv file.csv --label CLASS` | predict any CSV and show its accuracy (CORA machines also need `--speed F15`) |
 
 ## Documentation
 
-- [Week 4 progress](Documentation/week_04_progress.md), [Week 5 baselines](Documentation/week_05_progress.md), [Week 6 professor's remarks](Documentation/week_06_professor_remarks.md), [Week 6 XGBoost/LightGBM](Documentation/week_06_ensembles.md), [Week 6 Dozer](Documentation/week_06_dozer.md), [Week 7 anomaly detection](Documentation/week_07_anomaly_detection.md), [Week 7 Wheel Loader](Documentation/week_07_wheel_loader.md)
+- [Week 4 progress](Documentation/week_04_progress.md), [Week 5 baselines](Documentation/week_05_progress.md), [Week 6 professor's remarks](Documentation/week_06_professor_remarks.md), [Week 6 XGBoost/LightGBM](Documentation/week_06_ensembles.md), [Week 6 Dozer](Documentation/week_06_dozer.md), [Week 7 anomaly detection](Documentation/week_07_anomaly_detection.md), [Week 7 Wheel Loader](Documentation/week_07_wheel_loader.md), [Week 7 full data](Documentation/week_07_full_data.md)
 - [Methodology](Documentation/methodology.md) and [capstone details](Documentation/capstone_details.md) (data download, reproduction, limits)
 - [Dataset manifest](Dataset_Manifest/manifest.md) covering all eight planned equipment types, and the [collaboration guide](CONTRIBUTING.md)
 
