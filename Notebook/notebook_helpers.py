@@ -375,25 +375,21 @@ def _draw_image_matrix(axis, block, labels, title):
 
 
 def show_test_images(machine: str | None = None) -> None:
-    """Confusion matrix over every test image of the fair-test CNN: one machine, or all six when machine is None."""
+    """Confusion matrix over every test image of the fair-test CNN: one machine, or each of the six in turn
+    (a separate image per machine) when machine is None."""
     import matplotlib.pyplot as plt
     machines = [(n, m) for n, m in _TEST_IMAGE_MACHINES if machine in (None, m)]
     found = [(n, m, r) for n, m in machines if (r := _best_cnn_result(m))]
     if not found:
         print(f"No CNN result yet: run  python Models/{machine}.py cnn-pretrained")
         return
-    columns = min(3, len(found))
-    rows = -(-len(found) // columns)
-    figure, axes = plt.subplots(rows, columns, figsize=(4.6 * columns, 4.4 * rows), dpi=70 if len(found) > 1 else 110,
-                               squeeze=False)
-    for axis, (name, m, result) in zip(axes.flat, found):
+    for name, m, result in found:
+        figure, axis = plt.subplots(figsize=(4.8, 4.6), dpi=100)
         _draw_image_matrix(axis, result["image_level"], result["classes"],
                            f"{name}: {result['images']:,} images, "
                            f"{result['recording_level']['test_units']} test recordings")
-    for axis in list(axes.flat)[len(found):]:
-        axis.axis("off")
-    figure.tight_layout()
-    plt.show()
+        figure.tight_layout()
+        plt.show()
 
 
 def show_thermal_motor() -> None:
