@@ -1,0 +1,216 @@
+{
+  "purpose": "Proposal Week 6: advanced ensemble comparison (XGBoost / LightGBM)",
+  "machine": "pump",
+  "features": "base (16 sensor features, same CSV as Week 6)",
+  "classes": [
+    "healthy",
+    "inner",
+    "outer",
+    "ball"
+  ],
+  "test": "TIME SPLIT (secondary): first 60% of every recording trains, last 30% tests, 10% gap; the same recordings appear in training, so this is easier than the main test",
+  "selection_rule": "settings fixed in advance; no model or setting chosen from these test results",
+  "notes": [
+    "Ottawa bearing rig vibration; one row per 0.1 s window, 100 windows per recording"
+  ],
+  "models": {
+    "Majority class (control)": {
+      "test_units": 48,
+      "accuracy": 0.25,
+      "balanced_accuracy": 0.25,
+      "macro_f1": 0.1,
+      "train_seconds": 0.01,
+      "confusion_matrix": [
+        [
+          12,
+          0,
+          0,
+          0
+        ],
+        [
+          12,
+          0,
+          0,
+          0
+        ],
+        [
+          12,
+          0,
+          0,
+          0
+        ],
+        [
+          12,
+          0,
+          0,
+          0
+        ]
+      ]
+    },
+    "Random forest": {
+      "test_units": 48,
+      "accuracy": 1.0,
+      "balanced_accuracy": 1.0,
+      "macro_f1": 1.0,
+      "train_seconds": 0.52,
+      "confusion_matrix": [
+        [
+          12,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          12,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          12,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          12
+        ]
+      ]
+    },
+    "Extra trees": {
+      "test_units": 48,
+      "accuracy": 1.0,
+      "balanced_accuracy": 1.0,
+      "macro_f1": 1.0,
+      "train_seconds": 0.33,
+      "confusion_matrix": [
+        [
+          12,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          12,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          12,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          12
+        ]
+      ]
+    },
+    "Gradient boosting (scikit-learn)": {
+      "test_units": 48,
+      "accuracy": 1.0,
+      "balanced_accuracy": 1.0,
+      "macro_f1": 1.0,
+      "train_seconds": 1.93,
+      "confusion_matrix": [
+        [
+          12,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          12,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          12,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          12
+        ]
+      ]
+    },
+    "XGBoost": {
+      "test_units": 48,
+      "accuracy": 1.0,
+      "balanced_accuracy": 1.0,
+      "macro_f1": 1.0,
+      "train_seconds": 0.43,
+      "confusion_matrix": [
+        [
+          12,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          12,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          12,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          12
+        ]
+      ]
+    },
+    "LightGBM": {
+      "test_units": 48,
+      "accuracy": 1.0,
+      "balanced_accuracy": 1.0,
+      "macro_f1": 1.0,
+      "train_seconds": 0.24,
+      "confusion_matrix": [
+        [
+          12,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          12,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          12,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          12
+        ]
+      ]
+    }
+  }
+}

@@ -187,7 +187,7 @@
           ]
         ]
       },
-      "seconds": 3.9
+      "seconds": 4.3
     },
     "Extra trees": {
       "main": {
@@ -276,7 +276,7 @@
           ]
         ]
       },
-      "seconds": 2.5
+      "seconds": 2.8
     },
     "Gradient boosting (scikit-learn)": {
       "main": {
@@ -365,7 +365,7 @@
           ]
         ]
       },
-      "seconds": 33.0
+      "seconds": 32.2
     },
     "XGBoost": {
       "main": {
@@ -454,7 +454,7 @@
           ]
         ]
       },
-      "seconds": 5.2
+      "seconds": 5.5
     },
     "LightGBM": {
       "main": {
@@ -543,7 +543,7 @@
           ]
         ]
       },
-      "seconds": 3.4
+      "seconds": 3.2
     }
   }
 }

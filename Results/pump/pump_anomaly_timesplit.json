@@ -1,0 +1,524 @@
+{
+  "purpose": "Week 7 (proposal): anomaly detection trained on healthy data only",
+  "machine": "pump",
+  "features": "base (16 sensor features, same CSV as Week 6)",
+  "test": "TIME SPLIT (secondary): healthy rows from the first 60% of every recording train, the last 30% of every recording is tested (10% gap); easier than the main test",
+  "threshold_rule": "highest leave-one-recording-out score among the healthy TRAINING recordings; no test data and no fault labels are used to train or to set it",
+  "notes": [
+    "Ottawa bearing rig vibration; one row per 0.1 s window, 100 windows per recording"
+  ],
+  "detectors": {
+    "Isolation Forest": {
+      "test_recordings": 48,
+      "healthy": 12,
+      "faulty": 36,
+      "roc_auc": 0.9537,
+      "fault_detection_rate": 0.6389,
+      "false_alarm_rate": 0.0833,
+      "accuracy": 0.7083,
+      "detection_rate_per_fault": {
+        "inner": 1.0,
+        "outer": 0.4167,
+        "ball": 0.5
+      },
+      "recordings": [
+        {
+          "unit": "B-A-1.mat_late",
+          "class": "ball",
+          "margin": 0.0524
+        },
+        {
+          "unit": "B-A-2.mat_late",
+          "class": "ball",
+          "margin": 0.0764
+        },
+        {
+          "unit": "B-A-3.mat_late",
+          "class": "ball",
+          "margin": 0.0708
+        },
+        {
+          "unit": "B-B-1.mat_late",
+          "class": "ball",
+          "margin": -0.0223
+        },
+        {
+          "unit": "B-B-2.mat_late",
+          "class": "ball",
+          "margin": -0.0053
+        },
+        {
+          "unit": "B-B-3.mat_late",
+          "class": "ball",
+          "margin": -0.003
+        },
+        {
+          "unit": "B-C-1.mat_late",
+          "class": "ball",
+          "margin": -0.0102
+        },
+        {
+          "unit": "B-C-2.mat_late",
+          "class": "ball",
+          "margin": 0.0088
+        },
+        {
+          "unit": "B-C-3.mat_late",
+          "class": "ball",
+          "margin": -0.0172
+        },
+        {
+          "unit": "B-D-1.mat_late",
+          "class": "ball",
+          "margin": -0.0101
+        },
+        {
+          "unit": "B-D-2.mat_late",
+          "class": "ball",
+          "margin": 0.0183
+        },
+        {
+          "unit": "B-D-3.mat_late",
+          "class": "ball",
+          "margin": 0.1083
+        },
+        {
+          "unit": "H-A-1.mat_late",
+          "class": "healthy",
+          "margin": -0.1529
+        },
+        {
+          "unit": "H-A-2.mat_late",
+          "class": "healthy",
+          "margin": -0.1183
+        },
+        {
+          "unit": "H-A-3.mat_late",
+          "class": "healthy",
+          "margin": -0.1275
+        },
+        {
+          "unit": "H-B-1.mat_late",
+          "class": "healthy",
+          "margin": -0.0928
+        },
+        {
+          "unit": "H-B-2.mat_late",
+          "class": "healthy",
+          "margin": 0.0185
+        },
+        {
+          "unit": "H-B-3.mat_late",
+          "class": "healthy",
+          "margin": -0.0972
+        },
+        {
+          "unit": "H-C-1.mat_late",
+          "class": "healthy",
+          "margin": -0.1643
+        },
+        {
+          "unit": "H-C-2.mat_late",
+          "class": "healthy",
+          "margin": -0.1782
+        },
+        {
+          "unit": "H-C-3.mat_late",
+          "class": "healthy",
+          "margin": -0.1794
+        },
+        {
+          "unit": "H-D-1.mat_late",
+          "class": "healthy",
+          "margin": -0.168
+        },
+        {
+          "unit": "H-D-2.mat_late",
+          "class": "healthy",
+          "margin": -0.1251
+        },
+        {
+          "unit": "H-D-3.mat_late",
+          "class": "healthy",
+          "margin": -0.0523
+        },
+        {
+          "unit": "I-A-1.mat_late",
+          "class": "inner",
+          "margin": 0.1104
+        },
+        {
+          "unit": "I-A-2.mat_late",
+          "class": "inner",
+          "margin": 0.1179
+        },
+        {
+          "unit": "I-A-3.mat_late",
+          "class": "inner",
+          "margin": 0.1056
+        },
+        {
+          "unit": "I-B-1.mat_late",
+          "class": "inner",
+          "margin": 0.0824
+        },
+        {
+          "unit": "I-B-2.mat_late",
+          "class": "inner",
+          "margin": 0.1037
+        },
+        {
+          "unit": "I-B-3.mat_late",
+          "class": "inner",
+          "margin": 0.1012
+        },
+        {
+          "unit": "I-C-1.mat_late",
+          "class": "inner",
+          "margin": 0.1095
+        },
+        {
+          "unit": "I-C-2.mat_late",
+          "class": "inner",
+          "margin": 0.1056
+        },
+        {
+          "unit": "I-C-3.mat_late",
+          "class": "inner",
+          "margin": 0.0976
+        },
+        {
+          "unit": "I-D-1.mat_late",
+          "class": "inner",
+          "margin": 0.1001
+        },
+        {
+          "unit": "I-D-2.mat_late",
+          "class": "inner",
+          "margin": 0.1002
+        },
+        {
+          "unit": "I-D-3.mat_late",
+          "class": "inner",
+          "margin": 0.103
+        },
+        {
+          "unit": "O-A-1.mat_late",
+          "class": "outer",
+          "margin": -0.0033
+        },
+        {
+          "unit": "O-A-2.mat_late",
+          "class": "outer",
+          "margin": 0.0051
+        },
+        {
+          "unit": "O-A-3.mat_late",
+          "class": "outer",
+          "margin": 0.0178
+        },
+        {
+          "unit": "O-B-1.mat_late",
+          "class": "outer",
+          "margin": 0.0269
+        },
+        {
+          "unit": "O-B-2.mat_late",
+          "class": "outer",
+          "margin": 0.0297
+        },
+        {
+          "unit": "O-B-3.mat_late",
+          "class": "outer",
+          "margin": 0.0134
+        },
+        {
+          "unit": "O-C-1.mat_late",
+          "class": "outer",
+          "margin": -0.045
+        },
+        {
+          "unit": "O-C-2.mat_late",
+          "class": "outer",
+          "margin": -0.0173
+        },
+        {
+          "unit": "O-C-3.mat_late",
+          "class": "outer",
+          "margin": -0.0311
+        },
+        {
+          "unit": "O-D-1.mat_late",
+          "class": "outer",
+          "margin": -0.0132
+        },
+        {
+          "unit": "O-D-2.mat_late",
+          "class": "outer",
+          "margin": -0.0542
+        },
+        {
+          "unit": "O-D-3.mat_late",
+          "class": "outer",
+          "margin": -0.055
+        }
+      ]
+    },
+    "One-Class SVM": {
+      "test_recordings": 48,
+      "healthy": 12,
+      "faulty": 36,
+      "roc_auc": 1.0,
+      "fault_detection_rate": 1.0,
+      "false_alarm_rate": 0.0,
+      "accuracy": 1.0,
+      "detection_rate_per_fault": {
+        "inner": 1.0,
+        "outer": 1.0,
+        "ball": 1.0
+      },
+      "recordings": [
+        {
+          "unit": "B-A-1.mat_late",
+          "class": "ball",
+          "margin": 0.3669
+        },
+        {
+          "unit": "B-A-2.mat_late",
+          "class": "ball",
+          "margin": 0.3775
+        },
+        {
+          "unit": "B-A-3.mat_late",
+          "class": "ball",
+          "margin": 0.3745
+        },
+        {
+          "unit": "B-B-1.mat_late",
+          "class": "ball",
+          "margin": 0.3086
+        },
+        {
+          "unit": "B-B-2.mat_late",
+          "class": "ball",
+          "margin": 0.3227
+        },
+        {
+          "unit": "B-B-3.mat_late",
+          "class": "ball",
+          "margin": 0.2461
+        },
+        {
+          "unit": "B-C-1.mat_late",
+          "class": "ball",
+          "margin": 0.2682
+        },
+        {
+          "unit": "B-C-2.mat_late",
+          "class": "ball",
+          "margin": 0.3192
+        },
+        {
+          "unit": "B-C-3.mat_late",
+          "class": "ball",
+          "margin": 0.3059
+        },
+        {
+          "unit": "B-D-1.mat_late",
+          "class": "ball",
+          "margin": 0.3056
+        },
+        {
+          "unit": "B-D-2.mat_late",
+          "class": "ball",
+          "margin": 0.3325
+        },
+        {
+          "unit": "B-D-3.mat_late",
+          "class": "ball",
+          "margin": 0.3768
+        },
+        {
+          "unit": "H-A-1.mat_late",
+          "class": "healthy",
+          "margin": -3.3299
+        },
+        {
+          "unit": "H-A-2.mat_late",
+          "class": "healthy",
+          "margin": -3.2523
+        },
+        {
+          "unit": "H-A-3.mat_late",
+          "class": "healthy",
+          "margin": -3.2985
+        },
+        {
+          "unit": "H-B-1.mat_late",
+          "class": "healthy",
+          "margin": -2.8643
+        },
+        {
+          "unit": "H-B-2.mat_late",
+          "class": "healthy",
+          "margin": -1.956
+        },
+        {
+          "unit": "H-B-3.mat_late",
+          "class": "healthy",
+          "margin": -2.887
+        },
+        {
+          "unit": "H-C-1.mat_late",
+          "class": "healthy",
+          "margin": -3.4477
+        },
+        {
+          "unit": "H-C-2.mat_late",
+          "class": "healthy",
+          "margin": -3.4976
+        },
+        {
+          "unit": "H-C-3.mat_late",
+          "class": "healthy",
+          "margin": -3.4477
+        },
+        {
+          "unit": "H-D-1.mat_late",
+          "class": "healthy",
+          "margin": -3.448
+        },
+        {
+          "unit": "H-D-2.mat_late",
+          "class": "healthy",
+          "margin": -3.3129
+        },
+        {
+          "unit": "H-D-3.mat_late",
+          "class": "healthy",
+          "margin": -3.0545
+        },
+        {
+          "unit": "I-A-1.mat_late",
+          "class": "inner",
+          "margin": 0.3782
+        },
+        {
+          "unit": "I-A-2.mat_late",
+          "class": "inner",
+          "margin": 0.3782
+        },
+        {
+          "unit": "I-A-3.mat_late",
+          "class": "inner",
+          "margin": 0.3782
+        },
+        {
+          "unit": "I-B-1.mat_late",
+          "class": "inner",
+          "margin": 0.3782
+        },
+        {
+          "unit": "I-B-2.mat_late",
+          "class": "inner",
+          "margin": 0.3782
+        },
+        {
+          "unit": "I-B-3.mat_late",
+          "class": "inner",
+          "margin": 0.3781
+        },
+        {
+          "unit": "I-C-1.mat_late",
+          "class": "inner",
+          "margin": 0.3782
+        },
+        {
+          "unit": "I-C-2.mat_late",
+          "class": "inner",
+          "margin": 0.3782
+        },
+        {
+          "unit": "I-C-3.mat_late",
+          "class": "inner",
+          "margin": 0.3782
+        },
+        {
+          "unit": "I-D-1.mat_late",
+          "class": "inner",
+          "margin": 0.3782
+        },
+        {
+          "unit": "I-D-2.mat_late",
+          "class": "inner",
+          "margin": 0.3782
+        },
+        {
+          "unit": "I-D-3.mat_late",
+          "class": "inner",
+          "margin": 0.3782
+        },
+        {
+          "unit": "O-A-1.mat_late",
+          "class": "outer",
+          "margin": 0.3585
+        },
+        {
+          "unit": "O-A-2.mat_late",
+          "class": "outer",
+          "margin": 0.3202
+        },
+        {
+          "unit": "O-A-3.mat_late",
+          "class": "outer",
+          "margin": 0.2686
+        },
+        {
+          "unit": "O-B-1.mat_late",
+          "class": "outer",
+          "margin": 0.3778
+        },
+        {
+          "unit": "O-B-2.mat_late",
+          "class": "outer",
+          "margin": 0.3772
+        },
+        {
+          "unit": "O-B-3.mat_late",
+          "class": "outer",
+          "margin": 0.3761
+        },
+        {
+          "unit": "O-C-1.mat_late",
+          "class": "outer",
+          "margin": 0.3078
+        },
+        {
+          "unit": "O-C-2.mat_late",
+          "class": "outer",
+          "margin": 0.1381
+        },
+        {
+          "unit": "O-C-3.mat_late",
+          "class": "outer",
+          "margin": 0.1605
+        },
+        {
+          "unit": "O-D-1.mat_late",
+          "class": "outer",
+          "margin": 0.233
+        },
+        {
+          "unit": "O-D-2.mat_late",
+          "class": "outer",
+          "margin": 0.3044
+        },
+        {
+          "unit": "O-D-3.mat_late",
+          "class": "outer",
+          "margin": 0.2697
+        }
+      ]
+    }
+  }
+}

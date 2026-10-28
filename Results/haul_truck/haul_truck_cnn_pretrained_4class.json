@@ -64,16 +64,16 @@
   },
   "image_level": {
     "test_units": 239,
-    "accuracy": 0.3556,
-    "balanced_accuracy": 0.3549,
-    "macro_precision": 0.4398,
-    "macro_recall": 0.3549,
-    "macro_f1": 0.3061,
+    "accuracy": 0.3515,
+    "balanced_accuracy": 0.3507,
+    "macro_precision": 0.415,
+    "macro_recall": 0.3507,
+    "macro_f1": 0.3023,
     "confusion_matrix": [
       [
-        53,
+        52,
         4,
-        3,
+        4,
         0
       ],
       [
@@ -83,23 +83,199 @@
         0
       ],
       [
-        20,
-        39,
+        21,
+        37,
         1,
-        0
+        1
       ],
       [
-        4,
-        32,
+        5,
+        31,
         13,
         10
       ]
     ],
     "per_class_recall": {
-      "healthy": 0.8833,
+      "healthy": 0.8667,
       "inner": 0.35,
       "outer": 0.0167,
       "ball": 0.1695
+    }
+  },
+  "segment_level": {
+    "test_units": 120,
+    "accuracy": 0.35,
+    "balanced_accuracy": 0.35,
+    "macro_precision": 0.4302,
+    "macro_recall": 0.35,
+    "macro_f1": 0.2986,
+    "confusion_matrix": [
+      [
+        26,
+        3,
+        1,
+        0
+      ],
+      [
+        13,
+        11,
+        6,
+        0
+      ],
+      [
+        12,
+        18,
+        0,
+        0
+      ],
+      [
+        3,
+        14,
+        8,
+        5
+      ]
+    ],
+    "per_class_recall": {
+      "healthy": 0.8667,
+      "inner": 0.3667,
+      "outer": 0.0,
+      "ball": 0.1667
+    },
+    "segments_per_recording": 10,
+    "note": "each held-out recording split in time order into consecutive parts, one prediction per part; parts of one recording are related, so the recording-level score stays the main result"
+  },
+  "per_recording": {
+    "2000rpm_ball_angle1": {
+      "class": "ball",
+      "images": 20,
+      "images_predicted": {
+        "healthy": 0,
+        "inner": 20,
+        "outer": 0,
+        "ball": 0
+      },
+      "recording_prediction": "inner"
+    },
+    "2000rpm_ball_angle2": {
+      "class": "ball",
+      "images": 20,
+      "images_predicted": {
+        "healthy": 0,
+        "inner": 7,
+        "outer": 13,
+        "ball": 0
+      },
+      "recording_prediction": "outer"
+    },
+    "2000rpm_ball_angle3": {
+      "class": "ball",
+      "images": 19,
+      "images_predicted": {
+        "healthy": 5,
+        "inner": 4,
+        "outer": 0,
+        "ball": 10
+      },
+      "recording_prediction": "ball"
+    },
+    "2000rpm_healthy_angle1": {
+      "class": "healthy",
+      "images": 20,
+      "images_predicted": {
+        "healthy": 16,
+        "inner": 4,
+        "outer": 0,
+        "ball": 0
+      },
+      "recording_prediction": "healthy"
+    },
+    "2000rpm_healthy_angle2": {
+      "class": "healthy",
+      "images": 20,
+      "images_predicted": {
+        "healthy": 16,
+        "inner": 0,
+        "outer": 4,
+        "ball": 0
+      },
+      "recording_prediction": "healthy"
+    },
+    "2000rpm_healthy_angle3": {
+      "class": "healthy",
+      "images": 20,
+      "images_predicted": {
+        "healthy": 20,
+        "inner": 0,
+        "outer": 0,
+        "ball": 0
+      },
+      "recording_prediction": "healthy"
+    },
+    "2000rpm_inner_angle1": {
+      "class": "inner",
+      "images": 20,
+      "images_predicted": {
+        "healthy": 1,
+        "inner": 19,
+        "outer": 0,
+        "ball": 0
+      },
+      "recording_prediction": "inner"
+    },
+    "2000rpm_inner_angle2": {
+      "class": "inner",
+      "images": 20,
+      "images_predicted": {
+        "healthy": 7,
+        "inner": 2,
+        "outer": 11,
+        "ball": 0
+      },
+      "recording_prediction": "outer"
+    },
+    "2000rpm_inner_angle3": {
+      "class": "inner",
+      "images": 20,
+      "images_predicted": {
+        "healthy": 20,
+        "inner": 0,
+        "outer": 0,
+        "ball": 0
+      },
+      "recording_prediction": "healthy"
+    },
+    "2000rpm_outer_angle1": {
+      "class": "outer",
+      "images": 20,
+      "images_predicted": {
+        "healthy": 1,
+        "inner": 19,
+        "outer": 0,
+        "ball": 0
+      },
+      "recording_prediction": "inner"
+    },
+    "2000rpm_outer_angle2": {
+      "class": "outer",
+      "images": 20,
+      "images_predicted": {
+        "healthy": 6,
+        "inner": 13,
+        "outer": 1,
+        "ball": 0
+      },
+      "recording_prediction": "inner"
+    },
+    "2000rpm_outer_angle3": {
+      "class": "outer",
+      "images": 20,
+      "images_predicted": {
+        "healthy": 14,
+        "inner": 5,
+        "outer": 0,
+        "ball": 1
+      },
+      "recording_prediction": "healthy"
     }
   }
 }

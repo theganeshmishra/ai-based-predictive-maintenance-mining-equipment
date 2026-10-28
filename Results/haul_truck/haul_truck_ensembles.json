@@ -20,7 +20,7 @@
       "accuracy": 0.5,
       "balanced_accuracy": 0.25,
       "macro_f1": 0.1667,
-      "train_seconds": 0.0,
+      "train_seconds": 0.01,
       "confusion_matrix": [
         [
           15,
@@ -53,7 +53,7 @@
       "accuracy": 0.8667,
       "balanced_accuracy": 0.8333,
       "macro_f1": 0.8306,
-      "train_seconds": 3.58,
+      "train_seconds": 2.63,
       "confusion_matrix": [
         [
           14,
@@ -86,7 +86,7 @@
       "accuracy": 0.8333,
       "balanced_accuracy": 0.7833,
       "macro_f1": 0.7803,
-      "train_seconds": 2.22,
+      "train_seconds": 1.56,
       "confusion_matrix": [
         [
           14,
@@ -119,7 +119,7 @@
       "accuracy": 0.8,
       "balanced_accuracy": 0.7333,
       "macro_f1": 0.7344,
-      "train_seconds": 14.85,
+      "train_seconds": 8.35,
       "confusion_matrix": [
         [
           14,
@@ -152,7 +152,7 @@
       "accuracy": 0.8333,
       "balanced_accuracy": 0.7833,
       "macro_f1": 0.775,
-      "train_seconds": 3.5,
+      "train_seconds": 1.73,
       "confusion_matrix": [
         [
           14,
@@ -185,7 +185,7 @@
       "accuracy": 0.8,
       "balanced_accuracy": 0.7333,
       "macro_f1": 0.7333,
-      "train_seconds": 3.67,
+      "train_seconds": 1.29,
       "confusion_matrix": [
         [
           14,
