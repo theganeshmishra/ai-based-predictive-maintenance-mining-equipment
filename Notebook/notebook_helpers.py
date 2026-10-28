@@ -343,3 +343,54 @@ def show_per_recording(machine: str, suffix: str = "") -> None:
                               for unit, r in result["per_recording"].items()}).T)
     else:
         print(f"Images per class for each recording appear after rerunning  python Models/{machine}.py cnn-pretrained")
+
+
+_TEST_IMAGE_MACHINES = (("Pump", "pump"), ("Haul Truck", "haul_truck"), ("Belt Conveyor", "belt_conveyor"),
+                        ("Excavator", "excavator"), ("Dozer", "dozer"), ("Wheel Loader", "wheel_loader"))
+
+
+def _best_cnn_result(machine: str):
+    """The fair-test pretrained-CNN result with the most test images (all frames when available)."""
+    for suffix in ("_allframes", ""):
+        result = load(f"{machine}_cnn_pretrained_4class{suffix}.json")
+        if result and "image_level" in result:
+            return result
+    return None
+
+
+def _draw_image_matrix(axis, block, labels, title):
+    import numpy as np
+    array = np.asarray(block["confusion_matrix"])
+    axis.imshow(array, cmap="Blues", vmin=0)
+    axis.set_xticks(range(len(labels)), labels, rotation=30, fontsize=8)
+    axis.set_yticks(range(len(labels)), labels, fontsize=8)
+    axis.set_xlabel("Predicted")
+    axis.set_ylabel("Actual")
+    axis.set_title(f"{title}\nevery test image: {block['test_units']:,} tested, accuracy {block['accuracy']:.3f}",
+                   fontsize=9)
+    for i in range(len(labels)):
+        for j in range(len(labels)):
+            axis.text(j, i, f"{array[i, j]:,}", ha="center", va="center", fontsize=8,
+                      color="white" if array[i, j] > array.max() / 2 else "black")
+
+
+def show_test_images(machine: str | None = None) -> None:
+    """Confusion matrix over every test image of the fair-test CNN: one machine, or all six when machine is None."""
+    import matplotlib.pyplot as plt
+    machines = [(n, m) for n, m in _TEST_IMAGE_MACHINES if machine in (None, m)]
+    found = [(n, m, r) for n, m in machines if (r := _best_cnn_result(m))]
+    if not found:
+        print(f"No CNN result yet: run  python Models/{machine}.py cnn-pretrained")
+        return
+    columns = min(3, len(found))
+    rows = -(-len(found) // columns)
+    figure, axes = plt.subplots(rows, columns, figsize=(4.6 * columns, 4.4 * rows), dpi=70 if len(found) > 1 else 110,
+                               squeeze=False)
+    for axis, (name, m, result) in zip(axes.flat, found):
+        _draw_image_matrix(axis, result["image_level"], result["classes"],
+                           f"{name}: {result['images']:,} images, "
+                           f"{result['recording_level']['test_units']} test recordings")
+    for axis in list(axes.flat)[len(found):]:
+        axis.axis("off")
+    figure.tight_layout()
+    plt.show()
