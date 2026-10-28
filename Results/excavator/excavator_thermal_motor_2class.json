@@ -1,0 +1,181 @@
+{
+  "purpose": "separate image data for the Excavator bearing task (not CORA)",
+  "source": "Kulkarni et al., Induction Motor-Thermal Images, Mendeley Data pymtdhfzbj v2, CC BY 4.0",
+  "images": 488,
+  "classes": [
+    "healthy",
+    "bearing"
+  ],
+  "test": "leave one load out (no / medium / full load), 3 rounds; epochs chosen on the training loads only",
+  "preprocessing": "top 15% of every image masked (temperature reading and logo), resized to 224x224; ImageNet ResNet18 with only layer4 and the head trained",
+  "settings": {
+    "max_epochs": 8,
+    "batch": 32,
+    "learning_rate": 0.0003,
+    "seed": 613
+  },
+  "folds": [
+    {
+      "test_load": "no load",
+      "epochs_chosen": 1,
+      "test_images": 166,
+      "image_accuracy": 1.0,
+      "brightness_control_accuracy": 0.5422,
+      "border_only_control_accuracy": 0.5422
+    },
+    {
+      "test_load": "medium load",
+      "epochs_chosen": 8,
+      "test_images": 161,
+      "image_accuracy": 1.0,
+      "brightness_control_accuracy": 0.5093,
+      "border_only_control_accuracy": 0.7826
+    },
+    {
+      "test_load": "full load",
+      "epochs_chosen": 1,
+      "test_images": 161,
+      "image_accuracy": 1.0,
+      "brightness_control_accuracy": 0.8199,
+      "border_only_control_accuracy": 0.8323
+    }
+  ],
+  "image_level": {
+    "test_units": 488,
+    "accuracy": 1.0,
+    "balanced_accuracy": 1.0,
+    "macro_f1": 1.0,
+    "confusion_matrix": [
+      [
+        284,
+        0
+      ],
+      [
+        0,
+        204
+      ]
+    ]
+  },
+  "segment_level": {
+    "test_units": 60,
+    "accuracy": 1.0,
+    "balanced_accuracy": 1.0,
+    "macro_f1": 1.0,
+    "confusion_matrix": [
+      [
+        30,
+        0
+      ],
+      [
+        0,
+        30
+      ]
+    ],
+    "segments_per_session": 10
+  },
+  "session_level": {
+    "test_units": 6,
+    "accuracy": 1.0,
+    "balanced_accuracy": 1.0,
+    "macro_f1": 1.0,
+    "confusion_matrix": [
+      [
+        3,
+        0
+      ],
+      [
+        0,
+        3
+      ]
+    ]
+  },
+  "brightness_control_image_level": {
+    "test_units": 488,
+    "accuracy": 0.623,
+    "balanced_accuracy": 0.5697,
+    "macro_f1": 0.5431,
+    "confusion_matrix": [
+      [
+        254,
+        30
+      ],
+      [
+        154,
+        50
+      ]
+    ]
+  },
+  "border_only_control_image_level": {
+    "test_units": 488,
+    "accuracy": 0.7172,
+    "balanced_accuracy": 0.6804,
+    "macro_f1": 0.6812,
+    "confusion_matrix": [
+      [
+        257,
+        27
+      ],
+      [
+        111,
+        93
+      ]
+    ]
+  },
+  "per_session": {
+    "CNL": {
+      "class": "bearing",
+      "images": 76,
+      "images_predicted": {
+        "healthy": 0,
+        "bearing": 76
+      },
+      "session_prediction": "bearing"
+    },
+    "HNL": {
+      "class": "healthy",
+      "images": 90,
+      "images_predicted": {
+        "healthy": 90,
+        "bearing": 0
+      },
+      "session_prediction": "healthy"
+    },
+    "CML": {
+      "class": "bearing",
+      "images": 79,
+      "images_predicted": {
+        "healthy": 0,
+        "bearing": 79
+      },
+      "session_prediction": "bearing"
+    },
+    "HML": {
+      "class": "healthy",
+      "images": 82,
+      "images_predicted": {
+        "healthy": 82,
+        "bearing": 0
+      },
+      "session_prediction": "healthy"
+    },
+    "CFL": {
+      "class": "bearing",
+      "images": 49,
+      "images_predicted": {
+        "healthy": 0,
+        "bearing": 49
+      },
+      "session_prediction": "bearing"
+    },
+    "HFL": {
+      "class": "healthy",
+      "images": 112,
+      "images_predicted": {
+        "healthy": 112,
+        "bearing": 0
+      },
+      "session_prediction": "healthy"
+    }
+  },
+  "caveat": "only 6 sessions (one per class and load) from one motor; images within a session are consecutive and related, and only 2 classes match the Excavator's 4. The healthy and corroded sessions were filmed with different framing: a model that sees only the image border (motor hidden) also scores well, so a high CNN score does not prove it detects bearing corrosion"
+}
