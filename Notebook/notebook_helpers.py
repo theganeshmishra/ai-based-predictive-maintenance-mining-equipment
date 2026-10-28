@@ -326,18 +326,10 @@ def show_per_recording(machine: str, suffix: str = "") -> None:
     if "segment_level" in result:
         levels["per 1/10 recording segment"] = result["segment_level"]
     levels["per whole recording"] = result["recording_level"]
-    table = pd.DataFrame({name: metrics(block) for name, block in levels.items()}).T
-    table.insert(0, "tested", [f"{block['test_units']:,}" for block in levels.values()])
-    display(table)
-    figure = ROOT / "Figures" / machine / f"{machine}_cnn_pretrained_4class{suffix}.png"
-    if figure.exists():   # embedded as a small JPEG so the notebook stays light
-        import io
-        from PIL import Image as PILImage
-        buffer = io.BytesIO()
-        picture = PILImage.open(figure).convert("RGB")
-        picture.thumbnail((900, 900))
-        picture.save(buffer, "JPEG", quality=60)
-        display(Image(data=buffer.getvalue(), format="jpeg", width=900))
+    _levels_figure(levels, result["classes"],
+                   f"{machine}: pretrained ResNet18 on {result['images']:,} images in total, "
+                   f"{result['recording_level']['test_units']} test recordings"
+                   + (" (time split, secondary)" if "timesplit" in suffix else ", each never seen in training"))
     if "per_recording" in result:
         display(pd.DataFrame({unit: {"class": r["class"], **r["images_predicted"], "final answer": r["recording_prediction"]}
                               for unit, r in result["per_recording"].items()}).T)
@@ -358,7 +350,27 @@ def _best_cnn_result(machine: str):
     return None
 
 
-def _draw_image_matrix(axis, block, labels, title):
+def _levels_figure(levels: dict, labels: list, title: str) -> None:
+    """One image: the score table on top and one confusion matrix per scoring level below."""
+    import matplotlib.pyplot as plt
+    figure = plt.figure(figsize=(4.4 * len(levels), 6.2), dpi=90)
+    grid = figure.add_gridspec(2, len(levels), height_ratios=[1, 4.2])
+    top = figure.add_subplot(grid[0, :])
+    top.axis("off")
+    columns = ["tested", *METRICS]
+    cells = [[f"{block['test_units']:,}", *(f"{block[k]:.3f}" for k in METRICS)] for block in levels.values()]
+    table = top.table(cellText=cells, rowLabels=list(levels), colLabels=columns, loc="center", cellLoc="center")
+    table.auto_set_font_size(False)
+    table.set_fontsize(9)
+    table.scale(1, 1.3)
+    for (name, block), column in zip(levels.items(), range(len(levels))):
+        _draw_image_matrix(figure.add_subplot(grid[1, column]), block, labels, name, level=None)
+    figure.suptitle(title, fontsize=11)
+    figure.tight_layout()
+    plt.show()
+
+
+def _draw_image_matrix(axis, block, labels, title, level="every test image"):
     import numpy as np
     array = np.asarray(block["confusion_matrix"])
     axis.imshow(array, cmap="Blues", vmin=0)
@@ -366,8 +378,8 @@ def _draw_image_matrix(axis, block, labels, title):
     axis.set_yticks(range(len(labels)), labels, fontsize=8)
     axis.set_xlabel("Predicted")
     axis.set_ylabel("Actual")
-    axis.set_title(f"{title}\nevery test image: {block['test_units']:,} tested, accuracy {block['accuracy']:.3f}",
-                   fontsize=9)
+    prefix = f"{level}: " if level else ""
+    axis.set_title(f"{title}\n{prefix}{block['test_units']:,} tested, accuracy {block['accuracy']:.3f}", fontsize=9)
     for i in range(len(labels)):
         for j in range(len(labels)):
             axis.text(j, i, f"{array[i, j]:,}", ha="center", va="center", fontsize=8,
