@@ -317,14 +317,29 @@ def show_allframes(machine: str) -> None:
 
 
 def show_per_recording(machine: str, suffix: str = "") -> None:
-    """How the images of each test recording were classified, and the recording's final answer."""
+    """Every test image, every 1/10 segment and every recording of the pretrained CNN, with the counts tested."""
     result = load(f"{machine}_cnn_pretrained_4class{suffix}.json")
-    if not result or "per_recording" not in result:
-        print(f"No per-recording breakdown yet: rerun  python Models/{machine}.py cnn-pretrained")
+    if not result:
+        print(f"No result yet: run  python Models/{machine}.py cnn-pretrained")
         return
-    show({"per held-out recording": result["recording_level"], "per 1/10 recording segment": result["segment_level"]})
-    figure = ROOT / "Figures" / machine / f"{machine}_cnn_pretrained_4class{suffix}_segments.png"
-    if figure.exists():
-        display(Image(filename=str(figure), width=520))
-    display(pd.DataFrame({unit: {"class": r["class"], **r["images_predicted"], "final answer": r["recording_prediction"]}
-                          for unit, r in result["per_recording"].items()}).T)
+    levels = {"every test image": result["image_level"]}
+    if "segment_level" in result:
+        levels["per 1/10 recording segment"] = result["segment_level"]
+    levels["per whole recording"] = result["recording_level"]
+    table = pd.DataFrame({name: metrics(block) for name, block in levels.items()}).T
+    table.insert(0, "tested", [f"{block['test_units']:,}" for block in levels.values()])
+    display(table)
+    figure = ROOT / "Figures" / machine / f"{machine}_cnn_pretrained_4class{suffix}.png"
+    if figure.exists():   # embedded as a small JPEG so the notebook stays light
+        import io
+        from PIL import Image as PILImage
+        buffer = io.BytesIO()
+        picture = PILImage.open(figure).convert("RGB")
+        picture.thumbnail((900, 900))
+        picture.save(buffer, "JPEG", quality=60)
+        display(Image(data=buffer.getvalue(), format="jpeg", width=900))
+    if "per_recording" in result:
+        display(pd.DataFrame({unit: {"class": r["class"], **r["images_predicted"], "final answer": r["recording_prediction"]}
+                              for unit, r in result["per_recording"].items()}).T)
+    else:
+        print(f"Images per class for each recording appear after rerunning  python Models/{machine}.py cnn-pretrained")
