@@ -101,5 +101,313 @@
       "outer": 1.0,
       "ball": 1.0
     }
+  },
+  "segment_level": {
+    "test_units": 240,
+    "accuracy": 1.0,
+    "balanced_accuracy": 1.0,
+    "macro_precision": 1.0,
+    "macro_recall": 1.0,
+    "macro_f1": 1.0,
+    "confusion_matrix": [
+      [
+        60,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        60,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        60,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        60
+      ]
+    ],
+    "per_class_recall": {
+      "healthy": 1.0,
+      "inner": 1.0,
+      "outer": 1.0,
+      "ball": 1.0
+    },
+    "segments_per_recording": 10,
+    "note": "each held-out recording split in time order into consecutive parts, one prediction per part; parts of one recording are related, so the recording-level score stays the main result"
+  },
+  "per_recording": {
+    "30Hz_ball_15_-30": {
+      "class": "ball",
+      "images": 20,
+      "images_predicted": {
+        "healthy": 0,
+        "inner": 0,
+        "outer": 0,
+        "ball": 20
+      },
+      "recording_prediction": "ball"
+    },
+    "30Hz_ball_15_0": {
+      "class": "ball",
+      "images": 20,
+      "images_predicted": {
+        "healthy": 0,
+        "inner": 0,
+        "outer": 0,
+        "ball": 20
+      },
+      "recording_prediction": "ball"
+    },
+    "30Hz_ball_15_30": {
+      "class": "ball",
+      "images": 20,
+      "images_predicted": {
+        "healthy": 0,
+        "inner": 0,
+        "outer": 0,
+        "ball": 20
+      },
+      "recording_prediction": "ball"
+    },
+    "30Hz_ball_18_-30": {
+      "class": "ball",
+      "images": 20,
+      "images_predicted": {
+        "healthy": 0,
+        "inner": 0,
+        "outer": 0,
+        "ball": 20
+      },
+      "recording_prediction": "ball"
+    },
+    "30Hz_ball_18_0": {
+      "class": "ball",
+      "images": 20,
+      "images_predicted": {
+        "healthy": 0,
+        "inner": 0,
+        "outer": 0,
+        "ball": 20
+      },
+      "recording_prediction": "ball"
+    },
+    "30Hz_ball_18_30": {
+      "class": "ball",
+      "images": 20,
+      "images_predicted": {
+        "healthy": 0,
+        "inner": 0,
+        "outer": 0,
+        "ball": 20
+      },
+      "recording_prediction": "ball"
+    },
+    "30Hz_healthy_15_-30": {
+      "class": "healthy",
+      "images": 20,
+      "images_predicted": {
+        "healthy": 20,
+        "inner": 0,
+        "outer": 0,
+        "ball": 0
+      },
+      "recording_prediction": "healthy"
+    },
+    "30Hz_healthy_15_0": {
+      "class": "healthy",
+      "images": 20,
+      "images_predicted": {
+        "healthy": 20,
+        "inner": 0,
+        "outer": 0,
+        "ball": 0
+      },
+      "recording_prediction": "healthy"
+    },
+    "30Hz_healthy_15_30": {
+      "class": "healthy",
+      "images": 20,
+      "images_predicted": {
+        "healthy": 20,
+        "inner": 0,
+        "outer": 0,
+        "ball": 0
+      },
+      "recording_prediction": "healthy"
+    },
+    "30Hz_healthy_18_-30": {
+      "class": "healthy",
+      "images": 20,
+      "images_predicted": {
+        "healthy": 20,
+        "inner": 0,
+        "outer": 0,
+        "ball": 0
+      },
+      "recording_prediction": "healthy"
+    },
+    "30Hz_healthy_18_0": {
+      "class": "healthy",
+      "images": 20,
+      "images_predicted": {
+        "healthy": 20,
+        "inner": 0,
+        "outer": 0,
+        "ball": 0
+      },
+      "recording_prediction": "healthy"
+    },
+    "30Hz_healthy_18_30": {
+      "class": "healthy",
+      "images": 20,
+      "images_predicted": {
+        "healthy": 19,
+        "inner": 0,
+        "outer": 1,
+        "ball": 0
+      },
+      "recording_prediction": "healthy"
+    },
+    "30Hz_inner_15_-30": {
+      "class": "inner",
+      "images": 20,
+      "images_predicted": {
+        "healthy": 0,
+        "inner": 20,
+        "outer": 0,
+        "ball": 0
+      },
+      "recording_prediction": "inner"
+    },
+    "30Hz_inner_15_0": {
+      "class": "inner",
+      "images": 20,
+      "images_predicted": {
+        "healthy": 0,
+        "inner": 20,
+        "outer": 0,
+        "ball": 0
+      },
+      "recording_prediction": "inner"
+    },
+    "30Hz_inner_15_30": {
+      "class": "inner",
+      "images": 20,
+      "images_predicted": {
+        "healthy": 0,
+        "inner": 20,
+        "outer": 0,
+        "ball": 0
+      },
+      "recording_prediction": "inner"
+    },
+    "30Hz_inner_18_-30": {
+      "class": "inner",
+      "images": 20,
+      "images_predicted": {
+        "healthy": 0,
+        "inner": 20,
+        "outer": 0,
+        "ball": 0
+      },
+      "recording_prediction": "inner"
+    },
+    "30Hz_inner_18_0": {
+      "class": "inner",
+      "images": 20,
+      "images_predicted": {
+        "healthy": 0,
+        "inner": 20,
+        "outer": 0,
+        "ball": 0
+      },
+      "recording_prediction": "inner"
+    },
+    "30Hz_inner_18_30": {
+      "class": "inner",
+      "images": 20,
+      "images_predicted": {
+        "healthy": 0,
+        "inner": 20,
+        "outer": 0,
+        "ball": 0
+      },
+      "recording_prediction": "inner"
+    },
+    "30Hz_outer_15_-30": {
+      "class": "outer",
+      "images": 20,
+      "images_predicted": {
+        "healthy": 0,
+        "inner": 0,
+        "outer": 20,
+        "ball": 0
+      },
+      "recording_prediction": "outer"
+    },
+    "30Hz_outer_15_0": {
+      "class": "outer",
+      "images": 20,
+      "images_predicted": {
+        "healthy": 0,
+        "inner": 0,
+        "outer": 20,
+        "ball": 0
+      },
+      "recording_prediction": "outer"
+    },
+    "30Hz_outer_15_30": {
+      "class": "outer",
+      "images": 20,
+      "images_predicted": {
+        "healthy": 0,
+        "inner": 0,
+        "outer": 20,
+        "ball": 0
+      },
+      "recording_prediction": "outer"
+    },
+    "30Hz_outer_18_-30": {
+      "class": "outer",
+      "images": 20,
+      "images_predicted": {
+        "healthy": 0,
+        "inner": 0,
+        "outer": 20,
+        "ball": 0
+      },
+      "recording_prediction": "outer"
+    },
+    "30Hz_outer_18_0": {
+      "class": "outer",
+      "images": 20,
+      "images_predicted": {
+        "healthy": 0,
+        "inner": 0,
+        "outer": 20,
+        "ball": 0
+      },
+      "recording_prediction": "outer"
+    },
+    "30Hz_outer_18_30": {
+      "class": "outer",
+      "images": 20,
+      "images_predicted": {
+        "healthy": 0,
+        "inner": 0,
+        "outer": 20,
+        "ball": 0
+      },
+      "recording_prediction": "outer"
+    }
   }
 }
