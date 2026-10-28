@@ -809,7 +809,7 @@ def cnn_pretrained(run: bool = True) -> dict:
     def plot_levels(result, title, path):
         """One panel per scoring level, so the figure shows how many images were really tested."""
         levels = [("every test image", result["image_level"]), ("per 1/10 recording segment", result.get("segment_level")),
-                  ("per whole recording (main result)", result["recording_level"])]
+                  ("per whole recording", result["recording_level"])]
         levels = [(name, block) for name, block in levels if block]
         figure, axes = plt.subplots(1, len(levels), figsize=(4.6 * len(levels), 4.4))
         for axis, (name, block) in zip(np.atleast_1d(axes), levels):
@@ -824,7 +824,7 @@ def cnn_pretrained(run: bool = True) -> dict:
                 for j in range(len(LABELS)):
                     axis.text(j, i, f"{array[i, j]:,}", ha="center", va="center", fontsize=8,
                               color="white" if array[i, j] > array.max() / 2 else "black")
-        figure.suptitle(title, fontsize=10)
+        figure.suptitle(title.replace("; ", "\n"), fontsize=10)
         figure.tight_layout()
         path.parent.mkdir(parents=True, exist_ok=True)
         figure.savefig(path, dpi=110)
@@ -966,8 +966,9 @@ def cnn_pretrained(run: bool = True) -> dict:
         print(f"Segment-level accuracy {s['accuracy']:.3f} on {s['test_units']} test segments "
               f"({SEGMENTS} per held-out recording)")
         r = result["recording_level"]
-        plot_levels(result, f"{MACHINE}: pretrained ResNet18 on {result['images']:,} images from "
-                            f"{r['test_units']} recordings (each recording tested once, never seen in training)", FIGURE)
+        plot_levels(result, f"{MACHINE}: pretrained ResNet18 on {result['images']:,} images in total; "
+                            f"{r['test_units']} test recordings" + (" (time split, secondary: later frames of training recordings)"
+                            if "timesplit" in FIGURE.stem else ", each never seen in training"), FIGURE)
         print(f"Pretrained CNN recording-level accuracy {r['accuracy']:.3f}, macro F1 {r['macro_f1']:.3f}; "
               f"image-level accuracy {result['image_level']['accuracy']:.3f}")
         print(f"Saved {RESULT.relative_to(ROOT)} and {FIGURE.relative_to(ROOT)}")
