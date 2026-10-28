@@ -394,3 +394,30 @@ def show_test_images(machine: str | None = None) -> None:
         axis.axis("off")
     figure.tight_layout()
     plt.show()
+
+
+def show_thermal_motor() -> None:
+    """Excavator, separate image data: Kulkarni motor thermal images, healthy vs corroded bearing, unseen load."""
+    result = load("excavator_thermal_motor_2class.json")
+    if not result:
+        print("No result yet: run  python Models/excavator.py thermal-motor")
+        return
+    levels = {"every test image": result["image_level"], "per 1/10 session segment": result["segment_level"],
+              "per whole session": result["session_level"],
+              "control: brightness only (per image)": result["brightness_control_image_level"]}
+    if "border_only_control_image_level" in result:
+        levels["control: border only, motor hidden (per image)"] = result["border_only_control_image_level"]
+    table = pd.DataFrame({name: metrics(block) for name, block in levels.items()}).T
+    table.insert(0, "tested", [f"{block['test_units']:,}" for block in levels.values()])
+    display(table)
+    display(pd.DataFrame(result["folds"]).set_index("test_load"))
+    figure = ROOT / "Figures" / "excavator" / "excavator_thermal_motor_2class.png"
+    if figure.exists():
+        import io
+        from PIL import Image as PILImage
+        buffer = io.BytesIO()
+        picture = PILImage.open(figure).convert("RGB")
+        picture.thumbnail((1000, 1000))
+        picture.save(buffer, "JPEG", quality=60)
+        display(Image(data=buffer.getvalue(), format="jpeg", width=1000))
+    print("Caveat:", result["caveat"])
