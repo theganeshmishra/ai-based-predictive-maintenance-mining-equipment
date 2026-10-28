@@ -1428,6 +1428,7 @@ def cnn_pretrained(run: bool = True) -> dict:
     RESULT = ROOT / "Results" / "haul_truck" / f"{MACHINE}_cnn_pretrained_4class.json"
     FIGURE = ROOT / "Figures" / "haul_truck" / f"{MACHINE}_cnn_pretrained_4class.png"
     LABELS = ["healthy", "inner", "outer", "ball"]
+    SEGMENTS = 10   # test segments per held-out recording (segment-level score)
     MAX_EPOCHS, BATCH, LEARNING_RATE, SEED = 15, 32, 3e-4, 42
 
     def unit_predictions(probabilities, classes, y, units):
@@ -1560,6 +1561,7 @@ def cnn_pretrained(run: bool = True) -> dict:
         groups = np.asarray([row["group"] for row in rows])
         rng = np.random.default_rng(SEED)
         unit_actual, unit_predicted, image_actual, image_predicted, epochs_chosen = [], [], [], [], []
+        segment_actual, segment_predicted, per_recording = [], [], {}
         folds = ([np.char.endswith(units.astype(str), "_late")] if args.split == "time"
                  else [groups == "2000rpm"])
         for number, test in enumerate(folds, 1):
@@ -1578,6 +1580,18 @@ def cnn_pretrained(run: bool = True) -> dict:
             unit_predicted += pr
             image_actual += list(names[test])
             image_predicted += [LABELS[i] for i in p.argmax(axis=1)]
+            # more test units from the same unseen recordings: split each held-out recording, in time order,
+            # into SEGMENTS consecutive parts and give every part its own prediction (still never seen in training)
+            for unit in sorted(set(units[test])):
+                rows_u = units[test] == unit
+                pu, true = p[rows_u], names[test][rows_u][0]
+                for part in np.array_split(np.arange(len(pu)), min(SEGMENTS, len(pu))):
+                    segment_actual.append(true)
+                    segment_predicted.append(LABELS[int(pu[part].mean(axis=0).argmax())])
+                per_recording[str(unit)] = {"class": str(true), "images": int(len(pu)),
+                                            "images_predicted": {l: int((pu.argmax(axis=1) == i).sum())
+                                                                 for i, l in enumerate(LABELS)},
+                                            "recording_prediction": LABELS[int(pu.mean(axis=0).argmax())]}
             epochs_chosen.append(best_epochs)
             print(f"fold {number}: validation chose {best_epochs} epochs; tested on {int(test.sum())} images", flush=True)
         result = {
@@ -1591,8 +1605,20 @@ def cnn_pretrained(run: bool = True) -> dict:
             "selection_rule": "the test set is never used to choose epochs or settings",
             "recording_level": score(unit_actual, unit_predicted, LABELS),
             "image_level": score(image_actual, image_predicted, LABELS),
+            "segment_level": {**score(segment_actual, segment_predicted, LABELS),
+                              "segments_per_recording": SEGMENTS,
+                              "note": "each held-out recording split in time order into consecutive parts, one "
+                                      "prediction per part; parts of one recording are related, so the "
+                                      "recording-level score stays the main result"},
+            "per_recording": per_recording,
         }
         RESULT.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
+        s = result["segment_level"]
+        plot_matrix(s["confusion_matrix"], LABELS,
+                    f"{MACHINE}: pretrained ResNet18 per segment, accuracy {s['accuracy']:.3f} "
+                    f"({s['test_units']} test segments)", FIGURE.with_name(FIGURE.stem + "_segments.png"))
+        print(f"Segment-level accuracy {s['accuracy']:.3f} on {s['test_units']} test segments "
+              f"({SEGMENTS} per held-out recording)")
         r = result["recording_level"]
         plot_matrix(r["confusion_matrix"], LABELS,
                     f"{MACHINE}: pretrained ResNet18, accuracy {r['accuracy']:.3f} ({r['test_units']} test units)", FIGURE)

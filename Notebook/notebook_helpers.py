@@ -20,7 +20,7 @@ from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
 
 import pandas as pd
-from IPython.display import display
+from IPython.display import Image, display
 
 # Harmless scikit-learn/joblib notice that can repeat thousands of times inside a notebook kernel
 warnings.filterwarnings("ignore", message=r".*sklearn\.utils\.parallel\.delayed.*")
@@ -233,6 +233,8 @@ def show_week6(machine: str) -> None:
         result = load(name)
         if result:
             rows[f"{label}, per recording"] = result["recording_level"]
+            if "segment_level" in result:
+                rows[f"{label}, per 1/10 recording segment"] = result["segment_level"]
     time_csv, time_cnn = load(f"{machine}_csv_4class_timesplit.json"), load(f"{machine}_cnn_pretrained_4class_timesplit.json")
     if time_csv:
         rows["TIME SPLIT (secondary) | CSV sensor | Random forest"] = time_csv["models"]["Random forest"]
@@ -309,4 +311,20 @@ def show_allframes(machine: str) -> None:
             result = load(f"{machine}_cnn_pretrained_4class{suffix}{split}.json")
             if result:
                 rows[f"{name} | {label} ({result['images']} images)"] = result["recording_level"]
+                if "segment_level" in result:
+                    rows[f"{name} | {label}, per segment"] = result["segment_level"]
     show(rows)
+
+
+def show_per_recording(machine: str, suffix: str = "") -> None:
+    """How the images of each test recording were classified, and the recording's final answer."""
+    result = load(f"{machine}_cnn_pretrained_4class{suffix}.json")
+    if not result or "per_recording" not in result:
+        print(f"No per-recording breakdown yet: rerun  python Models/{machine}.py cnn-pretrained")
+        return
+    show({"per held-out recording": result["recording_level"], "per 1/10 recording segment": result["segment_level"]})
+    figure = ROOT / "Figures" / machine / f"{machine}_cnn_pretrained_4class{suffix}_segments.png"
+    if figure.exists():
+        display(Image(filename=str(figure), width=520))
+    display(pd.DataFrame({unit: {"class": r["class"], **r["images_predicted"], "final answer": r["recording_prediction"]}
+                          for unit, r in result["per_recording"].items()}).T)
