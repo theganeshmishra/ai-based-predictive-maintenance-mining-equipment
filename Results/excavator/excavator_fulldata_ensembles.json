@@ -98,7 +98,7 @@
           ]
         ]
       },
-      "seconds": 0.3
+      "seconds": 0.1
     },
     "Random forest": {
       "main": {
@@ -187,7 +187,7 @@
           ]
         ]
       },
-      "seconds": 4.6
+      "seconds": 3.7
     },
     "Extra trees": {
       "main": {
@@ -276,7 +276,7 @@
           ]
         ]
       },
-      "seconds": 3.1
+      "seconds": 2.6
     },
     "Gradient boosting (scikit-learn)": {
       "main": {
@@ -365,7 +365,7 @@
           ]
         ]
       },
-      "seconds": 37.0
+      "seconds": 30.6
     },
     "XGBoost": {
       "main": {
@@ -454,7 +454,7 @@
           ]
         ]
       },
-      "seconds": 6.0
+      "seconds": 6.1
     },
     "LightGBM": {
       "main": {
@@ -543,7 +543,7 @@
           ]
         ]
       },
-      "seconds": 4.5
+      "seconds": 3.4
     }
   }
 }

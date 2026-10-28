@@ -113,11 +113,11 @@
     },
     "Random forest": {
       "test_units": 16,
-      "accuracy": 0.1875,
-      "balanced_accuracy": 0.1875,
-      "macro_precision": 0.1214,
-      "macro_recall": 0.1875,
-      "macro_f1": 0.1465,
+      "accuracy": 0.25,
+      "balanced_accuracy": 0.25,
+      "macro_precision": 0.1839,
+      "macro_recall": 0.25,
+      "macro_f1": 0.209,
       "confusion_matrix": [
         [
           2,
@@ -140,15 +140,15 @@
         [
           2,
           0,
-          2,
-          0
+          1,
+          1
         ]
       ],
       "per_class_recall": {
         "healthy": 0.5,
         "bearing": 0.0,
         "unbalance": 0.25,
-        "misalignment": 0.0
+        "misalignment": 0.25
       }
     }
   },

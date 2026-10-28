@@ -44,7 +44,7 @@
       "correct_runs": 10,
       "test_runs": 16,
       "exploratory_accuracy_interval_95_percent": [
-        0.35434609430207786,
+        0.3543460943020778,
         0.848016324918838
       ],
       "confusion_matrix": [
@@ -81,7 +81,7 @@
       "correct_runs": 12,
       "test_runs": 16,
       "exploratory_accuracy_interval_95_percent": [
-        0.4762291801038724,
+        0.47622918010387233,
         0.9273379617471178
       ],
       "confusion_matrix": [
@@ -249,7 +249,7 @@
       "correct_runs": 12,
       "test_runs": 16,
       "exploratory_accuracy_interval_95_percent": [
-        0.4762291801038724,
+        0.47622918010387233,
         0.9273379617471178
       ],
       "confusion_matrix": [
