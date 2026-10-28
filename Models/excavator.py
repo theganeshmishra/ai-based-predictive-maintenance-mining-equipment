@@ -21,6 +21,8 @@ Commands:
     anomaly         Week 7: anomaly detection trained on healthy data only (--split time for the secondary test)
     fulldata        Week 7: every CORA sensor, window and start-up recording (Models/cora_fulldata.py)
                     (--part ensembles / anomaly / all: XGBoost-LightGBM comparison, anomaly detection)
+    thermal-motor   Week 8: separate thermal-image data (Kulkarni motor, healthy vs corroded bearing),
+                    leave one load out
     all             run csv, then export-images, then cnn-pretrained
 
 Raw data stays in Raw_Data/ and Processed_Data/ (not in Git).
@@ -1427,7 +1429,209 @@ def fulldata(run: bool = True) -> dict:
     return locals()
 
 
+def thermal_motor(run: bool = True) -> dict:
+    """Week 8: separate image data for the Excavator. Induction-motor thermal images (Kulkarni et al.,
+    Mendeley Data pymtdhfzbj v2, CC BY 4.0): healthy vs corroded bearing, each filmed at no, medium and full
+    load (6 sessions, 488 images). Fair test: leave one load out (train on two loads, test on the unseen
+    third), 3 rounds. The burned-in temperature reading and logo (top band) are masked. Inside each training
+    set the other load is used to choose the number of epochs. A brightness-only model is the control: if it
+    scores as well as the CNN, the CNN is only reading overall temperature.
+    """
+    import json
+    import random
+
+    import cv2
+    import matplotlib
+
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    import numpy as np
+    import torch
+    from sklearn.linear_model import LogisticRegression
+    from sklearn.metrics import accuracy_score, balanced_accuracy_score, confusion_matrix, f1_score
+    from torch import nn
+    from torchvision.models import ResNet18_Weights, resnet18
+
+    SOURCE = ROOT / "Raw_Data" / "kulkarni_motor_thermal" / "ext" / "Induction Motor-Thermal Images"
+    RESULT = ROOT / "Results" / "excavator" / "excavator_thermal_motor_2class.json"
+    FIGURE = ROOT / "Figures" / "excavator" / "excavator_thermal_motor_2class.png"
+    LABELS = ["healthy", "bearing"]
+    FOLDERS = {"H": "healthy", "C": "bearing"}           # H = healthy, C = corroded bearing
+    LOADS = {"NL": "no load", "ML": "medium load", "FL": "full load"}
+    SIZE, MASK_TOP, SEGMENTS = 224, 0.15, 10
+    MAX_EPOCHS, BATCH, LEARNING_RATE, SEED = 8, 32, 3e-4, 613
+
+    def load_images():
+        x, y, load, session = [], [], [], []
+        for folder in sorted(SOURCE.iterdir()):
+            label, load_code = FOLDERS[folder.name[0]], folder.name[1:]
+            for path in sorted(folder.glob("*.jpg")):
+                image = cv2.cvtColor(cv2.imread(str(path)), cv2.COLOR_BGR2RGB)
+                image[: int(MASK_TOP * image.shape[0])] = 0        # hide the temperature reading and logo
+                x.append(cv2.resize(image, (SIZE, SIZE), interpolation=cv2.INTER_AREA))
+                y.append(LABELS.index(label)), load.append(load_code), session.append(folder.name)
+        return np.stack(x), np.array(y), np.array(load), np.array(session)
+
+    def to_tensor(images):
+        mean = torch.tensor([0.485, 0.456, 0.406])[None, :, None, None]
+        std = torch.tensor([0.229, 0.224, 0.225])[None, :, None, None]
+        return (torch.from_numpy(images).permute(0, 3, 1, 2).float() / 255 - mean) / std
+
+    def augment(batch, generator):
+        flip = torch.rand(batch.shape[0], generator=generator) < 0.5
+        batch = torch.where(flip[:, None, None, None], batch.flip(-1), batch)
+        scale = 0.8 + 0.4 * torch.rand(batch.shape[0], 1, 1, 1, generator=generator)
+        return batch * scale + 0.05 * torch.randn(batch.shape, generator=generator)
+
+    def new_model():
+        model = resnet18(weights=ResNet18_Weights.IMAGENET1K_V1)
+        for name, parameter in model.named_parameters():      # fine-tune only the last block (CPU friendly)
+            parameter.requires_grad = name.startswith(("layer4", "fc"))
+        model.fc = nn.Linear(model.fc.in_features, len(LABELS))
+        return model
+
+    def predict(model, x):
+        model.eval()
+        with torch.no_grad():
+            return torch.cat([model(x[i:i + 64]).softmax(1) for i in range(0, len(x), 64)]).numpy()
+
+    def train(x, y, epochs, x_check=None, y_check=None):
+        """Train for `epochs`; when check data is given, return the check accuracy after every epoch."""
+        torch.manual_seed(SEED)
+        generator = torch.Generator().manual_seed(SEED)
+        model = new_model()
+        optimiser = torch.optim.AdamW([p for p in model.parameters() if p.requires_grad], lr=LEARNING_RATE)
+        loss_fn = nn.CrossEntropyLoss()
+        yt, history = torch.from_numpy(y).long(), []
+        for _ in range(epochs):
+            model.train()
+            order = torch.randperm(len(x), generator=generator)
+            for start in range(0, len(x), BATCH):
+                rows = order[start:start + BATCH]
+                optimiser.zero_grad()
+                loss_fn(model(augment(x[rows], generator)), yt[rows]).backward()
+                optimiser.step()
+            if x_check is not None:
+                history.append(accuracy_score(y_check, predict(model, x_check).argmax(1)))
+        return model, history
+
+    def score(actual, predicted):
+        return {"test_units": int(len(actual)),
+                "accuracy": round(float(accuracy_score(actual, predicted)), 4),
+                "balanced_accuracy": round(float(balanced_accuracy_score(actual, predicted)), 4),
+                "macro_f1": round(float(f1_score(actual, predicted, average="macro", zero_division=0)), 4),
+                "confusion_matrix": confusion_matrix(actual, predicted, labels=range(len(LABELS))).tolist()}
+
+    def plot(result, path):
+        levels = [("every test image", result["image_level"]), ("per 1/10 session segment", result["segment_level"]),
+                  ("per whole session", result["session_level"]),
+                  ("control: brightness only", result["brightness_control_image_level"]),
+                  ("control: border only, motor hidden", result["border_only_control_image_level"])]
+        figure, axes = plt.subplots(1, len(levels), figsize=(3.4 * len(levels), 3.8))
+        for axis, (name, block) in zip(axes, levels):
+            array = np.asarray(block["confusion_matrix"])
+            axis.imshow(array, cmap="Blues", vmin=0)
+            axis.set_xticks(range(len(LABELS)), LABELS)
+            axis.set_yticks(range(len(LABELS)), LABELS)
+            axis.set_xlabel("Predicted")
+            axis.set_ylabel("Actual")
+            axis.set_title(f"{name}\n{block['test_units']:,} tested, accuracy {block['accuracy']:.3f}", fontsize=9)
+            for i in range(len(LABELS)):
+                for j in range(len(LABELS)):
+                    axis.text(j, i, f"{array[i, j]:,}", ha="center", va="center", fontsize=9,
+                              color="white" if array[i, j] > array.max() / 2 else "black")
+        figure.suptitle(f"Excavator bearing, separate thermal-image data (Kulkarni): {result['images']} images, "
+                        f"6 sessions; each load held out in turn", fontsize=10)
+        figure.tight_layout()
+        path.parent.mkdir(parents=True, exist_ok=True)
+        figure.savefig(path, dpi=110)
+        plt.close(figure)
+
+    def main():
+        if not SOURCE.is_dir():
+            raise SystemExit(f"Missing {SOURCE}: download Mendeley Data pymtdhfzbj v2 and extract it there")
+        random.seed(SEED), np.random.seed(SEED), torch.manual_seed(SEED)
+        images, y, load, session = load_images()
+        x = to_tensor(images)
+        brightness = images.reshape(len(images), -1).mean(axis=1, keepdims=True)
+        # second control: tiny grey images with the motor area hidden, so only framing and background remain
+        border = images.mean(axis=3).copy()
+        border[:, int(0.25 * SIZE):int(0.85 * SIZE), int(0.2 * SIZE):int(0.8 * SIZE)] = 0
+        border = np.stack([cv2.resize(b, (16, 12), interpolation=cv2.INTER_AREA).ravel() for b in border]) / 255
+        print(f"{len(y)} images, {len(set(session))} sessions: "
+              + ", ".join(f"{s} {int((session == s).sum())}" for s in sorted(set(session))))
+        image_actual, image_predicted, control_predicted, border_predicted = [], [], [], []
+        segment_actual, segment_predicted, session_actual, session_predicted = [], [], [], []
+        per_session, folds = {}, []
+        for test_load in LOADS:
+            train_rows, test_rows = load != test_load, load == test_load
+            # choose epochs: train on one training load, check on the other, both ways; average the curves
+            curves = []
+            for check_load in sorted(set(load[train_rows])):
+                inner_train, inner_check = train_rows & (load != check_load), load == check_load
+                curves.append(train(x[inner_train], y[inner_train], MAX_EPOCHS, x[inner_check], y[inner_check])[1])
+            epochs = int(np.argmax(np.mean(curves, axis=0))) + 1
+            model, _ = train(x[train_rows], y[train_rows], epochs)
+            p = predict(model, x[test_rows])
+            control = LogisticRegression().fit(brightness[train_rows], y[train_rows]).predict(brightness[test_rows])
+            image_actual += list(y[test_rows])
+            image_predicted += list(p.argmax(1))
+            control_predicted += list(control)
+            border_control = LogisticRegression(max_iter=3000).fit(border[train_rows], y[train_rows]).predict(border[test_rows])
+            border_predicted += list(border_control)
+            for s in sorted(set(session[test_rows])):
+                rows = session[test_rows] == s
+                ps, true = p[rows], int(y[test_rows][rows][0])
+                for part in np.array_split(np.arange(len(ps)), SEGMENTS):
+                    segment_actual.append(true), segment_predicted.append(int(ps[part].mean(0).argmax()))
+                session_actual.append(true), session_predicted.append(int(ps.mean(0).argmax()))
+                per_session[s] = {"class": LABELS[true], "images": int(len(ps)),
+                                  "images_predicted": {l: int((ps.argmax(1) == i).sum()) for i, l in enumerate(LABELS)},
+                                  "session_prediction": LABELS[session_predicted[-1]]}
+            folds.append({"test_load": LOADS[test_load], "epochs_chosen": epochs, "test_images": int(test_rows.sum()),
+                          "image_accuracy": round(float(accuracy_score(y[test_rows], p.argmax(1))), 4),
+                          "brightness_control_accuracy": round(float(accuracy_score(y[test_rows], control)), 4),
+                          "border_only_control_accuracy": round(float(accuracy_score(y[test_rows], border_control)), 4)})
+            print(f"held-out {LOADS[test_load]:11s}: {epochs} epochs; image accuracy {folds[-1]['image_accuracy']:.3f}"
+                  f" (brightness control {folds[-1]['brightness_control_accuracy']:.3f}, "
+                  f"border-only control {folds[-1]['border_only_control_accuracy']:.3f})", flush=True)
+        result = {
+            "purpose": "separate image data for the Excavator bearing task (not CORA)",
+            "source": "Kulkarni et al., Induction Motor-Thermal Images, Mendeley Data pymtdhfzbj v2, CC BY 4.0",
+            "images": int(len(y)), "classes": LABELS,
+            "test": "leave one load out (no / medium / full load), 3 rounds; epochs chosen on the training loads only",
+            "preprocessing": f"top {int(MASK_TOP * 100)}% of every image masked (temperature reading and logo), "
+                             f"resized to {SIZE}x{SIZE}; ImageNet ResNet18 with only layer4 and the head trained",
+            "settings": {"max_epochs": MAX_EPOCHS, "batch": BATCH, "learning_rate": LEARNING_RATE, "seed": SEED},
+            "folds": folds,
+            "image_level": score(image_actual, image_predicted),
+            "segment_level": {**score(segment_actual, segment_predicted), "segments_per_session": SEGMENTS},
+            "session_level": score(session_actual, session_predicted),
+            "brightness_control_image_level": score(image_actual, control_predicted),
+            "border_only_control_image_level": score(image_actual, border_predicted),
+            "per_session": per_session,
+            "caveat": "only 6 sessions (one per class and load) from one motor; images within a session are "
+                      "consecutive and related, and only 2 classes match the Excavator's 4. The healthy and "
+                      "corroded sessions were filmed with different framing: a model that sees only the image "
+                      "border (motor hidden) also scores well, so a high CNN score does not prove it detects "
+                      "bearing corrosion",
+        }
+        RESULT.parent.mkdir(parents=True, exist_ok=True)
+        RESULT.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
+        plot(result, FIGURE)
+        print(f"Image accuracy {result['image_level']['accuracy']:.3f} on {len(y)} images; session accuracy "
+              f"{result['session_level']['accuracy']:.3f} on 6 sessions; brightness control "
+              f"{result['brightness_control_image_level']['accuracy']:.3f}; border-only control "
+              f"{result['border_only_control_image_level']['accuracy']:.3f}")
+        print(f"Saved {RESULT.relative_to(ROOT)} and {FIGURE.relative_to(ROOT)}")
+
+    if run:
+        main()
+    return locals()
+
+
 COMMANDS = {
+    "thermal-motor": thermal_motor,
     "fulldata": fulldata,
     "ensembles": ensembles,
     "anomaly": anomaly,
