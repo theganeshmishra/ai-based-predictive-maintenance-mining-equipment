@@ -16,10 +16,10 @@
     "optimiser": "AdamW",
     "seed": 42,
     "epochs_chosen_per_round": [
-      7,
-      11,
-      1,
-      2
+      8,
+      2,
+      2,
+      3
     ],
     "epoch_selection": "one training recording per class held out for validation; best validation macro F1",
     "augmentation": "random horizontal flip, shift up to 8 px, brightness/contrast x0.8-1.2, Gaussian noise 0.05"
@@ -27,82 +27,302 @@
   "selection_rule": "the test set is never used to choose epochs or settings",
   "recording_level": {
     "test_units": 16,
-    "accuracy": 0.5625,
-    "balanced_accuracy": 0.5625,
-    "macro_precision": 0.5625,
-    "macro_recall": 0.5625,
-    "macro_f1": 0.5208,
+    "accuracy": 0.5,
+    "balanced_accuracy": 0.5,
+    "macro_precision": 0.5,
+    "macro_recall": 0.5,
+    "macro_f1": 0.4182,
     "confusion_matrix": [
-      [
-        1,
-        1,
-        1,
-        1
-      ],
-      [
-        0,
-        4,
-        0,
-        0
-      ],
-      [
-        0,
-        1,
-        3,
-        0
-      ],
       [
         1,
         2,
         0,
         1
+      ],
+      [
+        0,
+        3,
+        1,
+        0
+      ],
+      [
+        0,
+        0,
+        4,
+        0
+      ],
+      [
+        0,
+        2,
+        2,
+        0
       ]
     ],
     "per_class_recall": {
       "healthy": 0.25,
-      "wear25": 1.0,
-      "wear50": 0.75,
-      "wear75": 0.25
+      "wear25": 0.75,
+      "wear50": 1.0,
+      "wear75": 0.0
     }
   },
   "image_level": {
     "test_units": 2400,
-    "accuracy": 0.505,
-    "balanced_accuracy": 0.505,
-    "macro_precision": 0.5098,
-    "macro_recall": 0.505,
-    "macro_f1": 0.4818,
+    "accuracy": 0.4658,
+    "balanced_accuracy": 0.4658,
+    "macro_precision": 0.4709,
+    "macro_recall": 0.4658,
+    "macro_f1": 0.4226,
     "confusion_matrix": [
       [
-        145,
-        194,
-        123,
-        138
+        150,
+        229,
+        41,
+        180
       ],
       [
-        35,
-        460,
-        68,
-        37
+        10,
+        431,
+        147,
+        12
       ],
       [
         0,
-        86,
-        424,
-        90
+        32,
+        480,
+        88
       ],
       [
-        98,
-        297,
-        22,
-        183
+        47,
+        299,
+        197,
+        57
       ]
     ],
     "per_class_recall": {
-      "healthy": 0.2417,
-      "wear25": 0.7667,
-      "wear50": 0.7067,
-      "wear75": 0.305
+      "healthy": 0.25,
+      "wear25": 0.7183,
+      "wear50": 0.8,
+      "wear75": 0.095
+    }
+  },
+  "segment_level": {
+    "test_units": 160,
+    "accuracy": 0.4688,
+    "balanced_accuracy": 0.4688,
+    "macro_precision": 0.4671,
+    "macro_recall": 0.4688,
+    "macro_f1": 0.4156,
+    "confusion_matrix": [
+      [
+        10,
+        17,
+        1,
+        12
+      ],
+      [
+        0,
+        30,
+        10,
+        0
+      ],
+      [
+        0,
+        2,
+        33,
+        5
+      ],
+      [
+        3,
+        20,
+        15,
+        2
+      ]
+    ],
+    "per_class_recall": {
+      "healthy": 0.25,
+      "wear25": 0.75,
+      "wear50": 0.825,
+      "wear75": 0.05
+    },
+    "segments_per_recording": 10,
+    "note": "each held-out recording split in time order into consecutive parts, one prediction per part; parts of one recording are related, so the recording-level score stays the main result"
+  },
+  "per_recording": {
+    "H_F5_S": {
+      "class": "healthy",
+      "images": 150,
+      "images_predicted": {
+        "healthy": 0,
+        "wear25": 120,
+        "wear50": 30,
+        "wear75": 0
+      },
+      "recording_prediction": "wear25"
+    },
+    "W25_F5_S": {
+      "class": "wear25",
+      "images": 150,
+      "images_predicted": {
+        "healthy": 0,
+        "wear25": 3,
+        "wear50": 147,
+        "wear75": 0
+      },
+      "recording_prediction": "wear50"
+    },
+    "W50_F5_S": {
+      "class": "wear50",
+      "images": 150,
+      "images_predicted": {
+        "healthy": 0,
+        "wear25": 0,
+        "wear50": 150,
+        "wear75": 0
+      },
+      "recording_prediction": "wear50"
+    },
+    "W75_F5_S": {
+      "class": "wear75",
+      "images": 150,
+      "images_predicted": {
+        "healthy": 43,
+        "wear25": 0,
+        "wear50": 94,
+        "wear75": 13
+      },
+      "recording_prediction": "wear50"
+    },
+    "H_F15_S": {
+      "class": "healthy",
+      "images": 150,
+      "images_predicted": {
+        "healthy": 0,
+        "wear25": 106,
+        "wear50": 0,
+        "wear75": 44
+      },
+      "recording_prediction": "wear25"
+    },
+    "W25_F15_S": {
+      "class": "wear25",
+      "images": 150,
+      "images_predicted": {
+        "healthy": 9,
+        "wear25": 141,
+        "wear50": 0,
+        "wear75": 0
+      },
+      "recording_prediction": "wear25"
+    },
+    "W50_F15_S": {
+      "class": "wear50",
+      "images": 150,
+      "images_predicted": {
+        "healthy": 0,
+        "wear25": 0,
+        "wear50": 150,
+        "wear75": 0
+      },
+      "recording_prediction": "wear50"
+    },
+    "W75_F15_S": {
+      "class": "wear75",
+      "images": 150,
+      "images_predicted": {
+        "healthy": 3,
+        "wear25": 0,
+        "wear50": 103,
+        "wear75": 44
+      },
+      "recording_prediction": "wear50"
+    },
+    "H_F50_S": {
+      "class": "healthy",
+      "images": 150,
+      "images_predicted": {
+        "healthy": 0,
+        "wear25": 3,
+        "wear50": 11,
+        "wear75": 136
+      },
+      "recording_prediction": "wear75"
+    },
+    "W25_F50_S": {
+      "class": "wear25",
+      "images": 150,
+      "images_predicted": {
+        "healthy": 1,
+        "wear25": 137,
+        "wear50": 0,
+        "wear75": 12
+      },
+      "recording_prediction": "wear25"
+    },
+    "W50_F50_S": {
+      "class": "wear50",
+      "images": 150,
+      "images_predicted": {
+        "healthy": 0,
+        "wear25": 23,
+        "wear50": 67,
+        "wear75": 60
+      },
+      "recording_prediction": "wear50"
+    },
+    "W75_F50_S": {
+      "class": "wear75",
+      "images": 150,
+      "images_predicted": {
+        "healthy": 0,
+        "wear25": 150,
+        "wear50": 0,
+        "wear75": 0
+      },
+      "recording_prediction": "wear25"
+    },
+    "H_F60_S": {
+      "class": "healthy",
+      "images": 150,
+      "images_predicted": {
+        "healthy": 150,
+        "wear25": 0,
+        "wear50": 0,
+        "wear75": 0
+      },
+      "recording_prediction": "healthy"
+    },
+    "W25_F60_S": {
+      "class": "wear25",
+      "images": 150,
+      "images_predicted": {
+        "healthy": 0,
+        "wear25": 150,
+        "wear50": 0,
+        "wear75": 0
+      },
+      "recording_prediction": "wear25"
+    },
+    "W50_F60_S": {
+      "class": "wear50",
+      "images": 150,
+      "images_predicted": {
+        "healthy": 0,
+        "wear25": 9,
+        "wear50": 113,
+        "wear75": 28
+      },
+      "recording_prediction": "wear50"
+    },
+    "W75_F60_S": {
+      "class": "wear75",
+      "images": 150,
+      "images_predicted": {
+        "healthy": 1,
+        "wear25": 149,
+        "wear50": 0,
+        "wear75": 0
+      },
+      "recording_prediction": "wear25"
     }
   }
 }
