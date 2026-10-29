@@ -13,6 +13,7 @@ __pycache__/
 .vscode/*
 !.vscode/tasks.json
 !.vscode/extensions.json
+!.vscode/run_model_macos.sh
 
 # Credentials and local configuration
 .env
@@ -73,6 +74,7 @@ work/
 *.bmp
 *.png
 !/Figures/*/*.png
+!/Figures/test_image_counts.png
 /Figures/machine_images/
 
 # Named camera images for the CNN (recreated by "export-images"; dataset owners' images)

@@ -27,7 +27,8 @@
   "main_model": "validation-selected",
   "selection_rule": "settings fixed in advance; no model or setting chosen from these test results",
   "notes": [
-    "CORA motor/gearbox rig, the SAME 16 runs, features and 4 wear classes as the Belt Conveyor (not new data), so the scores are expected to equal the Belt Conveyor's; mapped to the Dozer track final drive"
+    "CORA motor/gearbox rig, the SAME 16 runs, features and 4 wear classes as the Belt Conveyor (not new data), so the scores are expected to equal the Belt Conveyor's; mapped to the Dozer track final drive",
+    "per-speed normalisation is excluded because its group statistics would include held-out-speed samples"
   ],
   "models": {
     "Majority class (control)": {
@@ -152,7 +153,7 @@
     }
   },
   "validation_selected": {
-    "description": "feature set and model chosen per round on validation groups inside the training set only (candidates: Random forest, Extra trees, Gradient boosting, SVM (RBF), Logistic regression; feature sets: vibration, vibration+temperature, vibration+temperature (per-speed normalised))",
+    "description": "feature set and model chosen per round on validation groups inside the training set only (candidates: Random forest, Extra trees, Gradient boosting, SVM (RBF), Logistic regression; feature sets: vibration, vibration+temperature)",
     "feature_sets": {
       "vibration": [
         "log_rms",
@@ -186,51 +187,33 @@
         "t1_mean",
         "t1_std",
         "t1_slope"
-      ],
-      "vibration+temperature (per-speed normalised)": [
-        "log_rms_per_speed",
-        "kurtosis_per_speed",
-        "skewness_per_speed",
-        "crest_factor_per_speed",
-        "peak_order_per_speed",
-        "log_ratio_2x_1x_per_speed",
-        "order_power_0.5_1.5_per_speed",
-        "order_power_1.5_2.5_per_speed",
-        "order_power_2.5_3.5_per_speed",
-        "order_power_3.5_5.5_per_speed",
-        "order_power_5.5_8.5_per_speed",
-        "order_power_8.5_12.5_per_speed",
-        "order_power_12.5_20.5_per_speed",
-        "t1_mean_per_speed",
-        "t1_std_per_speed",
-        "t1_slope_per_speed"
       ]
     },
     "score": {
       "test_units": 16,
-      "accuracy": 0.625,
-      "balanced_accuracy": 0.625,
-      "macro_precision": 0.625,
-      "macro_recall": 0.625,
-      "macro_f1": 0.625,
+      "accuracy": 0.4375,
+      "balanced_accuracy": 0.4375,
+      "macro_precision": 0.3333,
+      "macro_recall": 0.4375,
+      "macro_f1": 0.35,
       "confusion_matrix": [
         [
-          3,
-          1,
+          2,
           0,
-          0
+          0,
+          2
         ],
         [
-          1,
-          1,
           2,
-          0
+          0,
+          1,
+          1
         ],
         [
+          2,
           0,
-          2,
-          2,
-          0
+          1,
+          1
         ],
         [
           0,
@@ -240,32 +223,32 @@
         ]
       ],
       "per_class_recall": {
-        "healthy": 0.75,
-        "wear25": 0.25,
-        "wear50": 0.5,
+        "healthy": 0.5,
+        "wear25": 0.0,
+        "wear50": 0.25,
         "wear75": 1.0
       }
     },
     "chosen_per_round": [
       {
-        "feature_set": "vibration+temperature (per-speed normalised)",
+        "feature_set": "vibration+temperature",
+        "model": "Logistic regression",
+        "validation_macro_f1": 0.5972
+      },
+      {
+        "feature_set": "vibration",
         "model": "Extra trees",
-        "validation_macro_f1": 0.6944
+        "validation_macro_f1": 0.4778
       },
       {
-        "feature_set": "vibration+temperature (per-speed normalised)",
-        "model": "Logistic regression",
-        "validation_macro_f1": 0.7222
+        "feature_set": "vibration+temperature",
+        "model": "Random forest",
+        "validation_macro_f1": 0.4861
       },
       {
-        "feature_set": "vibration+temperature (per-speed normalised)",
-        "model": "SVM (RBF)",
-        "validation_macro_f1": 0.5139
-      },
-      {
-        "feature_set": "vibration+temperature (per-speed normalised)",
-        "model": "Logistic regression",
-        "validation_macro_f1": 0.6111
+        "feature_set": "vibration+temperature",
+        "model": "Extra trees",
+        "validation_macro_f1": 0.4028
       }
     ]
   }
