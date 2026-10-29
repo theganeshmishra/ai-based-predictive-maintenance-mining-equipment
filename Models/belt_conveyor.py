@@ -585,7 +585,6 @@ def experiment(run: bool = True) -> dict:
     import json
     from pathlib import Path
 
-    import cv2
     import matplotlib
 
     matplotlib.use("Agg")
@@ -630,6 +629,8 @@ def experiment(run: bool = True) -> dict:
 
 
     def infrared_features(path: Path) -> list[float]:
+        import cv2
+
         cells = loadmat(path, variable_names=["imagenes_celda"])["imagenes_celda"]
         if cells.size != 450:
             raise ValueError(f"Expected 450 infrared frames in {path.name}")
@@ -1261,20 +1262,6 @@ def csv(run: bool = True) -> dict:
             np.log((bands[1] + 1e-9) / (bands[0] + 1e-9)), *bands]), columns=VIB_NAMES)
         return frame
 
-    def per_speed_normalised(table, names):
-        """Rescale each feature within each speed using all recordings at that speed together (no labels used).
-
-        Removes what each speed 'sounds like', so the model compares machines running at the same speed.
-        It assumes several machines are recorded at each speed, as in this dataset.
-        """
-        out = []
-        for name in names:
-            column = f"{name}_per_speed"
-            grouped = table.groupby("speed")[name]
-            table[column] = (table[name] - grouped.transform("mean")) / grouped.transform("std").replace(0, 1)
-            out.append(column)
-        return out
-
     def build_table():
         e = experiment(run=False)
         samples = np.load(e["PROCESSED"] / "t1_bounded_samples.npz")
@@ -1289,13 +1276,13 @@ def csv(run: bool = True) -> dict:
             frames.append(frame)
         table = pd.concat(frames, ignore_index=True)
         folds = lambda t: [(t["speed"] == s).to_numpy() for s in e["SPEEDS"]]
-        normalised = per_speed_normalised(table, VIB_NAMES + ["t1_mean", "t1_std", "t1_slope"])
-        return (table, {"vibration": VIB_NAMES, "vibration+temperature": VIB_NAMES + ["t1_mean", "t1_std", "t1_slope"],
-                        "vibration+temperature (per-speed normalised)": normalised},
+        return (table, {"vibration": VIB_NAMES,
+                        "vibration+temperature": VIB_NAMES + ["t1_mean", "t1_std", "t1_slope"]},
                 ["healthy", "wear25", "wear50", "wear75"], folds,
                 "four rounds, each holding out one whole speed (4 runs, one per wear level); 16 run-level predictions",
                 ["CORA Vx vibration (3 kHz, 1 s windows, every 10th window) in shaft orders, optionally with run-level T1 temperature",
-                 "only one run per wear level and speed"])
+                 "only one run per wear level and speed",
+                 "per-speed normalisation is excluded because its group statistics would include held-out-speed samples"])
     INNER_GROUP = "speed"
 
     def candidate_models():

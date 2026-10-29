@@ -28,7 +28,8 @@
   "selection_rule": "settings fixed in advance; no model or setting chosen from these test results",
   "notes": [
     "CORA Vx vibration (3 kHz, 1 s windows, every 10th window) in shaft orders, optionally with run-level T1 temperature",
-    "only one run per wear level and speed"
+    "only one run per wear level and speed",
+    "per-speed normalisation is excluded because its group statistics would include held-out-speed samples"
   ],
   "models": {
     "Majority class (control)": {

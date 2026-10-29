@@ -206,9 +206,9 @@
           "test_units": 9,
           "accuracy": 0.4444,
           "balanced_accuracy": 0.4444,
-          "macro_precision": 0.3333,
+          "macro_precision": 0.3111,
           "macro_recall": 0.4444,
-          "macro_f1": 0.3556,
+          "macro_f1": 0.3611,
           "confusion_matrix": [
             [
               3,
@@ -216,9 +216,9 @@
               0
             ],
             [
-              2,
+              1,
               0,
-              1
+              2
             ],
             [
               1,

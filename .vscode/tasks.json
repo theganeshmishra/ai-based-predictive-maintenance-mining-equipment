@@ -76,6 +76,14 @@
       "windows": {
         "command": "${workspaceFolder}\\.venv\\Scripts\\python.exe"
       },
+      "osx": {
+        "command": "/bin/bash",
+        "args": [
+          "${workspaceFolder}/.vscode/run_model_macos.sh",
+          "${workspaceFolder}/Models/dozer.py",
+          "all"
+        ]
+      },
       "args": [
         "${workspaceFolder}/Models/dozer.py",
         "all"

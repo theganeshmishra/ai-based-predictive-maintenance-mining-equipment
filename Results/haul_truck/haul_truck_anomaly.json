@@ -222,7 +222,7 @@
         {
           "unit": "H_2_0",
           "class": "healthy",
-          "margin": -5.0261
+          "margin": -5.026
         },
         {
           "unit": "I_2_2",
@@ -232,7 +232,7 @@
         {
           "unit": "H_7_0",
           "class": "healthy",
-          "margin": -5.5836
+          "margin": -5.5835
         },
         {
           "unit": "O_7_2",
@@ -242,12 +242,12 @@
         {
           "unit": "H_12_0",
           "class": "healthy",
-          "margin": -6.6835
+          "margin": -6.6833
         },
         {
           "unit": "B_12_2",
           "class": "ball",
-          "margin": -3.9506
+          "margin": -3.9505
         },
         {
           "unit": "H_3_0",

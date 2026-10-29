@@ -1728,6 +1728,7 @@ def export_images(run: bool = True) -> dict:
     HEIGHT, WIDTH = 96, 128
     EVENT = np.dtype([("t", "<u4"), ("xy", "<u4")])
     BIN_US, SECONDS = 250_000, 5
+    NAME = "t{k:02d}"
     FRAMES = SECONDS * 1_000_000 // BIN_US
 
     def event_frames(stream):
@@ -1782,14 +1783,20 @@ def export_images(run: bool = True) -> dict:
                             counts = event_frames(stream)
                         for k, frame in enumerate(counts):
                             if frame.sum() > 0:
-                                write(rows, label, unit, hz, f"{MACHINE}_{label}_{hz}_{setup}_t{k:02d}.png", event_png(frame))
+                                write(rows, label, unit, hz, f"{MACHINE}_{label}_{hz}_{setup}_" + NAME.format(k=k) + ".png", event_png(frame))
                         print(f"{unit}: done", flush=True)
         return rows
 
 
     def main():
         parser = argparse.ArgumentParser(description=export_images.__doc__)
-        parser.parse_args()
+        parser.add_argument("--dense-frames", action="store_true", help="125 ms frames over up to 30 seconds; separate denseframes output")
+        args = parser.parse_args()
+        nonlocal OUT, SECONDS, FRAMES, BIN_US, NAME
+        if args.dense_frames:
+            OUT = ROOT / "Images" / f"{MACHINE}_denseframes"
+            SECONDS, BIN_US, NAME = 30, 125_000, "t{k:03d}"
+            FRAMES = SECONDS * 1_000_000 // BIN_US
         if OUT.exists():
             shutil.rmtree(OUT)
         rows = export()
@@ -2374,8 +2381,15 @@ def cnn_pretrained(run: bool = True) -> dict:
 
     def main():
         parser = argparse.ArgumentParser(description=cnn_pretrained.__doc__)
-        parser.parse_args()
-        rows = read_index()
+        parser.add_argument("--dense-frames", action="store_true", help="use separately exported 125 ms full-duration frames")
+        args = parser.parse_args()
+        nonlocal IMAGES, RESULT, FIGURE
+        if args.dense_frames:
+            IMAGES = ROOT / "Images" / f"{MACHINE}_denseframes"
+            RESULT = RESULT.with_name(RESULT.stem + "_denseframes.json")
+            FIGURE = FIGURE.with_name(FIGURE.stem + "_denseframes.png")
+        with (IMAGES / "index.csv").open(encoding="utf-8") as handle:
+            rows = list(csv_module.DictReader(handle))
         x = load(rows)
         label_index = {label: i for i, label in enumerate(LABELS)}
         y = np.asarray([label_index[row["class"]] for row in rows])
