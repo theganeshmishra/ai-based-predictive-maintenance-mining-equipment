@@ -457,3 +457,25 @@ def save_test_image_counts() -> Path:
     figure.savefig(path, dpi=160)
     plt.close(figure)
     return path
+
+
+def save_test_image_result_graphs() -> None:
+    """Recreate image counts and performance graphs from the saved held-out evaluations."""
+    import matplotlib.pyplot as plt
+    root=ROOT;machines=('pump','haul_truck','belt_conveyor','excavator','dozer','wheel_loader')
+    for m in machines:
+     folder=root/'Results'/m
+     p=next(folder/f'{m}_cnn_pretrained_4class{s}.json' for s in ('_denseframes','_allframes','') if (folder/f'{m}_cnn_pretrained_4class{s}.json').exists())
+     r=json.loads(p.read_text());b=r['image_level'];matrix=b['confusion_matrix'];correct=sum(row[i] for i,row in enumerate(matrix));total=b['test_units'];wrong=total-correct
+     fig,axes=plt.subplots(1,2,figsize=(10,4.5))
+     bars=axes[0].bar(['Tested','Correct','Incorrect'],[total,correct,wrong],color=['#2878a5','#33865a','#bf5656'])
+     axes[0].bar_label(bars,labels=[f'{n:,}' for n in (total,correct,wrong)],padding=5)
+     axes[0].set_ylim(0,total*1.18);axes[0].set_ylabel('Number of held-out test images')
+     keys=('accuracy','macro_precision','macro_recall','macro_f1');vals=[b[k]*100 for k in keys]
+     bars=axes[1].bar(['Accuracy','Precision','Recall','F1'],vals,color='#2878a5')
+     axes[1].bar_label(bars,labels=[f'{v:.1f}%' for v in vals],padding=5)
+     axes[1].set_ylim(0,115);axes[1].set_ylabel('Image-level performance (%)')
+     for ax in axes:ax.spines[['top','right']].set_visible(False)
+     fig.suptitle(f"{m.replace('_',' ').title()}: {total:,} held-out test images from {r['recording_level']['test_units']} recordings")
+     fig.text(.5,.015,'Frames from the same recording are related. Precision, recall and F1 are macro averages.',ha='center',fontsize=9)
+     fig.tight_layout(rect=(0,.05,1,.95));fig.savefig(root/'Figures'/m/f'{m}_test_image_results.png',dpi=150);plt.close(fig)
