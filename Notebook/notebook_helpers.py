@@ -228,8 +228,11 @@ def show_week6(machine: str) -> None:
         if "validation_selected" in csv_result:
             rows["CSV sensor | validation-selected (main)"] = csv_result["validation_selected"]["score"]
         rows.update({f"CSV sensor | {name}": score for name, score in csv_result["models"].items()})
-    for name, label in ((f"{machine}_cnn_pretrained_4class.json", "Camera images | pretrained ResNet18 (main)"),
-                        (f"{machine}_cnn_4class.json", "Camera images | small CNN")):
+    dense = load(f"{machine}_cnn_pretrained_4class_denseframes.json")
+    pretrained_name = f"{machine}_cnn_pretrained_4class{'_denseframes' if dense else ''}.json"
+    pretrained_label = "Camera images | expanded ResNet18" if dense else "Camera images | original ResNet18"
+    for name, label in ((pretrained_name, pretrained_label),
+                        (f"{machine}_cnn_4class.json", "Camera images | historical small CNN")):
         result = load(name)
         if result:
             rows[f"{label}, per recording"] = result["recording_level"]
