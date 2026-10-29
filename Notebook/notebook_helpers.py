@@ -341,8 +341,8 @@ _TEST_IMAGE_MACHINES = (("Pump", "pump"), ("Haul Truck", "haul_truck"), ("Belt C
                         ("Excavator", "excavator"), ("Dozer", "dozer"), ("Wheel Loader", "wheel_loader"))
 
 
-def _best_cnn_result(machine: str):
-    """The fair-test pretrained-CNN result with the most test images (all frames when available)."""
+def _preferred_cnn_result(machine: str):
+    """Prefer the expanded held-out CNN evaluation, then all-frame and original results."""
     for suffix in ("_denseframes", "_allframes", ""):
         result = load(f"{machine}_cnn_pretrained_4class{suffix}.json")
         if result and "image_level" in result:
@@ -391,7 +391,7 @@ def show_test_images(machine: str | None = None) -> None:
     (a separate image per machine) when machine is None."""
     import matplotlib.pyplot as plt
     machines = [(n, m) for n, m in _TEST_IMAGE_MACHINES if machine in (None, m)]
-    found = [(n, m, r) for n, m in machines if (r := _best_cnn_result(m))]
+    found = [(n, m, r) for n, m in machines if (r := _preferred_cnn_result(m))]
     if not found:
         print(f"No CNN result yet: run  python Models/{machine}.py cnn-pretrained")
         return
@@ -435,7 +435,9 @@ def save_test_image_counts() -> Path:
     """Recreate the notebook's held-out image-count chart from saved evaluations."""
     import matplotlib.pyplot as plt
     found = [(name, result) for name, machine in _TEST_IMAGE_MACHINES
-             if (result := _best_cnn_result(machine))]
+             if (result := _preferred_cnn_result(machine))]
+    if not found:
+        raise ValueError("No saved held-out image evaluations are available")
     figure, axis = plt.subplots(figsize=(10, 5))
     counts = [result["image_level"]["test_units"] for _, result in found]
     bars = axis.barh([name for name, _ in found], counts, color="#2878a5")

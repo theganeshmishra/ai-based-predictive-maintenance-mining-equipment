@@ -1732,7 +1732,7 @@ def export_images(run: bool = True) -> dict:
     FRAMES = SECONDS * 1_000_000 // BIN_US
 
     def event_frames(stream):
-        """First 5 s of an event recording as 20 images of 250 ms; channel 0 = brighter, 1 = darker events."""
+        """Bin events using the configured duration and frame interval; channels preserve polarity."""
         while True:
             first = stream.read(1)
             if first != b"%":
@@ -2033,6 +2033,23 @@ def csv(run: bool = True) -> dict:
 # cnn: Week 6, CNN with data augmentation on the named images (professor remark)
 # ====================================================================================================
 
+def _augment_event_batch(batch, generator):
+    """Apply the fixed training augmentation without constructing another CNN pipeline."""
+    import torch
+
+    n = batch.shape[0]
+    flip = torch.rand(n, generator=generator) < 0.5
+    batch = torch.where(flip[:, None, None, None], batch.flip(-1), batch)
+    shifted = []
+    for image in batch:
+        dy, dx = (int(v) for v in torch.randint(-8, 9, (2,), generator=generator))
+        shifted.append(torch.roll(image, shifts=(dy, dx), dims=(-2, -1)))
+    batch = torch.stack(shifted)
+    scale = 0.8 + 0.4 * torch.rand(n, 1, 1, 1, generator=generator)
+    return batch * scale + 0.05 * torch.randn(batch.shape, generator=generator)
+
+
+
 def cnn(run: bool = True) -> dict:
     """Week 6: a small CNN with data augmentation, trained on the named images, 4 classes.
 
@@ -2138,17 +2155,7 @@ def cnn(run: bool = True) -> dict:
         def forward(self, x):
             return self.head(self.features(x))
 
-    def augment(batch, generator):
-        n = batch.shape[0]
-        flip = torch.rand(n, generator=generator) < 0.5
-        batch = torch.where(flip[:, None, None, None], batch.flip(-1), batch)
-        shifted = []
-        for image in batch:
-            dy, dx = (int(v) for v in torch.randint(-8, 9, (2,), generator=generator))
-            shifted.append(torch.roll(image, shifts=(dy, dx), dims=(-2, -1)))
-        batch = torch.stack(shifted)
-        scale = 0.8 + 0.4 * torch.rand(n, 1, 1, 1, generator=generator)
-        return batch * scale + 0.05 * torch.randn(batch.shape, generator=generator)
+    augment = _augment_event_batch
 
     def train(x, y):
         random.seed(SEED)
@@ -2328,8 +2335,7 @@ def cnn_pretrained(run: bool = True) -> dict:
         figure.savefig(path, dpi=110)
         plt.close(figure)
 
-    _small = cnn(run=False)
-    read_index, augment = _small["read_index"], _small["augment"]
+    augment = _augment_event_batch
 
     def load(rows):
         images = []
