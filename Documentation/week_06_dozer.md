@@ -27,7 +27,7 @@ laboratory rig to the dozer final drive; it is **not separate evidence**.
 | Model | Main test (unseen speed) | Time split |
 |---|---:|---:|
 | Majority class (control) | 0.250 | 0.250 |
-| Sensor: validation-selected model | 0.625 | — |
+| Sensor: validation-selected model | 0.438 | — |
 | Sensor: random forest | 0.375 | 1.000 |
 | Sensor: XGBoost | 0.438 | 1.000 |
 | Sensor: LightGBM | 0.562 | 1.000 |
@@ -39,3 +39,9 @@ image time split returned 0.8125 rather than its saved 1.000; the Dozer image
 time split was not independently rerun. Neither time-split value demonstrates
 performance on a new speed or a different dozer.
 The anomaly-detection results belong to Week 7 and are not part of this Week 6 checkpoint.
+
+The earlier 0.625 sensor score is superseded. Per-speed feature normalization had been computed
+before the held-out-speed folds, so the held-out runs influenced those feature values. Excluding that
+normalization and rerunning nested feature/model selection gives 0.4375 (7/16). This correction also
+applies to the Belt Conveyor because both mappings reuse the same 16 CORA runs; it is not an independent
+Dozer validation.

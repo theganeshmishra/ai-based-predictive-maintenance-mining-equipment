@@ -272,27 +272,14 @@ def csv(run: bool = True) -> dict:
             np.log((bands[1] + 1e-9) / (bands[0] + 1e-9)), *bands]), columns=VIB_NAMES)
         return frame
 
-    def per_speed_normalised(table, names):
-        """Rescale each feature within each speed using all recordings at that speed together (no labels used).
-
-        Removes what each speed 'sounds like', so the model compares machines running at the same speed.
-        It assumes several machines are recorded at each speed, as in this dataset.
-        """
-        out = []
-        for name in names:
-            column = f"{name}_per_speed"
-            grouped = table.groupby("speed")[name]
-            table[column] = (table[name] - grouped.transform("mean")) / grouped.transform("std").replace(0, 1)
-            out.append(column)
-        return out
-
     def build_table():
         """Same CORA runs, features and 4 wear classes as the Belt Conveyor (no public dozer dataset exists)."""
         table, feature_sets, labels, folds, _, _ = BELT.csv(run=False)["build_table"]()
         return (table, feature_sets, labels, folds,
                 "four rounds, each holding out one whole speed (4 runs, one per wear level); 16 run-level predictions",
                 ["CORA motor/gearbox rig, the SAME 16 runs, features and 4 wear classes as the Belt Conveyor (not new "
-                 "data), so the scores are expected to equal the Belt Conveyor's; mapped to the Dozer track final drive"])
+                 "data), so the scores are expected to equal the Belt Conveyor's; mapped to the Dozer track final drive",
+                 "per-speed normalisation is excluded because its group statistics would include held-out-speed samples"])
     INNER_GROUP = "speed"
 
     def candidate_models():

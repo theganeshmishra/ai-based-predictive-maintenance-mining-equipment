@@ -885,10 +885,15 @@ def export_images(run: bool = True) -> dict:
         parser = argparse.ArgumentParser(description=export_images.__doc__)
         parser.add_argument("--all-frames", action="store_true",
                             help="whole recordings (all 250 ms frames) to Images/haul_truck_allframes/ (Week 7)")
+        parser.add_argument("--dense-frames", action="store_true", help="125 ms frames over the whole recording; separate output")
         args = parser.parse_args()
-        nonlocal OUT, SECONDS, FRAMES, NAME
+        nonlocal OUT, SECONDS, FRAMES, NAME, BIN_US
         if args.all_frames:
             OUT, SECONDS, NAME = ROOT / "Images" / f"{MACHINE}_allframes", 30, "t{k:03d}"
+            FRAMES = SECONDS * 1_000_000 // BIN_US
+        if args.dense_frames:
+            OUT = ROOT / "Images" / f"{MACHINE}_denseframes"
+            SECONDS, BIN_US, NAME = 30, 125_000, "t{k:03d}"
             FRAMES = SECONDS * 1_000_000 // BIN_US
         if OUT.exists():
             shutil.rmtree(OUT)
@@ -1555,12 +1560,19 @@ def cnn_pretrained(run: bool = True) -> dict:
                                  "train, last 30%% test, 10%% gap)")
         parser.add_argument("--all-frames", action="store_true",
                             help="use Images/haul_truck_allframes/ (whole recordings); results saved as *_allframes")
+        parser.add_argument("--dense-frames", action="store_true", help="use separately exported 125 ms full-duration frames")
         args = parser.parse_args()
         nonlocal RESULT, FIGURE, IMAGES
         if args.all_frames:
             IMAGES = ROOT / "Images" / f"{MACHINE}_allframes"
             RESULT = RESULT.with_name(RESULT.stem + "_allframes.json")
             FIGURE = FIGURE.with_name(FIGURE.stem + "_allframes.png")
+        if args.dense_frames:
+            if args.all_frames or args.split != "main":
+                raise ValueError("dense-frames uses the main held-out test only")
+            IMAGES = ROOT / "Images" / f"{MACHINE}_denseframes"
+            RESULT = RESULT.with_name(RESULT.stem + "_denseframes.json")
+            FIGURE = FIGURE.with_name(FIGURE.stem + "_denseframes.png")
         rows = list(csv_module.DictReader((IMAGES / "index.csv").open(encoding="utf-8")))
         test_description = "train on the 12 recordings at 1000 rpm; test on the 12 separate recordings at 2000 rpm"
         if args.split == "time":

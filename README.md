@@ -98,3 +98,7 @@ Run these from the project folder (Windows: `.venv\Scripts\python.exe`, Mac/Linu
 These models classify the **current condition** of a component. They do not predict remaining useful life. Sensor and image results come from separately tested models; sensor and image data from unrelated sources are never paired.
 
 Project code and documentation are under the [MIT License](LICENSE). Source datasets keep their publishers' terms, recorded in the dataset manifest, and are not redistributed here.
+
+## Expanded event-image evaluation
+
+See [Pump and Haul Truck image expansion](Documentation/event_image_expansion.md) for the tested image counts, evaluation protocol, results and reproduction commands.

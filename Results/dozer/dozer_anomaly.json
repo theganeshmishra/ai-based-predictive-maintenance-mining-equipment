@@ -141,12 +141,12 @@
         {
           "unit": "H_F15_S",
           "class": "healthy",
-          "margin": -7.8421
+          "margin": -7.842
         },
         {
           "unit": "W25_F15_S",
           "class": "wear25",
-          "margin": -4.773
+          "margin": -4.7731
         },
         {
           "unit": "W50_F15_S",
@@ -156,7 +156,7 @@
         {
           "unit": "W75_F15_S",
           "class": "wear75",
-          "margin": -5.4453
+          "margin": -5.4452
         },
         {
           "unit": "H_F50_S",

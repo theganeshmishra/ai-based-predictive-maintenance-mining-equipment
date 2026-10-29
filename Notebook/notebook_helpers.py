@@ -343,7 +343,7 @@ _TEST_IMAGE_MACHINES = (("Pump", "pump"), ("Haul Truck", "haul_truck"), ("Belt C
 
 def _best_cnn_result(machine: str):
     """The fair-test pretrained-CNN result with the most test images (all frames when available)."""
-    for suffix in ("_allframes", ""):
+    for suffix in ("_denseframes", "_allframes", ""):
         result = load(f"{machine}_cnn_pretrained_4class{suffix}.json")
         if result and "image_level" in result:
             return result
@@ -429,3 +429,26 @@ def show_thermal_motor() -> None:
         picture.save(buffer, "JPEG", quality=60)
         display(Image(data=buffer.getvalue(), format="jpeg", width=1000))
     print("Caveat:", result["caveat"])
+
+
+def save_test_image_counts() -> Path:
+    """Recreate the notebook's held-out image-count chart from saved evaluations."""
+    import matplotlib.pyplot as plt
+    found = [(name, result) for name, machine in _TEST_IMAGE_MACHINES
+             if (result := _best_cnn_result(machine))]
+    figure, axis = plt.subplots(figsize=(10, 5))
+    counts = [result["image_level"]["test_units"] for _, result in found]
+    bars = axis.barh([name for name, _ in found], counts, color="#2878a5")
+    axis.bar_label(bars, labels=[f"{n:,} images tested" for n in counts], padding=6)
+    axis.set_xlim(0, max(counts) * 1.35)
+    axis.invert_yaxis()
+    axis.set_xlabel("Number of held-out test images")
+    axis.set_title("Images tested for each equipment mapping")
+    axis.spines[["top", "right"]].set_visible(False)
+    figure.text(.5, .015, "Frames from the same recording are related. Dozer reuses the Belt Conveyor benchmark.",
+                ha="center", fontsize=9)
+    figure.tight_layout(rect=(0, .05, 1, 1))
+    path = ROOT / "Figures" / "test_image_counts.png"
+    figure.savefig(path, dpi=160)
+    plt.close(figure)
+    return path

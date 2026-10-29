@@ -329,6 +329,7 @@ def run(machine: str, conditions: dict[str, str], train_step: int = 3) -> dict:
     parts = ", ".join(f"{k} {s[k]['accuracy']:.3f}" for k in ("stationary", "transient") if k in s)
     print(f"Validation-selected: all {s['all']['accuracy']:.3f} ({s['all']['test_recordings']} recordings); {parts}")
     print(f"Saved {out.relative_to(ROOT)} and {fig.relative_to(ROOT)} in {(time.perf_counter() - start) / 60:.1f} min")
+    save_recording_confusion(result)
     return result
 
 
@@ -525,3 +526,36 @@ def _bar_figure(machine, kind, values, legend, chance, title):
     figure.tight_layout()
     figure.savefig(ROOT / "Figures" / machine / f"{machine}_fulldata_{kind}.png", dpi=110)
     plt.close(figure)
+
+
+def save_recording_confusion(result: dict) -> Path:
+    """Plot real held-out recording counts and row percentages from saved results."""
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    matrix = np.asarray(result["validation_selected"]["score"]["confusion_matrix_all"])
+    labels = result["classes"]
+    support = matrix.sum(axis=1)
+    total = int(matrix.sum())
+    score = result["validation_selected"]["score"]["all"]
+    figure, axis = plt.subplots(figsize=(8, 7))
+    axis.imshow(matrix, cmap="Blues", vmin=0)
+    axis.set_xticks(range(len(labels)), labels, rotation=25)
+    axis.set_yticks(range(len(labels)), [f"{label} (n={n})" for label, n in zip(labels, support)])
+    axis.set_xlabel("Predicted condition")
+    axis.set_ylabel("Actual condition")
+    for i in range(len(labels)):
+        for j in range(len(labels)):
+            percentage = 100 * matrix[i, j] / support[i] if support[i] else 0
+            axis.text(j, i, f"{matrix[i, j]}\n({percentage:.1f}%)", ha="center", va="center",
+                      color="white" if matrix[i, j] > matrix.max() / 2 else "black", fontsize=11)
+    axis.set_title(f"{result['machine'].replace('_', ' ').title()}: full sensor evaluation\n"
+                   f"{total} held-out recordings | accuracy {score['accuracy']:.1%} | four unseen-speed folds")
+    figure.text(.5, .025, "Each cell counts whole recordings; percentages are within each actual class.\n"
+                "0 means no recordings in that combination. Start-up repeats share one laboratory rig.",
+                ha="center", fontsize=9)
+    figure.tight_layout(rect=(0, .08, 1, 1))
+    output = ROOT / "Figures" / result["machine"] / f"{result['machine']}_fulldata_confusion.png"
+    figure.savefig(output, dpi=160)
+    plt.close(figure)
+    return output

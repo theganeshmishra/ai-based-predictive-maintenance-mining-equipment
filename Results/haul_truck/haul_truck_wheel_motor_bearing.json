@@ -608,9 +608,9 @@
       "model": {
         "test_recordings": 9,
         "accuracy": 0.4444,
-        "macro_precision": 0.3333,
+        "macro_precision": 0.3111,
         "macro_recall": 0.4444,
-        "macro_f1": 0.3556,
+        "macro_f1": 0.3611,
         "confusion_matrix": [
           [
             3,
@@ -618,9 +618,9 @@
             0
           ],
           [
-            2,
+            1,
             0,
-            1
+            2
           ],
           [
             1,
@@ -630,9 +630,9 @@
         ],
         "per_class": {
           "healthy": {
-            "precision": 0.5,
+            "precision": 0.6,
             "recall": 1.0,
-            "f1": 0.6667,
+            "f1": 0.75,
             "support": 3
           },
           "inner": {
@@ -642,9 +642,9 @@
             "support": 3
           },
           "outer": {
-            "precision": 0.5,
+            "precision": 0.3333,
             "recall": 0.3333,
-            "f1": 0.4,
+            "f1": 0.3333,
             "support": 3
           }
         }
@@ -829,10 +829,10 @@
       },
       "shuffled_training_labels_control": {
         "test_recordings": 18,
-        "accuracy": 0.2778,
-        "macro_precision": 0.2137,
-        "macro_recall": 0.2778,
-        "macro_f1": 0.2144,
+        "accuracy": 0.3333,
+        "macro_precision": 0.2857,
+        "macro_recall": 0.3333,
+        "macro_f1": 0.25,
         "confusion_matrix": [
           [
             0,
@@ -846,8 +846,8 @@
           ],
           [
             1,
-            1,
-            4
+            0,
+            5
           ]
         ],
         "per_class": {
@@ -858,15 +858,15 @@
             "support": 6
           },
           "inner": {
-            "precision": 0.3333,
+            "precision": 0.5,
             "recall": 0.1667,
-            "f1": 0.2222,
+            "f1": 0.25,
             "support": 6
           },
           "outer": {
-            "precision": 0.3077,
-            "recall": 0.6667,
-            "f1": 0.4211,
+            "precision": 0.3571,
+            "recall": 0.8333,
+            "f1": 0.5,
             "support": 6
           }
         }
