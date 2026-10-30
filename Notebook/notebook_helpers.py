@@ -60,6 +60,60 @@ def load_image(path, flags=None):
     return cv2.imread(str(path), cv2.IMREAD_COLOR if flags is None else flags)
 
 
+
+def load_pump_sensor(filename):
+    """Load one Ottawa Pump bearing recording as a flat vibration signal."""
+    path = RAW_DATA / "uottawa_bearing" / filename
+    data = load_mat(path, variable_names=["Channel_1"])
+    return data["Channel_1"].ravel()
+
+
+def load_haul_truck_sensor(filename):
+    """Load the accelerometer column from one UODS component recording."""
+    import numpy as np
+
+    path = RAW_DATA / "uods_vafdc" / filename
+    data = load_mat(path)
+    recording_name = Path(filename).stem
+    return data[recording_name][:, 0].astype(np.float64)
+
+
+def load_cora_sensor(filename):
+    """Load the first vibration column for the four CORA equipment mappings."""
+    import numpy as np
+
+    path = RAW_DATA / "cora_vibration" / filename
+    table = load_csv(path, header=None, dtype=np.float64)
+    return table.iloc[:, 0].to_numpy()
+
+
+def load_model_images(image_folder, records):
+    """Read RGB images and prepare a normalized NCHW array for pretrained CNNs.
+
+    Records come from index.csv and retain their existing labels and run groups.
+    This function only loads pixels; splitting remains in the equipment model.
+    """
+    import cv2
+    import numpy as np
+
+    images = []
+    for record in records:
+        path = Path(image_folder) / record["file"]
+        image = load_image(path, cv2.IMREAD_COLOR)
+        if image is None:
+            raise FileNotFoundError(f"Missing image {record['file']}: run export-images first")
+
+        # OpenCV reads BGR; the pretrained CNN expects RGB, channels first.
+        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+        image = image.astype(np.float32).transpose(2, 0, 1)
+
+        # Normalize each image independently, without using other recordings.
+        image = (image - image.mean()) / (image.std() + 1e-6)
+        images.append(image)
+
+    return np.stack(images)
+
+
 def open_archive(path, *args, **kwargs):
     """Return a ZIP reader; use a with statement to close it after reading."""
     return zipfile.ZipFile(path, *args, **kwargs)
@@ -794,7 +848,7 @@ def _make_pump():
             all_x, all_y, all_profile, all_run, provenance = [], [], [], [], []
             for number, item in enumerate(files, 1):
                 name = item["name"]
-                signal = loadmat(RAW / name, variable_names=["Channel_1"])["Channel_1"].ravel()
+                signal = load_pump_sensor(name)
                 if signal.dtype.kind not in "fi" or not np.isfinite(signal).all():
                     raise ValueError(f"Invalid accelerometer signal in {name}")
                 run_x = extract(np.asarray(signal, dtype=np.float64))
@@ -2871,14 +2925,7 @@ def _make_pump():
         augment = _augment_event_batch
 
         def load(rows):
-            images = []
-            for row in rows:
-                image = load_image(str(IMAGES / row["file"]), cv2.IMREAD_COLOR)
-                if image is None:
-                    raise FileNotFoundError(f"Missing image {row['file']}: run export-images first")
-                image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB).astype(np.float32).transpose(2, 0, 1)
-                images.append((image - image.mean()) / (image.std() + 1e-6))
-            return np.stack(images)
+            return load_model_images(IMAGES, rows)
 
         def new_model():
             model = resnet18(weights=ResNet18_Weights.IMAGENET1K_V1)
@@ -3843,7 +3890,7 @@ def _make_haul_truck():
             xs, ys, bearings, runs, provenance = [], [], [], [], []
             for item in files:
                 name = item["name"]
-                signal = loadmat(SENSOR_RAW / name)[name[:-4]][:, 0].astype(np.float64)  # column 0 = accelerometer
+                signal = load_haul_truck_sensor(name)
                 x = vibration_features(signal)
                 label = CODE_TO_CLASS[item["class_code"]]
                 xs.append(x)
@@ -4970,14 +5017,7 @@ def _make_haul_truck():
         augment = _augment_event_batch
 
         def load(rows):
-            images = []
-            for row in rows:
-                image = load_image(str(IMAGES / row["file"]), cv2.IMREAD_COLOR)
-                if image is None:
-                    raise FileNotFoundError(f"Missing image {row['file']}: run export-images first")
-                image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB).astype(np.float32).transpose(2, 0, 1)
-                images.append((image - image.mean()) / (image.std() + 1e-6))
-            return np.stack(images)
+            return load_model_images(IMAGES, rows)
 
         def new_model():
             model = resnet18(weights=ResNet18_Weights.IMAGENET1K_V1)
@@ -6810,7 +6850,7 @@ def _make_belt_conveyor():
             source = ROOT / "Raw_Data" / "cora_vibration" / f"{run_name}_Vx.csv"
             if not source.is_file():
                 raise SystemExit(f"Missing {source.relative_to(ROOT)}: download it and run the intake command")
-            values = load_csv(source, header=None, dtype=np.float64).iloc[:, 0].to_numpy()
+            values = load_cora_sensor(source.name)
             frame = vibration_frame(values, speed)
             frame.insert(0, "window", np.arange(len(frame)))
             frame.insert(0, "class", label)
@@ -7301,14 +7341,7 @@ def _make_belt_conveyor():
         read_index, augment = _small["read_index"], _small["augment"]
 
         def load(rows):
-            images = []
-            for row in rows:
-                image = load_image(str(IMAGES / row["file"]), cv2.IMREAD_COLOR)
-                if image is None:
-                    raise FileNotFoundError(f"Missing image {row['file']}: run export-images first")
-                image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB).astype(np.float32).transpose(2, 0, 1)
-                images.append((image - image.mean()) / (image.std() + 1e-6))
-            return np.stack(images)
+            return load_model_images(IMAGES, rows)
 
         def new_model():
             model = resnet18(weights=ResNet18_Weights.IMAGENET1K_V1)
@@ -8345,7 +8378,7 @@ def _make_excavator():
             source = ROOT / "Raw_Data" / "cora_vibration" / f"{run_name}_Vx.csv"
             if not source.is_file():
                 raise SystemExit(f"Missing {source.relative_to(ROOT)}: download it and run the intake command")
-            values = load_csv(source, header=None, dtype=np.float64).iloc[:, 0].to_numpy()
+            values = load_cora_sensor(source.name)
             frame = vibration_frame(values, speed)
             frame.insert(0, "window", np.arange(len(frame)))
             frame.insert(0, "class", label)
@@ -8840,14 +8873,7 @@ def _make_excavator():
         read_index, augment = _small["read_index"], _small["augment"]
 
         def load(rows):
-            images = []
-            for row in rows:
-                image = load_image(str(IMAGES / row["file"]), cv2.IMREAD_COLOR)
-                if image is None:
-                    raise FileNotFoundError(f"Missing image {row['file']}: run export-images first")
-                image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB).astype(np.float32).transpose(2, 0, 1)
-                images.append((image - image.mean()) / (image.std() + 1e-6))
-            return np.stack(images)
+            return load_model_images(IMAGES, rows)
 
         def new_model():
             model = resnet18(weights=ResNet18_Weights.IMAGENET1K_V1)
@@ -9908,7 +9934,7 @@ def _make_dozer():
             source = ROOT / "Raw_Data" / "cora_vibration" / f"{run_name}_Vx.csv"
             if not source.is_file():
                 raise SystemExit(f"Missing {source.relative_to(ROOT)}: download it and run the intake command")
-            values = load_csv(source, header=None, dtype=np.float64).iloc[:, 0].to_numpy()
+            values = load_cora_sensor(source.name)
             frame = vibration_frame(values, speed)
             frame.insert(0, "window", np.arange(len(frame)))
             frame.insert(0, "class", label)
@@ -10380,14 +10406,7 @@ def _make_dozer():
         read_index, augment = _small["read_index"], _small["augment"]
 
         def load(rows):
-            images = []
-            for row in rows:
-                image = load_image(str(IMAGES / row["file"]), cv2.IMREAD_COLOR)
-                if image is None:
-                    raise FileNotFoundError(f"Missing image {row['file']}: run export-images first")
-                image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB).astype(np.float32).transpose(2, 0, 1)
-                images.append((image - image.mean()) / (image.std() + 1e-6))
-            return np.stack(images)
+            return load_model_images(IMAGES, rows)
 
         def new_model():
             model = resnet18(weights=ResNet18_Weights.IMAGENET1K_V1)
@@ -11330,7 +11349,7 @@ def _make_wheel_loader():
             source = ROOT / "Raw_Data" / "cora_vibration" / f"{run_name}_Vx.csv"
             if not source.is_file():
                 raise SystemExit(f"Missing {source.relative_to(ROOT)}: download it and run the intake command")
-            values = load_csv(source, header=None, dtype=np.float64).iloc[:, 0].to_numpy()
+            values = load_cora_sensor(source.name)
             frame = vibration_frame(values, speed)
             frame.insert(0, "window", np.arange(len(frame)))
             frame.insert(0, "class", label)
@@ -11825,14 +11844,7 @@ def _make_wheel_loader():
         read_index, augment = _small["read_index"], _small["augment"]
 
         def load(rows):
-            images = []
-            for row in rows:
-                image = load_image(str(IMAGES / row["file"]), cv2.IMREAD_COLOR)
-                if image is None:
-                    raise FileNotFoundError(f"Missing image {row['file']}: run export-images first")
-                image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB).astype(np.float32).transpose(2, 0, 1)
-                images.append((image - image.mean()) / (image.std() + 1e-6))
-            return np.stack(images)
+            return load_model_images(IMAGES, rows)
 
         def new_model():
             model = resnet18(weights=ResNet18_Weights.IMAGENET1K_V1)
