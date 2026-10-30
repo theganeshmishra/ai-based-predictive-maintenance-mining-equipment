@@ -36,6 +36,13 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 
+# Shared data readers live in the notebook helper file.
+import sys
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+from Notebook.notebook_helpers import load_csv, load_excel, load_image, load_mat as loadmat, load_numpy, open_archive
+
+
 # ==================================================================================================
 # intake: download and verify the 48 Ottawa vibration recordings
 # (formerly Preprocessing/pump_bearing_independent_intake.py)
@@ -198,7 +205,6 @@ def sensor(run: bool = True) -> dict:
 
     import matplotlib.pyplot as plt
     import numpy as np
-    from scipy.io import loadmat
     from sklearn.dummy import DummyClassifier
     from sklearn.ensemble import RandomForestClassifier
     from sklearn.metrics import accuracy_score, confusion_matrix, precision_recall_fscore_support
@@ -343,7 +349,7 @@ def sensor(run: bool = True) -> dict:
         parser.add_argument("--refresh", action="store_true", help="Re-extract features from verified raw MAT files")
         args = parser.parse_args()
         if CACHE.is_file() and not args.refresh:
-            with np.load(CACHE, allow_pickle=False) as saved:
+            with load_numpy(CACHE, allow_pickle=False) as saved:
                 x, y, profile, run = (saved[key] for key in ("x", "y", "profile", "run"))
                 provenance = json.loads(str(saved["provenance"]))
         else:
@@ -551,7 +557,7 @@ def camera(run: bool = True) -> dict:
         cache_name = hashlib.sha256(protocol_key.encode("utf-8")).hexdigest()[:20] + ".npz"
         cached_run = RUN_CACHE / cache_name
         if cached_run.is_file():
-            with np.load(cached_run, allow_pickle=False) as saved:
+            with load_numpy(cached_run, allow_pickle=False) as saved:
                 x = saved["x"]
                 record = json.loads(str(saved["record"]))
             if (record["member"] != member or record["zip_member_crc32"] != f"{crc:08x}"
@@ -670,7 +676,7 @@ def camera(run: bool = True) -> dict:
         parser.add_argument("--refresh", action="store_true", help="Reprocess the remote event streams")
         args = parser.parse_args()
         if CACHE.is_file() and not args.refresh:
-            with np.load(CACHE, allow_pickle=False) as saved:
+            with load_numpy(CACHE, allow_pickle=False) as saved:
                 x, y, speed, run = (saved[key] for key in ("x", "y", "speed", "run"))
                 provenance = json.loads(str(saved["provenance"]))
         else:
@@ -990,7 +996,7 @@ def original_xlsx(run: bool = True) -> dict:
         with pd.ExcelFile(path, engine="openpyxl") as workbook:
             if workbook.sheet_names != [sheet]:
                 raise ValueError(f"Unexpected worksheet in {path.name}: {workbook.sheet_names}")
-            frame = pd.read_excel(workbook, sheet_name=sheet, header=None)
+            frame = load_excel(workbook, sheet_name=sheet, header=None)
         if frame.shape[1] != 1:
             raise ValueError(f"Expected one vibration channel in {path.name}, found {frame.shape[1]}")
         signal = pd.to_numeric(frame.iloc[:, 0], errors="raise").to_numpy(dtype=np.float64)
@@ -1182,7 +1188,7 @@ def uci_hydraulic(run: bool = True) -> dict:
                 digest.update(chunk)
         if digest.hexdigest() != EXPECTED_SHA256:
             raise ValueError("UCI ZIP checksum differs from the inspected source; verify the new archive.")
-        return zipfile.ZipFile(ARCHIVE)
+        return open_archive(ARCHIVE)
 
 
     def extract_cycle_features() -> tuple[np.ndarray, np.ndarray, np.ndarray, list[str], dict]:
@@ -1423,8 +1429,8 @@ def espset(run: bool = True) -> dict:
         digest = hashlib.sha256(ARCHIVE.read_bytes()).hexdigest()
         if digest != EXPECTED_SHA256:
             raise ValueError("ESPset features.zip checksum differs from the inspected V3 file.")
-        with zipfile.ZipFile(ARCHIVE) as source:
-            frame = pd.read_csv(source.open("features.csv"), sep=";")
+        with open_archive(ARCHIVE) as source:
+            frame = load_csv(source.open("features.csv"), sep=";")
         required = {"id", "esp_id", "label", *FEATURE_COLUMNS}
         if frame.shape != (6032, 10) or set(frame.columns) != required:
             raise ValueError(f"Unexpected ESPset shape/columns: {frame.shape}, {frame.columns.tolist()}")
@@ -1665,7 +1671,7 @@ def baselines(run: bool = True) -> dict:
         branches = {}
         s = sensor(run=False)
         if s["CACHE"].is_file():
-            with np.load(s["CACHE"], allow_pickle=False) as saved:
+            with load_numpy(s["CACHE"], allow_pickle=False) as saved:
                 x, y, profile, units = saved["x"], saved["y"], saved["profile"], saved["run"]
         else:
             x, y, profile, units, _ = s["preprocess"]()
@@ -1675,7 +1681,7 @@ def baselines(run: bool = True) -> dict:
             "models": evaluate(x, y, units, [np.isin(profile, ["C", "D"])], list(s["CLASSES"]))}
         c = camera(run=False)
         if c["CACHE"].is_file():
-            with np.load(c["CACHE"], allow_pickle=False) as saved:
+            with load_numpy(c["CACHE"], allow_pickle=False) as saved:
                 x, y, speed, units = saved["x"], saved["y"], saved["speed"], saved["run"]
         else:
             x, y, speed, units, _ = c["preprocess"]()
@@ -1772,7 +1778,7 @@ def export_images(run: bool = True) -> dict:
         rows = []
         folders = {"healthy": "Healthy", "inner": "Inner", "outer": "Outer", "ball": "Ball"}
         for hz, part in (("20Hz", "part1"), ("30Hz", "part2")):
-            with zipfile.ZipFile(ROOT / "Raw_Data" / "xjtu_dv_pump" / f"XJTU-DV-Pump_{part}.zip") as archive:
+            with open_archive(ROOT / "Raw_Data" / "xjtu_dv_pump" / f"XJTU-DV-Pump_{part}.zip") as archive:
                 for label, folder in folders.items():
                     members = sorted(i.filename for i in archive.infolist()
                                      if i.filename.startswith(f"XJTU-DV-Pump/Data/{folder}/{hz[:2]}") and i.filename.endswith(".dat"))
@@ -1904,7 +1910,7 @@ def csv(run: bool = True) -> dict:
     def build_table():
         s = sensor(run=False)
         if s["CACHE"].is_file():
-            with np.load(s["CACHE"], allow_pickle=False) as saved:
+            with load_numpy(s["CACHE"], allow_pickle=False) as saved:
                 x, y, profile, units = saved["x"], saved["y"], saved["profile"], saved["run"]
         else:
             x, y, profile, units, _ = s["preprocess"]()
@@ -2135,7 +2141,7 @@ def cnn(run: bool = True) -> dict:
     def load(rows):
         images = []
         for row in rows:
-            image = cv2.imread(str(IMAGES / row["file"]), cv2.IMREAD_COLOR)
+            image = load_image(str(IMAGES / row["file"]), cv2.IMREAD_COLOR)
             if image is None:
                 raise FileNotFoundError(f"Missing image {row['file']}: run export-images first")
             channels = [2, 1]  # red = brighter events, green = darker events
@@ -2340,7 +2346,7 @@ def cnn_pretrained(run: bool = True) -> dict:
     def load(rows):
         images = []
         for row in rows:
-            image = cv2.imread(str(IMAGES / row["file"]), cv2.IMREAD_COLOR)
+            image = load_image(str(IMAGES / row["file"]), cv2.IMREAD_COLOR)
             if image is None:
                 raise FileNotFoundError(f"Missing image {row['file']}: run export-images first")
             image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB).astype(np.float32).transpose(2, 0, 1)
@@ -2538,9 +2544,9 @@ def predict(run: bool = True) -> dict:
     MODEL_PATH = ROOT / "Processed_Data" / "models" / "pump_sensor_model.joblib"
 
     def read_any(path):
-        table = pd.read_csv(path)
+        table = load_csv(path)
         if all(_is_number(c) for c in table.columns):   # no header row: plain column(s) of numbers
-            table = pd.read_csv(path, header=None)
+            table = load_csv(path, header=None)
         return table
 
     def _is_number(text):

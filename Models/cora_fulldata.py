@@ -33,6 +33,13 @@ import numpy as np
 import pandas as pd
 
 ROOT = Path(__file__).resolve().parents[1]
+
+# Shared data readers live in the notebook helper file.
+import sys
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+from Notebook.notebook_helpers import load_csv, load_excel, load_image, load_mat as loadmat, load_numpy, open_archive
+
 FULL = ROOT / "Raw_Data" / "cora_full"
 VX = ROOT / "Raw_Data" / "cora_vibration"
 CACHE = ROOT / "Processed_Data" / "cora_full_features"
@@ -51,7 +58,7 @@ TRANSIENT_WINDOWS = range(10, 30)   # steady part of the 30 s start-up test
 def _read(path: Path) -> np.ndarray:
     if not path.is_file():
         raise SystemExit(f"Missing {path.relative_to(ROOT)}: download the CORA files first")
-    return pd.read_csv(path, header=None, dtype=np.float64, engine="c").iloc[:, 0].to_numpy()
+    return load_csv(path, header=None, dtype=np.float64, engine="c").iloc[:, 0].to_numpy()
 
 
 def _windows(x: np.ndarray, rate: int) -> np.ndarray:
@@ -108,7 +115,7 @@ def cached(name: str, compute):
     CACHE.mkdir(parents=True, exist_ok=True)
     path = CACHE / f"{name}.npy"
     if path.is_file():
-        return np.load(path)
+        return load_numpy(path)
     value = compute()
     np.save(path, value)
     return value
