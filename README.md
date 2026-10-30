@@ -59,7 +59,7 @@ On macOS, if an ensemble run cannot load `xgboost` or `lightgbm` because `libomp
 ## Repository layout
 
 ```text
-Models/          one .py file per machine: pump, haul_truck, belt_conveyor, excavator, dozer, wheel_loader
+Notebook/notebook_helpers.py   all equipment models, data loading and result helpers
 Notebook/        one working notebook for all equipment plus its small helper module
 Results/<machine>/   saved metrics (JSON) and written comparisons
 Figures/<machine>/   result charts
@@ -76,18 +76,18 @@ Run these from the project folder (Windows: `.venv\Scripts\python.exe`, Mac/Linu
 
 | Command | What it does |
 |---|---|
-| `python Models/<machine>.py` | list every command for that machine |
-| `python Models/<machine>.py csv` | sensor (CSV) model, main test; add `--split time` for the time split |
-| `python Models/<machine>.py export-images` | save the named images to `Images/<machine>/` |
-| `python Models/<machine>.py cnn-pretrained` | pretrained ResNet18 with data augmentation |
-| `python Models/<machine>.py baselines` | Week 5 baseline comparison (Pump, Haul Truck, Belt Conveyor) |
-| `python Models/<machine>.py ensembles` | proposal Week 6: XGBoost and LightGBM vs random forest and others |
-| `python Models/<machine>.py fulldata` | Week 7: every CORA sensor, window and start-up test (Belt Conveyor, Dozer, Excavator, Wheel Loader) |
-| `python Models/<machine>.py fulldata --part all` | Week 7: also rerun the XGBoost/LightGBM comparison and anomaly detection on the full data (same unseen-speed test) |
-| `python Models/<machine>.py cnn-pretrained --all-frames` | Week 7: CNN on every frame (run `export-images --all-frames` first; Belt Conveyor, Excavator, Haul Truck) |
-| `python Models/<machine>.py anomaly` | Week 7: anomaly detection trained on healthy data only (Isolation Forest, One-Class SVM) |
-| `python Models/<machine>.py train-final` | train the sensor model on all data and save it |
-| `python Models/<machine>.py predict --csv file.csv --label CLASS` | predict any CSV and show its accuracy (CORA machines also need `--speed F15`) |
+| `python Notebook/notebook_helpers.py <machine>` | list every command for that machine |
+| `python Notebook/notebook_helpers.py <machine> csv` | sensor (CSV) model, main test; add `--split time` for the time split |
+| `python Notebook/notebook_helpers.py <machine> export-images` | save the named images to `Images/<machine>/` |
+| `python Notebook/notebook_helpers.py <machine> cnn-pretrained` | pretrained ResNet18 with data augmentation |
+| `python Notebook/notebook_helpers.py <machine> baselines` | Week 5 baseline comparison (Pump, Haul Truck, Belt Conveyor) |
+| `python Notebook/notebook_helpers.py <machine> ensembles` | proposal Week 6: XGBoost and LightGBM vs random forest and others |
+| `python Notebook/notebook_helpers.py <machine> fulldata` | Week 7: every CORA sensor, window and start-up test (Belt Conveyor, Dozer, Excavator, Wheel Loader) |
+| `python Notebook/notebook_helpers.py <machine> fulldata --part all` | Week 7: also rerun the XGBoost/LightGBM comparison and anomaly detection on the full data (same unseen-speed test) |
+| `python Notebook/notebook_helpers.py <machine> cnn-pretrained --all-frames` | Week 7: CNN on every frame (run `export-images --all-frames` first; Belt Conveyor, Excavator, Haul Truck) |
+| `python Notebook/notebook_helpers.py <machine> anomaly` | Week 7: anomaly detection trained on healthy data only (Isolation Forest, One-Class SVM) |
+| `python Notebook/notebook_helpers.py <machine> train-final` | train the sensor model on all data and save it |
+| `python Notebook/notebook_helpers.py <machine> predict --csv file.csv --label CLASS` | predict any CSV and show its accuracy (CORA machines also need `--speed F15`) |
 
 ## Documentation
 

@@ -59,9 +59,9 @@ Check "Checking the packages"
 
 if ($Data) {
     Step "Download automatically available data (Pump, Haul Truck, CORA thermal)"
-    & $py Models\pump.py intake;                    Check "Pump data download"
-    & $py Models\haul_truck.py intake --sensor-only; Check "Haul Truck data download"
-    & $py Models\belt_conveyor.py intake;           Check "Belt Conveyor data download"
+    & $py Notebook/notebook_helpers.py pump intake;                    Check "Pump data download"
+    & $py Notebook/notebook_helpers.py haul_truck intake --sensor-only; Check "Haul Truck data download"
+    & $py Notebook/notebook_helpers.py belt_conveyor intake;           Check "Belt Conveyor data download"
 }
 
 Step "Done"

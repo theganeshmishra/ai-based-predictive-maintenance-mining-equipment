@@ -9,7 +9,8 @@
         "command": "${workspaceFolder}\\.venv\\Scripts\\python.exe"
       },
       "args": [
-        "${workspaceFolder}/Models/pump.py",
+        "${workspaceFolder}/Notebook/notebook_helpers.py",
+        "pump",
         "all"
       ],
       "problemMatcher": [],
@@ -26,7 +27,8 @@
         "command": "${workspaceFolder}\\.venv\\Scripts\\python.exe"
       },
       "args": [
-        "${workspaceFolder}/Models/belt_conveyor.py",
+        "${workspaceFolder}/Notebook/notebook_helpers.py",
+        "belt_conveyor",
         "all"
       ],
       "problemMatcher": [],
@@ -43,7 +45,8 @@
         "command": "${workspaceFolder}\\.venv\\Scripts\\python.exe"
       },
       "args": [
-        "${workspaceFolder}/Models/haul_truck.py",
+        "${workspaceFolder}/Notebook/notebook_helpers.py",
+        "haul_truck",
         "all"
       ],
       "problemMatcher": [],
@@ -60,7 +63,8 @@
         "command": "${workspaceFolder}\\.venv\\Scripts\\python.exe"
       },
       "args": [
-        "${workspaceFolder}/Models/excavator.py",
+        "${workspaceFolder}/Notebook/notebook_helpers.py",
+        "excavator",
         "csv"
       ],
       "problemMatcher": [],
@@ -80,12 +84,14 @@
         "command": "/bin/bash",
         "args": [
           "${workspaceFolder}/.vscode/run_model_macos.sh",
-          "${workspaceFolder}/Models/dozer.py",
+          "${workspaceFolder}/Notebook/notebook_helpers.py",
+          "dozer",
           "all"
         ]
       },
       "args": [
-        "${workspaceFolder}/Models/dozer.py",
+        "${workspaceFolder}/Notebook/notebook_helpers.py",
+        "dozer",
         "all"
       ],
       "problemMatcher": [],
@@ -102,7 +108,8 @@
         "command": "${workspaceFolder}\\.venv\\Scripts\\python.exe"
       },
       "args": [
-        "${workspaceFolder}/Models/wheel_loader.py",
+        "${workspaceFolder}/Notebook/notebook_helpers.py",
+        "wheel_loader",
         "csv"
       ],
       "problemMatcher": [],
