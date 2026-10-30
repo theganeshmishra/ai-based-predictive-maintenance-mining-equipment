@@ -34,6 +34,13 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 
+# Shared data readers live in the notebook helper file.
+import sys
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+from Notebook.notebook_helpers import load_csv, load_excel, load_image, load_mat as loadmat, load_numpy, open_archive
+
+
 
 # ====================================================================================================
 # intake: check and file selectively downloaded CORA files
@@ -142,7 +149,6 @@ def export_images(run: bool = True) -> dict:
 
     import cv2
     import numpy as np
-    from scipy.io import loadmat
 
     MACHINE = "wheel_loader"
     OUT = ROOT / "Images" / MACHINE
@@ -260,7 +266,6 @@ def csv(run: bool = True) -> dict:
                                  precision_recall_fscore_support)
 
     import pandas as pd
-    from scipy.io import loadmat
     from sklearn.dummy import DummyClassifier
     from sklearn.ensemble import RandomForestClassifier
     from sklearn.linear_model import LogisticRegression
@@ -335,11 +340,11 @@ def csv(run: bool = True) -> dict:
         """
         cache = ROOT / "Processed_Data" / "cora_vibration" / f"{run_name}_Vx_features.csv"
         if cache.is_file():
-            return pd.read_csv(cache)
+            return load_csv(cache)
         source = ROOT / "Raw_Data" / "cora_vibration" / f"{run_name}_Vx.csv"
         if not source.is_file():
             raise SystemExit(f"Missing {source.relative_to(ROOT)}: download it and run the intake command")
-        values = pd.read_csv(source, header=None, dtype=np.float64).iloc[:, 0].to_numpy()
+        values = load_csv(source, header=None, dtype=np.float64).iloc[:, 0].to_numpy()
         frame = vibration_frame(values, speed)
         frame.insert(0, "window", np.arange(len(frame)))
         frame.insert(0, "class", label)
@@ -620,7 +625,7 @@ def cnn(run: bool = True) -> dict:
     def load(rows):
         images = []
         for row in rows:
-            image = cv2.imread(str(IMAGES / row["file"]), cv2.IMREAD_COLOR)
+            image = load_image(str(IMAGES / row["file"]), cv2.IMREAD_COLOR)
             if image is None:
                 raise FileNotFoundError(f"Missing image {row['file']}: run export-images first")
             channels = [0]  # infrared images are grayscale
@@ -836,7 +841,7 @@ def cnn_pretrained(run: bool = True) -> dict:
     def load(rows):
         images = []
         for row in rows:
-            image = cv2.imread(str(IMAGES / row["file"]), cv2.IMREAD_COLOR)
+            image = load_image(str(IMAGES / row["file"]), cv2.IMREAD_COLOR)
             if image is None:
                 raise FileNotFoundError(f"Missing image {row['file']}: run export-images first")
             image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB).astype(np.float32).transpose(2, 0, 1)
@@ -1043,9 +1048,9 @@ def predict(run: bool = True) -> dict:
     MODEL_PATH = ROOT / "Processed_Data" / "models" / "wheel_loader_sensor_model.joblib"
 
     def read_any(path):
-        table = pd.read_csv(path)
+        table = load_csv(path)
         if all(_is_number(c) for c in table.columns):   # no header row: plain column(s) of numbers
-            table = pd.read_csv(path, header=None)
+            table = load_csv(path, header=None)
         return table
 
     def _is_number(text):

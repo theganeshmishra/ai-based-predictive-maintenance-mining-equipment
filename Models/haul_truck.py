@@ -31,6 +31,13 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 
+# Shared data readers live in the notebook helper file.
+import sys
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+from Notebook.notebook_helpers import load_csv, load_excel, load_image, load_mat as loadmat, load_numpy, open_archive
+
+
 # ==================================================================================================
 # intake: download UODS vibration and the XJTU-Rotor zip
 # (formerly Preprocessing/haul_truck_intake.py)
@@ -307,7 +314,6 @@ def experiment(run: bool = True) -> dict:
     import matplotlib.pyplot as plt
     import numpy as np
     from remotezip import RemoteZip
-    from scipy.io import loadmat
     from sklearn.dummy import DummyClassifier
     from sklearn.ensemble import RandomForestClassifier
     from sklearn.metrics import accuracy_score, confusion_matrix, precision_recall_fscore_support
@@ -378,7 +384,7 @@ def experiment(run: bool = True) -> dict:
 
     def sensor_data(refresh: bool):
         if SENSOR_CACHE.is_file() and not refresh:
-            with np.load(SENSOR_CACHE, allow_pickle=False) as saved:
+            with load_numpy(SENSOR_CACHE, allow_pickle=False) as saved:
                 return saved["x"], saved["y"], saved["bearing"], saved["run"], json.loads(str(saved["provenance"]))
         files = json.loads(INTAKE.read_text(encoding="utf-8"))["sensor"]["files"]
         xs, ys, bearings, runs, provenance = [], [], [], [], []
@@ -401,7 +407,7 @@ def experiment(run: bool = True) -> dict:
 
     # ----------------------------------------------------------------------------- visual branch
     def open_rotor():
-        return zipfile.ZipFile(ROTOR_ZIP) if ROTOR_ZIP.is_file() else RemoteZip(ROTOR_URL)
+        return open_archive(ROTOR_ZIP) if ROTOR_ZIP.is_file() else RemoteZip(ROTOR_URL)
 
 
     def rotor_members() -> list[tuple[str, str, int, int, int]]:
@@ -426,7 +432,7 @@ def experiment(run: bool = True) -> dict:
         key = f"rotor|{member}|{START_US}|{END_US}|{BIN_US}"
         cached = RUN_CACHE / (hashlib.sha256(key.encode()).hexdigest()[:20] + ".npz")
         if cached.is_file() and not REFRESH_EVENTS:
-            with np.load(cached, allow_pickle=False) as saved:
+            with load_numpy(cached, allow_pickle=False) as saved:
                 x, record = saved["x"], json.loads(str(saved["record"]))
             if record["member"] != member or record["zip_member_crc32"] != f"{crc:08x}":
                 raise ValueError(f"Cached event run does not match the source: {member}")
@@ -866,7 +872,7 @@ def export_images(run: bool = True) -> dict:
     def export():
         rows = []
         folders = {"healthy": "Healthy", "inner": "Inner", "outer": "Outer", "ball": "Ball"}
-        with zipfile.ZipFile(ROOT / "Raw_Data" / "xjtu_dv_rotor" / "XJTU-DV-Rotor.zip") as archive:
+        with open_archive(ROOT / "Raw_Data" / "xjtu_dv_rotor" / "XJTU-DV-Rotor.zip") as archive:
             for label, folder in folders.items():
                 for angle in (1, 2, 3):
                     for rpm in (1000, 2000):
@@ -937,7 +943,6 @@ def csv(run: bool = True) -> dict:
                                  precision_recall_fscore_support)
 
     import pandas as pd
-    from scipy.io import loadmat
     from sklearn.dummy import DummyClassifier
     from sklearn.ensemble import RandomForestClassifier
     from sklearn.linear_model import LogisticRegression
@@ -1309,7 +1314,7 @@ def cnn(run: bool = True) -> dict:
     def load(rows):
         images = []
         for row in rows:
-            image = cv2.imread(str(IMAGES / row["file"]), cv2.IMREAD_COLOR)
+            image = load_image(str(IMAGES / row["file"]), cv2.IMREAD_COLOR)
             if image is None:
                 raise FileNotFoundError(f"Missing image {row['file']}: run export-images first")
             channels = [2, 1]  # red = brighter events, green = darker events
@@ -1514,7 +1519,7 @@ def cnn_pretrained(run: bool = True) -> dict:
     def load(rows):
         images = []
         for row in rows:
-            image = cv2.imread(str(IMAGES / row["file"]), cv2.IMREAD_COLOR)
+            image = load_image(str(IMAGES / row["file"]), cv2.IMREAD_COLOR)
             if image is None:
                 raise FileNotFoundError(f"Missing image {row['file']}: run export-images first")
             image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB).astype(np.float32).transpose(2, 0, 1)
@@ -1739,9 +1744,9 @@ def predict(run: bool = True) -> dict:
     MODEL_PATH = ROOT / "Processed_Data" / "models" / "haul_truck_sensor_model.joblib"
 
     def read_any(path):
-        table = pd.read_csv(path)
+        table = load_csv(path)
         if all(_is_number(c) for c in table.columns):   # no header row: plain column(s) of numbers
-            table = pd.read_csv(path, header=None)
+            table = load_csv(path, header=None)
         return table
 
     def _is_number(text):
