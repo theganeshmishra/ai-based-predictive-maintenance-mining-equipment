@@ -16,10 +16,10 @@ The expanded Haul Truck score is lower than the earlier 250 ms whole-recording r
 With the source archives present and the project environment installed:
 
 ```sh
-python Models/pump.py export-images --dense-frames
-python Models/pump.py cnn-pretrained --dense-frames
-python Models/haul_truck.py export-images --dense-frames
-python Models/haul_truck.py cnn-pretrained --dense-frames
+python Notebook/notebook_helpers.py pump export-images --dense-frames
+python Notebook/notebook_helpers.py pump cnn-pretrained --dense-frames
+python Notebook/notebook_helpers.py haul_truck export-images --dense-frames
+python Notebook/notebook_helpers.py haul_truck cnn-pretrained --dense-frames
 ```
 
 Exports are saved under `Images/<equipment>_denseframes/`. Results and figures use the `_denseframes` suffix. Raw archives, exported images, caches and model binaries remain ignored by Git.
