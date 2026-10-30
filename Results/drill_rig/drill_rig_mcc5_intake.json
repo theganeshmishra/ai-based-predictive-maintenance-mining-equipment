@@ -1,0 +1,1094 @@
+{
+  "source": "MCC5-THU, Mendeley Data p92gj2732w v2 (doi 10.17632/p92gj2732w.2), CC BY 4.0",
+  "sha256_expected": "dcf7ba4b2d375c951ea57baf9bf90db4b3196982b324a13d85b187f286116b86",
+  "sha256_matches": true,
+  "zip_bytes": 6912316031,
+  "recordings_used": {
+    "healthy": 12,
+    "gear_wear": 36,
+    "gear_pitting": 36,
+    "tooth_crack": 36
+  },
+  "recordings": [
+    {
+      "file": "MCC5-THU gearbox fault diagnosis datasets/teeth_crack_L_torque_circulation_1000rpm_20Nm.csv",
+      "recording": "teeth_crack_L_torque_circulation_1000rpm_20Nm",
+      "class": "tooth_crack",
+      "severity": "L",
+      "mode": "load varying",
+      "rpm": 1000,
+      "torque_nm": 20
+    },
+    {
+      "file": "MCC5-THU gearbox fault diagnosis datasets/gear_pitting_H_torque_circulation_2000rpm_10Nm.csv",
+      "recording": "gear_pitting_H_torque_circulation_2000rpm_10Nm",
+      "class": "gear_pitting",
+      "severity": "H",
+      "mode": "load varying",
+      "rpm": 2000,
+      "torque_nm": 10
+    },
+    {
+      "file": "MCC5-THU gearbox fault diagnosis datasets/gear_wear_H_speed_circulation_10Nm-1000rpm.csv",
+      "recording": "gear_wear_H_speed_circulation_10Nm-1000rpm",
+      "class": "gear_wear",
+      "severity": "H",
+      "mode": "speed varying",
+      "rpm": 1000,
+      "torque_nm": 10
+    },
+    {
+      "file": "MCC5-THU gearbox fault diagnosis datasets/teeth_crack_H_torque_circulation_2000rpm_10Nm.csv",
+      "recording": "teeth_crack_H_torque_circulation_2000rpm_10Nm",
+      "class": "tooth_crack",
+      "severity": "H",
+      "mode": "load varying",
+      "rpm": 2000,
+      "torque_nm": 10
+    },
+    {
+      "file": "MCC5-THU gearbox fault diagnosis datasets/gear_pitting_L_torque_circulation_1000rpm_20Nm.csv",
+      "recording": "gear_pitting_L_torque_circulation_1000rpm_20Nm",
+      "class": "gear_pitting",
+      "severity": "L",
+      "mode": "load varying",
+      "rpm": 1000,
+      "torque_nm": 20
+    },
+    {
+      "file": "MCC5-THU gearbox fault diagnosis datasets/gear_wear_H_torque_circulation_2000rpm_20Nm.csv",
+      "recording": "gear_wear_H_torque_circulation_2000rpm_20Nm",
+      "class": "gear_wear",
+      "severity": "H",
+      "mode": "load varying",
+      "rpm": 2000,
+      "torque_nm": 20
+    },
+    {
+      "file": "MCC5-THU gearbox fault diagnosis datasets/gear_pitting_L_speed_circulation_20Nm-1000rpm.csv",
+      "recording": "gear_pitting_L_speed_circulation_20Nm-1000rpm",
+      "class": "gear_pitting",
+      "severity": "L",
+      "mode": "speed varying",
+      "rpm": 1000,
+      "torque_nm": 20
+    },
+    {
+      "file": "MCC5-THU gearbox fault diagnosis datasets/teeth_crack_H_speed_circulation_10Nm-3000rpm.csv",
+      "recording": "teeth_crack_H_speed_circulation_10Nm-3000rpm",
+      "class": "tooth_crack",
+      "severity": "H",
+      "mode": "speed varying",
+      "rpm": 3000,
+      "torque_nm": 10
+    },
+    {
+      "file": "MCC5-THU gearbox fault diagnosis datasets/gear_pitting_M_speed_circulation_10Nm-1000rpm.csv",
+      "recording": "gear_pitting_M_speed_circulation_10Nm-1000rpm",
+      "class": "gear_pitting",
+      "severity": "M",
+      "mode": "speed varying",
+      "rpm": 1000,
+      "torque_nm": 10
+    },
+    {
+      "file": "MCC5-THU gearbox fault diagnosis datasets/gear_wear_L_torque_circulation_1000rpm_10Nm.csv",
+      "recording": "gear_wear_L_torque_circulation_1000rpm_10Nm",
+      "class": "gear_wear",
+      "severity": "L",
+      "mode": "load varying",
+      "rpm": 1000,
+      "torque_nm": 10
+    },
+    {
+      "file": "MCC5-THU gearbox fault diagnosis datasets/teeth_crack_H_speed_circulation_20Nm-2000rpm.csv",
+      "recording": "teeth_crack_H_speed_circulation_20Nm-2000rpm",
+      "class": "tooth_crack",
+      "severity": "H",
+      "mode": "speed varying",
+      "rpm": 2000,
+      "torque_nm": 20
+    },
+    {
+      "file": "MCC5-THU gearbox fault diagnosis datasets/health_torque_circulation_1000rpm_10Nm.csv",
+      "recording": "health_torque_circulation_1000rpm_10Nm",
+      "class": "healthy",
+      "severity": "none",
+      "mode": "load varying",
+      "rpm": 1000,
+      "torque_nm": 10
+    },
+    {
+      "file": "MCC5-THU gearbox fault diagnosis datasets/teeth_crack_M_torque_circulation_1000rpm_10Nm.csv",
+      "recording": "teeth_crack_M_torque_circulation_1000rpm_10Nm",
+      "class": "tooth_crack",
+      "severity": "M",
+      "mode": "load varying",
+      "rpm": 1000,
+      "torque_nm": 10
+    },
+    {
+      "file": "MCC5-THU gearbox fault diagnosis datasets/teeth_crack_L_speed_circulation_10Nm-1000rpm.csv",
+      "recording": "teeth_crack_L_speed_circulation_10Nm-1000rpm",
+      "class": "tooth_crack",
+      "severity": "L",
+      "mode": "speed varying",
+      "rpm": 1000,
+      "torque_nm": 10
+    },
+    {
+      "file": "MCC5-THU gearbox fault diagnosis datasets/gear_pitting_H_speed_circulation_20Nm-3000rpm.csv",
+      "recording": "gear_pitting_H_speed_circulation_20Nm-3000rpm",
+      "class": "gear_pitting",
+      "severity": "H",
+      "mode": "speed varying",
+      "rpm": 3000,
+      "torque_nm": 20
+    },
+    {
+      "file": "MCC5-THU gearbox fault diagnosis datasets/teeth_crack_M_speed_circulation_20Nm-1000rpm.csv",
+      "recording": "teeth_crack_M_speed_circulation_20Nm-1000rpm",
+      "class": "tooth_crack",
+      "severity": "M",
+      "mode": "speed varying",
+      "rpm": 1000,
+      "torque_nm": 20
+    },
+    {
+      "file": "MCC5-THU gearbox fault diagnosis datasets/gear_pitting_M_torque_circulation_1000rpm_10Nm.csv",
+      "recording": "gear_pitting_M_torque_circulation_1000rpm_10Nm",
+      "class": "gear_pitting",
+      "severity": "M",
+      "mode": "load varying",
+      "rpm": 1000,
+      "torque_nm": 10
+    },
+    {
+      "file": "MCC5-THU gearbox fault diagnosis datasets/gear_wear_H_torque_circulation_3000rpm_20Nm.csv",
+      "recording": "gear_wear_H_torque_circulation_3000rpm_20Nm",
+      "class": "gear_wear",
+      "severity": "H",
+      "mode": "load varying",
+      "rpm": 3000,
+      "torque_nm": 20
+    },
+    {
+      "file": "MCC5-THU gearbox fault diagnosis datasets/gear_pitting_H_speed_circulation_10Nm-2000rpm.csv",
+      "recording": "gear_pitting_H_speed_circulation_10Nm-2000rpm",
+      "class": "gear_pitting",
+      "severity": "H",
+      "mode": "speed varying",
+      "rpm": 2000,
+      "torque_nm": 10
+    },
+    {
+      "file": "MCC5-THU gearbox fault diagnosis datasets/health_speed_circulation_20Nm-3000rpm.csv",
+      "recording": "health_speed_circulation_20Nm-3000rpm",
+      "class": "healthy",
+      "severity": "none",
+      "mode": "speed varying",
+      "rpm": 3000,
+      "torque_nm": 20
+    },
+    {
+      "file": "MCC5-THU gearbox fault diagnosis datasets/gear_wear_L_speed_circulation_20Nm-2000rpm.csv",
+      "recording": "gear_wear_L_speed_circulation_20Nm-2000rpm",
+      "class": "gear_wear",
+      "severity": "L",
+      "mode": "speed varying",
+      "rpm": 2000,
+      "torque_nm": 20
+    },
+    {
+      "file": "MCC5-THU gearbox fault diagnosis datasets/gear_wear_M_speed_circulation_20Nm-3000rpm.csv",
+      "recording": "gear_wear_M_speed_circulation_20Nm-3000rpm",
+      "class": "gear_wear",
+      "severity": "M",
+      "mode": "speed varying",
+      "rpm": 3000,
+      "torque_nm": 20
+    },
+    {
+      "file": "MCC5-THU gearbox fault diagnosis datasets/teeth_crack_H_torque_circulation_3000rpm_10Nm.csv",
+      "recording": "teeth_crack_H_torque_circulation_3000rpm_10Nm",
+      "class": "tooth_crack",
+      "severity": "H",
+      "mode": "load varying",
+      "rpm": 3000,
+      "torque_nm": 10
+    },
+    {
+      "file": "MCC5-THU gearbox fault diagnosis datasets/gear_wear_L_speed_circulation_10Nm-3000rpm.csv",
+      "recording": "gear_wear_L_speed_circulation_10Nm-3000rpm",
+      "class": "gear_wear",
+      "severity": "L",
+      "mode": "speed varying",
+      "rpm": 3000,
+      "torque_nm": 10
+    },
+    {
+      "file": "MCC5-THU gearbox fault diagnosis datasets/health_speed_circulation_10Nm-2000rpm.csv",
+      "recording": "health_speed_circulation_10Nm-2000rpm",
+      "class": "healthy",
+      "severity": "none",
+      "mode": "speed varying",
+      "rpm": 2000,
+      "torque_nm": 10
+    },
+    {
+      "file": "MCC5-THU gearbox fault diagnosis datasets/gear_pitting_H_torque_circulation_3000rpm_10Nm.csv",
+      "recording": "gear_pitting_H_torque_circulation_3000rpm_10Nm",
+      "class": "gear_pitting",
+      "severity": "H",
+      "mode": "load varying",
+      "rpm": 3000,
+      "torque_nm": 10
+    },
+    {
+      "file": "MCC5-THU gearbox fault diagnosis datasets/gear_wear_M_speed_circulation_10Nm-2000rpm.csv",
+      "recording": "gear_wear_M_speed_circulation_10Nm-2000rpm",
+      "class": "gear_wear",
+      "severity": "M",
+      "mode": "speed varying",
+      "rpm": 2000,
+      "torque_nm": 10
+    },
+    {
+      "file": "MCC5-THU gearbox fault diagnosis datasets/gear_wear_M_torque_circulation_1000rpm_20Nm.csv",
+      "recording": "gear_wear_M_torque_circulation_1000rpm_20Nm",
+      "class": "gear_wear",
+      "severity": "M",
+      "mode": "load varying",
+      "rpm": 1000,
+      "torque_nm": 20
+    },
+    {
+      "file": "MCC5-THU gearbox fault diagnosis datasets/teeth_crack_H_torque_circulation_1000rpm_10Nm.csv",
+      "recording": "teeth_crack_H_torque_circulation_1000rpm_10Nm",
+      "class": "tooth_crack",
+      "severity": "H",
+      "mode": "load varying",
+      "rpm": 1000,
+      "torque_nm": 10
+    },
+    {
+      "file": "MCC5-THU gearbox fault diagnosis datasets/gear_pitting_L_torque_circulation_2000rpm_20Nm.csv",
+      "recording": "gear_pitting_L_torque_circulation_2000rpm_20Nm",
+      "class": "gear_pitting",
+      "severity": "L",
+      "mode": "load varying",
+      "rpm": 2000,
+      "torque_nm": 20
+    },
+    {
+      "file": "MCC5-THU gearbox fault diagnosis datasets/gear_wear_H_speed_circulation_20Nm-1000rpm.csv",
+      "recording": "gear_wear_H_speed_circulation_20Nm-1000rpm",
+      "class": "gear_wear",
+      "severity": "H",
+      "mode": "speed varying",
+      "rpm": 1000,
+      "torque_nm": 20
+    },
+    {
+      "file": "MCC5-THU gearbox fault diagnosis datasets/gear_wear_M_torque_circulation_3000rpm_20Nm.csv",
+      "recording": "gear_wear_M_torque_circulation_3000rpm_20Nm",
+      "class": "gear_wear",
+      "severity": "M",
+      "mode": "load varying",
+      "rpm": 3000,
+      "torque_nm": 20
+    },
+    {
+      "file": "MCC5-THU gearbox fault diagnosis datasets/teeth_crack_L_torque_circulation_2000rpm_20Nm.csv",
+      "recording": "teeth_crack_L_torque_circulation_2000rpm_20Nm",
+      "class": "tooth_crack",
+      "severity": "L",
+      "mode": "load varying",
+      "rpm": 2000,
+      "torque_nm": 20
+    },
+    {
+      "file": "MCC5-THU gearbox fault diagnosis datasets/gear_pitting_H_torque_circulation_1000rpm_10Nm.csv",
+      "recording": "gear_pitting_H_torque_circulation_1000rpm_10Nm",
+      "class": "gear_pitting",
+      "severity": "H",
+      "mode": "load varying",
+      "rpm": 1000,
+      "torque_nm": 10
+    },
+    {
+      "file": "MCC5-THU gearbox fault diagnosis datasets/gear_wear_L_torque_circulation_2000rpm_10Nm.csv",
+      "recording": "gear_wear_L_torque_circulation_2000rpm_10Nm",
+      "class": "gear_wear",
+      "severity": "L",
+      "mode": "load varying",
+      "rpm": 2000,
+      "torque_nm": 10
+    },
+    {
+      "file": "MCC5-THU gearbox fault diagnosis datasets/teeth_crack_M_torque_circulation_3000rpm_10Nm.csv",
+      "recording": "teeth_crack_M_torque_circulation_3000rpm_10Nm",
+      "class": "tooth_crack",
+      "severity": "M",
+      "mode": "load varying",
+      "rpm": 3000,
+      "torque_nm": 10
+    },
+    {
+      "file": "MCC5-THU gearbox fault diagnosis datasets/teeth_crack_H_speed_circulation_10Nm-2000rpm.csv",
+      "recording": "teeth_crack_H_speed_circulation_10Nm-2000rpm",
+      "class": "tooth_crack",
+      "severity": "H",
+      "mode": "speed varying",
+      "rpm": 2000,
+      "torque_nm": 10
+    },
+    {
+      "file": "MCC5-THU gearbox fault diagnosis datasets/gear_pitting_M_speed_circulation_20Nm-1000rpm.csv",
+      "recording": "gear_pitting_M_speed_circulation_20Nm-1000rpm",
+      "class": "gear_pitting",
+      "severity": "M",
+      "mode": "speed varying",
+      "rpm": 1000,
+      "torque_nm": 20
+    },
+    {
+      "file": "MCC5-THU gearbox fault diagnosis datasets/health_torque_circulation_3000rpm_10Nm.csv",
+      "recording": "health_torque_circulation_3000rpm_10Nm",
+      "class": "healthy",
+      "severity": "none",
+      "mode": "load varying",
+      "rpm": 3000,
+      "torque_nm": 10
+    },
+    {
+      "file": "MCC5-THU gearbox fault diagnosis datasets/gear_wear_H_torque_circulation_1000rpm_20Nm.csv",
+      "recording": "gear_wear_H_torque_circulation_1000rpm_20Nm",
+      "class": "gear_wear",
+      "severity": "H",
+      "mode": "load varying",
+      "rpm": 1000,
+      "torque_nm": 20
+    },
+    {
+      "file": "MCC5-THU gearbox fault diagnosis datasets/teeth_crack_H_speed_circulation_20Nm-3000rpm.csv",
+      "recording": "teeth_crack_H_speed_circulation_20Nm-3000rpm",
+      "class": "tooth_crack",
+      "severity": "H",
+      "mode": "speed varying",
+      "rpm": 3000,
+      "torque_nm": 20
+    },
+    {
+      "file": "MCC5-THU gearbox fault diagnosis datasets/gear_pitting_L_speed_circulation_10Nm-1000rpm.csv",
+      "recording": "gear_pitting_L_speed_circulation_10Nm-1000rpm",
+      "class": "gear_pitting",
+      "severity": "L",
+      "mode": "speed varying",
+      "rpm": 1000,
+      "torque_nm": 10
+    },
+    {
+      "file": "MCC5-THU gearbox fault diagnosis datasets/gear_pitting_M_torque_circulation_3000rpm_10Nm.csv",
+      "recording": "gear_pitting_M_torque_circulation_3000rpm_10Nm",
+      "class": "gear_pitting",
+      "severity": "M",
+      "mode": "load varying",
+      "rpm": 3000,
+      "torque_nm": 10
+    },
+    {
+      "file": "MCC5-THU gearbox fault diagnosis datasets/gear_pitting_M_torque_circulation_2000rpm_10Nm.csv",
+      "recording": "gear_pitting_M_torque_circulation_2000rpm_10Nm",
+      "class": "gear_pitting",
+      "severity": "M",
+      "mode": "load varying",
+      "rpm": 2000,
+      "torque_nm": 10
+    },
+    {
+      "file": "MCC5-THU gearbox fault diagnosis datasets/gear_pitting_H_speed_circulation_20Nm-2000rpm.csv",
+      "recording": "gear_pitting_H_speed_circulation_20Nm-2000rpm",
+      "class": "gear_pitting",
+      "severity": "H",
+      "mode": "speed varying",
+      "rpm": 2000,
+      "torque_nm": 20
+    },
+    {
+      "file": "MCC5-THU gearbox fault diagnosis datasets/teeth_crack_M_speed_circulation_10Nm-1000rpm.csv",
+      "recording": "teeth_crack_M_speed_circulation_10Nm-1000rpm",
+      "class": "tooth_crack",
+      "severity": "M",
+      "mode": "speed varying",
+      "rpm": 1000,
+      "torque_nm": 10
+    },
+    {
+      "file": "MCC5-THU gearbox fault diagnosis datasets/gear_pitting_H_speed_circulation_10Nm-3000rpm.csv",
+      "recording": "gear_pitting_H_speed_circulation_10Nm-3000rpm",
+      "class": "gear_pitting",
+      "severity": "H",
+      "mode": "speed varying",
+      "rpm": 3000,
+      "torque_nm": 10
+    },
+    {
+      "file": "MCC5-THU gearbox fault diagnosis datasets/teeth_crack_M_torque_circulation_2000rpm_10Nm.csv",
+      "recording": "teeth_crack_M_torque_circulation_2000rpm_10Nm",
+      "class": "tooth_crack",
+      "severity": "M",
+      "mode": "load varying",
+      "rpm": 2000,
+      "torque_nm": 10
+    },
+    {
+      "file": "MCC5-THU gearbox fault diagnosis datasets/teeth_crack_L_speed_circulation_20Nm-1000rpm.csv",
+      "recording": "teeth_crack_L_speed_circulation_20Nm-1000rpm",
+      "class": "tooth_crack",
+      "severity": "L",
+      "mode": "speed varying",
+      "rpm": 1000,
+      "torque_nm": 20
+    },
+    {
+      "file": "MCC5-THU gearbox fault diagnosis datasets/gear_wear_L_torque_circulation_3000rpm_10Nm.csv",
+      "recording": "gear_wear_L_torque_circulation_3000rpm_10Nm",
+      "class": "gear_wear",
+      "severity": "L",
+      "mode": "load varying",
+      "rpm": 3000,
+      "torque_nm": 10
+    },
+    {
+      "file": "MCC5-THU gearbox fault diagnosis datasets/health_torque_circulation_2000rpm_10Nm.csv",
+      "recording": "health_torque_circulation_2000rpm_10Nm",
+      "class": "healthy",
+      "severity": "none",
+      "mode": "load varying",
+      "rpm": 2000,
+      "torque_nm": 10
+    },
+    {
+      "file": "MCC5-THU gearbox fault diagnosis datasets/gear_wear_M_speed_circulation_20Nm-2000rpm.csv",
+      "recording": "gear_wear_M_speed_circulation_20Nm-2000rpm",
+      "class": "gear_wear",
+      "severity": "M",
+      "mode": "speed varying",
+      "rpm": 2000,
+      "torque_nm": 20
+    },
+    {
+      "file": "MCC5-THU gearbox fault diagnosis datasets/teeth_crack_L_torque_circulation_3000rpm_20Nm.csv",
+      "recording": "teeth_crack_L_torque_circulation_3000rpm_20Nm",
+      "class": "tooth_crack",
+      "severity": "L",
+      "mode": "load varying",
+      "rpm": 3000,
+      "torque_nm": 20
+    },
+    {
+      "file": "MCC5-THU gearbox fault diagnosis datasets/gear_wear_M_torque_circulation_2000rpm_20Nm.csv",
+      "recording": "gear_wear_M_torque_circulation_2000rpm_20Nm",
+      "class": "gear_wear",
+      "severity": "M",
+      "mode": "load varying",
+      "rpm": 2000,
+      "torque_nm": 20
+    },
+    {
+      "file": "MCC5-THU gearbox fault diagnosis datasets/health_speed_circulation_20Nm-2000rpm.csv",
+      "recording": "health_speed_circulation_20Nm-2000rpm",
+      "class": "healthy",
+      "severity": "none",
+      "mode": "speed varying",
+      "rpm": 2000,
+      "torque_nm": 20
+    },
+    {
+      "file": "MCC5-THU gearbox fault diagnosis datasets/gear_wear_L_speed_circulation_20Nm-3000rpm.csv",
+      "recording": "gear_wear_L_speed_circulation_20Nm-3000rpm",
+      "class": "gear_wear",
+      "severity": "L",
+      "mode": "speed varying",
+      "rpm": 3000,
+      "torque_nm": 20
+    },
+    {
+      "file": "MCC5-THU gearbox fault diagnosis datasets/gear_wear_M_speed_circulation_10Nm-3000rpm.csv",
+      "recording": "gear_wear_M_speed_circulation_10Nm-3000rpm",
+      "class": "gear_wear",
+      "severity": "M",
+      "mode": "speed varying",
+      "rpm": 3000,
+      "torque_nm": 10
+    },
+    {
+      "file": "MCC5-THU gearbox fault diagnosis datasets/gear_pitting_L_torque_circulation_3000rpm_20Nm.csv",
+      "recording": "gear_pitting_L_torque_circulation_3000rpm_20Nm",
+      "class": "gear_pitting",
+      "severity": "L",
+      "mode": "load varying",
+      "rpm": 3000,
+      "torque_nm": 20
+    },
+    {
+      "file": "MCC5-THU gearbox fault diagnosis datasets/gear_wear_L_speed_circulation_10Nm-2000rpm.csv",
+      "recording": "gear_wear_L_speed_circulation_10Nm-2000rpm",
+      "class": "gear_wear",
+      "severity": "L",
+      "mode": "speed varying",
+      "rpm": 2000,
+      "torque_nm": 10
+    },
+    {
+      "file": "MCC5-THU gearbox fault diagnosis datasets/health_speed_circulation_10Nm-3000rpm.csv",
+      "recording": "health_speed_circulation_10Nm-3000rpm",
+      "class": "healthy",
+      "severity": "none",
+      "mode": "speed varying",
+      "rpm": 3000,
+      "torque_nm": 10
+    },
+    {
+      "file": "MCC5-THU gearbox fault diagnosis datasets/gear_pitting_M_torque_circulation_1000rpm_20Nm.csv",
+      "recording": "gear_pitting_M_torque_circulation_1000rpm_20Nm",
+      "class": "gear_pitting",
+      "severity": "M",
+      "mode": "load varying",
+      "rpm": 1000,
+      "torque_nm": 20
+    },
+    {
+      "file": "MCC5-THU gearbox fault diagnosis datasets/gear_wear_H_speed_circulation_10Nm-3000rpm.csv",
+      "recording": "gear_wear_H_speed_circulation_10Nm-3000rpm",
+      "class": "gear_wear",
+      "severity": "H",
+      "mode": "speed varying",
+      "rpm": 3000,
+      "torque_nm": 10
+    },
+    {
+      "file": "MCC5-THU gearbox fault diagnosis datasets/gear_wear_H_torque_circulation_3000rpm_10Nm.csv",
+      "recording": "gear_wear_H_torque_circulation_3000rpm_10Nm",
+      "class": "gear_wear",
+      "severity": "H",
+      "mode": "load varying",
+      "rpm": 3000,
+      "torque_nm": 10
+    },
+    {
+      "file": "MCC5-THU gearbox fault diagnosis datasets/gear_wear_H_speed_circulation_20Nm-2000rpm.csv",
+      "recording": "gear_wear_H_speed_circulation_20Nm-2000rpm",
+      "class": "gear_wear",
+      "severity": "H",
+      "mode": "speed varying",
+      "rpm": 2000,
+      "torque_nm": 20
+    },
+    {
+      "file": "MCC5-THU gearbox fault diagnosis datasets/teeth_crack_M_torque_circulation_1000rpm_20Nm.csv",
+      "recording": "teeth_crack_M_torque_circulation_1000rpm_20Nm",
+      "class": "tooth_crack",
+      "severity": "M",
+      "mode": "load varying",
+      "rpm": 1000,
+      "torque_nm": 20
+    },
+    {
+      "file": "MCC5-THU gearbox fault diagnosis datasets/health_torque_circulation_1000rpm_20Nm.csv",
+      "recording": "health_torque_circulation_1000rpm_20Nm",
+      "class": "healthy",
+      "severity": "none",
+      "mode": "load varying",
+      "rpm": 1000,
+      "torque_nm": 20
+    },
+    {
+      "file": "MCC5-THU gearbox fault diagnosis datasets/gear_pitting_H_torque_circulation_3000rpm_20Nm.csv",
+      "recording": "gear_pitting_H_torque_circulation_3000rpm_20Nm",
+      "class": "gear_pitting",
+      "severity": "H",
+      "mode": "load varying",
+      "rpm": 3000,
+      "torque_nm": 20
+    },
+    {
+      "file": "MCC5-THU gearbox fault diagnosis datasets/gear_pitting_M_speed_circulation_10Nm-3000rpm.csv",
+      "recording": "gear_pitting_M_speed_circulation_10Nm-3000rpm",
+      "class": "gear_pitting",
+      "severity": "M",
+      "mode": "speed varying",
+      "rpm": 3000,
+      "torque_nm": 10
+    },
+    {
+      "file": "MCC5-THU gearbox fault diagnosis datasets/gear_wear_M_torque_circulation_1000rpm_10Nm.csv",
+      "recording": "gear_wear_M_torque_circulation_1000rpm_10Nm",
+      "class": "gear_wear",
+      "severity": "M",
+      "mode": "load varying",
+      "rpm": 1000,
+      "torque_nm": 10
+    },
+    {
+      "file": "MCC5-THU gearbox fault diagnosis datasets/gear_pitting_L_speed_circulation_10Nm-2000rpm.csv",
+      "recording": "gear_pitting_L_speed_circulation_10Nm-2000rpm",
+      "class": "gear_pitting",
+      "severity": "L",
+      "mode": "speed varying",
+      "rpm": 2000,
+      "torque_nm": 10
+    },
+    {
+      "file": "MCC5-THU gearbox fault diagnosis datasets/gear_pitting_M_speed_circulation_20Nm-2000rpm.csv",
+      "recording": "gear_pitting_M_speed_circulation_20Nm-2000rpm",
+      "class": "gear_pitting",
+      "severity": "M",
+      "mode": "speed varying",
+      "rpm": 2000,
+      "torque_nm": 20
+    },
+    {
+      "file": "MCC5-THU gearbox fault diagnosis datasets/teeth_crack_H_torque_circulation_3000rpm_20Nm.csv",
+      "recording": "teeth_crack_H_torque_circulation_3000rpm_20Nm",
+      "class": "tooth_crack",
+      "severity": "H",
+      "mode": "load varying",
+      "rpm": 3000,
+      "torque_nm": 20
+    },
+    {
+      "file": "MCC5-THU gearbox fault diagnosis datasets/gear_pitting_L_speed_circulation_20Nm-3000rpm.csv",
+      "recording": "gear_pitting_L_speed_circulation_20Nm-3000rpm",
+      "class": "gear_pitting",
+      "severity": "L",
+      "mode": "speed varying",
+      "rpm": 3000,
+      "torque_nm": 20
+    },
+    {
+      "file": "MCC5-THU gearbox fault diagnosis datasets/teeth_crack_H_speed_circulation_10Nm-1000rpm.csv",
+      "recording": "teeth_crack_H_speed_circulation_10Nm-1000rpm",
+      "class": "tooth_crack",
+      "severity": "H",
+      "mode": "speed varying",
+      "rpm": 1000,
+      "torque_nm": 10
+    },
+    {
+      "file": "MCC5-THU gearbox fault diagnosis datasets/teeth_crack_H_torque_circulation_2000rpm_20Nm.csv",
+      "recording": "teeth_crack_H_torque_circulation_2000rpm_20Nm",
+      "class": "tooth_crack",
+      "severity": "H",
+      "mode": "load varying",
+      "rpm": 2000,
+      "torque_nm": 20
+    },
+    {
+      "file": "MCC5-THU gearbox fault diagnosis datasets/teeth_crack_M_speed_circulation_20Nm-3000rpm.csv",
+      "recording": "teeth_crack_M_speed_circulation_20Nm-3000rpm",
+      "class": "tooth_crack",
+      "severity": "M",
+      "mode": "speed varying",
+      "rpm": 3000,
+      "torque_nm": 20
+    },
+    {
+      "file": "MCC5-THU gearbox fault diagnosis datasets/gear_pitting_L_torque_circulation_1000rpm_10Nm.csv",
+      "recording": "gear_pitting_L_torque_circulation_1000rpm_10Nm",
+      "class": "gear_pitting",
+      "severity": "L",
+      "mode": "load varying",
+      "rpm": 1000,
+      "torque_nm": 10
+    },
+    {
+      "file": "MCC5-THU gearbox fault diagnosis datasets/teeth_crack_L_speed_circulation_20Nm-2000rpm.csv",
+      "recording": "teeth_crack_L_speed_circulation_20Nm-2000rpm",
+      "class": "tooth_crack",
+      "severity": "L",
+      "mode": "speed varying",
+      "rpm": 2000,
+      "torque_nm": 20
+    },
+    {
+      "file": "MCC5-THU gearbox fault diagnosis datasets/teeth_crack_L_torque_circulation_1000rpm_10Nm.csv",
+      "recording": "teeth_crack_L_torque_circulation_1000rpm_10Nm",
+      "class": "tooth_crack",
+      "severity": "L",
+      "mode": "load varying",
+      "rpm": 1000,
+      "torque_nm": 10
+    },
+    {
+      "file": "MCC5-THU gearbox fault diagnosis datasets/teeth_crack_M_speed_circulation_10Nm-2000rpm.csv",
+      "recording": "teeth_crack_M_speed_circulation_10Nm-2000rpm",
+      "class": "tooth_crack",
+      "severity": "M",
+      "mode": "speed varying",
+      "rpm": 2000,
+      "torque_nm": 10
+    },
+    {
+      "file": "MCC5-THU gearbox fault diagnosis datasets/gear_pitting_H_torque_circulation_2000rpm_20Nm.csv",
+      "recording": "gear_pitting_H_torque_circulation_2000rpm_20Nm",
+      "class": "gear_pitting",
+      "severity": "H",
+      "mode": "load varying",
+      "rpm": 2000,
+      "torque_nm": 20
+    },
+    {
+      "file": "MCC5-THU gearbox fault diagnosis datasets/teeth_crack_L_speed_circulation_10Nm-3000rpm.csv",
+      "recording": "teeth_crack_L_speed_circulation_10Nm-3000rpm",
+      "class": "tooth_crack",
+      "severity": "L",
+      "mode": "speed varying",
+      "rpm": 3000,
+      "torque_nm": 10
+    },
+    {
+      "file": "MCC5-THU gearbox fault diagnosis datasets/gear_pitting_H_speed_circulation_20Nm-1000rpm.csv",
+      "recording": "gear_pitting_H_speed_circulation_20Nm-1000rpm",
+      "class": "gear_pitting",
+      "severity": "H",
+      "mode": "speed varying",
+      "rpm": 1000,
+      "torque_nm": 20
+    },
+    {
+      "file": "MCC5-THU gearbox fault diagnosis datasets/gear_wear_L_torque_circulation_1000rpm_20Nm.csv",
+      "recording": "gear_wear_L_torque_circulation_1000rpm_20Nm",
+      "class": "gear_wear",
+      "severity": "L",
+      "mode": "load varying",
+      "rpm": 1000,
+      "torque_nm": 20
+    },
+    {
+      "file": "MCC5-THU gearbox fault diagnosis datasets/gear_wear_L_speed_circulation_10Nm-1000rpm.csv",
+      "recording": "gear_wear_L_speed_circulation_10Nm-1000rpm",
+      "class": "gear_wear",
+      "severity": "L",
+      "mode": "speed varying",
+      "rpm": 1000,
+      "torque_nm": 10
+    },
+    {
+      "file": "MCC5-THU gearbox fault diagnosis datasets/gear_wear_H_torque_circulation_2000rpm_10Nm.csv",
+      "recording": "gear_wear_H_torque_circulation_2000rpm_10Nm",
+      "class": "gear_wear",
+      "severity": "H",
+      "mode": "load varying",
+      "rpm": 2000,
+      "torque_nm": 10
+    },
+    {
+      "file": "MCC5-THU gearbox fault diagnosis datasets/health_speed_circulation_20Nm-1000rpm.csv",
+      "recording": "health_speed_circulation_20Nm-1000rpm",
+      "class": "healthy",
+      "severity": "none",
+      "mode": "speed varying",
+      "rpm": 1000,
+      "torque_nm": 20
+    },
+    {
+      "file": "MCC5-THU gearbox fault diagnosis datasets/gear_wear_M_speed_circulation_20Nm-1000rpm.csv",
+      "recording": "gear_wear_M_speed_circulation_20Nm-1000rpm",
+      "class": "gear_wear",
+      "severity": "M",
+      "mode": "speed varying",
+      "rpm": 1000,
+      "torque_nm": 20
+    },
+    {
+      "file": "MCC5-THU gearbox fault diagnosis datasets/health_torque_circulation_2000rpm_20Nm.csv",
+      "recording": "health_torque_circulation_2000rpm_20Nm",
+      "class": "healthy",
+      "severity": "none",
+      "mode": "load varying",
+      "rpm": 2000,
+      "torque_nm": 20
+    },
+    {
+      "file": "MCC5-THU gearbox fault diagnosis datasets/gear_wear_L_torque_circulation_3000rpm_20Nm.csv",
+      "recording": "gear_wear_L_torque_circulation_3000rpm_20Nm",
+      "class": "gear_wear",
+      "severity": "L",
+      "mode": "load varying",
+      "rpm": 3000,
+      "torque_nm": 20
+    },
+    {
+      "file": "MCC5-THU gearbox fault diagnosis datasets/gear_wear_H_speed_circulation_10Nm-2000rpm.csv",
+      "recording": "gear_wear_H_speed_circulation_10Nm-2000rpm",
+      "class": "gear_wear",
+      "severity": "H",
+      "mode": "speed varying",
+      "rpm": 2000,
+      "torque_nm": 10
+    },
+    {
+      "file": "MCC5-THU gearbox fault diagnosis datasets/teeth_crack_M_torque_circulation_2000rpm_20Nm.csv",
+      "recording": "teeth_crack_M_torque_circulation_2000rpm_20Nm",
+      "class": "tooth_crack",
+      "severity": "M",
+      "mode": "load varying",
+      "rpm": 2000,
+      "torque_nm": 20
+    },
+    {
+      "file": "MCC5-THU gearbox fault diagnosis datasets/gear_pitting_M_torque_circulation_2000rpm_20Nm.csv",
+      "recording": "gear_pitting_M_torque_circulation_2000rpm_20Nm",
+      "class": "gear_pitting",
+      "severity": "M",
+      "mode": "load varying",
+      "rpm": 2000,
+      "torque_nm": 20
+    },
+    {
+      "file": "MCC5-THU gearbox fault diagnosis datasets/gear_wear_H_speed_circulation_20Nm-3000rpm.csv",
+      "recording": "gear_wear_H_speed_circulation_20Nm-3000rpm",
+      "class": "gear_wear",
+      "severity": "H",
+      "mode": "speed varying",
+      "rpm": 3000,
+      "torque_nm": 20
+    },
+    {
+      "file": "MCC5-THU gearbox fault diagnosis datasets/teeth_crack_H_speed_circulation_20Nm-1000rpm.csv",
+      "recording": "teeth_crack_H_speed_circulation_20Nm-1000rpm",
+      "class": "tooth_crack",
+      "severity": "H",
+      "mode": "speed varying",
+      "rpm": 1000,
+      "torque_nm": 20
+    },
+    {
+      "file": "MCC5-THU gearbox fault diagnosis datasets/gear_pitting_L_speed_circulation_10Nm-3000rpm.csv",
+      "recording": "gear_pitting_L_speed_circulation_10Nm-3000rpm",
+      "class": "gear_pitting",
+      "severity": "L",
+      "mode": "speed varying",
+      "rpm": 3000,
+      "torque_nm": 10
+    },
+    {
+      "file": "MCC5-THU gearbox fault diagnosis datasets/gear_pitting_L_torque_circulation_3000rpm_10Nm.csv",
+      "recording": "gear_pitting_L_torque_circulation_3000rpm_10Nm",
+      "class": "gear_pitting",
+      "severity": "L",
+      "mode": "load varying",
+      "rpm": 3000,
+      "torque_nm": 10
+    },
+    {
+      "file": "MCC5-THU gearbox fault diagnosis datasets/gear_pitting_M_speed_circulation_10Nm-2000rpm.csv",
+      "recording": "gear_pitting_M_speed_circulation_10Nm-2000rpm",
+      "class": "gear_pitting",
+      "severity": "M",
+      "mode": "speed varying",
+      "rpm": 2000,
+      "torque_nm": 10
+    },
+    {
+      "file": "MCC5-THU gearbox fault diagnosis datasets/gear_pitting_L_speed_circulation_20Nm-2000rpm.csv",
+      "recording": "gear_pitting_L_speed_circulation_20Nm-2000rpm",
+      "class": "gear_pitting",
+      "severity": "L",
+      "mode": "speed varying",
+      "rpm": 2000,
+      "torque_nm": 20
+    },
+    {
+      "file": "MCC5-THU gearbox fault diagnosis datasets/gear_pitting_M_speed_circulation_20Nm-3000rpm.csv",
+      "recording": "gear_pitting_M_speed_circulation_20Nm-3000rpm",
+      "class": "gear_pitting",
+      "severity": "M",
+      "mode": "speed varying",
+      "rpm": 3000,
+      "torque_nm": 20
+    },
+    {
+      "file": "MCC5-THU gearbox fault diagnosis datasets/gear_wear_M_torque_circulation_2000rpm_10Nm.csv",
+      "recording": "gear_wear_M_torque_circulation_2000rpm_10Nm",
+      "class": "gear_wear",
+      "severity": "M",
+      "mode": "load varying",
+      "rpm": 2000,
+      "torque_nm": 10
+    },
+    {
+      "file": "MCC5-THU gearbox fault diagnosis datasets/teeth_crack_L_torque_circulation_3000rpm_10Nm.csv",
+      "recording": "teeth_crack_L_torque_circulation_3000rpm_10Nm",
+      "class": "tooth_crack",
+      "severity": "L",
+      "mode": "load varying",
+      "rpm": 3000,
+      "torque_nm": 10
+    },
+    {
+      "file": "MCC5-THU gearbox fault diagnosis datasets/gear_pitting_H_speed_circulation_10Nm-1000rpm.csv",
+      "recording": "gear_pitting_H_speed_circulation_10Nm-1000rpm",
+      "class": "gear_pitting",
+      "severity": "H",
+      "mode": "speed varying",
+      "rpm": 1000,
+      "torque_nm": 10
+    },
+    {
+      "file": "MCC5-THU gearbox fault diagnosis datasets/teeth_crack_L_speed_circulation_20Nm-3000rpm.csv",
+      "recording": "teeth_crack_L_speed_circulation_20Nm-3000rpm",
+      "class": "tooth_crack",
+      "severity": "L",
+      "mode": "speed varying",
+      "rpm": 3000,
+      "torque_nm": 20
+    },
+    {
+      "file": "MCC5-THU gearbox fault diagnosis datasets/teeth_crack_L_torque_circulation_2000rpm_10Nm.csv",
+      "recording": "teeth_crack_L_torque_circulation_2000rpm_10Nm",
+      "class": "tooth_crack",
+      "severity": "L",
+      "mode": "load varying",
+      "rpm": 2000,
+      "torque_nm": 10
+    },
+    {
+      "file": "MCC5-THU gearbox fault diagnosis datasets/teeth_crack_M_speed_circulation_20Nm-2000rpm.csv",
+      "recording": "teeth_crack_M_speed_circulation_20Nm-2000rpm",
+      "class": "tooth_crack",
+      "severity": "M",
+      "mode": "speed varying",
+      "rpm": 2000,
+      "torque_nm": 20
+    },
+    {
+      "file": "MCC5-THU gearbox fault diagnosis datasets/gear_wear_M_torque_circulation_3000rpm_10Nm.csv",
+      "recording": "gear_wear_M_torque_circulation_3000rpm_10Nm",
+      "class": "gear_wear",
+      "severity": "M",
+      "mode": "load varying",
+      "rpm": 3000,
+      "torque_nm": 10
+    },
+    {
+      "file": "MCC5-THU gearbox fault diagnosis datasets/gear_pitting_H_torque_circulation_1000rpm_20Nm.csv",
+      "recording": "gear_pitting_H_torque_circulation_1000rpm_20Nm",
+      "class": "gear_pitting",
+      "severity": "H",
+      "mode": "load varying",
+      "rpm": 1000,
+      "torque_nm": 20
+    },
+    {
+      "file": "MCC5-THU gearbox fault diagnosis datasets/teeth_crack_L_speed_circulation_10Nm-2000rpm.csv",
+      "recording": "teeth_crack_L_speed_circulation_10Nm-2000rpm",
+      "class": "tooth_crack",
+      "severity": "L",
+      "mode": "speed varying",
+      "rpm": 2000,
+      "torque_nm": 10
+    },
+    {
+      "file": "MCC5-THU gearbox fault diagnosis datasets/teeth_crack_M_speed_circulation_10Nm-3000rpm.csv",
+      "recording": "teeth_crack_M_speed_circulation_10Nm-3000rpm",
+      "class": "tooth_crack",
+      "severity": "M",
+      "mode": "speed varying",
+      "rpm": 3000,
+      "torque_nm": 10
+    },
+    {
+      "file": "MCC5-THU gearbox fault diagnosis datasets/teeth_crack_H_torque_circulation_1000rpm_20Nm.csv",
+      "recording": "teeth_crack_H_torque_circulation_1000rpm_20Nm",
+      "class": "tooth_crack",
+      "severity": "H",
+      "mode": "load varying",
+      "rpm": 1000,
+      "torque_nm": 20
+    },
+    {
+      "file": "MCC5-THU gearbox fault diagnosis datasets/gear_pitting_L_torque_circulation_2000rpm_10Nm.csv",
+      "recording": "gear_pitting_L_torque_circulation_2000rpm_10Nm",
+      "class": "gear_pitting",
+      "severity": "L",
+      "mode": "load varying",
+      "rpm": 2000,
+      "torque_nm": 10
+    },
+    {
+      "file": "MCC5-THU gearbox fault diagnosis datasets/gear_wear_M_speed_circulation_10Nm-1000rpm.csv",
+      "recording": "gear_wear_M_speed_circulation_10Nm-1000rpm",
+      "class": "gear_wear",
+      "severity": "M",
+      "mode": "speed varying",
+      "rpm": 1000,
+      "torque_nm": 10
+    },
+    {
+      "file": "MCC5-THU gearbox fault diagnosis datasets/gear_wear_H_torque_circulation_1000rpm_10Nm.csv",
+      "recording": "gear_wear_H_torque_circulation_1000rpm_10Nm",
+      "class": "gear_wear",
+      "severity": "H",
+      "mode": "load varying",
+      "rpm": 1000,
+      "torque_nm": 10
+    },
+    {
+      "file": "MCC5-THU gearbox fault diagnosis datasets/health_speed_circulation_10Nm-1000rpm.csv",
+      "recording": "health_speed_circulation_10Nm-1000rpm",
+      "class": "healthy",
+      "severity": "none",
+      "mode": "speed varying",
+      "rpm": 1000,
+      "torque_nm": 10
+    },
+    {
+      "file": "MCC5-THU gearbox fault diagnosis datasets/gear_pitting_M_torque_circulation_3000rpm_20Nm.csv",
+      "recording": "gear_pitting_M_torque_circulation_3000rpm_20Nm",
+      "class": "gear_pitting",
+      "severity": "M",
+      "mode": "load varying",
+      "rpm": 3000,
+      "torque_nm": 20
+    },
+    {
+      "file": "MCC5-THU gearbox fault diagnosis datasets/health_torque_circulation_3000rpm_20Nm.csv",
+      "recording": "health_torque_circulation_3000rpm_20Nm",
+      "class": "healthy",
+      "severity": "none",
+      "mode": "load varying",
+      "rpm": 3000,
+      "torque_nm": 20
+    },
+    {
+      "file": "MCC5-THU gearbox fault diagnosis datasets/teeth_crack_M_torque_circulation_3000rpm_20Nm.csv",
+      "recording": "teeth_crack_M_torque_circulation_3000rpm_20Nm",
+      "class": "tooth_crack",
+      "severity": "M",
+      "mode": "load varying",
+      "rpm": 3000,
+      "torque_nm": 20
+    },
+    {
+      "file": "MCC5-THU gearbox fault diagnosis datasets/gear_wear_L_torque_circulation_2000rpm_20Nm.csv",
+      "recording": "gear_wear_L_torque_circulation_2000rpm_20Nm",
+      "class": "gear_wear",
+      "severity": "L",
+      "mode": "load varying",
+      "rpm": 2000,
+      "torque_nm": 20
+    },
+    {
+      "file": "MCC5-THU gearbox fault diagnosis datasets/gear_wear_L_speed_circulation_20Nm-1000rpm.csv",
+      "recording": "gear_wear_L_speed_circulation_20Nm-1000rpm",
+      "class": "gear_wear",
+      "severity": "L",
+      "mode": "speed varying",
+      "rpm": 1000,
+      "torque_nm": 20
+    }
+  ]
+}

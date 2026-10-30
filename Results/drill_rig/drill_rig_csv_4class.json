@@ -1,0 +1,253 @@
+{
+  "machine": "drill_rig",
+  "source": "MCC5-THU, Mendeley Data p92gj2732w v2 (doi 10.17632/p92gj2732w.2), CC BY 4.0",
+  "modality": "sensor only (no matching gear image dataset found)",
+  "classes": [
+    "healthy",
+    "gear_wear",
+    "gear_pitting",
+    "tooth_crack"
+  ],
+  "recordings": 120,
+  "windows": 7080,
+  "test": "leave one speed out (1000 / 2000 / 3000 rpm); model chosen by inner leave-one-speed-out on the training speeds; one answer per recording (mean of its 1 s windows)",
+  "features": "84 per 1 s window: RMS, std, peak, crest, skewness, kurtosis and 8 relative log band energies for each of 6 vibration channels",
+  "folds": [
+    {
+      "held_out_rpm": 1000,
+      "test_recordings": 40,
+      "chosen_model": "Gradient boosting",
+      "accuracy": 0.95,
+      "inner_macro_f1": {
+        "Majority class (control)": 0.1154,
+        "Logistic regression": 0.5243,
+        "Random forest": 0.486,
+        "Extra trees": 0.4625,
+        "Gradient boosting": 0.6459
+      }
+    },
+    {
+      "held_out_rpm": 2000,
+      "test_recordings": 40,
+      "chosen_model": "Gradient boosting",
+      "accuracy": 0.875,
+      "inner_macro_f1": {
+        "Majority class (control)": 0.1154,
+        "Logistic regression": 0.5063,
+        "Random forest": 0.4648,
+        "Extra trees": 0.4764,
+        "Gradient boosting": 0.5892
+      }
+    },
+    {
+      "held_out_rpm": 3000,
+      "test_recordings": 40,
+      "chosen_model": "Gradient boosting",
+      "accuracy": 0.55,
+      "inner_macro_f1": {
+        "Majority class (control)": 0.1154,
+        "Logistic regression": 0.5832,
+        "Random forest": 0.4843,
+        "Extra trees": 0.4939,
+        "Gradient boosting": 0.689
+      }
+    }
+  ],
+  "validation_selected": {
+    "score": {
+      "test_units": 120,
+      "accuracy": 0.7917,
+      "balanced_accuracy": 0.7431,
+      "macro_f1": 0.7719,
+      "confusion_matrix": [
+        [
+          6,
+          6,
+          0,
+          0
+        ],
+        [
+          0,
+          35,
+          0,
+          1
+        ],
+        [
+          0,
+          5,
+          29,
+          2
+        ],
+        [
+          0,
+          10,
+          1,
+          25
+        ]
+      ]
+    }
+  },
+  "models": {
+    "Majority class (control)": {
+      "test_units": 120,
+      "accuracy": 0.3,
+      "balanced_accuracy": 0.25,
+      "macro_f1": 0.1154,
+      "confusion_matrix": [
+        [
+          0,
+          0,
+          12,
+          0
+        ],
+        [
+          0,
+          0,
+          36,
+          0
+        ],
+        [
+          0,
+          0,
+          36,
+          0
+        ],
+        [
+          0,
+          0,
+          36,
+          0
+        ]
+      ]
+    },
+    "Logistic regression": {
+      "test_units": 120,
+      "accuracy": 0.75,
+      "balanced_accuracy": 0.7083,
+      "macro_f1": 0.7298,
+      "confusion_matrix": [
+        [
+          6,
+          6,
+          0,
+          0
+        ],
+        [
+          0,
+          35,
+          1,
+          0
+        ],
+        [
+          0,
+          6,
+          30,
+          0
+        ],
+        [
+          1,
+          15,
+          1,
+          19
+        ]
+      ]
+    },
+    "Random forest": {
+      "test_units": 120,
+      "accuracy": 0.75,
+      "balanced_accuracy": 0.625,
+      "macro_f1": 0.5949,
+      "confusion_matrix": [
+        [
+          0,
+          12,
+          0,
+          0
+        ],
+        [
+          0,
+          36,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          32,
+          4
+        ],
+        [
+          0,
+          13,
+          1,
+          22
+        ]
+      ]
+    },
+    "Extra trees": {
+      "test_units": 120,
+      "accuracy": 0.7083,
+      "balanced_accuracy": 0.5903,
+      "macro_f1": 0.5517,
+      "confusion_matrix": [
+        [
+          0,
+          11,
+          0,
+          1
+        ],
+        [
+          0,
+          36,
+          0,
+          0
+        ],
+        [
+          0,
+          1,
+          35,
+          0
+        ],
+        [
+          0,
+          21,
+          1,
+          14
+        ]
+      ]
+    },
+    "Gradient boosting": {
+      "test_units": 120,
+      "accuracy": 0.7917,
+      "balanced_accuracy": 0.7431,
+      "macro_f1": 0.7719,
+      "confusion_matrix": [
+        [
+          6,
+          6,
+          0,
+          0
+        ],
+        [
+          0,
+          35,
+          0,
+          1
+        ],
+        [
+          0,
+          5,
+          29,
+          2
+        ],
+        [
+          0,
+          10,
+          1,
+          25
+        ]
+      ]
+    }
+  },
+  "caveat": "one laboratory gearbox; one healthy gear but three separately machined gears per fault, so the healthy class has fewer independent examples; recordings are 60 s each"
+}
