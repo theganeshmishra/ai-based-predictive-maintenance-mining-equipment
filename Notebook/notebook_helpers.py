@@ -7,6 +7,7 @@ notebook uses these helpers to run a selected model and display saved results.
 from __future__ import annotations
 
 import contextlib
+import csv
 import json
 import os
 import platform
@@ -25,9 +26,55 @@ from IPython.display import Image, display
 # Harmless scikit-learn/joblib notice that can repeat thousands of times inside a notebook kernel
 warnings.filterwarnings("ignore", message=r".*sklearn\.utils\.parallel\.delayed.*")
 
-_here = Path.cwd().resolve()
-ROOT = next(p for p in (_here, *_here.parents) if (p / "Models").is_dir() and (p / "Results").is_dir())
+ROOT = Path(__file__).resolve().parents[1]
 RAW, PROCESSED, RESULTS = ROOT / "Raw_Data", ROOT / "Processed_Data", ROOT / "Results"
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+# Shared data readers. Files are loaded only when requested.
+RAW_DATA, PROCESSED_DATA, IMAGE_DATA = RAW, PROCESSED, ROOT / "Images"
+
+
+def load_mat(path, *args, **kwargs):
+    from scipy.io import loadmat
+    return loadmat(path, *args, **kwargs)
+
+
+def load_csv(path, *args, **kwargs):
+    import pandas as pd
+    return pd.read_csv(path, *args, **kwargs)
+
+
+def load_excel(path, *args, **kwargs):
+    import pandas as pd
+    return pd.read_excel(path, *args, **kwargs)
+
+
+def load_numpy(path, *args, **kwargs):
+    import numpy as np
+    return np.load(path, *args, **kwargs)
+
+
+def load_image(path, flags=None):
+    import cv2
+    return cv2.imread(str(path), cv2.IMREAD_COLOR if flags is None else flags)
+
+
+def open_archive(path, *args, **kwargs):
+    """Return a ZIP reader; use a with statement to close it after reading."""
+    return zipfile.ZipFile(path, *args, **kwargs)
+
+
+def load_image_index(machine, variant=''):
+    """Read filenames, labels and recording groups without loading image pixels."""
+    if variant not in ('', 'allframes', 'denseframes'):
+        raise ValueError('variant must be empty, allframes or denseframes')
+    if machine not in ('pump', 'haul_truck', 'belt_conveyor', 'excavator', 'dozer', 'wheel_loader'):
+        raise ValueError('Unknown equipment mapping')
+    folder = machine + (f'_{variant}' if variant else '')
+    with (IMAGE_DATA / folder / 'index.csv').open(encoding='utf-8', newline='') as handle:
+        return list(csv.DictReader(handle))
+
+
 METRICS = ("accuracy", "balanced_accuracy", "macro_precision", "macro_recall", "macro_f1")
 
 

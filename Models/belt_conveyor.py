@@ -36,6 +36,13 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 
+# Shared data readers live in the notebook helper file.
+import sys
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+from Notebook.notebook_helpers import load_csv, load_excel, load_image, load_mat as loadmat, load_numpy, open_archive
+
+
 # ==================================================================================================
 # intake: download CORA infrared stacks and bounded T1 samples
 # (formerly Preprocessing/cora_gear_intake.py)
@@ -281,7 +288,6 @@ def inspect_file(run: bool = True) -> dict:
     from pathlib import Path
 
     import numpy as np
-    from scipy.io import loadmat
 
 
     FAULT_NAMES = {
@@ -471,7 +477,7 @@ def preprocess(run: bool = True) -> dict:
             raise ValueError("Window duration is not an integer number of sensor samples.")
 
         rows: list[dict[str, float | int | str]] = []
-        reader = pd.read_csv(path, header=None, chunksize=samples_per_window)
+        reader = load_csv(path, header=None, chunksize=samples_per_window)
         for index, chunk in enumerate(reader):
             if max_windows is not None and index >= max_windows:
                 break
@@ -590,7 +596,6 @@ def experiment(run: bool = True) -> dict:
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
     import numpy as np
-    from scipy.io import loadmat
     from scipy.stats import binomtest
     from sklearn.dummy import DummyClassifier
     from sklearn.linear_model import LogisticRegression
@@ -839,7 +844,7 @@ def experiment(run: bool = True) -> dict:
         intake = json.loads(INTAKE.read_text(encoding="utf-8"))
         if set(intake["runs"]) != set(RUNS):
             raise ValueError("Intake must contain all 16 CORA experiments")
-        samples = np.load(PROCESSED / "t1_bounded_samples.npz")
+        samples = load_numpy(PROCESSED / "t1_bounded_samples.npz")
         if set(samples.files) != set(RUNS):
             raise ValueError("Sensor cache must contain exactly 16 runs")
         sensor_rows = []
@@ -987,7 +992,7 @@ def baselines(run: bool = True) -> dict:
         branches = {}
         e = experiment(run=False)
         runs = list(e["RUNS"])
-        samples = np.load(e["PROCESSED"] / "t1_bounded_samples.npz")
+        samples = load_numpy(e["PROCESSED"] / "t1_bounded_samples.npz")
         sensor_x = np.asarray([e["sensor_features"](samples[r]) for r in runs])
         camera_x = np.asarray([e["infrared_features"](e["RAW"] / f"{r}.mat") for r in runs])
         y = np.asarray(["healthy" if r.startswith("H_") else "gear_worn" for r in runs])
@@ -1039,7 +1044,6 @@ def export_images(run: bool = True) -> dict:
 
     import cv2
     import numpy as np
-    from scipy.io import loadmat
 
     MACHINE = "belt_conveyor"
     OUT = ROOT / "Images" / MACHINE
@@ -1153,7 +1157,6 @@ def csv(run: bool = True) -> dict:
                                  precision_recall_fscore_support)
 
     import pandas as pd
-    from scipy.io import loadmat
     from sklearn.dummy import DummyClassifier
     from sklearn.ensemble import RandomForestClassifier
     from sklearn.linear_model import LogisticRegression
@@ -1228,11 +1231,11 @@ def csv(run: bool = True) -> dict:
         """
         cache = ROOT / "Processed_Data" / "cora_vibration" / f"{run_name}_Vx_features.csv"
         if cache.is_file():
-            return pd.read_csv(cache)
+            return load_csv(cache)
         source = ROOT / "Raw_Data" / "cora_vibration" / f"{run_name}_Vx.csv"
         if not source.is_file():
             raise SystemExit(f"Missing {source.relative_to(ROOT)}: download it and run the intake command")
-        values = pd.read_csv(source, header=None, dtype=np.float64).iloc[:, 0].to_numpy()
+        values = load_csv(source, header=None, dtype=np.float64).iloc[:, 0].to_numpy()
         frame = vibration_frame(values, speed)
         frame.insert(0, "window", np.arange(len(frame)))
         frame.insert(0, "class", label)
@@ -1264,7 +1267,7 @@ def csv(run: bool = True) -> dict:
 
     def build_table():
         e = experiment(run=False)
-        samples = np.load(e["PROCESSED"] / "t1_bounded_samples.npz")
+        samples = load_numpy(e["PROCESSED"] / "t1_bounded_samples.npz")
         labels = {"H": "healthy", "W25": "wear25", "W50": "wear50", "W75": "wear75"}
         frames = []
         for run_name in e["RUNS"]:
@@ -1509,7 +1512,7 @@ def cnn(run: bool = True) -> dict:
     def load(rows):
         images = []
         for row in rows:
-            image = cv2.imread(str(IMAGES / row["file"]), cv2.IMREAD_COLOR)
+            image = load_image(str(IMAGES / row["file"]), cv2.IMREAD_COLOR)
             if image is None:
                 raise FileNotFoundError(f"Missing image {row['file']}: run export-images first")
             channels = [0]  # infrared images are grayscale
@@ -1725,7 +1728,7 @@ def cnn_pretrained(run: bool = True) -> dict:
     def load(rows):
         images = []
         for row in rows:
-            image = cv2.imread(str(IMAGES / row["file"]), cv2.IMREAD_COLOR)
+            image = load_image(str(IMAGES / row["file"]), cv2.IMREAD_COLOR)
             if image is None:
                 raise FileNotFoundError(f"Missing image {row['file']}: run export-images first")
             image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB).astype(np.float32).transpose(2, 0, 1)
@@ -2014,9 +2017,9 @@ def predict(run: bool = True) -> dict:
     MODEL_PATH = ROOT / "Processed_Data" / "models" / "belt_conveyor_sensor_model.joblib"
 
     def read_any(path):
-        table = pd.read_csv(path)
+        table = load_csv(path)
         if all(_is_number(c) for c in table.columns):   # no header row: plain column(s) of numbers
-            table = pd.read_csv(path, header=None)
+            table = load_csv(path, header=None)
         return table
 
     def _is_number(text):
