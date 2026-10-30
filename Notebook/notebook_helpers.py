@@ -510,6 +510,23 @@ def show_test_images(machine: str | None = None) -> None:
         plt.show()
 
 
+def show_drill_rig() -> None:
+    """Drill Rig, separate data: MCC5-THU gearbox vibration, 4 classes, each speed held out in turn."""
+    result = load("drill_rig_csv_4class.json")
+    if not result:
+        print("No result yet: run  python Notebook/notebook_helpers.py drill_rig all")
+        return
+    rows = {"validation-selected model (main result)": result["validation_selected"]["score"], **result["models"]}
+    table = pd.DataFrame({name: metrics(block) for name, block in rows.items()}).T
+    table.insert(0, "tested", [f"{block['test_units']} recordings" for block in rows.values()])
+    display(table)
+    display(pd.DataFrame(result["folds"]).drop(columns="inner_macro_f1").set_index("held_out_rpm"))
+    figure = ROOT / "Figures" / "drill_rig" / "drill_rig_csv_4class.png"
+    if figure.exists():
+        display(Image(filename=str(figure), width=480))
+    print(f"{result['recordings']} recordings, {result['windows']:,} windows. Caveat: {result['caveat']}")
+
+
 def show_thermal_motor() -> None:
     """Excavator, separate image data: Kulkarni motor thermal images, healthy vs corroded bearing, unseen load."""
     result = load("excavator_thermal_motor_2class.json")
@@ -12455,6 +12472,275 @@ def _make_wheel_loader():
     return SimpleNamespace(**locals())
 
 
+# DRILL_RIG MODEL IMPLEMENTATION
+def _make_drill_rig():
+    """Drill Rig (machine 7): rotary-head reduction gear, gearbox vibration. SENSOR ONLY, separate data.
+
+    Data: MCC5-THU gearbox fault diagnosis datasets (Chen et al., Tsinghua University, Mendeley Data
+    p92gj2732w v2, CC BY 4.0). A two-stage parallel gearbox; the faulty gear is the 36-tooth gear on the
+    intermediate shaft. This is NOT the CORA rig, so the Drill Rig does not reuse another machine's data.
+    No public gear-wear image dataset could be verified, so there is no camera model for this machine.
+
+    4 classes: healthy, gear wear, gear pitting, tooth crack. Every fault is present at three severities
+    (light, medium, high), each a separately machined gear; every gear is run under 12 working conditions
+    (speed varying at 10 or 20 Nm, or load varying at 1000, 2000 or 3000 rpm). 120 recordings, 60 s each,
+    12.8 kHz, six vibration channels.
+
+    Fair test: leave one speed out (1000 / 2000 / 3000 rpm). Inside each training set the other two speeds
+    are used, one at a time, to choose the model. Each held-out recording gets one answer (mean of its
+    1 s windows).
+
+    Usage:
+        python Notebook/notebook_helpers.py drill_rig <command>
+
+    Commands:
+        intake   check the downloaded zip against the published SHA-256 and list the recordings used
+        csv      4-class gearbox-vibration model, leave one speed out (validation-selected model)
+        all      run intake, then csv
+
+    Raw data stays in Raw_Data/ and Processed_Data/ (not in Git).
+    """
+    MACHINE = "drill_rig"
+    ZIP = ROOT / "Raw_Data" / "mcc5_thu_gearbox" / "MCC5-THU gearbox fault diagnosis datasets.zip"
+    SHA256 = "dcf7ba4b2d375c951ea57baf9bf90db4b3196982b324a13d85b187f286116b86"
+    SOURCE = "MCC5-THU, Mendeley Data p92gj2732w v2 (doi 10.17632/p92gj2732w.2), CC BY 4.0"
+    PREFIX = {"health": "healthy", "gear_wear": "gear_wear", "gear_pitting": "gear_pitting", "teeth_crack": "tooth_crack"}
+    LABELS = ["healthy", "gear_wear", "gear_pitting", "tooth_crack"]
+    CHANNELS = ["motor_vibration_x", "motor_vibration_y", "motor_vibration_z",
+                "gearbox_vibration_x", "gearbox_vibration_y", "gearbox_vibration_z"]
+    RATE, WINDOW_SECONDS, SEED = 12_800, 1.0, 613
+    FEATURES = ROOT / "Processed_Data" / f"{MACHINE}_sensor_features_4class.csv"
+    RESULT = ROOT / "Results" / MACHINE / f"{MACHINE}_csv_4class.json"
+    INTAKE = ROOT / "Results" / MACHINE / f"{MACHINE}_mcc5_intake.json"
+    FIGURE = ROOT / "Figures" / MACHINE / f"{MACHINE}_csv_4class.png"
+
+    def parse(name):
+        """Class, severity and working condition from a file name such as gear_wear_M_speed_circulation_10Nm-1000rpm.csv."""
+        import re
+        base = name.rsplit("/", 1)[-1][:-4]
+        for prefix, label in PREFIX.items():
+            if base.startswith(prefix + "_"):
+                rest = base[len(prefix) + 1:]
+                break
+        else:
+            return None
+        severity = "none"
+        if label != "healthy":
+            severity, rest = rest.split("_", 1)
+        if rest.startswith(("bearing", "and")):          # compound faults are not used
+            return None
+        mode = "speed varying" if rest.startswith("speed_circulation") else "load varying"
+        rpm = int(re.search(r"(\d+)rpm", rest).group(1))
+        torque = int(re.search(r"(\d+)Nm", rest).group(1))
+        return {"file": name, "recording": base, "class": label, "severity": severity, "mode": mode,
+                "rpm": rpm, "torque_nm": torque}
+
+    def members():
+        import zipfile
+        with zipfile.ZipFile(ZIP) as archive:
+            rows = [parse(i.filename) for i in archive.infolist()
+                    if i.filename.endswith(".csv") and "__MACOSX" not in i.filename]
+        return [r for r in rows if r]
+
+    def intake(run: bool = True) -> dict:
+        """Check the zip's SHA-256 against the published value and record which recordings are used."""
+        import hashlib
+        import json
+
+        def main():
+            if not ZIP.is_file():
+                raise SystemExit(f"Missing {ZIP}: download {SOURCE}")
+            digest = hashlib.sha256()
+            with ZIP.open("rb") as handle:
+                for block in iter(lambda: handle.read(1 << 22), b""):
+                    digest.update(block)
+            ok = digest.hexdigest() == SHA256
+            rows = members()
+            counts = {label: sum(r["class"] == label for r in rows) for label in LABELS}
+            INTAKE.parent.mkdir(parents=True, exist_ok=True)
+            INTAKE.write_text(json.dumps({"source": SOURCE, "sha256_expected": SHA256,
+                                          "sha256_matches": ok, "zip_bytes": ZIP.stat().st_size,
+                                          "recordings_used": counts, "recordings": rows}, indent=2) + "\n",
+                              encoding="utf-8")
+            print(f"SHA-256 {'matches' if ok else 'DOES NOT MATCH'} the published value; recordings used: {counts}")
+            if not ok:
+                raise SystemExit(2)
+
+        if run:
+            main()
+        return locals()
+
+    def features(signal):
+        """Fixed-size features of one 1 s window, per channel: time-domain statistics and 8 log band energies."""
+        import numpy as np
+        out = []
+        spectrum = np.abs(np.fft.rfft(signal - signal.mean(axis=0), axis=0)) ** 2
+        edges = np.linspace(0, spectrum.shape[0], 9).astype(int)
+        for c in range(signal.shape[1]):
+            x = signal[:, c]
+            rms = np.sqrt(np.mean(x ** 2))
+            centred = x - x.mean()
+            sd = centred.std() + 1e-12
+            out += [rms, sd, np.abs(x).max(), np.abs(x).max() / (rms + 1e-12),
+                    np.mean(centred ** 3) / sd ** 3, np.mean(centred ** 4) / sd ** 4]
+            total = spectrum[:, c].sum() + 1e-12
+            out += [np.log(spectrum[a:b, c].sum() / total + 1e-12) for a, b in zip(edges[:-1], edges[1:])]
+        return out
+
+    def feature_names():
+        names = []
+        for c in CHANNELS:
+            names += [f"{c}_{k}" for k in ("rms", "std", "peak", "crest", "skew", "kurtosis")]
+            names += [f"{c}_band{b}" for b in range(8)]
+        return names
+
+    def build_features():
+        import zipfile
+        import numpy as np
+        import pandas as pd
+        rows, size = [], int(RATE * WINDOW_SECONDS)
+        with zipfile.ZipFile(ZIP) as archive:
+            recordings = members()
+            for n, r in enumerate(recordings, 1):
+                with archive.open(r["file"]) as handle:
+                    signal = pd.read_csv(handle, usecols=CHANNELS, dtype="float32")[CHANNELS].to_numpy()
+                for w in range(len(signal) // size):
+                    rows.append({**{k: r[k] for k in ("recording", "class", "severity", "mode", "rpm", "torque_nm")},
+                                 "window": w, **dict(zip(feature_names(), features(signal[w * size:(w + 1) * size])))})
+                print(f"  {n}/{len(recordings)} {r['recording']}: {len(signal) // size} windows", flush=True)
+        table = pd.DataFrame(rows)
+        FEATURES.parent.mkdir(parents=True, exist_ok=True)
+        table.to_csv(FEATURES, index=False)
+        return table
+
+    def csv(run: bool = True) -> dict:
+        """4-class gearbox-vibration model, leave one speed out, model chosen on the training speeds only."""
+        import json
+        import matplotlib
+        matplotlib.use("Agg")
+        import matplotlib.pyplot as plt
+        import numpy as np
+        import pandas as pd
+        from sklearn.dummy import DummyClassifier
+        from sklearn.ensemble import ExtraTreesClassifier, HistGradientBoostingClassifier, RandomForestClassifier
+        from sklearn.linear_model import LogisticRegression
+        from sklearn.metrics import accuracy_score, balanced_accuracy_score, confusion_matrix, f1_score
+        from sklearn.pipeline import make_pipeline
+        from sklearn.preprocessing import StandardScaler
+
+        def candidates():
+            return {
+                "Majority class (control)": DummyClassifier(strategy="most_frequent"),
+                "Logistic regression": make_pipeline(StandardScaler(), LogisticRegression(max_iter=3000, C=0.5)),
+                "Random forest": RandomForestClassifier(300, min_samples_leaf=2, n_jobs=-1, random_state=SEED),
+                "Extra trees": ExtraTreesClassifier(300, min_samples_leaf=2, n_jobs=-1, random_state=SEED),
+                "Gradient boosting": HistGradientBoostingClassifier(max_iter=200, random_state=SEED),
+            }
+
+        def per_recording(model, table, rows):
+            """One answer per recording: the class with the highest mean window probability."""
+            p = model.predict_proba(table.loc[rows, feature_names()].to_numpy())
+            frame = pd.DataFrame(p, columns=model.classes_, index=table.index[rows])
+            frame["recording"] = table.loc[rows, "recording"].to_numpy()
+            mean = frame.groupby("recording").mean()
+            truth = table.loc[rows].groupby("recording")["class"].first().loc[mean.index]
+            return list(truth), list(mean.idxmax(axis=1))
+
+        def score(actual, predicted):
+            return {"test_units": len(actual),
+                    "accuracy": round(float(accuracy_score(actual, predicted)), 4),
+                    "balanced_accuracy": round(float(balanced_accuracy_score(actual, predicted)), 4),
+                    "macro_f1": round(float(f1_score(actual, predicted, labels=LABELS, average="macro", zero_division=0)), 4),
+                    "confusion_matrix": confusion_matrix(actual, predicted, labels=LABELS).tolist()}
+
+        def main():
+            table = pd.read_csv(FEATURES) if FEATURES.is_file() else build_features()
+            speeds = sorted(table["rpm"].unique())
+            print(f"{table['recording'].nunique()} recordings, {len(table)} windows; held-out speeds {speeds}")
+            models_actual, models_predicted = {name: [] for name in candidates()}, {name: [] for name in candidates()}
+            chosen_actual, chosen_predicted, folds = [], [], []
+            for speed in speeds:
+                train, test = (table["rpm"] != speed).to_numpy(), (table["rpm"] == speed).to_numpy()
+                # inner validation: each remaining speed held out once, inside the training data only
+                inner = {name: [] for name in candidates()}
+                for check in sorted(set(table.loc[train, "rpm"])):
+                    fit_rows, check_rows = train & (table["rpm"] != check).to_numpy(), (table["rpm"] == check).to_numpy()
+                    for name, model in candidates().items():
+                        model.fit(table.loc[fit_rows, feature_names()].to_numpy(), table.loc[fit_rows, "class"])
+                        a, p = per_recording(model, table, check_rows)
+                        inner[name].append(f1_score(a, p, labels=LABELS, average="macro", zero_division=0))
+                choice = max((n for n in inner if n != "Majority class (control)"), key=lambda n: np.mean(inner[n]))
+                for name, model in candidates().items():
+                    model.fit(table.loc[train, feature_names()].to_numpy(), table.loc[train, "class"])
+                    a, p = per_recording(model, table, test)
+                    models_actual[name] += a
+                    models_predicted[name] += p
+                    if name == choice:
+                        chosen_actual += a
+                        chosen_predicted += p
+                        fold_accuracy = accuracy_score(a, p)
+                folds.append({"held_out_rpm": int(speed), "test_recordings": int(table.loc[test, "recording"].nunique()),
+                              "chosen_model": choice, "accuracy": round(float(fold_accuracy), 4),
+                              "inner_macro_f1": {n: round(float(np.mean(v)), 4) for n, v in inner.items()}})
+                print(f"held-out {speed} rpm: chose {choice}; accuracy {fold_accuracy:.3f}", flush=True)
+            result = {
+                "machine": MACHINE, "source": SOURCE, "modality": "sensor only (no matching gear image dataset found)",
+                "classes": LABELS, "recordings": int(table["recording"].nunique()), "windows": int(len(table)),
+                "test": "leave one speed out (1000 / 2000 / 3000 rpm); model chosen by inner leave-one-speed-out "
+                        "on the training speeds; one answer per recording (mean of its 1 s windows)",
+                "features": f"{len(feature_names())} per 1 s window: RMS, std, peak, crest, skewness, kurtosis and "
+                            "8 relative log band energies for each of 6 vibration channels",
+                "folds": folds,
+                "validation_selected": {"score": score(chosen_actual, chosen_predicted)},
+                "models": {name: score(models_actual[name], models_predicted[name]) for name in candidates()},
+                "caveat": "one laboratory gearbox; one healthy gear but three separately machined gears per fault, "
+                          "so the healthy class has fewer independent examples; recordings are 60 s each",
+            }
+            RESULT.parent.mkdir(parents=True, exist_ok=True)
+            RESULT.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
+            s = result["validation_selected"]["score"]
+            matrix = np.asarray(s["confusion_matrix"])
+            figure, axis = plt.subplots(figsize=(5.6, 4.8))
+            axis.imshow(matrix, cmap="Blues", vmin=0)
+            axis.set_xticks(range(len(LABELS)), LABELS, rotation=25)
+            axis.set_yticks(range(len(LABELS)), LABELS)
+            axis.set_xlabel("Predicted")
+            axis.set_ylabel("Actual")
+            for i in range(len(LABELS)):
+                for j in range(len(LABELS)):
+                    axis.text(j, i, str(matrix[i, j]), ha="center", va="center",
+                              color="white" if matrix[i, j] > matrix.max() / 2 else "black")
+            axis.set_title(f"Drill Rig gearbox vibration (MCC5-THU), unseen speed\n"
+                           f"{s['test_units']} test recordings, accuracy {s['accuracy']:.3f}", fontsize=10)
+            figure.tight_layout()
+            FIGURE.parent.mkdir(parents=True, exist_ok=True)
+            figure.savefig(FIGURE, dpi=130)
+            plt.close(figure)
+            print(f"Validation-selected model: accuracy {s['accuracy']:.3f}, macro F1 {s['macro_f1']:.3f} "
+                  f"on {s['test_units']} unseen-speed recordings")
+            for name, block in result["models"].items():
+                print(f"  {name:26s} accuracy {block['accuracy']:.3f}")
+            print(f"Saved {RESULT.relative_to(ROOT)} and {FIGURE.relative_to(ROOT)}")
+
+        if run:
+            main()
+        return locals()
+
+    COMMANDS = {"intake": intake, "csv": csv}
+    RUN_ALL = ["intake", "csv"]
+
+    def cli() -> None:
+        if len(sys.argv) < 2 or sys.argv[1] not in (*COMMANDS, "all"):
+            print(_make_drill_rig.__doc__)
+            raise SystemExit(0 if len(sys.argv) < 2 or sys.argv[1] in ("-h", "--help") else 2)
+        command, options = sys.argv[1], sys.argv[2:]
+        for name in (RUN_ALL if command == "all" else [command]):
+            sys.argv = [f"drill_rig {name}", *(options if command != "all" else [])]
+            COMMANDS[name]()
+
+    return SimpleNamespace(**locals())
+
+
 # CORA_FULLDATA MODEL IMPLEMENTATION
 def _make_cora_fulldata():
     __doc__ = "Week 7 full-data sensor experiment for the CORA machines (Belt Conveyor, Dozer, Excavator, Wheel Loader).\n\nShared engine; each machine file has a `fulldata` command that calls `run(machine, conditions)`.\nUses every CORA sensor and every recording that exists for the machine's conditions:\n\n  - stationary runs (one 45-50 min run per condition and speed): vibration X/Y/Z (3 kHz), motor current\n    C1-C3 (4 kHz) and six temperature probes T1-T6 (1 kHz), EVERY 1-second window;\n  - start-up transient tests (FIVE 30 s repeats per condition and speed): vibration X/Y/Z and current\n    C1-C3; the steady part (10-30 s) is used, 20 one-second windows per repeat.\n\nMain test: each whole speed is held out in turn (4 rounds). Training uses all stationary and transient\nrecordings of the other three speeds; the held-out speed gives 6 test recordings per class (1 stationary\n+ 5 transient). One prediction per recording (mean class probabilities of its windows); every training\nrecording gets equal weight. The feature set and model are chosen by leave-one-speed-out validation\ninside the training speeds only. All features are computed per window from that window alone (vibration\nin shaft orders, current in supply-frequency orders), so no preprocessing looks at the held-out speed.\n\nSecondary (easier) time split: stationary runs only, first 60% of every run trains, last 30% tests.\nTemperature turned out to identify the recording session (it separates the conditions already in the\nfirst 5 minutes, before any fault heating), so temperature sets are reported but excluded from selection.\nTemperature is offered two ways: the pattern only (each probe relative to the others and to the run's first\nminute) and including absolute temperature, which mostly follows the room temperature of that recording day.\nResults go to Results/<machine>/<machine>_fulldata.json; the Week 6 results are not changed."
@@ -13025,7 +13311,7 @@ def _make_cora_fulldata():
 @lru_cache(maxsize=None)
 def get_model(equipment: str):
     """Construct one equipment namespace lazily, avoiding conflicting model names."""
-    factories = {"pump": _make_pump, "haul_truck": _make_haul_truck, "belt_conveyor": _make_belt_conveyor, "excavator": _make_excavator, "dozer": _make_dozer, "wheel_loader": _make_wheel_loader, "cora_fulldata": _make_cora_fulldata}
+    factories = {"pump": _make_pump, "haul_truck": _make_haul_truck, "belt_conveyor": _make_belt_conveyor, "excavator": _make_excavator, "dozer": _make_dozer, "wheel_loader": _make_wheel_loader, "drill_rig": _make_drill_rig, "cora_fulldata": _make_cora_fulldata}
     if equipment not in factories:
         raise ValueError(f"Unknown equipment: {equipment}")
     return factories[equipment]()
@@ -13034,7 +13320,7 @@ def get_model(equipment: str):
 if __name__ == "__main__":
     if len(sys.argv) < 2 or sys.argv[1] in ("-h", "--help"):
         print("Usage: python Notebook/notebook_helpers.py <equipment> <command> [options]")
-        print("Equipment: pump, haul_truck, belt_conveyor, excavator, dozer, wheel_loader")
+        print("Equipment: pump, haul_truck, belt_conveyor, excavator, dozer, wheel_loader, drill_rig")
     else:
         equipment = sys.argv.pop(1)
         get_model(equipment).cli()
