@@ -51,9 +51,9 @@ fi
 
 if [ "${1:-}" = "--data" ]; then
   step "Download automatically available data (Pump, Haul Truck, CORA thermal)"
-  "$PY" Models/pump.py intake
-  "$PY" Models/haul_truck.py intake --sensor-only
-  "$PY" Models/belt_conveyor.py intake
+  "$PY" Notebook/notebook_helpers.py pump intake
+  "$PY" Notebook/notebook_helpers.py haul_truck intake --sensor-only
+  "$PY" Notebook/notebook_helpers.py belt_conveyor intake
 fi
 
 step "Done"
