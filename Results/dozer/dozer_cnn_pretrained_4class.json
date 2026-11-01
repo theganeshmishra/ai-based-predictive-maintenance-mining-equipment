@@ -104,5 +104,225 @@
       "wear50": 0.7067,
       "wear75": 0.305
     }
+  },
+  "segment_level": {
+    "test_units": 160,
+    "accuracy": 0.5312,
+    "balanced_accuracy": 0.5312,
+    "macro_precision": 0.5449,
+    "macro_recall": 0.5312,
+    "macro_f1": 0.5069,
+    "confusion_matrix": [
+      [
+        10,
+        11,
+        8,
+        11
+      ],
+      [
+        1,
+        33,
+        4,
+        2
+      ],
+      [
+        0,
+        6,
+        29,
+        5
+      ],
+      [
+        6,
+        21,
+        0,
+        13
+      ]
+    ],
+    "per_class_recall": {
+      "healthy": 0.25,
+      "wear25": 0.825,
+      "wear50": 0.725,
+      "wear75": 0.325
+    },
+    "segments_per_recording": 10,
+    "note": "each held-out recording split in time order into consecutive parts, one prediction per part; parts of one recording are related, so the recording-level score stays the main result"
+  },
+  "per_recording": {
+    "H_F5_S": {
+      "class": "healthy",
+      "images": 150,
+      "images_predicted": {
+        "healthy": 0,
+        "wear25": 39,
+        "wear50": 53,
+        "wear75": 58
+      },
+      "recording_prediction": "wear50"
+    },
+    "W25_F5_S": {
+      "class": "wear25",
+      "images": 150,
+      "images_predicted": {
+        "healthy": 0,
+        "wear25": 82,
+        "wear50": 68,
+        "wear75": 0
+      },
+      "recording_prediction": "wear25"
+    },
+    "W50_F5_S": {
+      "class": "wear50",
+      "images": 150,
+      "images_predicted": {
+        "healthy": 0,
+        "wear25": 0,
+        "wear50": 150,
+        "wear75": 0
+      },
+      "recording_prediction": "wear50"
+    },
+    "W75_F5_S": {
+      "class": "wear75",
+      "images": 150,
+      "images_predicted": {
+        "healthy": 18,
+        "wear25": 50,
+        "wear50": 3,
+        "wear75": 79
+      },
+      "recording_prediction": "wear75"
+    },
+    "H_F15_S": {
+      "class": "healthy",
+      "images": 150,
+      "images_predicted": {
+        "healthy": 145,
+        "wear25": 5,
+        "wear50": 0,
+        "wear75": 0
+      },
+      "recording_prediction": "healthy"
+    },
+    "W25_F15_S": {
+      "class": "wear25",
+      "images": 150,
+      "images_predicted": {
+        "healthy": 35,
+        "wear25": 115,
+        "wear50": 0,
+        "wear75": 0
+      },
+      "recording_prediction": "wear25"
+    },
+    "W50_F15_S": {
+      "class": "wear50",
+      "images": 150,
+      "images_predicted": {
+        "healthy": 0,
+        "wear25": 0,
+        "wear50": 150,
+        "wear75": 0
+      },
+      "recording_prediction": "wear50"
+    },
+    "W75_F15_S": {
+      "class": "wear75",
+      "images": 150,
+      "images_predicted": {
+        "healthy": 80,
+        "wear25": 15,
+        "wear50": 19,
+        "wear75": 36
+      },
+      "recording_prediction": "healthy"
+    },
+    "H_F50_S": {
+      "class": "healthy",
+      "images": 150,
+      "images_predicted": {
+        "healthy": 0,
+        "wear25": 0,
+        "wear50": 70,
+        "wear75": 80
+      },
+      "recording_prediction": "wear75"
+    },
+    "W25_F50_S": {
+      "class": "wear25",
+      "images": 150,
+      "images_predicted": {
+        "healthy": 0,
+        "wear25": 113,
+        "wear50": 0,
+        "wear75": 37
+      },
+      "recording_prediction": "wear25"
+    },
+    "W50_F50_S": {
+      "class": "wear50",
+      "images": 150,
+      "images_predicted": {
+        "healthy": 0,
+        "wear25": 0,
+        "wear50": 120,
+        "wear75": 30
+      },
+      "recording_prediction": "wear50"
+    },
+    "W75_F50_S": {
+      "class": "wear75",
+      "images": 150,
+      "images_predicted": {
+        "healthy": 0,
+        "wear25": 82,
+        "wear50": 0,
+        "wear75": 68
+      },
+      "recording_prediction": "wear25"
+    },
+    "H_F60_S": {
+      "class": "healthy",
+      "images": 150,
+      "images_predicted": {
+        "healthy": 0,
+        "wear25": 150,
+        "wear50": 0,
+        "wear75": 0
+      },
+      "recording_prediction": "wear25"
+    },
+    "W25_F60_S": {
+      "class": "wear25",
+      "images": 150,
+      "images_predicted": {
+        "healthy": 0,
+        "wear25": 150,
+        "wear50": 0,
+        "wear75": 0
+      },
+      "recording_prediction": "wear25"
+    },
+    "W50_F60_S": {
+      "class": "wear50",
+      "images": 150,
+      "images_predicted": {
+        "healthy": 0,
+        "wear25": 86,
+        "wear50": 4,
+        "wear75": 60
+      },
+      "recording_prediction": "wear25"
+    },
+    "W75_F60_S": {
+      "class": "wear75",
+      "images": 150,
+      "images_predicted": {
+        "healthy": 0,
+        "wear25": 150,
+        "wear50": 0,
+        "wear75": 0
+      },
+      "recording_prediction": "wear25"
+    }
   }
 }

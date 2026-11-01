@@ -17,8 +17,8 @@
     "seed": 42,
     "epochs_chosen_per_round": [
       4,
-      4,
-      8,
+      13,
+      1,
       1
     ],
     "epoch_selection": "one training recording per class held out for validation; best validation macro F1",
@@ -29,21 +29,15 @@
     "test_units": 16,
     "accuracy": 0.3125,
     "balanced_accuracy": 0.3125,
-    "macro_precision": 0.2196,
+    "macro_precision": 0.4062,
     "macro_recall": 0.3125,
-    "macro_f1": 0.2544,
+    "macro_f1": 0.2875,
     "confusion_matrix": [
       [
-        0,
+        1,
         1,
         2,
-        1
-      ],
-      [
-        0,
-        1,
-        2,
-        1
+        0
       ],
       [
         0,
@@ -56,53 +50,279 @@
         1,
         0,
         3
+      ],
+      [
+        0,
+        1,
+        0,
+        3
       ]
     ],
     "per_class_recall": {
-      "healthy": 0.0,
+      "healthy": 0.25,
       "bearing": 0.25,
-      "unbalance": 0.25,
+      "unbalance": 0.0,
       "misalignment": 0.75
     }
   },
   "image_level": {
     "test_units": 2400,
-    "accuracy": 0.3362,
-    "balanced_accuracy": 0.3362,
-    "macro_precision": 0.487,
-    "macro_recall": 0.3362,
-    "macro_f1": 0.2887,
+    "accuracy": 0.3312,
+    "balanced_accuracy": 0.3312,
+    "macro_precision": 0.4532,
+    "macro_recall": 0.3312,
+    "macro_f1": 0.3129,
     "confusion_matrix": [
       [
-        21,
-        150,
-        283,
-        146
+        109,
+        169,
+        281,
+        41
+      ],
+      [
+        0,
+        248,
+        185,
+        167
       ],
       [
         0,
         194,
-        229,
-        177
+        47,
+        359
       ],
       [
         0,
-        152,
-        163,
-        285
-      ],
-      [
-        0,
-        150,
-        21,
-        429
+        162,
+        47,
+        391
       ]
     ],
     "per_class_recall": {
-      "healthy": 0.035,
-      "bearing": 0.3233,
-      "unbalance": 0.2717,
-      "misalignment": 0.715
+      "healthy": 0.1817,
+      "bearing": 0.4133,
+      "unbalance": 0.0783,
+      "misalignment": 0.6517
+    }
+  },
+  "segment_level": {
+    "test_units": 160,
+    "accuracy": 0.3312,
+    "balanced_accuracy": 0.3312,
+    "macro_precision": 0.4472,
+    "macro_recall": 0.3313,
+    "macro_f1": 0.3065,
+    "confusion_matrix": [
+      [
+        7,
+        12,
+        18,
+        3
+      ],
+      [
+        0,
+        17,
+        11,
+        12
+      ],
+      [
+        0,
+        13,
+        2,
+        25
+      ],
+      [
+        0,
+        10,
+        3,
+        27
+      ]
+    ],
+    "per_class_recall": {
+      "healthy": 0.175,
+      "bearing": 0.425,
+      "unbalance": 0.05,
+      "misalignment": 0.675
+    },
+    "segments_per_recording": 10,
+    "note": "each held-out recording split in time order into consecutive parts, one prediction per part; parts of one recording are related, so the recording-level score stays the main result"
+  },
+  "per_recording": {
+    "BD_F5_S": {
+      "class": "bearing",
+      "images": 150,
+      "images_predicted": {
+        "healthy": 0,
+        "bearing": 136,
+        "unbalance": 0,
+        "misalignment": 14
+      },
+      "recording_prediction": "bearing"
+    },
+    "H_F5_S": {
+      "class": "healthy",
+      "images": 150,
+      "images_predicted": {
+        "healthy": 0,
+        "bearing": 150,
+        "unbalance": 0,
+        "misalignment": 0
+      },
+      "recording_prediction": "bearing"
+    },
+    "M_F5_S": {
+      "class": "misalignment",
+      "images": 150,
+      "images_predicted": {
+        "healthy": 0,
+        "bearing": 143,
+        "unbalance": 1,
+        "misalignment": 6
+      },
+      "recording_prediction": "bearing"
+    },
+    "U_F5_S": {
+      "class": "unbalance",
+      "images": 150,
+      "images_predicted": {
+        "healthy": 0,
+        "bearing": 150,
+        "unbalance": 0,
+        "misalignment": 0
+      },
+      "recording_prediction": "bearing"
+    },
+    "BD_F15_S": {
+      "class": "bearing",
+      "images": 150,
+      "images_predicted": {
+        "healthy": 0,
+        "bearing": 31,
+        "unbalance": 62,
+        "misalignment": 57
+      },
+      "recording_prediction": "misalignment"
+    },
+    "H_F15_S": {
+      "class": "healthy",
+      "images": 150,
+      "images_predicted": {
+        "healthy": 109,
+        "bearing": 0,
+        "unbalance": 0,
+        "misalignment": 41
+      },
+      "recording_prediction": "healthy"
+    },
+    "M_F15_S": {
+      "class": "misalignment",
+      "images": 150,
+      "images_predicted": {
+        "healthy": 0,
+        "bearing": 0,
+        "unbalance": 0,
+        "misalignment": 150
+      },
+      "recording_prediction": "misalignment"
+    },
+    "U_F15_S": {
+      "class": "unbalance",
+      "images": 150,
+      "images_predicted": {
+        "healthy": 0,
+        "bearing": 0,
+        "unbalance": 0,
+        "misalignment": 150
+      },
+      "recording_prediction": "misalignment"
+    },
+    "BD_F50_S": {
+      "class": "bearing",
+      "images": 150,
+      "images_predicted": {
+        "healthy": 0,
+        "bearing": 27,
+        "unbalance": 123,
+        "misalignment": 0
+      },
+      "recording_prediction": "unbalance"
+    },
+    "H_F50_S": {
+      "class": "healthy",
+      "images": 150,
+      "images_predicted": {
+        "healthy": 0,
+        "bearing": 19,
+        "unbalance": 131,
+        "misalignment": 0
+      },
+      "recording_prediction": "unbalance"
+    },
+    "M_F50_S": {
+      "class": "misalignment",
+      "images": 150,
+      "images_predicted": {
+        "healthy": 0,
+        "bearing": 19,
+        "unbalance": 0,
+        "misalignment": 131
+      },
+      "recording_prediction": "misalignment"
+    },
+    "U_F50_S": {
+      "class": "unbalance",
+      "images": 150,
+      "images_predicted": {
+        "healthy": 0,
+        "bearing": 41,
+        "unbalance": 47,
+        "misalignment": 62
+      },
+      "recording_prediction": "misalignment"
+    },
+    "BD_F60_S": {
+      "class": "bearing",
+      "images": 150,
+      "images_predicted": {
+        "healthy": 0,
+        "bearing": 54,
+        "unbalance": 0,
+        "misalignment": 96
+      },
+      "recording_prediction": "misalignment"
+    },
+    "H_F60_S": {
+      "class": "healthy",
+      "images": 150,
+      "images_predicted": {
+        "healthy": 0,
+        "bearing": 0,
+        "unbalance": 150,
+        "misalignment": 0
+      },
+      "recording_prediction": "unbalance"
+    },
+    "M_F60_S": {
+      "class": "misalignment",
+      "images": 150,
+      "images_predicted": {
+        "healthy": 0,
+        "bearing": 0,
+        "unbalance": 46,
+        "misalignment": 104
+      },
+      "recording_prediction": "misalignment"
+    },
+    "U_F60_S": {
+      "class": "unbalance",
+      "images": 150,
+      "images_predicted": {
+        "healthy": 0,
+        "bearing": 3,
+        "unbalance": 0,
+        "misalignment": 147
+      },
+      "recording_prediction": "misalignment"
     }
   }
 }

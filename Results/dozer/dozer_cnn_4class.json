@@ -1,0 +1,101 @@
+{
+  "purpose": "Week 6 professor remark: CNN with data augmentation on named images, 4 classes",
+  "images": 2400,
+  "classes": [
+    "healthy",
+    "wear25",
+    "wear50",
+    "wear75"
+  ],
+  "test": "four rounds, each holding out one whole speed (4 runs, one per wear level); 16 run-level predictions",
+  "settings": {
+    "epochs": 20,
+    "batch": 32,
+    "learning_rate": 0.001,
+    "seed": 42,
+    "architecture": "4 conv blocks (16, 32, 64, 64 channels) + global average pool + dropout 0.3",
+    "augmentation": "random horizontal flip, shift up to 8 px, brightness/contrast x0.8-1.2, Gaussian noise 0.05",
+    "normalisation": "each image standardised on its own"
+  },
+  "selection_rule": "settings fixed in advance; the test set is never used to choose epochs or settings",
+  "recording_level": {
+    "test_units": 16,
+    "accuracy": 0.3125,
+    "balanced_accuracy": 0.3125,
+    "macro_precision": 0.3167,
+    "macro_recall": 0.3125,
+    "macro_f1": 0.2053,
+    "confusion_matrix": [
+      [
+        0,
+        4,
+        0,
+        0
+      ],
+      [
+        0,
+        4,
+        0,
+        0
+      ],
+      [
+        0,
+        3,
+        1,
+        0
+      ],
+      [
+        0,
+        4,
+        0,
+        0
+      ]
+    ],
+    "per_class_recall": {
+      "healthy": 0.0,
+      "wear25": 1.0,
+      "wear50": 0.25,
+      "wear75": 0.0
+    }
+  },
+  "image_level": {
+    "test_units": 2400,
+    "accuracy": 0.3071,
+    "balanced_accuracy": 0.3071,
+    "macro_precision": 0.308,
+    "macro_recall": 0.3071,
+    "macro_f1": 0.2221,
+    "confusion_matrix": [
+      [
+        0,
+        557,
+        39,
+        4
+      ],
+      [
+        0,
+        519,
+        50,
+        31
+      ],
+      [
+        0,
+        398,
+        202,
+        0
+      ],
+      [
+        0,
+        571,
+        13,
+        16
+      ]
+    ],
+    "per_class_recall": {
+      "healthy": 0.0,
+      "wear25": 0.865,
+      "wear50": 0.3367,
+      "wear75": 0.0267
+    }
+  }
+}
