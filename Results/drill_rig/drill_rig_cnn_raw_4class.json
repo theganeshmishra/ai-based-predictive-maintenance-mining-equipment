@@ -1,0 +1,150 @@
+{
+  "machine": "drill_rig",
+  "source": "MCC5-THU, Mendeley Data p92gj2732w v2 (doi 10.17632/p92gj2732w.2), CC BY 4.0",
+  "modality": "sensor only, raw vibration",
+  "classes": [
+    "healthy",
+    "gear_wear",
+    "gear_pitting",
+    "tooth_crack"
+  ],
+  "recordings": 120,
+  "windows": 7080,
+  "test": "leave one speed out (1000 / 2000 / 3000 rpm); epoch count chosen by inner leave-one-speed-out on the training speeds; one answer per recording (mean of its 1 s windows)",
+  "model": "1D CNN, 4 conv blocks (32-64-64-128 filters), global average pooling; 6 vibration channels at 6.4 kHz (anti-alias filtered); training: random 0.8 s crops, random gain 0.8-1.25, class-weighted loss, AdamW lr 1e-3, batch 64, at most 25 epochs; seed 613",
+  "folds": [
+    {
+      "held_out_rpm": 1000,
+      "test_recordings": 40,
+      "epochs": 24,
+      "inner_macro_f1_by_epoch": [
+        0.4906,
+        0.3279,
+        0.4102,
+        0.3999,
+        0.2877,
+        0.4083,
+        0.4631,
+        0.3827,
+        0.4312,
+        0.4704,
+        0.4077,
+        0.4088,
+        0.3827,
+        0.3589,
+        0.387,
+        0.3358,
+        0.4351,
+        0.455,
+        0.3987,
+        0.4103,
+        0.4186,
+        0.4374,
+        0.415,
+        0.4927,
+        0.4722
+      ],
+      "accuracy": 0.825
+    },
+    {
+      "held_out_rpm": 2000,
+      "test_recordings": 40,
+      "epochs": 24,
+      "inner_macro_f1_by_epoch": [
+        0.3196,
+        0.3443,
+        0.3345,
+        0.1781,
+        0.3759,
+        0.2876,
+        0.4436,
+        0.3634,
+        0.2675,
+        0.2747,
+        0.325,
+        0.465,
+        0.3639,
+        0.3565,
+        0.4336,
+        0.4255,
+        0.5316,
+        0.4889,
+        0.4505,
+        0.4686,
+        0.4085,
+        0.3784,
+        0.4717,
+        0.5384,
+        0.3919
+      ],
+      "accuracy": 0.875
+    },
+    {
+      "held_out_rpm": 3000,
+      "test_recordings": 40,
+      "epochs": 24,
+      "inner_macro_f1_by_epoch": [
+        0.3873,
+        0.4858,
+        0.4602,
+        0.5263,
+        0.5756,
+        0.6008,
+        0.7403,
+        0.5258,
+        0.6554,
+        0.5708,
+        0.585,
+        0.6749,
+        0.5305,
+        0.5323,
+        0.6959,
+        0.5866,
+        0.7025,
+        0.7301,
+        0.8012,
+        0.4953,
+        0.6789,
+        0.6338,
+        0.6645,
+        0.8416,
+        0.6004
+      ],
+      "accuracy": 0.55
+    }
+  ],
+  "score": {
+    "test_units": 120,
+    "accuracy": 0.75,
+    "balanced_accuracy": 0.7361,
+    "macro_f1": 0.7339,
+    "confusion_matrix": [
+      [
+        8,
+        4,
+        0,
+        0
+      ],
+      [
+        2,
+        29,
+        0,
+        5
+      ],
+      [
+        0,
+        4,
+        32,
+        0
+      ],
+      [
+        3,
+        11,
+        1,
+        21
+      ]
+    ]
+  },
+  "window_accuracy": 0.6828,
+  "caveat": "one training run per fold on CPU, which is not exactly repeatable; one laboratory gearbox and one healthy gear"
+}
