@@ -290,7 +290,8 @@ def show_overview() -> None:
     rows = []
     for name, machine in equipment:
         sensor = result(machine, "csv_4class").get("validation_selected", {}).get("score", {})
-        visual = result(machine, "cnn_pretrained_4class").get("recording_level", {})
+        visual = (result(machine, "cnn_pretrained_4class").get("recording_level")
+                  or result(machine, "cnn_images_4class").get("gear_level", {}))
         sensor_time = result(machine, "csv_4class_timesplit").get("models", {}).get("Random forest", {})
         visual_time = result(machine, "cnn_pretrained_4class_timesplit").get("recording_level", {})
         s, v = sensor.get("accuracy"), visual.get("accuracy")
@@ -525,6 +526,32 @@ def show_drill_rig() -> None:
     if figure.exists():
         display(Image(filename=str(figure), width=480))
     print(f"{result['recordings']} recordings, {result['windows']:,} windows. Caveat: {result['caveat']}")
+
+
+def show_drill_rig_cnn() -> None:
+    """Drill Rig deep models: 1D CNN on raw vibration (unseen speed) and ResNet-18 on rendered gears (unseen designs)."""
+    raw, gears = load("drill_rig_cnn_raw_4class.json"), load("drill_rig_cnn_images_4class.json")
+    rows = {}
+    if raw:
+        rows["Sensor: 1D CNN on raw vibration"] = {**metrics(raw["score"]),
+                                                   "tested": f"{raw['score']['test_units']} recordings"}
+    if gears:
+        rows["Camera: ResNet-18, per gear (2 views)"] = {**metrics(gears["gear_level"]),
+                                                         "tested": f"{gears['gear_level']['test_units']} gears"}
+        rows["Camera: ResNet-18, per image"] = {**metrics(gears["image_level"]),
+                                                "tested": f"{gears['image_level']['test_units']} images"}
+    if not rows:
+        print("No result yet: run  python Notebook/notebook_helpers.py drill_rig cnn  (and images, cnn-images)")
+        return
+    display(pd.DataFrame(rows).T)
+    if gears:
+        display(pd.DataFrame(gears["folds"])[["held_out_designs", "epochs", "test_gears", "accuracy"]])
+    for name in ("drill_rig_cnn_raw_4class.png", "drill_rig_cnn_images_4class.png"):
+        figure = ROOT / "Figures" / "drill_rig" / name
+        if figure.exists():
+            display(Image(filename=str(figure), width=640))
+    if gears:
+        print(f"Caveat: {gears['caveat']}")
 
 
 def show_thermal_motor() -> None:
@@ -12474,12 +12501,15 @@ def _make_wheel_loader():
 
 # DRILL_RIG MODEL IMPLEMENTATION
 def _make_drill_rig():
-    """Drill Rig (machine 7): rotary-head reduction gear, gearbox vibration. SENSOR ONLY, separate data.
+    """Drill Rig (machine 7): rotary-head reduction gear. Gearbox vibration plus rendered gear images, separate data.
 
     Data: MCC5-THU gearbox fault diagnosis datasets (Chen et al., Tsinghua University, Mendeley Data
     p92gj2732w v2, CC BY 4.0). A two-stage parallel gearbox; the faulty gear is the 36-tooth gear on the
     intermediate shaft. This is NOT the CORA rig, so the Drill Rig does not reuse another machine's data.
-    No public gear-wear image dataset could be verified, so there is no camera model for this machine.
+    No public photo dataset of worn gears could be verified. The camera side instead uses MFGNet-Gear (Mei & Shao,
+    U. Michigan Deep Blue Data, DOI 10.7302/qrdj-n812, CC BY 4.0): synthetic CAD meshes of healthy, worn, pitted
+    and root-broken gears, rendered here as 3D-camera style images. They are not photographs and not the
+    MCC5-THU gears, so the two sides are not tested on the same gears.
 
     4 classes: healthy, gear wear, gear pitting, tooth crack. Every fault is present at three severities
     (light, medium, high), each a separately machined gear; every gear is run under 12 working conditions
@@ -12494,9 +12524,12 @@ def _make_drill_rig():
         python Notebook/notebook_helpers.py drill_rig <command>
 
     Commands:
-        intake   check the downloaded zip against the published SHA-256 and list the recordings used
-        csv      4-class gearbox-vibration model, leave one speed out (validation-selected model)
-        all      run intake, then csv
+        intake      check the downloaded zip against the published SHA-256 and list the recordings used
+        csv         4-class gearbox-vibration model, leave one speed out (validation-selected model)
+        cnn         1D CNN on the raw vibration windows (6.4 kHz), leave one speed out, epochs chosen on training speeds
+        images      check the MFGNet-Gear mesh zip (SHA-1) and render gears to height/relief/shading images
+        cnn-images  ResNet-18 on the rendered gears, each fold holds out 3 unseen gear designs
+        all         run every command in order
 
     Raw data stays in Raw_Data/ and Processed_Data/ (not in Git).
     """
@@ -12726,8 +12759,550 @@ def _make_drill_rig():
             main()
         return locals()
 
-    COMMANDS = {"intake": intake, "csv": csv}
-    RUN_ALL = ["intake", "csv"]
+    RAW = ROOT / "Processed_Data" / f"{MACHINE}_raw_windows_6k4.npy"
+    RAW_INDEX = ROOT / "Processed_Data" / f"{MACHINE}_raw_windows_6k4.csv"
+    CNN_RESULT = ROOT / "Results" / MACHINE / f"{MACHINE}_cnn_raw_4class.json"
+    CNN_FIGURE = ROOT / "Figures" / MACHINE / f"{MACHINE}_cnn_raw_4class.png"
+    RAW_RATE, CNN_EPOCHS, CROP = 6_400, 25, 5_120
+
+    def build_raw():
+        """Every 1 s window of the 6 vibration channels, anti-alias filtered and halved to 6.4 kHz, as float16."""
+        import zipfile
+        import numpy as np
+        import pandas as pd
+        from scipy.signal import decimate
+        recordings, size = members(), int(RAW_RATE * WINDOW_SECONDS)
+        per = 767_999 // 2 // size                         # every recording is 60 s: 59 whole windows each
+        RAW.parent.mkdir(parents=True, exist_ok=True)
+        store = np.lib.format.open_memmap(RAW, mode="w+", dtype=np.float16,
+                                          shape=(len(recordings) * per, len(CHANNELS), size))
+        rows = []
+        with zipfile.ZipFile(ZIP) as archive:
+            for n, r in enumerate(recordings):
+                with archive.open(r["file"]) as handle:
+                    signal = pd.read_csv(handle, usecols=CHANNELS, dtype="float32")[CHANNELS].to_numpy()
+                signal = decimate(signal, 2, axis=0, zero_phase=True)
+                for w in range(per):
+                    store[n * per + w] = signal[w * size:(w + 1) * size].T
+                    rows.append({k: r[k] for k in ("recording", "class", "severity", "mode", "rpm", "torque_nm")}
+                                | {"window": w})
+                print(f"  {n + 1}/{len(recordings)} {r['recording']}", flush=True)
+        store.flush()
+        pd.DataFrame(rows).to_csv(RAW_INDEX, index=False)
+
+    def cnn(run: bool = True) -> dict:
+        """1D CNN on the raw vibration windows, leave one speed out; epochs chosen on the training speeds only."""
+        import json
+        import matplotlib
+        matplotlib.use("Agg")
+        import matplotlib.pyplot as plt
+        import numpy as np
+        import pandas as pd
+        import torch
+        from torch import nn
+        from sklearn.metrics import accuracy_score, balanced_accuracy_score, confusion_matrix, f1_score
+
+        def network():
+            def block(a, b, k, stride=1, pool=True):
+                return [nn.Conv1d(a, b, k, stride=stride, padding=k // 2), nn.BatchNorm1d(b), nn.ReLU()] + \
+                       ([nn.MaxPool1d(2)] if pool else [])
+            return nn.Sequential(*block(len(CHANNELS), 32, 64, stride=8, pool=False), *block(32, 64, 7),
+                                 *block(64, 64, 7), *block(64, 128, 7, pool=False),
+                                 nn.AdaptiveAvgPool1d(1), nn.Flatten(), nn.Dropout(0.3), nn.Linear(128, len(LABELS)))
+
+        def train(x, y, epochs, check=None):
+            """Train from scratch; if check=(x, y, recordings) is given, return its macro F1 after every epoch."""
+            torch.manual_seed(SEED)
+            rng = np.random.default_rng(SEED)
+            y = np.asarray(y, dtype=np.int64)
+            model = network()
+            counts = np.bincount(y, minlength=len(LABELS))
+            loss_fn = nn.CrossEntropyLoss(weight=torch.tensor(counts.sum() / (len(LABELS) * counts), dtype=torch.float32))
+            optimiser = torch.optim.AdamW(model.parameters(), lr=1e-3, weight_decay=1e-3)
+            curve = []
+            for epoch in range(epochs):
+                model.train()
+                for batch in np.array_split(rng.permutation(len(x)), max(1, len(x) // 64)):
+                    start = rng.integers(0, x.shape[2] - CROP + 1, len(batch))      # random 0.8 s crop
+                    part = np.stack([x[i, :, s:s + CROP] for i, s in zip(batch, start)]).astype(np.float32)
+                    part *= rng.uniform(0.8, 1.25, (len(batch), 1, 1)).astype(np.float32)  # random gain
+                    optimiser.zero_grad()
+                    loss = loss_fn(model(torch.from_numpy(part)), torch.from_numpy(y[batch]))
+                    loss.backward()
+                    optimiser.step()
+                if check is not None:
+                    a, p = per_recording(model, *check)
+                    curve.append(f1_score(a, p, labels=LABELS, average="macro", zero_division=0))
+            return model, curve
+
+        def probabilities(model, x):
+            model.eval()
+            with torch.no_grad():
+                return np.concatenate([torch.softmax(model(torch.from_numpy(x[i:i + 256].astype(np.float32))), 1).numpy()
+                                       for i in range(0, len(x), 256)])
+
+        def per_recording(model, x, y, recordings):
+            frame = pd.DataFrame(probabilities(model, x), columns=LABELS)
+            frame["recording"], frame["truth"] = recordings, np.asarray(LABELS)[y]
+            mean = frame.groupby("recording")[LABELS].mean()
+            return list(frame.groupby("recording")["truth"].first().loc[mean.index]), list(mean.idxmax(axis=1))
+
+        def score(actual, predicted):
+            return {"test_units": len(actual),
+                    "accuracy": round(float(accuracy_score(actual, predicted)), 4),
+                    "balanced_accuracy": round(float(balanced_accuracy_score(actual, predicted)), 4),
+                    "macro_f1": round(float(f1_score(actual, predicted, labels=LABELS, average="macro", zero_division=0)), 4),
+                    "confusion_matrix": confusion_matrix(actual, predicted, labels=LABELS).tolist()}
+
+        def main():
+            if not RAW.is_file() or not RAW_INDEX.is_file():
+                build_raw()
+            torch.set_num_threads(max(1, torch.get_num_threads()))
+            raw, index = np.load(RAW, mmap_mode="r"), pd.read_csv(RAW_INDEX)
+            raw = np.asarray(raw)
+            y = index["class"].map(LABELS.index).to_numpy()
+            print(f"{index['recording'].nunique()} recordings, {len(index)} windows of {raw.shape[2]} samples", flush=True)
+
+            def scaled(rows, reference):
+                # per-channel scale from the training windows only
+                mean = reference.mean(axis=(0, 2), dtype=np.float64, keepdims=True)
+                std = reference.std(axis=(0, 2), dtype=np.float64, keepdims=True) + 1e-6
+                return ((raw[rows] - mean) / std).astype(np.float16)
+
+            actual, predicted, folds, windows_right = [], [], [], 0
+            for speed in sorted(index["rpm"].unique()):
+                train_rows = np.flatnonzero(index["rpm"] != speed)
+                test_rows = np.flatnonzero(index["rpm"] == speed)
+                # inner validation: train on one training speed, check on the other, both ways; pick the epoch count
+                curves = []
+                for check in sorted(set(index.loc[train_rows, "rpm"])):
+                    fit = train_rows[index.loc[train_rows, "rpm"].to_numpy() != check]
+                    hold = train_rows[index.loc[train_rows, "rpm"].to_numpy() == check]
+                    reference = raw[fit]
+                    _, curve = train(scaled(fit, reference), y[fit], CNN_EPOCHS,
+                                     (scaled(hold, reference), y[hold], index.loc[hold, "recording"].to_numpy()))
+                    curves.append(curve)
+                    print(f"  held-out {speed} rpm, inner check {check} rpm: best macro F1 {max(curve):.3f} "
+                          f"at epoch {int(np.argmax(curve)) + 1}", flush=True)
+                epochs = int(np.argmax(np.mean(curves, axis=0))) + 1
+                reference = raw[train_rows]
+                model, _ = train(scaled(train_rows, reference), y[train_rows], epochs)
+                x_test = scaled(test_rows, reference)
+                a, p = per_recording(model, x_test, y[test_rows], index.loc[test_rows, "recording"].to_numpy())
+                windows_right += int((probabilities(model, x_test).argmax(1) == y[test_rows]).sum())
+                actual += a
+                predicted += p
+                folds.append({"held_out_rpm": int(speed), "test_recordings": len(a), "epochs": epochs,
+                              "inner_macro_f1_by_epoch": np.round(np.mean(curves, axis=0), 4).tolist(),
+                              "accuracy": round(float(accuracy_score(a, p)), 4)})
+                print(f"held-out {speed} rpm: {epochs} epochs; accuracy {accuracy_score(a, p):.3f}", flush=True)
+            s = score(actual, predicted)
+            result = {
+                "machine": MACHINE, "source": SOURCE, "modality": "sensor only, raw vibration",
+                "classes": LABELS, "recordings": int(index["recording"].nunique()), "windows": int(len(index)),
+                "test": "leave one speed out (1000 / 2000 / 3000 rpm); epoch count chosen by inner "
+                        "leave-one-speed-out on the training speeds; one answer per recording (mean of its 1 s windows)",
+                "model": "1D CNN, 4 conv blocks (32-64-64-128 filters), global average pooling; 6 vibration channels "
+                         "at 6.4 kHz (anti-alias filtered); training: random 0.8 s crops, random gain 0.8-1.25, "
+                         "class-weighted loss, AdamW lr 1e-3, batch 64, at most 25 epochs; seed 613",
+                "folds": folds, "score": s,
+                "window_accuracy": round(windows_right / len(index), 4),
+                "caveat": "one training run per fold on CPU, which is not exactly repeatable; one laboratory gearbox "
+                          "and one healthy gear",
+            }
+            CNN_RESULT.parent.mkdir(parents=True, exist_ok=True)
+            CNN_RESULT.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
+            matrix = np.asarray(s["confusion_matrix"])
+            figure, axis = plt.subplots(figsize=(5.6, 4.8))
+            axis.imshow(matrix, cmap="Blues", vmin=0)
+            axis.set_xticks(range(len(LABELS)), LABELS, rotation=25)
+            axis.set_yticks(range(len(LABELS)), LABELS)
+            axis.set_xlabel("Predicted")
+            axis.set_ylabel("Actual")
+            for i in range(len(LABELS)):
+                for j in range(len(LABELS)):
+                    axis.text(j, i, str(matrix[i, j]), ha="center", va="center",
+                              color="white" if matrix[i, j] > matrix.max() / 2 else "black")
+            axis.set_title(f"Drill Rig raw-vibration 1D CNN (MCC5-THU), unseen speed\n"
+                           f"{s['test_units']} test recordings, accuracy {s['accuracy']:.3f}", fontsize=10)
+            figure.tight_layout()
+            CNN_FIGURE.parent.mkdir(parents=True, exist_ok=True)
+            figure.savefig(CNN_FIGURE, dpi=130)
+            plt.close(figure)
+            print(f"1D CNN: accuracy {s['accuracy']:.3f}, macro F1 {s['macro_f1']:.3f} on {s['test_units']} "
+                  f"unseen-speed recordings (window accuracy {result['window_accuracy']:.3f})")
+            print(f"Saved {CNN_RESULT.relative_to(ROOT)} and {CNN_FIGURE.relative_to(ROOT)}")
+
+        if run:
+            main()
+        return locals()
+
+    # Camera side: MFGNet-Gear synthetic gear meshes rendered to images (NOT the MCC5-THU gears, NOT photographs)
+    GEAR_ZIP = ROOT / "Raw_Data" / "mfgnet_gear" / "mesh_ply.zip"
+    GEAR_SHA1 = "b6b402b9f59a4e77c11cb5885fbcf5d1c30f99b6"
+    GEAR_SOURCE = ("MFGNet-Gear, Mei and Shao, University of Michigan Deep Blue Data, doi 10.7302/qrdj-n812, CC BY 4.0 "
+                   "(synthetic CAD gear meshes)")
+    GEAR_CLASS = {"G0": "healthy", "W0": "gear_wear", "P0": "gear_pitting", "R0": "tooth_crack"}
+    GEAR_DESIGNS = [["T20ID10", "T30ID20", "T40ID30"], ["T20ID15", "T30ID30", "T40ID40"],
+                    ["T20ID20", "T30ID40", "T40ID50"], ["T20ID25", "T30ID50", "T40ID60"]]   # 4 folds of 3 unseen designs
+    GEAR_IMAGES = ROOT / "Images" / MACHINE
+    GEAR_PER_COMBO, GEAR_SIZE = 100, 224
+    GEAR_VIEWS = [(90, 0), (-90, 0)]          # (elevation, azimuth): both gear faces, where the defects show
+    GEAR_RESULT = ROOT / "Results" / MACHINE / f"{MACHINE}_cnn_images_4class.json"
+    GEAR_FIGURE = ROOT / "Figures" / MACHINE / f"{MACHINE}_cnn_images_4class.png"
+
+    def read_ply(data):
+        """Vertices (n, 3) and triangles (m, 3) from an ASCII or binary little-endian PLY file."""
+        import numpy as np
+        end = data.index(b"end_header") + len(b"end_header")
+        end += 2 if data[end:end + 2] == b"\r\n" else 1
+        header = data[:end].decode("ascii", "replace").split("\n")
+        kind = next(line.split()[1] for line in header if line.startswith("format"))
+        types = {"float": "f4", "float32": "f4", "double": "f8", "uchar": "u1", "uint8": "u1", "char": "i1",
+                 "int": "i4", "int32": "i4", "uint": "u4", "uint32": "u4", "short": "i2", "ushort": "u2"}
+        elements, current = [], None
+        for line in header:
+            part = line.split()
+            if part[:1] == ["element"]:
+                current = {"name": part[1], "count": int(part[2]), "props": []}
+                elements.append(current)
+            elif part[:1] == ["property"]:
+                current["props"].append(part[1:])
+        body = data[end:]
+        if kind == "ascii":
+            lines, out = body.decode("ascii").split("\n"), {}
+            start = 0
+            for e in elements:
+                out[e["name"]] = lines[start:start + e["count"]]
+                start += e["count"]
+            vertices = np.array([l.split()[:3] for l in out["vertex"]], dtype=np.float64)
+            faces = np.array([l.split()[1:4] for l in out["face"]], dtype=np.int64)
+            return vertices, faces
+        assert kind == "binary_little_endian", kind
+        offset, result = 0, {}
+        for e in elements:
+            fields = []                                    # face colours are read past but never used
+            for p in e["props"]:
+                if p[0] == "list":                         # triangle meshes only: fixed count of 3
+                    fields += [("n", "<" + types[p[1]]), ("index", "<" + types[p[2]], 3)]
+                else:
+                    fields.append((p[1], "<" + types[p[0]]))
+            dtype = np.dtype(fields)
+            block = np.frombuffer(body, dtype, e["count"], offset)
+            if "index" in dtype.names:
+                assert (block["n"] == 3).all(), "only triangle meshes are handled"
+                result[e["name"]] = block["index"].astype(np.int64)
+            else:
+                result[e["name"]] = np.stack([block[k] for k in ("x", "y", "z")], 1).astype(np.float64)
+            offset += dtype.itemsize * e["count"]
+        return result["vertex"], result["face"]
+
+    def render_gear(vertices, faces, seed, size=None, views=None, zoom=1.0):
+        """3-channel images of one gear from GEAR_VIEWS: area-uniform surface points, z-buffer, Lambert light.
+
+        The meshes share the CAD frame (gear axis along z), so the gear is only centred and scaled to unit
+        radius; no axis is estimated, because the dense pitting meshes would bias such an estimate and tilt
+        only the pitted gears. Points are sampled by surface area, so the mesh resolution is not visible.
+        """
+        import cv2
+        import numpy as np
+        size, views = size or GEAR_SIZE, views or GEAR_VIEWS
+        rng = np.random.default_rng(seed)
+        v = vertices - (vertices.max(0) + vertices.min(0)) / 2
+        v /= np.linalg.norm(v[:, :2], axis=1).max()
+        tri = v[faces]
+        cross = np.cross(tri[:, 1] - tri[:, 0], tri[:, 2] - tri[:, 0])
+        area = np.linalg.norm(cross, axis=1)
+        keep = area > 0
+        tri, cross, area = tri[keep], cross[keep], area[keep]
+        normal = cross / area[:, None]
+        pick = rng.choice(len(tri), 1_500_000, p=area / area.sum())
+        a, b = rng.random((2, len(pick)))
+        flip = a + b > 1
+        a[flip], b[flip] = 1 - a[flip], 1 - b[flip]
+        points = tri[pick, 0] + a[:, None] * (tri[pick, 1] - tri[pick, 0]) + b[:, None] * (tri[pick, 2] - tri[pick, 0])
+        normals = normal[pick]
+        images = []
+        for elevation, azimuth in views:
+            e, z = np.radians(90 - elevation), np.radians(azimuth)
+            turn = np.array([[np.cos(z), -np.sin(z), 0], [np.sin(z), np.cos(z), 0], [0, 0, 1]])
+            tilt = np.array([[1, 0, 0], [0, np.cos(e), -np.sin(e)], [0, np.sin(e), np.cos(e)]])
+            rotation = tilt @ turn
+            p, n = points @ rotation.T, normals @ rotation.T
+            n = np.where(n[:, 2:3] < 0, -n, n)                  # face the camera (camera on +z)
+            light = np.array([0.75, -0.40, 0.45])                # low raking light, as in surface inspection
+            shade = 0.15 + 0.85 * np.clip(n @ (light / np.linalg.norm(light)), 0, 1)
+            px = np.clip(((p[:, 0] * zoom / 1.15 + 1) / 2 * size).astype(int), 0, size - 1)
+            py = np.clip(((1 - p[:, 1] * zoom / 1.15) / 2 * size).astype(int), 0, size - 1)
+            pixel = py * size + px
+            # like a depth camera, each pixel averages the visible surface inside its footprint: the points
+            # within 0.01 (about 0.3 mm) of the nearest one, so sub-pixel pits lower the pixel slightly
+            front = np.full(size * size, -10.0)
+            np.maximum.at(front, pixel, p[:, 2])
+            seen = p[:, 2] > front[pixel] - 0.01
+            count = np.bincount(pixel[seen], minlength=size * size)
+            filled = count > 0
+            image = np.zeros(size * size, np.float32)
+            depth = np.full(size * size, -10.0, np.float32)
+            image[filled] = (np.bincount(pixel[seen], shade[seen], size * size)[filled] / count[filled])
+            depth[filled] = (np.bincount(pixel[seen], p[seen, 2], size * size)[filled] / count[filled])
+            image, depth = image.reshape(size, size), depth.reshape(size, size)
+            # a pixel that missed the front surface shows a hidden surface (or nothing): take its neighbour's value
+            near = cv2.dilate(depth, np.ones((3, 3), np.uint8))
+            hole = depth < near - 0.05
+            image = np.where(hole, cv2.dilate(image * ~hole, np.ones((3, 3), np.uint8)), image)
+            depth = np.where(hole, near, depth)
+            # 3D-camera style channels: shading, local surface relief (dents such as pits go dark), depth
+            solid = (depth > -5).astype(np.float32)
+            local = cv2.blur(depth * solid, (9, 9)) / np.maximum(cv2.blur(solid, (9, 9)), 1e-6)
+            relief = np.clip(0.5 + 400 * (depth - local), 0, 1) * solid
+            height = np.clip((depth + 1) / 2, 0, 1) * solid
+            images.append((np.dstack([height, relief, image]) * 255).astype(np.uint8))   # saved as BGR
+        return images
+
+    def gear_members():
+        import re
+        import zipfile
+        rows = []
+        with zipfile.ZipFile(GEAR_ZIP) as archive:
+            for name in archive.namelist():
+                match = re.search(r"(T\d+ID\d+)(G0|P0|W0|R0)_(\d+)\.ply$", name, re.IGNORECASE)
+                if match and "__MACOSX" not in name:
+                    rows.append({"member": name, "design": match.group(1), "class": GEAR_CLASS[match.group(2)],
+                                 "instance": int(match.group(3))})
+        return rows
+
+    def _render_batch(job):
+        import zipfile
+        import cv2
+        out = []
+        with zipfile.ZipFile(GEAR_ZIP) as archive:
+            for row in job:
+                vertices, faces = read_ply(archive.read(row["member"]))
+                for view, image in enumerate(render_gear(vertices, faces, SEED + row["instance"])):
+                    name = f"{row['design']}_{row['class']}_{row['instance']:05d}_v{view}.png"
+                    cv2.imwrite(str(GEAR_IMAGES / name), image)
+                    out.append({**{k: row[k] for k in ("design", "class", "instance")},
+                                "gear": f"{row['design']}_{row['class']}_{row['instance']:05d}",
+                                "view": view, "file": name})
+        return out
+
+    def images(run: bool = True) -> dict:
+        """Check the MFGNet-Gear zip, then render GEAR_PER_COMBO gears per design and class, one image per GEAR_VIEWS face."""
+        import csv as csv_module
+        import hashlib
+        import json
+        from concurrent.futures import ProcessPoolExecutor
+        import numpy as np
+
+        def main():
+            if not GEAR_ZIP.is_file():
+                raise SystemExit(f"Missing {GEAR_ZIP}: download mesh_ply.zip from {GEAR_SOURCE}")
+            digest = hashlib.sha1()
+            with GEAR_ZIP.open("rb") as handle:
+                for block in iter(lambda: handle.read(1 << 22), b""):
+                    digest.update(block)
+            ok = digest.hexdigest() == GEAR_SHA1
+            print(f"SHA-1 {'matches' if ok else 'DOES NOT MATCH'} the published value", flush=True)
+            if not ok:
+                raise SystemExit(2)
+            rows = gear_members()
+            rng = np.random.default_rng(SEED)
+            chosen = []
+            for design in sorted({r["design"] for r in rows}):
+                for label in LABELS:
+                    pool = [r for r in rows if r["design"] == design and r["class"] == label]
+                    chosen += [pool[i] for i in sorted(rng.choice(len(pool), min(GEAR_PER_COMBO, len(pool)), replace=False))]
+            print(f"{len(rows)} meshes in the zip; rendering {len(chosen)} gears x {len(GEAR_VIEWS)} views", flush=True)
+            GEAR_IMAGES.mkdir(parents=True, exist_ok=True)
+            jobs = [chosen[i:i + 50] for i in range(0, len(chosen), 50)]
+            index = []
+            with ProcessPoolExecutor(max_workers=10) as pool:
+                for n, part in enumerate(pool.map(_render_batch_entry, jobs), 1):
+                    index += part
+                    if n % 10 == 0 or n == len(jobs):
+                        print(f"  {n * 50}/{len(chosen)} gears", flush=True)
+            with (GEAR_IMAGES / "index.csv").open("w", newline="", encoding="utf-8") as handle:
+                writer = csv_module.DictWriter(handle, fieldnames=list(index[0]))
+                writer.writeheader()
+                writer.writerows(index)
+            counts = {label: sum(r["class"] == label for r in rows) for label in LABELS}
+            (ROOT / "Results" / MACHINE).mkdir(parents=True, exist_ok=True)
+            (ROOT / "Results" / MACHINE / f"{MACHINE}_mfgnet_gear_intake.json").write_text(json.dumps(
+                {"source": GEAR_SOURCE, "sha1_expected": GEAR_SHA1, "sha1_matches": ok,
+                 "zip_bytes": GEAR_ZIP.stat().st_size, "meshes_in_zip": counts, "gears_rendered": len(chosen),
+                 "views_per_gear": GEAR_VIEWS, "image_size": GEAR_SIZE, "images": len(index)}, indent=2) + "\n",
+                encoding="utf-8")
+            print(f"Saved {len(index)} images to {GEAR_IMAGES.relative_to(ROOT)}")
+
+        if run:
+            main()
+        return locals()
+
+    def cnn_images(run: bool = True) -> dict:
+        """ResNet-18 on the rendered gear images; each fold holds out 3 whole gear designs (one per tooth count)."""
+        import csv as csv_module
+        import json
+        import random
+        import cv2
+        import matplotlib
+        matplotlib.use("Agg")
+        import matplotlib.pyplot as plt
+        import numpy as np
+        import torch
+        from torch import nn
+        from torchvision.models import ResNet18_Weights, resnet18
+        from sklearn.metrics import accuracy_score, balanced_accuracy_score, confusion_matrix, f1_score
+
+        MAX_EPOCHS, BATCH, TRAIN_PER_COMBO = 6, 32, 50
+        MEAN, STD = np.array([0.485, 0.456, 0.406], np.float32), np.array([0.229, 0.224, 0.225], np.float32)
+
+        def load(rows):
+            rgb = np.stack([cv2.imread(str(GEAR_IMAGES / r["file"]))[:, :, ::-1] for r in rows]) / 255.0
+            return ((rgb.astype(np.float32) - MEAN) / STD).transpose(0, 3, 1, 2).copy()
+
+        def augment(batch, generator):
+            # gears look the same turned or mirrored: random quarter turns, flips and small shifts
+            k = int(torch.randint(0, 4, (1,), generator=generator))
+            batch = torch.rot90(batch, k, dims=(-2, -1))
+            if torch.rand(1, generator=generator) < 0.5:
+                batch = batch.flip(-1)
+            dy, dx = (int(v) for v in torch.randint(-6, 7, (2,), generator=generator))
+            return torch.roll(batch, shifts=(dy, dx), dims=(-2, -1))
+
+        def fit(x, y, epochs, check=None):
+            random.seed(SEED)
+            np.random.seed(SEED)
+            torch.manual_seed(SEED)
+            generator = torch.Generator().manual_seed(SEED)
+            model = resnet18(weights=ResNet18_Weights.IMAGENET1K_V1)
+            model.fc = nn.Linear(model.fc.in_features, len(LABELS))
+            optimiser = torch.optim.AdamW(model.parameters(), lr=3e-4, weight_decay=1e-4)
+            loss_fn = nn.CrossEntropyLoss()
+            xs, ys = torch.from_numpy(x), torch.tensor(y, dtype=torch.long)
+            curve = []
+            for _ in range(epochs):
+                model.train()
+                order = torch.randperm(len(xs), generator=generator)
+                for start in range(0, len(xs) - 1, BATCH):
+                    batch = order[start:start + BATCH]
+                    optimiser.zero_grad()
+                    loss_fn(model(augment(xs[batch], generator)), ys[batch]).backward()
+                    optimiser.step()
+                if check is not None:
+                    a, p = per_gear(probabilities(model, check[0]), *check[1:])
+                    curve.append(f1_score(a, p, labels=LABELS, average="macro", zero_division=0))
+            return model, curve
+
+        def probabilities(model, x):
+            model.eval()
+            with torch.no_grad():
+                return np.concatenate([torch.softmax(model(torch.from_numpy(x[i:i + 128])), 1).numpy()
+                                       for i in range(0, len(x), 128)])
+
+        def per_gear(p, truth, gears):
+            """One answer per gear: mean class probability over its views."""
+            actual, predicted = [], []
+            for gear in sorted(set(gears)):
+                rows = gears == gear
+                actual.append(truth[rows][0])
+                predicted.append(LABELS[int(p[rows].mean(0).argmax())])
+            return actual, predicted
+
+        def score(actual, predicted):
+            return {"test_units": len(actual),
+                    "accuracy": round(float(accuracy_score(actual, predicted)), 4),
+                    "balanced_accuracy": round(float(balanced_accuracy_score(actual, predicted)), 4),
+                    "macro_f1": round(float(f1_score(actual, predicted, labels=LABELS, average="macro", zero_division=0)), 4),
+                    "confusion_matrix": confusion_matrix(actual, predicted, labels=LABELS).tolist()}
+
+        def main():
+            torch.set_num_threads(max(1, torch.get_num_threads()))
+            with (GEAR_IMAGES / "index.csv").open(encoding="utf-8") as handle:
+                rows = list(csv_module.DictReader(handle))
+            design = np.array([r["design"] for r in rows])
+            truth = np.array([r["class"] for r in rows])
+            gears = np.array([r["gear"] for r in rows])
+            instance = np.array([int(r["instance"]) for r in rows])
+            y = np.array([LABELS.index(c) for c in truth])
+            # training uses the first TRAIN_PER_COMBO rendered gears of each design and class (CPU time);
+            # testing uses every rendered gear of the held-out designs
+            rank = {}
+            for d in set(design):
+                for c in LABELS:
+                    ids = sorted(set(instance[(design == d) & (truth == c)]))
+                    rank.update({(d, c, i): n for n, i in enumerate(ids)})
+            in_budget = np.array([rank[(d, c, i)] < TRAIN_PER_COMBO for d, c, i in zip(design, truth, instance)])
+            print(f"{len(set(gears))} gears, {len(rows)} images; 4 folds of 3 unseen gear designs", flush=True)
+            image_actual, image_predicted, actual, predicted, folds = [], [], [], [], []
+            for number, held_out in enumerate(GEAR_DESIGNS):
+                test = np.isin(design, held_out)
+                train = ~test & in_budget
+                check_designs = GEAR_DESIGNS[(number + 1) % len(GEAR_DESIGNS)]
+                fit_rows, check_rows = train & ~np.isin(design, check_designs), train & np.isin(design, check_designs)
+                # inner check on 3 other training designs picks the number of epochs; the test designs are never used
+                _, curve = fit(load([rows[i] for i in np.flatnonzero(fit_rows)]), y[fit_rows], MAX_EPOCHS,
+                               (load([rows[i] for i in np.flatnonzero(check_rows)]), truth[check_rows], gears[check_rows]))
+                epochs = int(np.argmax(curve)) + 1
+                model, _ = fit(load([rows[i] for i in np.flatnonzero(train)]), y[train], epochs)
+                p = probabilities(model, load([rows[i] for i in np.flatnonzero(test)]))
+                a, q = per_gear(p, truth[test], gears[test])
+                image_actual += list(truth[test])
+                image_predicted += [LABELS[k] for k in p.argmax(1)]
+                actual += a
+                predicted += q
+                folds.append({"held_out_designs": held_out, "check_designs": check_designs, "epochs": epochs,
+                              "inner_macro_f1_by_epoch": np.round(curve, 4).tolist(), "test_gears": len(a),
+                              "accuracy": round(float(accuracy_score(a, q)), 4)})
+                print(f"held-out {held_out}: {epochs} epochs; gear accuracy {accuracy_score(a, q):.3f}", flush=True)
+            result = {
+                "machine": MACHINE, "source": GEAR_SOURCE,
+                "modality": "camera stand-in: synthetic CAD gear meshes rendered as 3D-camera images (shading, surface "
+                            "relief, depth) of both gear faces (not photographs, "
+                            "not the MCC5-THU gears used for the vibration model)",
+                "classes": LABELS, "class_mapping": {"G0 good": "healthy", "W0 tooth wear": "gear_wear",
+                                                      "P0 pitting": "gear_pitting", "R0 tooth root breakage": "tooth_crack"},
+                "test": "4 folds, each holding out 3 whole gear designs (one per tooth count 20/30/40); epochs chosen "
+                        "on 3 other training designs; one answer per gear (mean of its views)",
+                "model": f"ResNet-18 (ImageNet weights), {GEAR_SIZE}px 3-channel images, {len(GEAR_VIEWS)} views per gear, "
+                         f"{TRAIN_PER_COMBO} training gears per design and class, at most {MAX_EPOCHS} epochs, seed {SEED}",
+                "folds": folds, "gear_level": score(actual, predicted), "image_level": score(image_actual, image_predicted),
+                "caveat": "synthetic, noise-free renders; a real camera adds lighting, oil, dirt and blur, so this "
+                          "is an upper bound for the camera route, not a field result",
+            }
+            GEAR_RESULT.parent.mkdir(parents=True, exist_ok=True)
+            GEAR_RESULT.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
+            figure, axes = plt.subplots(1, 2, figsize=(9.6, 4.6))
+            for axis, (name, block) in zip(axes, [("every test image", result["image_level"]),
+                                                  ("per gear (mean of views)", result["gear_level"])]):
+                matrix = np.asarray(block["confusion_matrix"])
+                axis.imshow(matrix, cmap="Blues", vmin=0)
+                axis.set_xticks(range(len(LABELS)), LABELS, rotation=25, fontsize=8)
+                axis.set_yticks(range(len(LABELS)), LABELS, fontsize=8)
+                axis.set_xlabel("Predicted")
+                axis.set_ylabel("Actual")
+                axis.set_title(f"{name}\n{block['test_units']:,} tested, accuracy {block['accuracy']:.3f}", fontsize=9)
+                for i in range(len(LABELS)):
+                    for j in range(len(LABELS)):
+                        axis.text(j, i, f"{matrix[i, j]:,}", ha="center", va="center", fontsize=8,
+                                  color="white" if matrix[i, j] > matrix.max() / 2 else "black")
+            figure.suptitle("Drill Rig camera stand-in: rendered synthetic gears (MFGNet-Gear), unseen gear designs",
+                            fontsize=10)
+            figure.tight_layout()
+            GEAR_FIGURE.parent.mkdir(parents=True, exist_ok=True)
+            figure.savefig(GEAR_FIGURE, dpi=120)
+            plt.close(figure)
+            s = result["gear_level"]
+            print(f"Gear images CNN: accuracy {s['accuracy']:.3f}, macro F1 {s['macro_f1']:.3f} on {s['test_units']} "
+                  f"unseen-design gears (image accuracy {result['image_level']['accuracy']:.3f})")
+            print(f"Saved {GEAR_RESULT.relative_to(ROOT)} and {GEAR_FIGURE.relative_to(ROOT)}")
+
+        if run:
+            main()
+        return locals()
+
+    COMMANDS = {"intake": intake, "csv": csv, "cnn": cnn, "images": images, "cnn-images": cnn_images}
+    RUN_ALL = ["intake", "csv", "cnn", "images", "cnn-images"]
 
     def cli() -> None:
         if len(sys.argv) < 2 or sys.argv[1] not in (*COMMANDS, "all"):
@@ -12739,6 +13314,11 @@ def _make_drill_rig():
             COMMANDS[name]()
 
     return SimpleNamespace(**locals())
+
+
+def _render_batch_entry(job):
+    """Top-level worker for the Drill Rig gear renders (Windows process pools need a picklable function)."""
+    return get_model("drill_rig")._render_batch(job)
 
 
 # CORA_FULLDATA MODEL IMPLEMENTATION
