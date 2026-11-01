@@ -13,7 +13,7 @@ For each machine we detect the **current fault condition of one component** two 
 | **Pump** (support bearing) | healthy, inner, outer, ball | **0.958** | **1.000** | — | — |
 | **Haul Truck** (wheel-motor bearing) | healthy, inner, outer, ball | 0.800–0.867 | 0.417 | 1.000 | 0.913 |
 | **Belt Conveyor** (geared drive) | healthy, wear 25/50/75% | 0.625 | 0.562 | 1.000 | 0.812 rerun (1.000 saved) |
-| **Excavator** (swing drive) | healthy, bearing, unbalance, misalignment | 0.188 | 0.312 | 0.938 | 0.938 |
+| **Excavator** (swing drive) | healthy, bearing, unbalance, misalignment | 0.188 | 0.312 | 0.938 | 1.000 rerun (0.938 earlier) |
 | **Dozer** (track final drive)* | healthy, wear 25/50/75% | 0.625 | 0.562 | 1.000 | 1.000 |
 
 - **Main test (columns 3–4):** whole recordings, bearings or speeds the model never saw in training. This is the primary grouped result, subject to the CORA preprocessing caveat below.
