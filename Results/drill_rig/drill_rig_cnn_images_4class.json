@@ -1,0 +1,178 @@
+{
+  "machine": "drill_rig",
+  "source": "MFGNet-Gear, Mei and Shao, University of Michigan Deep Blue Data, doi 10.7302/qrdj-n812, CC BY 4.0 (synthetic CAD gear meshes)",
+  "modality": "camera stand-in: synthetic CAD gear meshes rendered as 3D-camera images (shading, surface relief, depth) of both gear faces (not photographs, not the MCC5-THU gears used for the vibration model)",
+  "classes": [
+    "healthy",
+    "gear_wear",
+    "gear_pitting",
+    "tooth_crack"
+  ],
+  "class_mapping": {
+    "G0 good": "healthy",
+    "W0 tooth wear": "gear_wear",
+    "P0 pitting": "gear_pitting",
+    "R0 tooth root breakage": "tooth_crack"
+  },
+  "test": "4 folds, each holding out 3 whole gear designs (one per tooth count 20/30/40); epochs chosen on 3 other training designs; one answer per gear (mean of its views)",
+  "model": "ResNet-18 (ImageNet weights), 224px 3-channel images, 2 views per gear, 50 training gears per design and class, at most 6 epochs, seed 613",
+  "folds": [
+    {
+      "held_out_designs": [
+        "T20ID10",
+        "T30ID20",
+        "T40ID30"
+      ],
+      "check_designs": [
+        "T20ID15",
+        "T30ID30",
+        "T40ID40"
+      ],
+      "epochs": 6,
+      "inner_macro_f1_by_epoch": [
+        0.3002,
+        0.378,
+        0.506,
+        0.6823,
+        0.8954,
+        0.9575
+      ],
+      "test_gears": 1200,
+      "accuracy": 0.8158
+    },
+    {
+      "held_out_designs": [
+        "T20ID15",
+        "T30ID30",
+        "T40ID40"
+      ],
+      "check_designs": [
+        "T20ID20",
+        "T30ID40",
+        "T40ID50"
+      ],
+      "epochs": 4,
+      "inner_macro_f1_by_epoch": [
+        0.1832,
+        0.1295,
+        0.7919,
+        0.9114,
+        0.8847,
+        0.8707
+      ],
+      "test_gears": 1200,
+      "accuracy": 0.8883
+    },
+    {
+      "held_out_designs": [
+        "T20ID20",
+        "T30ID40",
+        "T40ID50"
+      ],
+      "check_designs": [
+        "T20ID25",
+        "T30ID50",
+        "T40ID60"
+      ],
+      "epochs": 6,
+      "inner_macro_f1_by_epoch": [
+        0.343,
+        0.4936,
+        0.522,
+        0.7493,
+        0.7747,
+        0.8056
+      ],
+      "test_gears": 1200,
+      "accuracy": 0.915
+    },
+    {
+      "held_out_designs": [
+        "T20ID25",
+        "T30ID50",
+        "T40ID60"
+      ],
+      "check_designs": [
+        "T20ID10",
+        "T30ID20",
+        "T40ID30"
+      ],
+      "epochs": 6,
+      "inner_macro_f1_by_epoch": [
+        0.215,
+        0.3558,
+        0.6373,
+        0.4725,
+        0.8683,
+        0.8687
+      ],
+      "test_gears": 1200,
+      "accuracy": 0.9383
+    }
+  ],
+  "gear_level": {
+    "test_units": 4800,
+    "accuracy": 0.8894,
+    "balanced_accuracy": 0.8894,
+    "macro_f1": 0.8881,
+    "confusion_matrix": [
+      [
+        950,
+        107,
+        44,
+        99
+      ],
+      [
+        155,
+        990,
+        9,
+        46
+      ],
+      [
+        64,
+        7,
+        1129,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        1200
+      ]
+    ]
+  },
+  "image_level": {
+    "test_units": 9600,
+    "accuracy": 0.8367,
+    "balanced_accuracy": 0.8367,
+    "macro_f1": 0.8371,
+    "confusion_matrix": [
+      [
+        1909,
+        211,
+        94,
+        186
+      ],
+      [
+        379,
+        1911,
+        18,
+        92
+      ],
+      [
+        446,
+        45,
+        1835,
+        74
+      ],
+      [
+        23,
+        0,
+        0,
+        2377
+      ]
+    ]
+  },
+  "caveat": "synthetic, noise-free renders; a real camera adds lighting, oil, dirt and blur, so this is an upper bound for the camera route, not a field result"
+}
