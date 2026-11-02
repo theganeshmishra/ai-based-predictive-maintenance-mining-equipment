@@ -1,7 +1,7 @@
 {
   "machine": "grader",
   "source": "GearBox_adddingImg v1 by Vjs, Roboflow Universe (https://universe.roboflow.com/vjs-jek7v/gearbox_adddingimg), CC BY 4.0; COCO export of 2026-11-02",
-  "modality": "real photographs of small manufactured gears (camera); NOT the slewing ring of the sensor and acoustic sides, and not the same faults",
+  "modality": "real photographs of small manufactured gears (camera); NOT the slewing ring of the sensor side, and not the same faults",
   "classes": [
     "good_tooth",
     "damaged_tooth"
@@ -28,6 +28,29 @@
     "dot_on_top_1",
     "teeth_bend_1"
   ],
+  "cnn_selected": {
+    "test_units": 2879,
+    "accuracy": 0.9642,
+    "balanced_accuracy": 0.779,
+    "macro_f1": 0.8136,
+    "damaged_tooth_recall": 0.5697,
+    "confusion_matrix": [
+      [
+        2682,
+        32
+      ],
+      [
+        71,
+        94
+      ]
+    ],
+    "choices": {
+      "margin 0.15, C 0.01": 22,
+      "margin 0.15, C 0.1": 4,
+      "margin 0.15, C 1.0": 28,
+      "margin 0.5, C 0.01": 1
+    }
+  },
   "cnn_features": {
     "test_units": 2879,
     "accuracy": 0.9722,
@@ -62,5 +85,6 @@
       ]
     ]
   },
+  "selection": "cnn_features (main): setting fixed before any result was seen (margin 0.15, C 0.1); cnn_selected (check): crop margin (0.15 or 0.5 of the box) and C (0.01, 0.1, 1) chosen per held-out source by 4-fold grouped validation inside the training sources",
   "caveat": "uploader unknown, no description; 645 of 838 images are frames of 15 short videos and 279 frames appear more than once; damaged teeth come from few sources; manufacturing defects on small gears, not field wear of a grader circle"
 }
