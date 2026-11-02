@@ -1,0 +1,680 @@
+{
+  "machine": "excavator",
+  "classes": [
+    "healthy",
+    "faulty"
+  ],
+  "plan": {
+    "target": "healthy versus faulty (bearing, unbalance and misalignment combined)",
+    "outer_test": "leave one entire speed out, four folds; no shared recording between train/test",
+    "inner_validation": "leave one of the three training speeds out; select feature set, classifier and threshold",
+    "primary_selection_metric": "recording-level balanced accuracy, then macro F1",
+    "classifiers": [
+      "Logistic regression C=0.1",
+      "Logistic regression C=1",
+      "Logistic regression C=10",
+      "Random forest 100 trees"
+    ],
+    "thresholds": [
+      0.35,
+      0.5,
+      0.65
+    ],
+    "image_features": "frozen ImageNet ResNet18; full-frame or fixed central 75% crop, selected within training only",
+    "sensor_features": "existing raw order-domain features; all or shape-only (excluding log_rms)",
+    "excluded": "per-speed-normalized CSV columns (would use the held-out distribution)",
+    "scope": "16 CORA laboratory stationary runs, not an actual excavator; no new independent recordings added",
+    "status": "exploratory benchmark reanalysis; these outer recordings have been evaluated in earlier experiments",
+    "baseline": "75% accuracy by always predicting faulty; 50% balanced accuracy"
+  },
+  "modalities": {
+    "sensor": {
+      "recording_level": {
+        "test_units": 16,
+        "accuracy": 0.6875,
+        "balanced_accuracy": 0.625,
+        "macro_precision": 0.6091,
+        "macro_recall": 0.625,
+        "macro_f1": 0.6135,
+        "confusion_matrix": [
+          [
+            2,
+            2
+          ],
+          [
+            3,
+            9
+          ]
+        ],
+        "per_class_recall": {
+          "healthy": 0.5,
+          "faulty": 0.75
+        },
+        "per_class": {
+          "healthy": {
+            "precision": 0.4,
+            "recall": 0.5,
+            "f1-score": 0.4444444444444444,
+            "support": 4.0
+          },
+          "faulty": {
+            "precision": 0.8181818181818182,
+            "recall": 0.75,
+            "f1-score": 0.782608695652174,
+            "support": 12.0
+          },
+          "accuracy": 0.6875,
+          "macro avg": {
+            "precision": 0.6090909090909091,
+            "recall": 0.625,
+            "f1-score": 0.6135265700483092,
+            "support": 16.0
+          },
+          "weighted avg": {
+            "precision": 0.7136363636363636,
+            "recall": 0.6875,
+            "f1-score": 0.6980676328502415,
+            "support": 16.0
+          }
+        }
+      },
+      "sample_level": {
+        "test_units": 4800,
+        "accuracy": 0.6375,
+        "balanced_accuracy": 0.5622,
+        "macro_precision": 0.5538,
+        "macro_recall": 0.5622,
+        "macro_f1": 0.5545,
+        "confusion_matrix": [
+          [
+            494,
+            706
+          ],
+          [
+            1034,
+            2566
+          ]
+        ],
+        "per_class_recall": {
+          "healthy": 0.4117,
+          "faulty": 0.7128
+        },
+        "per_class": {
+          "healthy": {
+            "precision": 0.32329842931937175,
+            "recall": 0.4116666666666667,
+            "f1-score": 0.3621700879765396,
+            "support": 1200.0
+          },
+          "faulty": {
+            "precision": 0.7842298288508558,
+            "recall": 0.7127777777777777,
+            "f1-score": 0.7467986030267754,
+            "support": 3600.0
+          },
+          "accuracy": 0.6375,
+          "macro avg": {
+            "precision": 0.5537641290851137,
+            "recall": 0.5622222222222222,
+            "f1-score": 0.5544843455016575,
+            "support": 4800.0
+          },
+          "weighted avg": {
+            "precision": 0.6689969789679848,
+            "recall": 0.6375,
+            "f1-score": 0.6506414742642164,
+            "support": 4800.0
+          }
+        }
+      },
+      "sample_unit": "sensor window",
+      "folds": [
+        {
+          "held_out_speed": "F5",
+          "feature_set": "all_order_features",
+          "model": "Random forest",
+          "threshold": 0.35,
+          "validation_balanced_accuracy": 0.7777777777777777,
+          "test_recordings": 4
+        },
+        {
+          "held_out_speed": "F15",
+          "feature_set": "all_order_features",
+          "model": "Random forest",
+          "threshold": 0.35,
+          "validation_balanced_accuracy": 0.7777777777777777,
+          "test_recordings": 4
+        },
+        {
+          "held_out_speed": "F50",
+          "feature_set": "all_order_features",
+          "model": "Random forest",
+          "threshold": 0.5,
+          "validation_balanced_accuracy": 0.5555555555555556,
+          "test_recordings": 4
+        },
+        {
+          "held_out_speed": "F60",
+          "feature_set": "shape_only",
+          "model": "Logistic regression C=1",
+          "threshold": 0.35,
+          "validation_balanced_accuracy": 0.6111111111111112,
+          "test_recordings": 4
+        }
+      ],
+      "majority_recording_baseline": {
+        "test_units": 16,
+        "accuracy": 0.75,
+        "balanced_accuracy": 0.5,
+        "macro_precision": 0.375,
+        "macro_recall": 0.5,
+        "macro_f1": 0.4286,
+        "confusion_matrix": [
+          [
+            0,
+            4
+          ],
+          [
+            0,
+            12
+          ]
+        ],
+        "per_class_recall": {
+          "healthy": 0.0,
+          "faulty": 1.0
+        },
+        "per_class": {
+          "healthy": {
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1-score": 0.0,
+            "support": 4.0
+          },
+          "faulty": {
+            "precision": 0.75,
+            "recall": 1.0,
+            "f1-score": 0.8571428571428571,
+            "support": 12.0
+          },
+          "accuracy": 0.75,
+          "macro avg": {
+            "precision": 0.375,
+            "recall": 0.5,
+            "f1-score": 0.42857142857142855,
+            "support": 16.0
+          },
+          "weighted avg": {
+            "precision": 0.5625,
+            "recall": 0.75,
+            "f1-score": 0.6428571428571428,
+            "support": 16.0
+          }
+        }
+      },
+      "heldout_recordings": [
+        {
+          "unit": "BD_F5_S",
+          "actual": "faulty",
+          "fault_score": 0.68813424070563,
+          "predicted": "faulty",
+          "speed": "F5",
+          "modality": "sensor"
+        },
+        {
+          "unit": "H_F5_S",
+          "actual": "healthy",
+          "fault_score": 0.700480285277521,
+          "predicted": "faulty",
+          "speed": "F5",
+          "modality": "sensor"
+        },
+        {
+          "unit": "M_F5_S",
+          "actual": "faulty",
+          "fault_score": 0.7075135095786447,
+          "predicted": "faulty",
+          "speed": "F5",
+          "modality": "sensor"
+        },
+        {
+          "unit": "U_F5_S",
+          "actual": "faulty",
+          "fault_score": 0.6797349597931597,
+          "predicted": "faulty",
+          "speed": "F5",
+          "modality": "sensor"
+        },
+        {
+          "unit": "BD_F15_S",
+          "actual": "faulty",
+          "fault_score": 0.9273041220127569,
+          "predicted": "faulty",
+          "speed": "F15",
+          "modality": "sensor"
+        },
+        {
+          "unit": "H_F15_S",
+          "actual": "healthy",
+          "fault_score": 0.9326816670575854,
+          "predicted": "faulty",
+          "speed": "F15",
+          "modality": "sensor"
+        },
+        {
+          "unit": "M_F15_S",
+          "actual": "faulty",
+          "fault_score": 0.9325786866435948,
+          "predicted": "faulty",
+          "speed": "F15",
+          "modality": "sensor"
+        },
+        {
+          "unit": "U_F15_S",
+          "actual": "faulty",
+          "fault_score": 0.9326625748151656,
+          "predicted": "faulty",
+          "speed": "F15",
+          "modality": "sensor"
+        },
+        {
+          "unit": "BD_F50_S",
+          "actual": "faulty",
+          "fault_score": 0.5201621551988435,
+          "predicted": "faulty",
+          "speed": "F50",
+          "modality": "sensor"
+        },
+        {
+          "unit": "H_F50_S",
+          "actual": "healthy",
+          "fault_score": 0.10393675601807192,
+          "predicted": "healthy",
+          "speed": "F50",
+          "modality": "sensor"
+        },
+        {
+          "unit": "M_F50_S",
+          "actual": "faulty",
+          "fault_score": 0.6730054526316239,
+          "predicted": "faulty",
+          "speed": "F50",
+          "modality": "sensor"
+        },
+        {
+          "unit": "U_F50_S",
+          "actual": "faulty",
+          "fault_score": 0.3363634308448868,
+          "predicted": "healthy",
+          "speed": "F50",
+          "modality": "sensor"
+        },
+        {
+          "unit": "BD_F60_S",
+          "actual": "faulty",
+          "fault_score": 0.009509022920833497,
+          "predicted": "healthy",
+          "speed": "F60",
+          "modality": "sensor"
+        },
+        {
+          "unit": "H_F60_S",
+          "actual": "healthy",
+          "fault_score": 0.3352749138374544,
+          "predicted": "healthy",
+          "speed": "F60",
+          "modality": "sensor"
+        },
+        {
+          "unit": "M_F60_S",
+          "actual": "faulty",
+          "fault_score": 0.08133022528794763,
+          "predicted": "healthy",
+          "speed": "F60",
+          "modality": "sensor"
+        },
+        {
+          "unit": "U_F60_S",
+          "actual": "faulty",
+          "fault_score": 0.9530484377163813,
+          "predicted": "faulty",
+          "speed": "F60",
+          "modality": "sensor"
+        }
+      ],
+      "target_met_recording_accuracy": false,
+      "target_met_recording_balanced_accuracy": false
+    },
+    "visual": {
+      "recording_level": {
+        "test_units": 16,
+        "accuracy": 0.75,
+        "balanced_accuracy": 0.5,
+        "macro_precision": 0.375,
+        "macro_recall": 0.5,
+        "macro_f1": 0.4286,
+        "confusion_matrix": [
+          [
+            0,
+            4
+          ],
+          [
+            0,
+            12
+          ]
+        ],
+        "per_class_recall": {
+          "healthy": 0.0,
+          "faulty": 1.0
+        },
+        "per_class": {
+          "healthy": {
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1-score": 0.0,
+            "support": 4.0
+          },
+          "faulty": {
+            "precision": 0.75,
+            "recall": 1.0,
+            "f1-score": 0.8571428571428571,
+            "support": 12.0
+          },
+          "accuracy": 0.75,
+          "macro avg": {
+            "precision": 0.375,
+            "recall": 0.5,
+            "f1-score": 0.42857142857142855,
+            "support": 16.0
+          },
+          "weighted avg": {
+            "precision": 0.5625,
+            "recall": 0.75,
+            "f1-score": 0.6428571428571428,
+            "support": 16.0
+          }
+        }
+      },
+      "sample_level": {
+        "test_units": 2400,
+        "accuracy": 0.7433,
+        "balanced_accuracy": 0.5417,
+        "macro_precision": 0.6115,
+        "macro_recall": 0.5417,
+        "macro_f1": 0.5295,
+        "confusion_matrix": [
+          [
+            83,
+            517
+          ],
+          [
+            99,
+            1701
+          ]
+        ],
+        "per_class_recall": {
+          "healthy": 0.1383,
+          "faulty": 0.945
+        },
+        "per_class": {
+          "healthy": {
+            "precision": 0.45604395604395603,
+            "recall": 0.13833333333333334,
+            "f1-score": 0.21227621483375958,
+            "support": 600.0
+          },
+          "faulty": {
+            "precision": 0.7669071235347159,
+            "recall": 0.945,
+            "f1-score": 0.8466898954703833,
+            "support": 1800.0
+          },
+          "accuracy": 0.7433333333333333,
+          "macro avg": {
+            "precision": 0.611475539789336,
+            "recall": 0.5416666666666666,
+            "f1-score": 0.5294830551520715,
+            "support": 2400.0
+          },
+          "weighted avg": {
+            "precision": 0.689191331662026,
+            "recall": 0.7433333333333333,
+            "f1-score": 0.6880864753112275,
+            "support": 2400.0
+          }
+        }
+      },
+      "sample_unit": "thermal image",
+      "folds": [
+        {
+          "held_out_speed": "F5",
+          "feature_set": "full_frame",
+          "model": "Logistic regression C=0.1",
+          "threshold": 0.65,
+          "validation_balanced_accuracy": 0.9444444444444444,
+          "test_recordings": 4
+        },
+        {
+          "held_out_speed": "F15",
+          "feature_set": "full_frame",
+          "model": "Logistic regression C=0.1",
+          "threshold": 0.35,
+          "validation_balanced_accuracy": 0.7777777777777777,
+          "test_recordings": 4
+        },
+        {
+          "held_out_speed": "F50",
+          "feature_set": "full_frame",
+          "model": "Random forest",
+          "threshold": 0.35,
+          "validation_balanced_accuracy": 0.6666666666666666,
+          "test_recordings": 4
+        },
+        {
+          "held_out_speed": "F60",
+          "feature_set": "full_frame",
+          "model": "Random forest",
+          "threshold": 0.5,
+          "validation_balanced_accuracy": 0.5555555555555556,
+          "test_recordings": 4
+        }
+      ],
+      "majority_recording_baseline": {
+        "test_units": 16,
+        "accuracy": 0.75,
+        "balanced_accuracy": 0.5,
+        "macro_precision": 0.375,
+        "macro_recall": 0.5,
+        "macro_f1": 0.4286,
+        "confusion_matrix": [
+          [
+            0,
+            4
+          ],
+          [
+            0,
+            12
+          ]
+        ],
+        "per_class_recall": {
+          "healthy": 0.0,
+          "faulty": 1.0
+        },
+        "per_class": {
+          "healthy": {
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1-score": 0.0,
+            "support": 4.0
+          },
+          "faulty": {
+            "precision": 0.75,
+            "recall": 1.0,
+            "f1-score": 0.8571428571428571,
+            "support": 12.0
+          },
+          "accuracy": 0.75,
+          "macro avg": {
+            "precision": 0.375,
+            "recall": 0.5,
+            "f1-score": 0.42857142857142855,
+            "support": 16.0
+          },
+          "weighted avg": {
+            "precision": 0.5625,
+            "recall": 0.75,
+            "f1-score": 0.6428571428571428,
+            "support": 16.0
+          }
+        }
+      },
+      "heldout_recordings": [
+        {
+          "unit": "BD_F5_S",
+          "actual": "faulty",
+          "fault_score": 0.956855945279129,
+          "predicted": "faulty",
+          "speed": "F5",
+          "modality": "visual"
+        },
+        {
+          "unit": "H_F5_S",
+          "actual": "healthy",
+          "fault_score": 0.9805462224899418,
+          "predicted": "faulty",
+          "speed": "F5",
+          "modality": "visual"
+        },
+        {
+          "unit": "M_F5_S",
+          "actual": "faulty",
+          "fault_score": 0.9982131566599031,
+          "predicted": "faulty",
+          "speed": "F5",
+          "modality": "visual"
+        },
+        {
+          "unit": "U_F5_S",
+          "actual": "faulty",
+          "fault_score": 0.9949169136748182,
+          "predicted": "faulty",
+          "speed": "F5",
+          "modality": "visual"
+        },
+        {
+          "unit": "BD_F15_S",
+          "actual": "faulty",
+          "fault_score": 0.5618163495128932,
+          "predicted": "faulty",
+          "speed": "F15",
+          "modality": "visual"
+        },
+        {
+          "unit": "H_F15_S",
+          "actual": "healthy",
+          "fault_score": 0.3997917238643804,
+          "predicted": "faulty",
+          "speed": "F15",
+          "modality": "visual"
+        },
+        {
+          "unit": "M_F15_S",
+          "actual": "faulty",
+          "fault_score": 0.8344458615810911,
+          "predicted": "faulty",
+          "speed": "F15",
+          "modality": "visual"
+        },
+        {
+          "unit": "U_F15_S",
+          "actual": "faulty",
+          "fault_score": 0.981136844235844,
+          "predicted": "faulty",
+          "speed": "F15",
+          "modality": "visual"
+        },
+        {
+          "unit": "BD_F50_S",
+          "actual": "faulty",
+          "fault_score": 0.9289431864182813,
+          "predicted": "faulty",
+          "speed": "F50",
+          "modality": "visual"
+        },
+        {
+          "unit": "H_F50_S",
+          "actual": "healthy",
+          "fault_score": 0.6879966870049985,
+          "predicted": "faulty",
+          "speed": "F50",
+          "modality": "visual"
+        },
+        {
+          "unit": "M_F50_S",
+          "actual": "faulty",
+          "fault_score": 0.8337362909302964,
+          "predicted": "faulty",
+          "speed": "F50",
+          "modality": "visual"
+        },
+        {
+          "unit": "U_F50_S",
+          "actual": "faulty",
+          "fault_score": 0.4307683193471142,
+          "predicted": "faulty",
+          "speed": "F50",
+          "modality": "visual"
+        },
+        {
+          "unit": "BD_F60_S",
+          "actual": "faulty",
+          "fault_score": 0.8784249469076707,
+          "predicted": "faulty",
+          "speed": "F60",
+          "modality": "visual"
+        },
+        {
+          "unit": "H_F60_S",
+          "actual": "healthy",
+          "fault_score": 0.6850624422410221,
+          "predicted": "faulty",
+          "speed": "F60",
+          "modality": "visual"
+        },
+        {
+          "unit": "M_F60_S",
+          "actual": "faulty",
+          "fault_score": 0.8344090325408684,
+          "predicted": "faulty",
+          "speed": "F60",
+          "modality": "visual"
+        },
+        {
+          "unit": "U_F60_S",
+          "actual": "faulty",
+          "fault_score": 0.8648882405752255,
+          "predicted": "faulty",
+          "speed": "F60",
+          "modality": "visual"
+        }
+      ],
+      "target_met_recording_accuracy": false,
+      "target_met_recording_balanced_accuracy": false
+    }
+  },
+  "limits": [
+    "Binary condition monitoring is not four-class fault diagnosis or remaining-life prediction.",
+    "Only four healthy runs and twelve faulty runs; classes are imbalanced 1:3.",
+    "Repeated frames/windows are correlated; the recording is the primary evaluation unit.",
+    "CORA is one laboratory rig; thermal framing/session confounds may remain even after central cropping.",
+    "Prior analysis has exposed these benchmark recordings; independent new recordings are required for confirmatory evidence."
+  ],
+  "provenance": {
+    "sensor_csv_sha256": "a3aea196934ebacd7d602c96f8b1f7a17dd28fc236e7cc99e5d910bce1990b05",
+    "image_index_sha256": "6634de87d704f02fd6d8aac0e9a4b29253f76c7584f5ea71be7b90281f36d0de",
+    "image_features_signature": "d6b1fc873efaff8213a1d456c6f44dcf9b2969bcea1f410d3136f8a149992e71",
+    "encoder_checkpoint": "resnet18-f37072fd.pth",
+    "encoder_sha256": "f37072fd47e89c5e827621c5baffa7500819f7896bbacec160b1a16c560e07ec",
+    "images": 2400,
+    "recordings": 16
+  }
+}

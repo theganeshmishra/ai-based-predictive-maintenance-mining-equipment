@@ -140,3 +140,18 @@ infrared comparison, conditional on accepting CORA's laboratory geared drive
 as a sufficiently similar reducer. Its sensor and infrared accuracies are
 0.625 and 0.500, both below the 0.750 majority-class control; this is **not**
 evidence of a reliable fault detector, mine deployment, or repair prediction.
+
+
+## Exploratory Excavator binary follow-up
+
+A separate Healthy vs Faulty benchmark groups bearing, unbalance and misalignment as faulty. It uses nested whole-speed-held-out evaluation on 16 existing CORA runs; all four-class results remain unchanged. Class imbalance gives an always-faulty baseline of 75% accuracy, so balanced accuracy, per-class recall and macro F1 are reported. Frozen ImageNet image features and sensor classifiers are selected only inside the training speeds. The result did not reach 80%; the visual model failed to recognize healthy recordings. This is exploratory reuse of an already-analyzed benchmark, not new confirmatory evidence. See the [binary comparison report](../Results/excavator/excavator_binary_condition.md).
+
+
+### Complete-recording follow-up and control
+
+A further predeclared exploratory run summarized vibration distributions/drift and thermal equipment-region changes over each complete recording. It processed all 7,200 native thermal frames but still evaluated only 16 independent source recordings under whole-speed-held-out testing. Nested training-only validation selected the model/features. Sensor accuracy was 75% (balanced 66.67%); visual accuracy was 43.75% (balanced 37.5%); a background-only control scored 50%. This did not reach 80% and does not replace either the first binary attempt or the original four-class result. See the [complete-recording follow-up](../Results/excavator/excavator_binary_recording_followup.md). Higher within-recording time-split scores remain secondary and are not evidence of cross-speed performance.
+
+
+### Further binary trials
+
+A training-only healthy speed-reference sensor model reached 62.5% recording accuracy (58.33% balanced accuracy). An equipment-region ResNet18 was also fine-tuned, with frozen earlier layers and epochs selected through inner whole-speed validation: recording accuracy 87.50%, balanced accuracy 75.00%, macro F1 79.49%. Both use the same small, previously examined benchmark and remain exploratory. The four-class results are unchanged. See [all binary improvement trials](../Results/excavator/excavator_binary_improvement_trials.md) for every attempted method and limitations.
