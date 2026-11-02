@@ -1,0 +1,66 @@
+{
+  "machine": "grader",
+  "source": "GearBox_adddingImg v1 by Vjs, Roboflow Universe (https://universe.roboflow.com/vjs-jek7v/gearbox_adddingimg), CC BY 4.0; COCO export of 2026-11-02",
+  "modality": "real photographs of small manufactured gears (camera); NOT the slewing ring of the sensor and acoustic sides, and not the same faults",
+  "classes": [
+    "good_tooth",
+    "damaged_tooth"
+  ],
+  "task": "classify one tooth crop as good or damaged (box labels goodTeeth vs Breakage, Gear tooth breakage, Wear and Tear, badTeeth, damage, pitting, teethCrack, tooth failure)",
+  "test": "leave one video or photo set out (frames of one video never in both training and test); frozen ImageNet ResNet-18 features + logistic regression (C 0.1, balanced), fixed in advance",
+  "crops": 2879,
+  "crops_by_class": {
+    "good_tooth": 2714,
+    "damaged_tooth": 165
+  },
+  "sources": 55,
+  "sources_with_damaged_teeth": [
+    "Collar-cut-mark",
+    "Collar-damage",
+    "Damaged-Helical-Gear",
+    "Damaged-bevel-gear",
+    "Inner-dia-Teeth-dent",
+    "OD-teeth-chip-off",
+    "Outer-Dia-Teeth-dent",
+    "Stick-burr-on-the-root",
+    "Top-face-damge",
+    "crack_on_teeth_1",
+    "dot_on_top_1",
+    "teeth_bend_1"
+  ],
+  "cnn_features": {
+    "test_units": 2879,
+    "accuracy": 0.9722,
+    "balanced_accuracy": 0.8259,
+    "macro_f1": 0.8584,
+    "damaged_tooth_recall": 0.6606,
+    "confusion_matrix": [
+      [
+        2690,
+        24
+      ],
+      [
+        56,
+        109
+      ]
+    ]
+  },
+  "colour_statistics_control": {
+    "test_units": 2879,
+    "accuracy": 0.9608,
+    "balanced_accuracy": 0.7572,
+    "macro_f1": 0.7928,
+    "damaged_tooth_recall": 0.5273,
+    "confusion_matrix": [
+      [
+        2679,
+        35
+      ],
+      [
+        78,
+        87
+      ]
+    ]
+  },
+  "caveat": "uploader unknown, no description; 645 of 838 images are frames of 15 short videos and 279 frames appear more than once; damaged teeth come from few sources; manufacturing defects on small gears, not field wear of a grader circle"
+}
