@@ -2,6 +2,17 @@
 
 All equipment model implementations, shared data loading and display helpers
 live in this file. The combined notebook calls a selected model or shows saved results.
+
+Reading order:
+1. Data readers: load sensor recordings and image pixels from local folders.
+2. Shared evaluation: group predictions, calculate metrics and save figures.
+3. Notebook display helpers: show saved results without retraining.
+4. Equipment sections: Pump, Haul Truck, Belt Conveyor, Excavator, Dozer,
+   Wheel Loader and Drill Rig. Expand only the section you need in VS Code.
+5. get_model / command-line entry: select and run an equipment pipeline.
+
+Pipeline: local files -> validation/features -> train/test split -> model -> results.
+Equipment-specific splits and historical experiment variants are preserved.
 """
 
 from __future__ import annotations
@@ -26,6 +37,8 @@ from IPython.display import Image, display
 
 # Harmless scikit-learn/joblib notice that can repeat thousands of times inside a notebook kernel
 warnings.filterwarnings("ignore", message=r".*sklearn\.utils\.parallel\.delayed.*")
+
+#region Local folders and data loading
 
 ROOT = Path(__file__).resolve().parents[1]
 RAW, PROCESSED, RESULTS = ROOT / "Raw_Data", ROOT / "Processed_Data", ROOT / "Results"
@@ -60,7 +73,6 @@ def load_image(path, flags=None):
     return cv2.imread(str(path), cv2.IMREAD_COLOR if flags is None else flags)
 
 
-
 def load_pump_sensor(filename):
     """Load one Ottawa Pump bearing recording as a flat vibration signal."""
     path = RAW_DATA / "uottawa_bearing" / filename
@@ -87,7 +99,7 @@ def load_cora_sensor(filename):
     return table.iloc[:, 0].to_numpy()
 
 
-def load_model_images(image_folder, records):
+def load_model_images(image_folder, records, channels=None):
     """Read RGB images and prepare a normalized NCHW array for pretrained CNNs.
 
     Records come from index.csv and retain their existing labels and run groups.
@@ -103,8 +115,12 @@ def load_model_images(image_folder, records):
         if image is None:
             raise FileNotFoundError(f"Missing image {record['file']}: run export-images first")
 
-        # OpenCV reads BGR; the pretrained CNN expects RGB, channels first.
-        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+        # Pretrained models use RGB. Small CNNs keep their original channels:
+        # event images: red/green (2, 1); thermal images: grayscale (0,).
+        if channels is None:
+            image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+        else:
+            image = image[:, :, list(channels)]
         image = image.astype(np.float32).transpose(2, 0, 1)
 
         # Normalize each image independently, without using other recordings.
@@ -119,6 +135,13 @@ def open_archive(path, *args, **kwargs):
     return zipfile.ZipFile(path, *args, **kwargs)
 
 
+def read_image_records(image_folder):
+    """Read image filenames, fault labels and recording IDs from index.csv."""
+    path = Path(image_folder) / "index.csv"
+    with path.open(encoding="utf-8", newline="") as handle:
+        return list(csv.DictReader(handle))
+
+
 def load_image_index(machine, variant=''):
     """Read filenames, labels and recording groups without loading image pixels."""
     if variant not in ('', 'allframes', 'denseframes'):
@@ -126,9 +149,87 @@ def load_image_index(machine, variant=''):
     if machine not in ('pump', 'haul_truck', 'belt_conveyor', 'excavator', 'dozer', 'wheel_loader'):
         raise ValueError('Unknown equipment mapping')
     folder = machine + (f'_{variant}' if variant else '')
-    with (IMAGE_DATA / folder / 'index.csv').open(encoding='utf-8', newline='') as handle:
-        return list(csv.DictReader(handle))
+    return read_image_records(IMAGE_DATA / folder)
 
+
+#endregion
+
+#region Shared evaluation and plotting
+
+def predict_recordings(probabilities, classes, y, units):
+    """One prediction per test unit (recording or run): average the class probabilities of its rows."""
+    import numpy as np
+
+    actual, predicted = [], []
+    for unit in sorted(set(units)):
+        rows = units == unit
+        if len(set(y[rows])) != 1:
+            raise ValueError(f"Mixed labels within {unit}")
+        actual.append(y[rows][0])
+        predicted.append(classes[int(np.argmax(probabilities[rows].mean(axis=0)))])
+    return actual, predicted
+
+
+def classification_metrics(actual, predicted, labels):
+    from sklearn.metrics import (
+        accuracy_score, balanced_accuracy_score, confusion_matrix,
+        precision_recall_fscore_support,
+    )
+
+    precision, recall, f1, support = precision_recall_fscore_support(actual, predicted, labels=labels, zero_division=0)
+    return {
+        "test_units": len(actual),
+        "accuracy": round(float(accuracy_score(actual, predicted)), 4),
+        "balanced_accuracy": round(float(balanced_accuracy_score(actual, predicted)), 4),
+        "macro_precision": round(float(precision.mean()), 4),
+        "macro_recall": round(float(recall.mean()), 4),
+        "macro_f1": round(float(f1.mean()), 4),
+        "confusion_matrix": confusion_matrix(actual, predicted, labels=labels).tolist(),
+        "per_class_recall": {label: round(float(r), 4) for label, r in zip(labels, recall)},
+    }
+
+
+def save_confusion_matrix(matrix, labels, title, path):
+    import numpy as np
+    import matplotlib.pyplot as plt
+
+    array = np.asarray(matrix)
+    figure, axis = plt.subplots(figsize=(1.4 + 1.1 * len(labels), 1.2 + 1.0 * len(labels)))
+    axis.imshow(array, cmap="Blues", vmin=0)
+    axis.set_xticks(range(len(labels)), labels, rotation=30)
+    axis.set_yticks(range(len(labels)), labels)
+    axis.set_xlabel("Predicted")
+    axis.set_ylabel("Actual")
+    axis.set_title(title, fontsize=9)
+    for i in range(len(labels)):
+        for j in range(len(labels)):
+            axis.text(j, i, str(array[i, j]), ha="center", va="center",
+                      color="white" if array[i, j] > array.max() / 2 else "black")
+    figure.tight_layout()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    figure.savefig(path, dpi=140)
+    plt.close(figure)
+
+
+def augment_event_images(batch, generator):
+    """Apply the fixed training augmentation without constructing another CNN pipeline."""
+
+    import torch
+
+    n = batch.shape[0]
+    flip = torch.rand(n, generator=generator) < 0.5
+    batch = torch.where(flip[:, None, None, None], batch.flip(-1), batch)
+    shifted = []
+    for image in batch:
+        dy, dx = (int(v) for v in torch.randint(-8, 9, (2,), generator=generator))
+        shifted.append(torch.roll(image, shifts=(dy, dx), dims=(-2, -1)))
+    batch = torch.stack(shifted)
+    scale = 0.8 + 0.4 * torch.rand(n, 1, 1, 1, generator=generator)
+    return batch * scale + 0.05 * torch.randn(batch.shape, generator=generator)
+
+#endregion
+
+#region Notebook controls and result displays
 
 METRICS = ("accuracy", "balanced_accuracy", "macro_precision", "macro_recall", "macro_f1")
 
@@ -558,7 +659,7 @@ def show_thermal_motor() -> None:
     """Excavator, separate image data: Kulkarni motor thermal images, healthy vs corroded bearing, unseen load."""
     result = load("excavator_thermal_motor_2class.json")
     if not result:
-        print("No result yet: run  python Models/excavator.py thermal-motor")
+        print("No result yet: run  python Notebook/notebook_helpers.py excavator thermal-motor")
         return
     levels = {"every test image": result["image_level"], "per 1/10 session segment": result["segment_level"],
               "per whole session": result["session_level"],
@@ -629,16 +730,19 @@ def save_test_image_result_graphs() -> None:
 
 
 # PUMP MODEL IMPLEMENTATION
+#endregion
+
+#region Pump: data, preprocessing, models and evaluation
 def _make_pump():
-    __doc__ = "Pump: support bearing, vibration sensor vs XJTU event camera.\n\nAll of this machine's code in one file. The combined notebook\nNotebook/Mining_Equipment_Condition_Monitoring.ipynb runs these commands and shows the results.\n\nUsage:\n    python Models/pump.py <command> [options]\n    python Models/pump.py <command> --help\n\nCommands:\n    intake          download and verify the 48 Ottawa vibration recordings\n    sensor          vibration sensor model\n    camera          XJTU event-camera model (OpenCV HOG)\n    compare         sensor vs camera report and figure\n    original-xlsx   extra: original centrifugal-pump XLSX diagnostic (sensor only)\n    uci-hydraulic   extra: UCI hydraulic pump leakage (sensor only)\n    espset          extra: ESPset V3 pump vibration (sensor only)\n    baselines       Week 5: compare majority class, logistic regression, decision tree and random forest\n    export-images   Week 6: save the camera images as named files in Images/<machine>/ (local only)\n    csv             Week 6: 4-class sensor model from a CSV feature table\n    cnn             Week 6: CNN with data augmentation on the named images (run export-images first)\n    cnn-pretrained  Week 6: transfer learning, pretrained ResNet18 on the named images\n    train-final     train the sensor model on all data and save it (--exclude to leave recordings out)\n    predict         predict from any CSV (feature table or raw recording) and show accuracy if labels are known\n    ensembles       proposal Week 6: XGBoost / LightGBM vs random forest etc. (--split time for the secondary test)\n    anomaly         Week 7: anomaly detection trained on healthy data only (--split time for the secondary test)\n    all             run sensor, then camera, then compare\n\nRaw data stays in Raw_Data/ and Processed_Data/ (not in Git)."
+    __doc__ = "Pump: support bearing, vibration sensor vs XJTU event camera.\n\nThis equipment section contains its model implementation. The combined notebook\nNotebook/Mining_Equipment_Condition_Monitoring.ipynb runs these commands and shows the results.\n\nUsage:\n    python Notebook/notebook_helpers.py pump <command> [options]\n    python Notebook/notebook_helpers.py pump <command> --help\n\nCommands:\n    intake          download and verify the 48 Ottawa vibration recordings\n    sensor          vibration sensor model\n    camera          XJTU event-camera model (OpenCV HOG)\n    compare         sensor vs camera report and figure\n    original-xlsx   extra: original centrifugal-pump XLSX diagnostic (sensor only)\n    uci-hydraulic   extra: UCI hydraulic pump leakage (sensor only)\n    espset          extra: ESPset V3 pump vibration (sensor only)\n    baselines       Week 5: compare majority class, logistic regression, decision tree and random forest\n    export-images   Week 6: save the camera images as named files in Images/<machine>/ (local only)\n    csv             Week 6: 4-class sensor model from a CSV feature table\n    cnn             Week 6: CNN with data augmentation on the named images (run export-images first)\n    cnn-pretrained  Week 6: transfer learning, pretrained ResNet18 on the named images\n    train-final     train the sensor model on all data and save it (--exclude to leave recordings out)\n    predict         predict from any CSV (feature table or raw recording) and show accuracy if labels are known\n    ensembles       proposal Week 6: XGBoost / LightGBM vs random forest etc. (--split time for the secondary test)\n    anomaly         Week 7: anomaly detection trained on healthy data only (--split time for the secondary test)\n    all             run sensor, then camera, then compare\n\nRaw data stays in Raw_Data/ and Processed_Data/ (not in Git)."
     """Pump: support bearing, vibration sensor vs XJTU event camera.
 
-    All of this machine's code in one file. The combined notebook
+    This equipment section contains its model implementation. The combined notebook
     Notebook/Mining_Equipment_Condition_Monitoring.ipynb runs these commands and shows the results.
 
     Usage:
-        python Models/pump.py <command> [options]
-        python Models/pump.py <command> --help
+        python Notebook/notebook_helpers.py pump <command> [options]
+        python Notebook/notebook_helpers.py pump <command> --help
 
     Commands:
         intake          download and verify the 48 Ottawa vibration recordings
@@ -665,7 +769,6 @@ def _make_pump():
 
     import sys
     from pathlib import Path
-
 
 
     # ==================================================================================================
@@ -1759,7 +1862,7 @@ def _make_pump():
         locally; no raw observations are committed to Git.
 
         Run from the repository root:
-            .venv/bin/python Models/pump.py uci-hydraulic
+            .venv/bin/python Notebook/notebook_helpers.py pump uci-hydraulic
         """
 
 
@@ -2489,47 +2592,11 @@ def _make_pump():
                 min_samples_leaf=2, random_state=42, n_jobs=-1),
         }
 
-        def unit_predictions(probabilities, classes, y, units):
-            """One prediction per test unit (recording or run): average the class probabilities of its rows."""
-            actual, predicted = [], []
-            for unit in sorted(set(units)):
-                rows = units == unit
-                if len(set(y[rows])) != 1:
-                    raise ValueError(f"Mixed labels within {unit}")
-                actual.append(y[rows][0])
-                predicted.append(classes[int(np.argmax(probabilities[rows].mean(axis=0)))])
-            return actual, predicted
+        unit_predictions = predict_recordings
 
-        def score(actual, predicted, labels):
-            precision, recall, f1, support = precision_recall_fscore_support(actual, predicted, labels=labels, zero_division=0)
-            return {
-                "test_units": len(actual),
-                "accuracy": round(float(accuracy_score(actual, predicted)), 4),
-                "balanced_accuracy": round(float(balanced_accuracy_score(actual, predicted)), 4),
-                "macro_precision": round(float(precision.mean()), 4),
-                "macro_recall": round(float(recall.mean()), 4),
-                "macro_f1": round(float(f1.mean()), 4),
-                "confusion_matrix": confusion_matrix(actual, predicted, labels=labels).tolist(),
-                "per_class_recall": {label: round(float(r), 4) for label, r in zip(labels, recall)},
-            }
+        score = classification_metrics
 
-        def plot_matrix(matrix, labels, title, path):
-            array = np.asarray(matrix)
-            figure, axis = plt.subplots(figsize=(1.4 + 1.1 * len(labels), 1.2 + 1.0 * len(labels)))
-            axis.imshow(array, cmap="Blues", vmin=0)
-            axis.set_xticks(range(len(labels)), labels, rotation=30)
-            axis.set_yticks(range(len(labels)), labels)
-            axis.set_xlabel("Predicted")
-            axis.set_ylabel("Actual")
-            axis.set_title(title, fontsize=9)
-            for i in range(len(labels)):
-                for j in range(len(labels)):
-                    axis.text(j, i, str(array[i, j]), ha="center", va="center",
-                              color="white" if array[i, j] > array.max() / 2 else "black")
-            figure.tight_layout()
-            path.parent.mkdir(parents=True, exist_ok=True)
-            figure.savefig(path, dpi=140)
-            plt.close(figure)
+        plot_matrix = save_confusion_matrix
 
 
         def build_table():
@@ -2664,21 +2731,7 @@ def _make_pump():
     # cnn: Week 6, CNN with data augmentation on the named images (professor remark)
     # ====================================================================================================
 
-    def _augment_event_batch(batch, generator):
-        """Apply the fixed training augmentation without constructing another CNN pipeline."""
-        import torch
-
-        n = batch.shape[0]
-        flip = torch.rand(n, generator=generator) < 0.5
-        batch = torch.where(flip[:, None, None, None], batch.flip(-1), batch)
-        shifted = []
-        for image in batch:
-            dy, dx = (int(v) for v in torch.randint(-8, 9, (2,), generator=generator))
-            shifted.append(torch.roll(image, shifts=(dy, dx), dims=(-2, -1)))
-        batch = torch.stack(shifted)
-        scale = 0.8 + 0.4 * torch.rand(n, 1, 1, 1, generator=generator)
-        return batch * scale + 0.05 * torch.randn(batch.shape, generator=generator)
-
+    _augment_event_batch = augment_event_images
 
 
     def cnn(run: bool = True) -> dict:
@@ -2716,64 +2769,18 @@ def _make_pump():
         LABELS = ["healthy", "inner", "outer", "ball"]
         EPOCHS, BATCH, LEARNING_RATE, SEED = 20, 32, 1e-3, 42
 
-        def unit_predictions(probabilities, classes, y, units):
-            """One prediction per test unit (recording or run): average the class probabilities of its rows."""
-            actual, predicted = [], []
-            for unit in sorted(set(units)):
-                rows = units == unit
-                if len(set(y[rows])) != 1:
-                    raise ValueError(f"Mixed labels within {unit}")
-                actual.append(y[rows][0])
-                predicted.append(classes[int(np.argmax(probabilities[rows].mean(axis=0)))])
-            return actual, predicted
+        unit_predictions = predict_recordings
 
-        def score(actual, predicted, labels):
-            precision, recall, f1, support = precision_recall_fscore_support(actual, predicted, labels=labels, zero_division=0)
-            return {
-                "test_units": len(actual),
-                "accuracy": round(float(accuracy_score(actual, predicted)), 4),
-                "balanced_accuracy": round(float(balanced_accuracy_score(actual, predicted)), 4),
-                "macro_precision": round(float(precision.mean()), 4),
-                "macro_recall": round(float(recall.mean()), 4),
-                "macro_f1": round(float(f1.mean()), 4),
-                "confusion_matrix": confusion_matrix(actual, predicted, labels=labels).tolist(),
-                "per_class_recall": {label: round(float(r), 4) for label, r in zip(labels, recall)},
-            }
+        score = classification_metrics
 
-        def plot_matrix(matrix, labels, title, path):
-            array = np.asarray(matrix)
-            figure, axis = plt.subplots(figsize=(1.4 + 1.1 * len(labels), 1.2 + 1.0 * len(labels)))
-            axis.imshow(array, cmap="Blues", vmin=0)
-            axis.set_xticks(range(len(labels)), labels, rotation=30)
-            axis.set_yticks(range(len(labels)), labels)
-            axis.set_xlabel("Predicted")
-            axis.set_ylabel("Actual")
-            axis.set_title(title, fontsize=9)
-            for i in range(len(labels)):
-                for j in range(len(labels)):
-                    axis.text(j, i, str(array[i, j]), ha="center", va="center",
-                              color="white" if array[i, j] > array.max() / 2 else "black")
-            figure.tight_layout()
-            path.parent.mkdir(parents=True, exist_ok=True)
-            figure.savefig(path, dpi=140)
-            plt.close(figure)
+        plot_matrix = save_confusion_matrix
 
 
         def read_index():
-            with (IMAGES / "index.csv").open(encoding="utf-8") as handle:
-                return list(csv_module.DictReader(handle))
+            return read_image_records(IMAGES)
 
         def load(rows):
-            images = []
-            for row in rows:
-                image = load_image(str(IMAGES / row["file"]), cv2.IMREAD_COLOR)
-                if image is None:
-                    raise FileNotFoundError(f"Missing image {row['file']}: run export-images first")
-                channels = [2, 1]  # red = brighter events, green = darker events
-                image = image[:, :, channels].astype(np.float32).transpose(2, 0, 1)
-                image = (image - image.mean()) / (image.std() + 1e-6)  # per-image standardisation
-                images.append(image)
-            return np.stack(images)
+            return load_model_images(IMAGES, rows, channels=(2, 1))
 
         class Net(nn.Module):
             def __init__(self, in_channels, n_classes):
@@ -2900,47 +2907,11 @@ def _make_pump():
         SEGMENTS = 10   # test segments per held-out recording (segment-level score)
         MAX_EPOCHS, BATCH, LEARNING_RATE, SEED = 15, 32, 3e-4, 42
 
-        def unit_predictions(probabilities, classes, y, units):
-            """One prediction per test unit (recording or run): average the class probabilities of its rows."""
-            actual, predicted = [], []
-            for unit in sorted(set(units)):
-                rows = units == unit
-                if len(set(y[rows])) != 1:
-                    raise ValueError(f"Mixed labels within {unit}")
-                actual.append(y[rows][0])
-                predicted.append(classes[int(np.argmax(probabilities[rows].mean(axis=0)))])
-            return actual, predicted
+        unit_predictions = predict_recordings
 
-        def score(actual, predicted, labels):
-            precision, recall, f1, support = precision_recall_fscore_support(actual, predicted, labels=labels, zero_division=0)
-            return {
-                "test_units": len(actual),
-                "accuracy": round(float(accuracy_score(actual, predicted)), 4),
-                "balanced_accuracy": round(float(balanced_accuracy_score(actual, predicted)), 4),
-                "macro_precision": round(float(precision.mean()), 4),
-                "macro_recall": round(float(recall.mean()), 4),
-                "macro_f1": round(float(f1.mean()), 4),
-                "confusion_matrix": confusion_matrix(actual, predicted, labels=labels).tolist(),
-                "per_class_recall": {label: round(float(r), 4) for label, r in zip(labels, recall)},
-            }
+        score = classification_metrics
 
-        def plot_matrix(matrix, labels, title, path):
-            array = np.asarray(matrix)
-            figure, axis = plt.subplots(figsize=(1.4 + 1.1 * len(labels), 1.2 + 1.0 * len(labels)))
-            axis.imshow(array, cmap="Blues", vmin=0)
-            axis.set_xticks(range(len(labels)), labels, rotation=30)
-            axis.set_yticks(range(len(labels)), labels)
-            axis.set_xlabel("Predicted")
-            axis.set_ylabel("Actual")
-            axis.set_title(title, fontsize=9)
-            for i in range(len(labels)):
-                for j in range(len(labels)):
-                    axis.text(j, i, str(array[i, j]), ha="center", va="center",
-                              color="white" if array[i, j] > array.max() / 2 else "black")
-            figure.tight_layout()
-            path.parent.mkdir(parents=True, exist_ok=True)
-            figure.savefig(path, dpi=140)
-            plt.close(figure)
+        plot_matrix = save_confusion_matrix
 
         def plot_levels(result, title, path):
             """One panel per scoring level, so the figure shows how many images were really tested."""
@@ -3544,21 +3515,23 @@ def _make_pump():
             COMMANDS[name]()
 
 
-
     return SimpleNamespace(**locals())
+
+#endregion
 
 
 # HAUL_TRUCK MODEL IMPLEMENTATION
+#region Haul Truck: data, preprocessing, models and evaluation
 def _make_haul_truck():
-    __doc__ = "Haul/Dump Truck: wheel-motor bearing, UODS vibration vs XJTU-Rotor event camera.\n\nAll of this machine's code in one file. The combined notebook\nNotebook/Mining_Equipment_Condition_Monitoring.ipynb runs these commands and shows the results.\n\nUsage:\n    python Models/haul_truck.py <command> [options]\n    python Models/haul_truck.py <command> --help\n\nCommands:\n    intake          download UODS vibration and the XJTU-Rotor zip\n    experiment      vibration and event-camera models, report and figure\n    baselines       Week 5: compare majority class, logistic regression, decision tree and random forest\n    export-images   Week 6: save the camera images as named files in Images/<machine>/ (local only)\n    csv             Week 6: 4-class sensor model from a CSV feature table\n    cnn             Week 6: CNN with data augmentation on the named images (run export-images first)\n    cnn-pretrained  Week 6: transfer learning, pretrained ResNet18 on the named images\n    train-final     train the sensor model on all data and save it (--exclude to leave recordings out)\n    predict         predict from any CSV (feature table or raw recording) and show accuracy if labels are known\n    ensembles       proposal Week 6: XGBoost / LightGBM vs random forest etc. (--split time for the secondary test)\n    anomaly         Week 7: anomaly detection trained on healthy data only (--split time for the secondary test)\n    all             run experiment\n\nRaw data stays in Raw_Data/ and Processed_Data/ (not in Git)."
+    __doc__ = "Haul/Dump Truck: wheel-motor bearing, UODS vibration vs XJTU-Rotor event camera.\n\nThis equipment section contains its model implementation. The combined notebook\nNotebook/Mining_Equipment_Condition_Monitoring.ipynb runs these commands and shows the results.\n\nUsage:\n    python Notebook/notebook_helpers.py haul_truck <command> [options]\n    python Notebook/notebook_helpers.py haul_truck <command> --help\n\nCommands:\n    intake          download UODS vibration and the XJTU-Rotor zip\n    experiment      vibration and event-camera models, report and figure\n    baselines       Week 5: compare majority class, logistic regression, decision tree and random forest\n    export-images   Week 6: save the camera images as named files in Images/<machine>/ (local only)\n    csv             Week 6: 4-class sensor model from a CSV feature table\n    cnn             Week 6: CNN with data augmentation on the named images (run export-images first)\n    cnn-pretrained  Week 6: transfer learning, pretrained ResNet18 on the named images\n    train-final     train the sensor model on all data and save it (--exclude to leave recordings out)\n    predict         predict from any CSV (feature table or raw recording) and show accuracy if labels are known\n    ensembles       proposal Week 6: XGBoost / LightGBM vs random forest etc. (--split time for the secondary test)\n    anomaly         Week 7: anomaly detection trained on healthy data only (--split time for the secondary test)\n    all             run experiment\n\nRaw data stays in Raw_Data/ and Processed_Data/ (not in Git)."
     """Haul/Dump Truck: wheel-motor bearing, UODS vibration vs XJTU-Rotor event camera.
 
-    All of this machine's code in one file. The combined notebook
+    This equipment section contains its model implementation. The combined notebook
     Notebook/Mining_Equipment_Condition_Monitoring.ipynb runs these commands and shows the results.
 
     Usage:
-        python Models/haul_truck.py <command> [options]
-        python Models/haul_truck.py <command> --help
+        python Notebook/notebook_helpers.py haul_truck <command> [options]
+        python Notebook/notebook_helpers.py haul_truck <command> --help
 
     Commands:
         intake          download UODS vibration and the XJTU-Rotor zip
@@ -3580,7 +3553,6 @@ def _make_haul_truck():
 
     import sys
     from pathlib import Path
-
 
 
     # ==================================================================================================
@@ -4506,47 +4478,11 @@ def _make_haul_truck():
                 min_samples_leaf=2, random_state=42, n_jobs=-1),
         }
 
-        def unit_predictions(probabilities, classes, y, units):
-            """One prediction per test unit (recording or run): average the class probabilities of its rows."""
-            actual, predicted = [], []
-            for unit in sorted(set(units)):
-                rows = units == unit
-                if len(set(y[rows])) != 1:
-                    raise ValueError(f"Mixed labels within {unit}")
-                actual.append(y[rows][0])
-                predicted.append(classes[int(np.argmax(probabilities[rows].mean(axis=0)))])
-            return actual, predicted
+        unit_predictions = predict_recordings
 
-        def score(actual, predicted, labels):
-            precision, recall, f1, support = precision_recall_fscore_support(actual, predicted, labels=labels, zero_division=0)
-            return {
-                "test_units": len(actual),
-                "accuracy": round(float(accuracy_score(actual, predicted)), 4),
-                "balanced_accuracy": round(float(balanced_accuracy_score(actual, predicted)), 4),
-                "macro_precision": round(float(precision.mean()), 4),
-                "macro_recall": round(float(recall.mean()), 4),
-                "macro_f1": round(float(f1.mean()), 4),
-                "confusion_matrix": confusion_matrix(actual, predicted, labels=labels).tolist(),
-                "per_class_recall": {label: round(float(r), 4) for label, r in zip(labels, recall)},
-            }
+        score = classification_metrics
 
-        def plot_matrix(matrix, labels, title, path):
-            array = np.asarray(matrix)
-            figure, axis = plt.subplots(figsize=(1.4 + 1.1 * len(labels), 1.2 + 1.0 * len(labels)))
-            axis.imshow(array, cmap="Blues", vmin=0)
-            axis.set_xticks(range(len(labels)), labels, rotation=30)
-            axis.set_yticks(range(len(labels)), labels)
-            axis.set_xlabel("Predicted")
-            axis.set_ylabel("Actual")
-            axis.set_title(title, fontsize=9)
-            for i in range(len(labels)):
-                for j in range(len(labels)):
-                    axis.text(j, i, str(array[i, j]), ha="center", va="center",
-                              color="white" if array[i, j] > array.max() / 2 else "black")
-            figure.tight_layout()
-            path.parent.mkdir(parents=True, exist_ok=True)
-            figure.savefig(path, dpi=140)
-            plt.close(figure)
+        plot_matrix = save_confusion_matrix
 
 
         ENVELOPE_BANDS = ((5, 50), (50, 90), (90, 130), (130, 180), (180, 250), (250, 400), (400, 800))
@@ -4575,7 +4511,7 @@ def _make_haul_truck():
             e = experiment(run=False)
             intake = json.loads((ROOT / "Results" / "haul_truck" / "haul_truck_intake.json").read_text(encoding="utf-8"))
             if "sensor_ball" not in intake:
-                raise SystemExit("Ball-fault files missing: run  python Models/haul_truck.py intake --sensor-only --with-ball")
+                raise SystemExit("Ball-fault files missing: run  python Notebook/notebook_helpers.py haul_truck intake --sensor-only --with-ball")
             files = intake["sensor"]["files"] + intake["sensor_ball"]["files"]
             codes = {"H": "healthy", "I": "inner", "O": "outer", "B": "ball"}
             frames = []
@@ -4756,21 +4692,7 @@ def _make_haul_truck():
     # cnn: Week 6, CNN with data augmentation on the named images (professor remark)
     # ====================================================================================================
 
-    def _augment_event_batch(batch, generator):
-        """Apply the fixed training augmentation without constructing another CNN pipeline."""
-        import torch
-
-        n = batch.shape[0]
-        flip = torch.rand(n, generator=generator) < 0.5
-        batch = torch.where(flip[:, None, None, None], batch.flip(-1), batch)
-        shifted = []
-        for image in batch:
-            dy, dx = (int(v) for v in torch.randint(-8, 9, (2,), generator=generator))
-            shifted.append(torch.roll(image, shifts=(dy, dx), dims=(-2, -1)))
-        batch = torch.stack(shifted)
-        scale = 0.8 + 0.4 * torch.rand(n, 1, 1, 1, generator=generator)
-        return batch * scale + 0.05 * torch.randn(batch.shape, generator=generator)
-
+    _augment_event_batch = augment_event_images
 
 
     def cnn(run: bool = True) -> dict:
@@ -4808,64 +4730,18 @@ def _make_haul_truck():
         LABELS = ["healthy", "inner", "outer", "ball"]
         EPOCHS, BATCH, LEARNING_RATE, SEED = 20, 32, 1e-3, 42
 
-        def unit_predictions(probabilities, classes, y, units):
-            """One prediction per test unit (recording or run): average the class probabilities of its rows."""
-            actual, predicted = [], []
-            for unit in sorted(set(units)):
-                rows = units == unit
-                if len(set(y[rows])) != 1:
-                    raise ValueError(f"Mixed labels within {unit}")
-                actual.append(y[rows][0])
-                predicted.append(classes[int(np.argmax(probabilities[rows].mean(axis=0)))])
-            return actual, predicted
+        unit_predictions = predict_recordings
 
-        def score(actual, predicted, labels):
-            precision, recall, f1, support = precision_recall_fscore_support(actual, predicted, labels=labels, zero_division=0)
-            return {
-                "test_units": len(actual),
-                "accuracy": round(float(accuracy_score(actual, predicted)), 4),
-                "balanced_accuracy": round(float(balanced_accuracy_score(actual, predicted)), 4),
-                "macro_precision": round(float(precision.mean()), 4),
-                "macro_recall": round(float(recall.mean()), 4),
-                "macro_f1": round(float(f1.mean()), 4),
-                "confusion_matrix": confusion_matrix(actual, predicted, labels=labels).tolist(),
-                "per_class_recall": {label: round(float(r), 4) for label, r in zip(labels, recall)},
-            }
+        score = classification_metrics
 
-        def plot_matrix(matrix, labels, title, path):
-            array = np.asarray(matrix)
-            figure, axis = plt.subplots(figsize=(1.4 + 1.1 * len(labels), 1.2 + 1.0 * len(labels)))
-            axis.imshow(array, cmap="Blues", vmin=0)
-            axis.set_xticks(range(len(labels)), labels, rotation=30)
-            axis.set_yticks(range(len(labels)), labels)
-            axis.set_xlabel("Predicted")
-            axis.set_ylabel("Actual")
-            axis.set_title(title, fontsize=9)
-            for i in range(len(labels)):
-                for j in range(len(labels)):
-                    axis.text(j, i, str(array[i, j]), ha="center", va="center",
-                              color="white" if array[i, j] > array.max() / 2 else "black")
-            figure.tight_layout()
-            path.parent.mkdir(parents=True, exist_ok=True)
-            figure.savefig(path, dpi=140)
-            plt.close(figure)
+        plot_matrix = save_confusion_matrix
 
 
         def read_index():
-            with (IMAGES / "index.csv").open(encoding="utf-8") as handle:
-                return list(csv_module.DictReader(handle))
+            return read_image_records(IMAGES)
 
         def load(rows):
-            images = []
-            for row in rows:
-                image = load_image(str(IMAGES / row["file"]), cv2.IMREAD_COLOR)
-                if image is None:
-                    raise FileNotFoundError(f"Missing image {row['file']}: run export-images first")
-                channels = [2, 1]  # red = brighter events, green = darker events
-                image = image[:, :, channels].astype(np.float32).transpose(2, 0, 1)
-                image = (image - image.mean()) / (image.std() + 1e-6)  # per-image standardisation
-                images.append(image)
-            return np.stack(images)
+            return load_model_images(IMAGES, rows, channels=(2, 1))
 
         class Net(nn.Module):
             def __init__(self, in_channels, n_classes):
@@ -4992,47 +4868,11 @@ def _make_haul_truck():
         SEGMENTS = 10   # test segments per held-out recording (segment-level score)
         MAX_EPOCHS, BATCH, LEARNING_RATE, SEED = 15, 32, 3e-4, 42
 
-        def unit_predictions(probabilities, classes, y, units):
-            """One prediction per test unit (recording or run): average the class probabilities of its rows."""
-            actual, predicted = [], []
-            for unit in sorted(set(units)):
-                rows = units == unit
-                if len(set(y[rows])) != 1:
-                    raise ValueError(f"Mixed labels within {unit}")
-                actual.append(y[rows][0])
-                predicted.append(classes[int(np.argmax(probabilities[rows].mean(axis=0)))])
-            return actual, predicted
+        unit_predictions = predict_recordings
 
-        def score(actual, predicted, labels):
-            precision, recall, f1, support = precision_recall_fscore_support(actual, predicted, labels=labels, zero_division=0)
-            return {
-                "test_units": len(actual),
-                "accuracy": round(float(accuracy_score(actual, predicted)), 4),
-                "balanced_accuracy": round(float(balanced_accuracy_score(actual, predicted)), 4),
-                "macro_precision": round(float(precision.mean()), 4),
-                "macro_recall": round(float(recall.mean()), 4),
-                "macro_f1": round(float(f1.mean()), 4),
-                "confusion_matrix": confusion_matrix(actual, predicted, labels=labels).tolist(),
-                "per_class_recall": {label: round(float(r), 4) for label, r in zip(labels, recall)},
-            }
+        score = classification_metrics
 
-        def plot_matrix(matrix, labels, title, path):
-            array = np.asarray(matrix)
-            figure, axis = plt.subplots(figsize=(1.4 + 1.1 * len(labels), 1.2 + 1.0 * len(labels)))
-            axis.imshow(array, cmap="Blues", vmin=0)
-            axis.set_xticks(range(len(labels)), labels, rotation=30)
-            axis.set_yticks(range(len(labels)), labels)
-            axis.set_xlabel("Predicted")
-            axis.set_ylabel("Actual")
-            axis.set_title(title, fontsize=9)
-            for i in range(len(labels)):
-                for j in range(len(labels)):
-                    axis.text(j, i, str(array[i, j]), ha="center", va="center",
-                              color="white" if array[i, j] > array.max() / 2 else "black")
-            figure.tight_layout()
-            path.parent.mkdir(parents=True, exist_ok=True)
-            figure.savefig(path, dpi=140)
-            plt.close(figure)
+        plot_matrix = save_confusion_matrix
 
         def plot_levels(result, title, path):
             """One panel per scoring level, so the figure shows how many images were really tested."""
@@ -5658,21 +5498,23 @@ def _make_haul_truck():
             COMMANDS[name]()
 
 
-
     return SimpleNamespace(**locals())
+
+#endregion
 
 
 # BELT_CONVEYOR MODEL IMPLEMENTATION
+#region Belt Conveyor: data, preprocessing, models and evaluation
 def _make_belt_conveyor():
-    __doc__ = "Belt Conveyor: geared drive, CORA T1 temperature vs infrared camera.\n\nAll of this machine's code in one file. The combined notebook\nNotebook/Mining_Equipment_Condition_Monitoring.ipynb runs these commands and shows the results.\n\nUsage:\n    python Models/belt_conveyor.py <command> [options]\n    python Models/belt_conveyor.py <command> --help\n\nCommands:\n    intake          download CORA infrared stacks and bounded T1 samples\n    inspect-file    helper: inspect a local CORA publisher file\n    preprocess      helper: CORA sensor/thermal preprocessing smoke test\n    experiment      T1 temperature and infrared models, report and figure\n    baselines       Week 5: compare majority class, logistic regression, decision tree and random forest\n    export-images   Week 6: save the camera images as named files in Images/<machine>/ (local only)\n    csv             Week 6: 4-class sensor model from a CSV feature table\n    cnn             Week 6: CNN with data augmentation on the named images (run export-images first)\n    cnn-pretrained  Week 6: transfer learning, pretrained ResNet18 on the named images\n    intake-vibration  check selectively downloaded CORA vibration files (MD5) and file them\n    train-final     train the sensor model on all data and save it (--exclude to leave recordings out)\n    predict         predict from any CSV (feature table or raw recording) and show accuracy if labels are known\n    ensembles       proposal Week 6: XGBoost / LightGBM vs random forest etc. (--split time for the secondary test)\n    anomaly         Week 7: anomaly detection trained on healthy data only (--split time for the secondary test)\n    fulldata        Week 7: every CORA sensor, window and start-up recording (Models/cora_fulldata.py)\n                    (--part ensembles / anomaly / all: XGBoost-LightGBM comparison, anomaly detection)\n    all             run experiment\n\nRaw data stays in Raw_Data/ and Processed_Data/ (not in Git)."
+    __doc__ = "Belt Conveyor: geared drive, CORA T1 temperature vs infrared camera.\n\nThis equipment section contains its model implementation. The combined notebook\nNotebook/Mining_Equipment_Condition_Monitoring.ipynb runs these commands and shows the results.\n\nUsage:\n    python Notebook/notebook_helpers.py belt_conveyor <command> [options]\n    python Notebook/notebook_helpers.py belt_conveyor <command> --help\n\nCommands:\n    intake          download CORA infrared stacks and bounded T1 samples\n    inspect-file    helper: inspect a local CORA publisher file\n    preprocess      helper: CORA sensor/thermal preprocessing smoke test\n    experiment      T1 temperature and infrared models, report and figure\n    baselines       Week 5: compare majority class, logistic regression, decision tree and random forest\n    export-images   Week 6: save the camera images as named files in Images/<machine>/ (local only)\n    csv             Week 6: 4-class sensor model from a CSV feature table\n    cnn             Week 6: CNN with data augmentation on the named images (run export-images first)\n    cnn-pretrained  Week 6: transfer learning, pretrained ResNet18 on the named images\n    intake-vibration  check selectively downloaded CORA vibration files (MD5) and file them\n    train-final     train the sensor model on all data and save it (--exclude to leave recordings out)\n    predict         predict from any CSV (feature table or raw recording) and show accuracy if labels are known\n    ensembles       proposal Week 6: XGBoost / LightGBM vs random forest etc. (--split time for the secondary test)\n    anomaly         Week 7: anomaly detection trained on healthy data only (--split time for the secondary test)\n    fulldata        Week 7: every CORA sensor, window and start-up recording (Models/cora_fulldata.py)\n                    (--part ensembles / anomaly / all: XGBoost-LightGBM comparison, anomaly detection)\n    all             run experiment\n\nRaw data stays in Raw_Data/ and Processed_Data/ (not in Git)."
     """Belt Conveyor: geared drive, CORA T1 temperature vs infrared camera.
 
-    All of this machine's code in one file. The combined notebook
+    This equipment section contains its model implementation. The combined notebook
     Notebook/Mining_Equipment_Condition_Monitoring.ipynb runs these commands and shows the results.
 
     Usage:
-        python Models/belt_conveyor.py <command> [options]
-        python Models/belt_conveyor.py <command> --help
+        python Notebook/notebook_helpers.py belt_conveyor <command> [options]
+        python Notebook/notebook_helpers.py belt_conveyor <command> --help
 
     Commands:
         intake          download CORA infrared stacks and bounded T1 samples
@@ -5699,7 +5541,6 @@ def _make_belt_conveyor():
 
     import sys
     from pathlib import Path
-
 
 
     # ==================================================================================================
@@ -5934,7 +5775,7 @@ def _make_belt_conveyor():
         The filename provides an experiment-level key, not a one-to-one pairing of
         individual sensor samples and thermal frames. Run from the repository root:
 
-            python Models/belt_conveyor.py inspect-file /path/to/CORA/files
+            python Notebook/notebook_helpers.py belt_conveyor inspect-file /path/to/CORA/files
 
         Pass either a directory of downloaded files or the repository's
         ``Information_about_database_files.txt`` guide. No files are downloaded,
@@ -6835,47 +6676,11 @@ def _make_belt_conveyor():
                 min_samples_leaf=2, random_state=42, n_jobs=-1),
         }
 
-        def unit_predictions(probabilities, classes, y, units):
-            """One prediction per test unit (recording or run): average the class probabilities of its rows."""
-            actual, predicted = [], []
-            for unit in sorted(set(units)):
-                rows = units == unit
-                if len(set(y[rows])) != 1:
-                    raise ValueError(f"Mixed labels within {unit}")
-                actual.append(y[rows][0])
-                predicted.append(classes[int(np.argmax(probabilities[rows].mean(axis=0)))])
-            return actual, predicted
+        unit_predictions = predict_recordings
 
-        def score(actual, predicted, labels):
-            precision, recall, f1, support = precision_recall_fscore_support(actual, predicted, labels=labels, zero_division=0)
-            return {
-                "test_units": len(actual),
-                "accuracy": round(float(accuracy_score(actual, predicted)), 4),
-                "balanced_accuracy": round(float(balanced_accuracy_score(actual, predicted)), 4),
-                "macro_precision": round(float(precision.mean()), 4),
-                "macro_recall": round(float(recall.mean()), 4),
-                "macro_f1": round(float(f1.mean()), 4),
-                "confusion_matrix": confusion_matrix(actual, predicted, labels=labels).tolist(),
-                "per_class_recall": {label: round(float(r), 4) for label, r in zip(labels, recall)},
-            }
+        score = classification_metrics
 
-        def plot_matrix(matrix, labels, title, path):
-            array = np.asarray(matrix)
-            figure, axis = plt.subplots(figsize=(1.4 + 1.1 * len(labels), 1.2 + 1.0 * len(labels)))
-            axis.imshow(array, cmap="Blues", vmin=0)
-            axis.set_xticks(range(len(labels)), labels, rotation=30)
-            axis.set_yticks(range(len(labels)), labels)
-            axis.set_xlabel("Predicted")
-            axis.set_ylabel("Actual")
-            axis.set_title(title, fontsize=9)
-            for i in range(len(labels)):
-                for j in range(len(labels)):
-                    axis.text(j, i, str(array[i, j]), ha="center", va="center",
-                              color="white" if array[i, j] > array.max() / 2 else "black")
-            figure.tight_layout()
-            path.parent.mkdir(parents=True, exist_ok=True)
-            figure.savefig(path, dpi=140)
-            plt.close(figure)
+        plot_matrix = save_confusion_matrix
 
 
         VIB_ORDERS = ((0.5, 1.5), (1.5, 2.5), (2.5, 3.5), (3.5, 5.5), (5.5, 8.5), (8.5, 12.5), (12.5, 20.5))
@@ -7121,64 +6926,18 @@ def _make_belt_conveyor():
         LABELS = ["healthy", "wear25", "wear50", "wear75"]
         EPOCHS, BATCH, LEARNING_RATE, SEED = 20, 32, 1e-3, 42
 
-        def unit_predictions(probabilities, classes, y, units):
-            """One prediction per test unit (recording or run): average the class probabilities of its rows."""
-            actual, predicted = [], []
-            for unit in sorted(set(units)):
-                rows = units == unit
-                if len(set(y[rows])) != 1:
-                    raise ValueError(f"Mixed labels within {unit}")
-                actual.append(y[rows][0])
-                predicted.append(classes[int(np.argmax(probabilities[rows].mean(axis=0)))])
-            return actual, predicted
+        unit_predictions = predict_recordings
 
-        def score(actual, predicted, labels):
-            precision, recall, f1, support = precision_recall_fscore_support(actual, predicted, labels=labels, zero_division=0)
-            return {
-                "test_units": len(actual),
-                "accuracy": round(float(accuracy_score(actual, predicted)), 4),
-                "balanced_accuracy": round(float(balanced_accuracy_score(actual, predicted)), 4),
-                "macro_precision": round(float(precision.mean()), 4),
-                "macro_recall": round(float(recall.mean()), 4),
-                "macro_f1": round(float(f1.mean()), 4),
-                "confusion_matrix": confusion_matrix(actual, predicted, labels=labels).tolist(),
-                "per_class_recall": {label: round(float(r), 4) for label, r in zip(labels, recall)},
-            }
+        score = classification_metrics
 
-        def plot_matrix(matrix, labels, title, path):
-            array = np.asarray(matrix)
-            figure, axis = plt.subplots(figsize=(1.4 + 1.1 * len(labels), 1.2 + 1.0 * len(labels)))
-            axis.imshow(array, cmap="Blues", vmin=0)
-            axis.set_xticks(range(len(labels)), labels, rotation=30)
-            axis.set_yticks(range(len(labels)), labels)
-            axis.set_xlabel("Predicted")
-            axis.set_ylabel("Actual")
-            axis.set_title(title, fontsize=9)
-            for i in range(len(labels)):
-                for j in range(len(labels)):
-                    axis.text(j, i, str(array[i, j]), ha="center", va="center",
-                              color="white" if array[i, j] > array.max() / 2 else "black")
-            figure.tight_layout()
-            path.parent.mkdir(parents=True, exist_ok=True)
-            figure.savefig(path, dpi=140)
-            plt.close(figure)
+        plot_matrix = save_confusion_matrix
 
 
         def read_index():
-            with (IMAGES / "index.csv").open(encoding="utf-8") as handle:
-                return list(csv_module.DictReader(handle))
+            return read_image_records(IMAGES)
 
         def load(rows):
-            images = []
-            for row in rows:
-                image = load_image(str(IMAGES / row["file"]), cv2.IMREAD_COLOR)
-                if image is None:
-                    raise FileNotFoundError(f"Missing image {row['file']}: run export-images first")
-                channels = [0]  # infrared images are grayscale
-                image = image[:, :, channels].astype(np.float32).transpose(2, 0, 1)
-                image = (image - image.mean()) / (image.std() + 1e-6)  # per-image standardisation
-                images.append(image)
-            return np.stack(images)
+            return load_model_images(IMAGES, rows, channels=(0,))
 
         class Net(nn.Module):
             def __init__(self, in_channels, n_classes):
@@ -7315,47 +7074,11 @@ def _make_belt_conveyor():
         SEGMENTS = 10   # test segments per held-out recording (segment-level score)
         MAX_EPOCHS, BATCH, LEARNING_RATE, SEED = 15, 32, 3e-4, 42
 
-        def unit_predictions(probabilities, classes, y, units):
-            """One prediction per test unit (recording or run): average the class probabilities of its rows."""
-            actual, predicted = [], []
-            for unit in sorted(set(units)):
-                rows = units == unit
-                if len(set(y[rows])) != 1:
-                    raise ValueError(f"Mixed labels within {unit}")
-                actual.append(y[rows][0])
-                predicted.append(classes[int(np.argmax(probabilities[rows].mean(axis=0)))])
-            return actual, predicted
+        unit_predictions = predict_recordings
 
-        def score(actual, predicted, labels):
-            precision, recall, f1, support = precision_recall_fscore_support(actual, predicted, labels=labels, zero_division=0)
-            return {
-                "test_units": len(actual),
-                "accuracy": round(float(accuracy_score(actual, predicted)), 4),
-                "balanced_accuracy": round(float(balanced_accuracy_score(actual, predicted)), 4),
-                "macro_precision": round(float(precision.mean()), 4),
-                "macro_recall": round(float(recall.mean()), 4),
-                "macro_f1": round(float(f1.mean()), 4),
-                "confusion_matrix": confusion_matrix(actual, predicted, labels=labels).tolist(),
-                "per_class_recall": {label: round(float(r), 4) for label, r in zip(labels, recall)},
-            }
+        score = classification_metrics
 
-        def plot_matrix(matrix, labels, title, path):
-            array = np.asarray(matrix)
-            figure, axis = plt.subplots(figsize=(1.4 + 1.1 * len(labels), 1.2 + 1.0 * len(labels)))
-            axis.imshow(array, cmap="Blues", vmin=0)
-            axis.set_xticks(range(len(labels)), labels, rotation=30)
-            axis.set_yticks(range(len(labels)), labels)
-            axis.set_xlabel("Predicted")
-            axis.set_ylabel("Actual")
-            axis.set_title(title, fontsize=9)
-            for i in range(len(labels)):
-                for j in range(len(labels)):
-                    axis.text(j, i, str(array[i, j]), ha="center", va="center",
-                              color="white" if array[i, j] > array.max() / 2 else "black")
-            figure.tight_layout()
-            path.parent.mkdir(parents=True, exist_ok=True)
-            figure.savefig(path, dpi=140)
-            plt.close(figure)
+        plot_matrix = save_confusion_matrix
 
         def plot_levels(result, title, path):
             """One panel per scoring level, so the figure shows how many images were really tested."""
@@ -8079,13 +7802,15 @@ def _make_belt_conveyor():
             COMMANDS[name]()
 
 
-
     return SimpleNamespace(**locals())
+
+#endregion
 
 
 # EXCAVATOR MODEL IMPLEMENTATION
+#region Excavator: data, preprocessing, models and evaluation
 def _make_excavator():
-    __doc__ = "Excavator (machine 4): swing-drive motor and gearbox, CORA vibration vs infrared camera.\n\n4 classes from the CORA motor/gearbox rig: healthy, bearing defect, unbalance, misalignment. This is a\ndifferent task from the Belt Conveyor (gear wear) on the same laboratory rig. All of this machine's code\nis in this file; the combined notebook\nNotebook/Mining_Equipment_Condition_Monitoring.ipynb runs these commands and shows the results.\n\nUsage:\n    python Models/excavator.py <command> [options]\n    python Models/excavator.py <command> --help\n\nCommands:\n    intake          check selectively downloaded CORA files (MD5) and move them into Raw_Data/\n    csv             4-class vibration model from a CSV feature table (validation-selected model)\n    export-images   save the infrared images as named files in Images/excavator/ (local only)\n    cnn             CNN with data augmentation on the named images\n    cnn-pretrained  transfer learning, pretrained ResNet18 on the named images\n    train-final     train the sensor model on all data and save it (--exclude to leave recordings out)\n    predict         predict from any CSV (feature table or raw recording) and show accuracy if labels are known\n    ensembles       proposal Week 6: XGBoost / LightGBM vs random forest etc. (--split time for the secondary test)\n    anomaly         Week 7: anomaly detection trained on healthy data only (--split time for the secondary test)\n    fulldata        Week 7: every CORA sensor, window and start-up recording (Models/cora_fulldata.py)\n                    (--part ensembles / anomaly / all: XGBoost-LightGBM comparison, anomaly detection)\n    thermal-motor   Week 8: separate thermal-image data (Kulkarni motor, healthy vs corroded bearing),\n                    leave one load out\n    all             run csv, then export-images, then cnn-pretrained\n\nRaw data stays in Raw_Data/ and Processed_Data/ (not in Git)."
+    __doc__ = "Excavator (machine 4): swing-drive motor and gearbox, CORA vibration vs infrared camera.\n\n4 classes from the CORA motor/gearbox rig: healthy, bearing defect, unbalance, misalignment. This is a\ndifferent task from the Belt Conveyor (gear wear) on the same laboratory rig. All of this machine's code\nis in this file; the combined notebook\nNotebook/Mining_Equipment_Condition_Monitoring.ipynb runs these commands and shows the results.\n\nUsage:\n    python Notebook/notebook_helpers.py excavator <command> [options]\n    python Notebook/notebook_helpers.py excavator <command> --help\n\nCommands:\n    intake          check selectively downloaded CORA files (MD5) and move them into Raw_Data/\n    csv             4-class vibration model from a CSV feature table (validation-selected model)\n    export-images   save the infrared images as named files in Images/excavator/ (local only)\n    cnn             CNN with data augmentation on the named images\n    cnn-pretrained  transfer learning, pretrained ResNet18 on the named images\n    train-final     train the sensor model on all data and save it (--exclude to leave recordings out)\n    predict         predict from any CSV (feature table or raw recording) and show accuracy if labels are known\n    ensembles       proposal Week 6: XGBoost / LightGBM vs random forest etc. (--split time for the secondary test)\n    anomaly         Week 7: anomaly detection trained on healthy data only (--split time for the secondary test)\n    fulldata        Week 7: every CORA sensor, window and start-up recording (Models/cora_fulldata.py)\n                    (--part ensembles / anomaly / all: XGBoost-LightGBM comparison, anomaly detection)\n    thermal-motor   Week 8: separate thermal-image data (Kulkarni motor, healthy vs corroded bearing),\n                    leave one load out\n    all             run csv, then export-images, then cnn-pretrained\n\nRaw data stays in Raw_Data/ and Processed_Data/ (not in Git)."
     """Excavator (machine 4): swing-drive motor and gearbox, CORA vibration vs infrared camera.
 
     4 classes from the CORA motor/gearbox rig: healthy, bearing defect, unbalance, misalignment. This is a
@@ -8094,8 +7819,8 @@ def _make_excavator():
     Notebook/Mining_Equipment_Condition_Monitoring.ipynb runs these commands and shows the results.
 
     Usage:
-        python Models/excavator.py <command> [options]
-        python Models/excavator.py <command> --help
+        python Notebook/notebook_helpers.py excavator <command> [options]
+        python Notebook/notebook_helpers.py excavator <command> --help
 
     Commands:
         intake          check selectively downloaded CORA files (MD5) and move them into Raw_Data/
@@ -8119,8 +7844,6 @@ def _make_excavator():
 
     import sys
     from pathlib import Path
-
-
 
 
     # ====================================================================================================
@@ -8363,47 +8086,11 @@ def _make_excavator():
                 min_samples_leaf=2, random_state=42, n_jobs=-1),
         }
 
-        def unit_predictions(probabilities, classes, y, units):
-            """One prediction per test unit (recording or run): average the class probabilities of its rows."""
-            actual, predicted = [], []
-            for unit in sorted(set(units)):
-                rows = units == unit
-                if len(set(y[rows])) != 1:
-                    raise ValueError(f"Mixed labels within {unit}")
-                actual.append(y[rows][0])
-                predicted.append(classes[int(np.argmax(probabilities[rows].mean(axis=0)))])
-            return actual, predicted
+        unit_predictions = predict_recordings
 
-        def score(actual, predicted, labels):
-            precision, recall, f1, support = precision_recall_fscore_support(actual, predicted, labels=labels, zero_division=0)
-            return {
-                "test_units": len(actual),
-                "accuracy": round(float(accuracy_score(actual, predicted)), 4),
-                "balanced_accuracy": round(float(balanced_accuracy_score(actual, predicted)), 4),
-                "macro_precision": round(float(precision.mean()), 4),
-                "macro_recall": round(float(recall.mean()), 4),
-                "macro_f1": round(float(f1.mean()), 4),
-                "confusion_matrix": confusion_matrix(actual, predicted, labels=labels).tolist(),
-                "per_class_recall": {label: round(float(r), 4) for label, r in zip(labels, recall)},
-            }
+        score = classification_metrics
 
-        def plot_matrix(matrix, labels, title, path):
-            array = np.asarray(matrix)
-            figure, axis = plt.subplots(figsize=(1.4 + 1.1 * len(labels), 1.2 + 1.0 * len(labels)))
-            axis.imshow(array, cmap="Blues", vmin=0)
-            axis.set_xticks(range(len(labels)), labels, rotation=30)
-            axis.set_yticks(range(len(labels)), labels)
-            axis.set_xlabel("Predicted")
-            axis.set_ylabel("Actual")
-            axis.set_title(title, fontsize=9)
-            for i in range(len(labels)):
-                for j in range(len(labels)):
-                    axis.text(j, i, str(array[i, j]), ha="center", va="center",
-                              color="white" if array[i, j] > array.max() / 2 else "black")
-            figure.tight_layout()
-            path.parent.mkdir(parents=True, exist_ok=True)
-            figure.savefig(path, dpi=140)
-            plt.close(figure)
+        plot_matrix = save_confusion_matrix
 
 
         VIB_ORDERS = ((0.5, 1.5), (1.5, 2.5), (2.5, 3.5), (3.5, 5.5), (5.5, 8.5), (8.5, 12.5), (12.5, 20.5))
@@ -8653,64 +8340,18 @@ def _make_excavator():
         LABELS = ["healthy", "bearing", "unbalance", "misalignment"]
         EPOCHS, BATCH, LEARNING_RATE, SEED = 20, 32, 1e-3, 42
 
-        def unit_predictions(probabilities, classes, y, units):
-            """One prediction per test unit (recording or run): average the class probabilities of its rows."""
-            actual, predicted = [], []
-            for unit in sorted(set(units)):
-                rows = units == unit
-                if len(set(y[rows])) != 1:
-                    raise ValueError(f"Mixed labels within {unit}")
-                actual.append(y[rows][0])
-                predicted.append(classes[int(np.argmax(probabilities[rows].mean(axis=0)))])
-            return actual, predicted
+        unit_predictions = predict_recordings
 
-        def score(actual, predicted, labels):
-            precision, recall, f1, support = precision_recall_fscore_support(actual, predicted, labels=labels, zero_division=0)
-            return {
-                "test_units": len(actual),
-                "accuracy": round(float(accuracy_score(actual, predicted)), 4),
-                "balanced_accuracy": round(float(balanced_accuracy_score(actual, predicted)), 4),
-                "macro_precision": round(float(precision.mean()), 4),
-                "macro_recall": round(float(recall.mean()), 4),
-                "macro_f1": round(float(f1.mean()), 4),
-                "confusion_matrix": confusion_matrix(actual, predicted, labels=labels).tolist(),
-                "per_class_recall": {label: round(float(r), 4) for label, r in zip(labels, recall)},
-            }
+        score = classification_metrics
 
-        def plot_matrix(matrix, labels, title, path):
-            array = np.asarray(matrix)
-            figure, axis = plt.subplots(figsize=(1.4 + 1.1 * len(labels), 1.2 + 1.0 * len(labels)))
-            axis.imshow(array, cmap="Blues", vmin=0)
-            axis.set_xticks(range(len(labels)), labels, rotation=30)
-            axis.set_yticks(range(len(labels)), labels)
-            axis.set_xlabel("Predicted")
-            axis.set_ylabel("Actual")
-            axis.set_title(title, fontsize=9)
-            for i in range(len(labels)):
-                for j in range(len(labels)):
-                    axis.text(j, i, str(array[i, j]), ha="center", va="center",
-                              color="white" if array[i, j] > array.max() / 2 else "black")
-            figure.tight_layout()
-            path.parent.mkdir(parents=True, exist_ok=True)
-            figure.savefig(path, dpi=140)
-            plt.close(figure)
+        plot_matrix = save_confusion_matrix
 
 
         def read_index():
-            with (IMAGES / "index.csv").open(encoding="utf-8") as handle:
-                return list(csv_module.DictReader(handle))
+            return read_image_records(IMAGES)
 
         def load(rows):
-            images = []
-            for row in rows:
-                image = load_image(str(IMAGES / row["file"]), cv2.IMREAD_COLOR)
-                if image is None:
-                    raise FileNotFoundError(f"Missing image {row['file']}: run export-images first")
-                channels = [0]  # infrared images are grayscale
-                image = image[:, :, channels].astype(np.float32).transpose(2, 0, 1)
-                image = (image - image.mean()) / (image.std() + 1e-6)  # per-image standardisation
-                images.append(image)
-            return np.stack(images)
+            return load_model_images(IMAGES, rows, channels=(0,))
 
         class Net(nn.Module):
             def __init__(self, in_channels, n_classes):
@@ -8847,47 +8488,11 @@ def _make_excavator():
         SEGMENTS = 10   # test segments per held-out recording (segment-level score)
         MAX_EPOCHS, BATCH, LEARNING_RATE, SEED = 15, 32, 3e-4, 42
 
-        def unit_predictions(probabilities, classes, y, units):
-            """One prediction per test unit (recording or run): average the class probabilities of its rows."""
-            actual, predicted = [], []
-            for unit in sorted(set(units)):
-                rows = units == unit
-                if len(set(y[rows])) != 1:
-                    raise ValueError(f"Mixed labels within {unit}")
-                actual.append(y[rows][0])
-                predicted.append(classes[int(np.argmax(probabilities[rows].mean(axis=0)))])
-            return actual, predicted
+        unit_predictions = predict_recordings
 
-        def score(actual, predicted, labels):
-            precision, recall, f1, support = precision_recall_fscore_support(actual, predicted, labels=labels, zero_division=0)
-            return {
-                "test_units": len(actual),
-                "accuracy": round(float(accuracy_score(actual, predicted)), 4),
-                "balanced_accuracy": round(float(balanced_accuracy_score(actual, predicted)), 4),
-                "macro_precision": round(float(precision.mean()), 4),
-                "macro_recall": round(float(recall.mean()), 4),
-                "macro_f1": round(float(f1.mean()), 4),
-                "confusion_matrix": confusion_matrix(actual, predicted, labels=labels).tolist(),
-                "per_class_recall": {label: round(float(r), 4) for label, r in zip(labels, recall)},
-            }
+        score = classification_metrics
 
-        def plot_matrix(matrix, labels, title, path):
-            array = np.asarray(matrix)
-            figure, axis = plt.subplots(figsize=(1.4 + 1.1 * len(labels), 1.2 + 1.0 * len(labels)))
-            axis.imshow(array, cmap="Blues", vmin=0)
-            axis.set_xticks(range(len(labels)), labels, rotation=30)
-            axis.set_yticks(range(len(labels)), labels)
-            axis.set_xlabel("Predicted")
-            axis.set_ylabel("Actual")
-            axis.set_title(title, fontsize=9)
-            for i in range(len(labels)):
-                for j in range(len(labels)):
-                    axis.text(j, i, str(array[i, j]), ha="center", va="center",
-                              color="white" if array[i, j] > array.max() / 2 else "black")
-            figure.tight_layout()
-            path.parent.mkdir(parents=True, exist_ok=True)
-            figure.savefig(path, dpi=140)
-            plt.close(figure)
+        plot_matrix = save_confusion_matrix
 
         def plot_levels(result, title, path):
             """One panel per scoring level, so the figure shows how many images were really tested."""
@@ -9732,16 +9337,18 @@ def _make_excavator():
             COMMANDS[name]()
 
 
-
     return SimpleNamespace(**locals())
+
+#endregion
 
 
 # DOZER MODEL IMPLEMENTATION
+#region Dozer: data, preprocessing, models and evaluation
 def _make_dozer():
-    __doc__ = "Dozer (machine 5): track final-drive gear wear, CORA vibration/temperature vs infrared camera.\n\nAll of this machine's code in one file. The combined notebook\nNotebook/Mining_Equipment_Condition_Monitoring.ipynb runs these commands and shows the results.\n\nIMPORTANT: there is no public dozer dataset with matching sensor and camera data. As planned in the\ndataset manifest, the Dozer final drive uses the SAME 16 CORA gear-wear runs as the Belt Conveyor\n(not new data), with the same 4 classes: healthy, wear25, wear50, wear75. Its scores are\ntherefore expected to match the Belt Conveyor's; it maps that rig to the dozer track final drive.\nThe data loading is shared with Models/belt_conveyor.py.\n\nUsage:\n    python Models/dozer.py <command> [options]\n    python Models/dozer.py <command> --help\n\nCommands:\n    csv             4-class sensor model from a CSV feature table (--split time for the secondary test)\n    export-images   save the infrared images as named files in Images/dozer/<class>/ (local only)\n    cnn             small CNN with data augmentation on the named images (run export-images first)\n    cnn-pretrained  pretrained ResNet18 on the named images (--split time for the secondary test)\n    ensembles       XGBoost / LightGBM vs random forest etc. (--split time for the secondary test)\n    anomaly         anomaly detection trained on healthy data only (--split time for the secondary test)\n    train-final     train the sensor model on all data and save it (--exclude to leave recordings out)\n    predict         predict from any CSV (feature table or raw recording) and show accuracy if labels are known\n    fulldata        Week 7: every CORA sensor, window and start-up recording (Models/cora_fulldata.py)\n                    (--part ensembles / anomaly / all: XGBoost-LightGBM comparison, anomaly detection)\n    all             run csv, ensembles and anomaly\n\nRaw data stays in Raw_Data/ and Processed_Data/ (not in Git)."
+    __doc__ = "Dozer (machine 5): track final-drive gear wear, CORA vibration/temperature vs infrared camera.\n\nThis equipment section contains its model implementation. The combined notebook\nNotebook/Mining_Equipment_Condition_Monitoring.ipynb runs these commands and shows the results.\n\nIMPORTANT: there is no public dozer dataset with matching sensor and camera data. As planned in the\ndataset manifest, the Dozer final drive uses the SAME 16 CORA gear-wear runs as the Belt Conveyor\n(not new data), with the same 4 classes: healthy, wear25, wear50, wear75. Its scores are\ntherefore expected to match the Belt Conveyor's; it maps that rig to the dozer track final drive.\nThe data loading is shared with Models/belt_conveyor.py.\n\nUsage:\n    python Notebook/notebook_helpers.py dozer <command> [options]\n    python Notebook/notebook_helpers.py dozer <command> --help\n\nCommands:\n    csv             4-class sensor model from a CSV feature table (--split time for the secondary test)\n    export-images   save the infrared images as named files in Images/dozer/<class>/ (local only)\n    cnn             small CNN with data augmentation on the named images (run export-images first)\n    cnn-pretrained  pretrained ResNet18 on the named images (--split time for the secondary test)\n    ensembles       XGBoost / LightGBM vs random forest etc. (--split time for the secondary test)\n    anomaly         anomaly detection trained on healthy data only (--split time for the secondary test)\n    train-final     train the sensor model on all data and save it (--exclude to leave recordings out)\n    predict         predict from any CSV (feature table or raw recording) and show accuracy if labels are known\n    fulldata        Week 7: every CORA sensor, window and start-up recording (Models/cora_fulldata.py)\n                    (--part ensembles / anomaly / all: XGBoost-LightGBM comparison, anomaly detection)\n    all             run csv, ensembles and anomaly\n\nRaw data stays in Raw_Data/ and Processed_Data/ (not in Git)."
     """Dozer (machine 5): track final-drive gear wear, CORA vibration/temperature vs infrared camera.
 
-    All of this machine's code in one file. The combined notebook
+    This equipment section contains its model implementation. The combined notebook
     Notebook/Mining_Equipment_Condition_Monitoring.ipynb runs these commands and shows the results.
 
     IMPORTANT: there is no public dozer dataset with matching sensor and camera data. As planned in the
@@ -9751,8 +9358,8 @@ def _make_dozer():
     The data loading is shared with Models/belt_conveyor.py.
 
     Usage:
-        python Models/dozer.py <command> [options]
-        python Models/dozer.py <command> --help
+        python Notebook/notebook_helpers.py dozer <command> [options]
+        python Notebook/notebook_helpers.py dozer <command> --help
 
     Commands:
         csv             4-class sensor model from a CSV feature table (--split time for the secondary test)
@@ -9774,7 +9381,6 @@ def _make_dozer():
     import importlib.util
     import sys
     from pathlib import Path
-
 
 
     # The Dozer reuses the Belt Conveyor's CORA data loading (same rig, same runs).
@@ -9878,7 +9484,6 @@ def _make_dozer():
         return locals()
 
 
-
     def csv(run: bool = True) -> dict:
         """Week 6: write the sensor features to a CSV table and train 4-class models on it.
 
@@ -9919,47 +9524,11 @@ def _make_dozer():
                 min_samples_leaf=2, random_state=42, n_jobs=-1),
         }
 
-        def unit_predictions(probabilities, classes, y, units):
-            """One prediction per test unit (recording or run): average the class probabilities of its rows."""
-            actual, predicted = [], []
-            for unit in sorted(set(units)):
-                rows = units == unit
-                if len(set(y[rows])) != 1:
-                    raise ValueError(f"Mixed labels within {unit}")
-                actual.append(y[rows][0])
-                predicted.append(classes[int(np.argmax(probabilities[rows].mean(axis=0)))])
-            return actual, predicted
+        unit_predictions = predict_recordings
 
-        def score(actual, predicted, labels):
-            precision, recall, f1, support = precision_recall_fscore_support(actual, predicted, labels=labels, zero_division=0)
-            return {
-                "test_units": len(actual),
-                "accuracy": round(float(accuracy_score(actual, predicted)), 4),
-                "balanced_accuracy": round(float(balanced_accuracy_score(actual, predicted)), 4),
-                "macro_precision": round(float(precision.mean()), 4),
-                "macro_recall": round(float(recall.mean()), 4),
-                "macro_f1": round(float(f1.mean()), 4),
-                "confusion_matrix": confusion_matrix(actual, predicted, labels=labels).tolist(),
-                "per_class_recall": {label: round(float(r), 4) for label, r in zip(labels, recall)},
-            }
+        score = classification_metrics
 
-        def plot_matrix(matrix, labels, title, path):
-            array = np.asarray(matrix)
-            figure, axis = plt.subplots(figsize=(1.4 + 1.1 * len(labels), 1.2 + 1.0 * len(labels)))
-            axis.imshow(array, cmap="Blues", vmin=0)
-            axis.set_xticks(range(len(labels)), labels, rotation=30)
-            axis.set_yticks(range(len(labels)), labels)
-            axis.set_xlabel("Predicted")
-            axis.set_ylabel("Actual")
-            axis.set_title(title, fontsize=9)
-            for i in range(len(labels)):
-                for j in range(len(labels)):
-                    axis.text(j, i, str(array[i, j]), ha="center", va="center",
-                              color="white" if array[i, j] > array.max() / 2 else "black")
-            figure.tight_layout()
-            path.parent.mkdir(parents=True, exist_ok=True)
-            figure.savefig(path, dpi=140)
-            plt.close(figure)
+        plot_matrix = save_confusion_matrix
 
 
         VIB_ORDERS = ((0.5, 1.5), (1.5, 2.5), (2.5, 3.5), (3.5, 5.5), (5.5, 8.5), (8.5, 12.5), (12.5, 20.5))
@@ -10153,7 +9722,6 @@ def _make_dozer():
         return locals()
 
 
-
     def cnn(run: bool = True) -> dict:
         """Week 6: a small CNN with data augmentation, trained on the named images, 4 classes.
 
@@ -10189,64 +9757,18 @@ def _make_dozer():
         LABELS = ["healthy", "wear25", "wear50", "wear75"]
         EPOCHS, BATCH, LEARNING_RATE, SEED = 20, 32, 1e-3, 42
 
-        def unit_predictions(probabilities, classes, y, units):
-            """One prediction per test unit (recording or run): average the class probabilities of its rows."""
-            actual, predicted = [], []
-            for unit in sorted(set(units)):
-                rows = units == unit
-                if len(set(y[rows])) != 1:
-                    raise ValueError(f"Mixed labels within {unit}")
-                actual.append(y[rows][0])
-                predicted.append(classes[int(np.argmax(probabilities[rows].mean(axis=0)))])
-            return actual, predicted
+        unit_predictions = predict_recordings
 
-        def score(actual, predicted, labels):
-            precision, recall, f1, support = precision_recall_fscore_support(actual, predicted, labels=labels, zero_division=0)
-            return {
-                "test_units": len(actual),
-                "accuracy": round(float(accuracy_score(actual, predicted)), 4),
-                "balanced_accuracy": round(float(balanced_accuracy_score(actual, predicted)), 4),
-                "macro_precision": round(float(precision.mean()), 4),
-                "macro_recall": round(float(recall.mean()), 4),
-                "macro_f1": round(float(f1.mean()), 4),
-                "confusion_matrix": confusion_matrix(actual, predicted, labels=labels).tolist(),
-                "per_class_recall": {label: round(float(r), 4) for label, r in zip(labels, recall)},
-            }
+        score = classification_metrics
 
-        def plot_matrix(matrix, labels, title, path):
-            array = np.asarray(matrix)
-            figure, axis = plt.subplots(figsize=(1.4 + 1.1 * len(labels), 1.2 + 1.0 * len(labels)))
-            axis.imshow(array, cmap="Blues", vmin=0)
-            axis.set_xticks(range(len(labels)), labels, rotation=30)
-            axis.set_yticks(range(len(labels)), labels)
-            axis.set_xlabel("Predicted")
-            axis.set_ylabel("Actual")
-            axis.set_title(title, fontsize=9)
-            for i in range(len(labels)):
-                for j in range(len(labels)):
-                    axis.text(j, i, str(array[i, j]), ha="center", va="center",
-                              color="white" if array[i, j] > array.max() / 2 else "black")
-            figure.tight_layout()
-            path.parent.mkdir(parents=True, exist_ok=True)
-            figure.savefig(path, dpi=140)
-            plt.close(figure)
+        plot_matrix = save_confusion_matrix
 
 
         def read_index():
-            with (IMAGES / "index.csv").open(encoding="utf-8") as handle:
-                return list(csv_module.DictReader(handle))
+            return read_image_records(IMAGES)
 
         def load(rows):
-            images = []
-            for row in rows:
-                image = load_image(str(IMAGES / row["file"]), cv2.IMREAD_COLOR)
-                if image is None:
-                    raise FileNotFoundError(f"Missing image {row['file']}: run export-images first")
-                channels = [0]  # infrared images are grayscale
-                image = image[:, :, channels].astype(np.float32).transpose(2, 0, 1)
-                image = (image - image.mean()) / (image.std() + 1e-6)  # per-image standardisation
-                images.append(image)
-            return np.stack(images)
+            return load_model_images(IMAGES, rows, channels=(0,))
 
         class Net(nn.Module):
             def __init__(self, in_channels, n_classes):
@@ -10347,7 +9869,6 @@ def _make_dozer():
         return locals()
 
 
-
     def cnn_pretrained(run: bool = True) -> dict:
         """Week 6: transfer learning, an ImageNet-pretrained ResNet18 fine-tuned on the named images (4 classes).
 
@@ -10380,47 +9901,11 @@ def _make_dozer():
         SEGMENTS = 10   # test segments per held-out recording (segment-level score)
         MAX_EPOCHS, BATCH, LEARNING_RATE, SEED = 15, 32, 3e-4, 42
 
-        def unit_predictions(probabilities, classes, y, units):
-            """One prediction per test unit (recording or run): average the class probabilities of its rows."""
-            actual, predicted = [], []
-            for unit in sorted(set(units)):
-                rows = units == unit
-                if len(set(y[rows])) != 1:
-                    raise ValueError(f"Mixed labels within {unit}")
-                actual.append(y[rows][0])
-                predicted.append(classes[int(np.argmax(probabilities[rows].mean(axis=0)))])
-            return actual, predicted
+        unit_predictions = predict_recordings
 
-        def score(actual, predicted, labels):
-            precision, recall, f1, support = precision_recall_fscore_support(actual, predicted, labels=labels, zero_division=0)
-            return {
-                "test_units": len(actual),
-                "accuracy": round(float(accuracy_score(actual, predicted)), 4),
-                "balanced_accuracy": round(float(balanced_accuracy_score(actual, predicted)), 4),
-                "macro_precision": round(float(precision.mean()), 4),
-                "macro_recall": round(float(recall.mean()), 4),
-                "macro_f1": round(float(f1.mean()), 4),
-                "confusion_matrix": confusion_matrix(actual, predicted, labels=labels).tolist(),
-                "per_class_recall": {label: round(float(r), 4) for label, r in zip(labels, recall)},
-            }
+        score = classification_metrics
 
-        def plot_matrix(matrix, labels, title, path):
-            array = np.asarray(matrix)
-            figure, axis = plt.subplots(figsize=(1.4 + 1.1 * len(labels), 1.2 + 1.0 * len(labels)))
-            axis.imshow(array, cmap="Blues", vmin=0)
-            axis.set_xticks(range(len(labels)), labels, rotation=30)
-            axis.set_yticks(range(len(labels)), labels)
-            axis.set_xlabel("Predicted")
-            axis.set_ylabel("Actual")
-            axis.set_title(title, fontsize=9)
-            for i in range(len(labels)):
-                for j in range(len(labels)):
-                    axis.text(j, i, str(array[i, j]), ha="center", va="center",
-                              color="white" if array[i, j] > array.max() / 2 else "black")
-            figure.tight_layout()
-            path.parent.mkdir(parents=True, exist_ok=True)
-            figure.savefig(path, dpi=140)
-            plt.close(figure)
+        plot_matrix = save_confusion_matrix
 
         def plot_levels(result, title, path):
             """One panel per scoring level, so the figure shows how many images were really tested."""
@@ -10587,7 +10072,6 @@ def _make_dozer():
         return locals()
 
 
-
     def train_final(run: bool = True) -> dict:
         """Train the sensor model on all of this machine's data and save it (Processed_Data/models/, not in Git).
 
@@ -10627,7 +10111,6 @@ def _make_dozer():
         if run:
             main()
         return locals()
-
 
 
     def predict(run: bool = True) -> dict:
@@ -10723,7 +10206,6 @@ def _make_dozer():
         if run:
             main()
         return locals()
-
 
 
     def ensembles(run: bool = True) -> dict:
@@ -10856,7 +10338,6 @@ def _make_dozer():
         if run:
             main()
         return locals()
-
 
 
     def anomaly(run: bool = True) -> dict:
@@ -11048,13 +10529,15 @@ def _make_dozer():
             COMMANDS[name]()
 
 
-
     return SimpleNamespace(**locals())
+
+#endregion
 
 
 # WHEEL_LOADER MODEL IMPLEMENTATION
+#region Wheel Loader: data, preprocessing, models and evaluation
 def _make_wheel_loader():
-    __doc__ = "Wheel Loader (machine 6): electric drive motor, CORA vibration vs infrared camera.\n\n4 classes from the CORA motor/gearbox rig: healthy, bearing defect, half-broken rotor bar and broken rotor\nbar. The two rotor-bar faults are CORA conditions no other machine in this project uses (new fault data);\nhealthy and bearing-defect runs are shared with the Excavator. Large wheel loaders can use electric drive,\nso the induction motor stands in for the loader's drive motor. Lab data, not a wheel loader.\n\nUsage:\n    python Models/wheel_loader.py <command> [options]\n    python Models/wheel_loader.py <command> --help\n\nCommands:\n    intake          check selectively downloaded CORA files (MD5) and move them into Raw_Data/\n    csv             4-class vibration model from a CSV feature table (validation-selected model)\n    export-images   save the infrared images as named files in Images/wheel_loader/ (local only)\n    cnn             CNN with data augmentation on the named images\n    cnn-pretrained  transfer learning, pretrained ResNet18 on the named images\n    train-final     train the sensor model on all data and save it (--exclude to leave recordings out)\n    predict         predict from any CSV (feature table or raw recording) and show accuracy if labels are known\n    ensembles       XGBoost / LightGBM vs random forest etc. (--split time for the secondary test)\n    anomaly         anomaly detection trained on healthy data only (--split time for the secondary test)\n    fulldata        Week 7: every CORA sensor, window and start-up recording (Models/cora_fulldata.py)\n                    (--part ensembles / anomaly / all: XGBoost-LightGBM comparison, anomaly detection)\n    all             run csv, then export-images, then cnn-pretrained\n\nPreprocessing uses training data only (no per-speed normalisation across held-out runs).\nRaw data stays in Raw_Data/ and Processed_Data/ (not in Git)."
+    __doc__ = "Wheel Loader (machine 6): electric drive motor, CORA vibration vs infrared camera.\n\n4 classes from the CORA motor/gearbox rig: healthy, bearing defect, half-broken rotor bar and broken rotor\nbar. The two rotor-bar faults are CORA conditions no other machine in this project uses (new fault data);\nhealthy and bearing-defect runs are shared with the Excavator. Large wheel loaders can use electric drive,\nso the induction motor stands in for the loader's drive motor. Lab data, not a wheel loader.\n\nUsage:\n    python Notebook/notebook_helpers.py wheel_loader <command> [options]\n    python Notebook/notebook_helpers.py wheel_loader <command> --help\n\nCommands:\n    intake          check selectively downloaded CORA files (MD5) and move them into Raw_Data/\n    csv             4-class vibration model from a CSV feature table (validation-selected model)\n    export-images   save the infrared images as named files in Images/wheel_loader/ (local only)\n    cnn             CNN with data augmentation on the named images\n    cnn-pretrained  transfer learning, pretrained ResNet18 on the named images\n    train-final     train the sensor model on all data and save it (--exclude to leave recordings out)\n    predict         predict from any CSV (feature table or raw recording) and show accuracy if labels are known\n    ensembles       XGBoost / LightGBM vs random forest etc. (--split time for the secondary test)\n    anomaly         anomaly detection trained on healthy data only (--split time for the secondary test)\n    fulldata        Week 7: every CORA sensor, window and start-up recording (Models/cora_fulldata.py)\n                    (--part ensembles / anomaly / all: XGBoost-LightGBM comparison, anomaly detection)\n    all             run csv, then export-images, then cnn-pretrained\n\nPreprocessing uses training data only (no per-speed normalisation across held-out runs).\nRaw data stays in Raw_Data/ and Processed_Data/ (not in Git)."
     """Wheel Loader (machine 6): electric drive motor, CORA vibration vs infrared camera.
 
     4 classes from the CORA motor/gearbox rig: healthy, bearing defect, half-broken rotor bar and broken rotor
@@ -11063,8 +10546,8 @@ def _make_wheel_loader():
     so the induction motor stands in for the loader's drive motor. Lab data, not a wheel loader.
 
     Usage:
-        python Models/wheel_loader.py <command> [options]
-        python Models/wheel_loader.py <command> --help
+        python Notebook/notebook_helpers.py wheel_loader <command> [options]
+        python Notebook/notebook_helpers.py wheel_loader <command> --help
 
     Commands:
         intake          check selectively downloaded CORA files (MD5) and move them into Raw_Data/
@@ -11087,8 +10570,6 @@ def _make_wheel_loader():
 
     import sys
     from pathlib import Path
-
-
 
 
     # ====================================================================================================
@@ -11334,47 +10815,11 @@ def _make_wheel_loader():
                 min_samples_leaf=2, random_state=42, n_jobs=-1),
         }
 
-        def unit_predictions(probabilities, classes, y, units):
-            """One prediction per test unit (recording or run): average the class probabilities of its rows."""
-            actual, predicted = [], []
-            for unit in sorted(set(units)):
-                rows = units == unit
-                if len(set(y[rows])) != 1:
-                    raise ValueError(f"Mixed labels within {unit}")
-                actual.append(y[rows][0])
-                predicted.append(classes[int(np.argmax(probabilities[rows].mean(axis=0)))])
-            return actual, predicted
+        unit_predictions = predict_recordings
 
-        def score(actual, predicted, labels):
-            precision, recall, f1, support = precision_recall_fscore_support(actual, predicted, labels=labels, zero_division=0)
-            return {
-                "test_units": len(actual),
-                "accuracy": round(float(accuracy_score(actual, predicted)), 4),
-                "balanced_accuracy": round(float(balanced_accuracy_score(actual, predicted)), 4),
-                "macro_precision": round(float(precision.mean()), 4),
-                "macro_recall": round(float(recall.mean()), 4),
-                "macro_f1": round(float(f1.mean()), 4),
-                "confusion_matrix": confusion_matrix(actual, predicted, labels=labels).tolist(),
-                "per_class_recall": {label: round(float(r), 4) for label, r in zip(labels, recall)},
-            }
+        score = classification_metrics
 
-        def plot_matrix(matrix, labels, title, path):
-            array = np.asarray(matrix)
-            figure, axis = plt.subplots(figsize=(1.4 + 1.1 * len(labels), 1.2 + 1.0 * len(labels)))
-            axis.imshow(array, cmap="Blues", vmin=0)
-            axis.set_xticks(range(len(labels)), labels, rotation=30)
-            axis.set_yticks(range(len(labels)), labels)
-            axis.set_xlabel("Predicted")
-            axis.set_ylabel("Actual")
-            axis.set_title(title, fontsize=9)
-            for i in range(len(labels)):
-                for j in range(len(labels)):
-                    axis.text(j, i, str(array[i, j]), ha="center", va="center",
-                              color="white" if array[i, j] > array.max() / 2 else "black")
-            figure.tight_layout()
-            path.parent.mkdir(parents=True, exist_ok=True)
-            figure.savefig(path, dpi=140)
-            plt.close(figure)
+        plot_matrix = save_confusion_matrix
 
 
         VIB_ORDERS = ((0.5, 1.5), (1.5, 2.5), (2.5, 3.5), (3.5, 5.5), (5.5, 8.5), (8.5, 12.5), (12.5, 20.5))
@@ -11624,64 +11069,18 @@ def _make_wheel_loader():
         LABELS = ["healthy", "bearing", "half_broken_bar", "broken_bar"]
         EPOCHS, BATCH, LEARNING_RATE, SEED = 20, 32, 1e-3, 42
 
-        def unit_predictions(probabilities, classes, y, units):
-            """One prediction per test unit (recording or run): average the class probabilities of its rows."""
-            actual, predicted = [], []
-            for unit in sorted(set(units)):
-                rows = units == unit
-                if len(set(y[rows])) != 1:
-                    raise ValueError(f"Mixed labels within {unit}")
-                actual.append(y[rows][0])
-                predicted.append(classes[int(np.argmax(probabilities[rows].mean(axis=0)))])
-            return actual, predicted
+        unit_predictions = predict_recordings
 
-        def score(actual, predicted, labels):
-            precision, recall, f1, support = precision_recall_fscore_support(actual, predicted, labels=labels, zero_division=0)
-            return {
-                "test_units": len(actual),
-                "accuracy": round(float(accuracy_score(actual, predicted)), 4),
-                "balanced_accuracy": round(float(balanced_accuracy_score(actual, predicted)), 4),
-                "macro_precision": round(float(precision.mean()), 4),
-                "macro_recall": round(float(recall.mean()), 4),
-                "macro_f1": round(float(f1.mean()), 4),
-                "confusion_matrix": confusion_matrix(actual, predicted, labels=labels).tolist(),
-                "per_class_recall": {label: round(float(r), 4) for label, r in zip(labels, recall)},
-            }
+        score = classification_metrics
 
-        def plot_matrix(matrix, labels, title, path):
-            array = np.asarray(matrix)
-            figure, axis = plt.subplots(figsize=(1.4 + 1.1 * len(labels), 1.2 + 1.0 * len(labels)))
-            axis.imshow(array, cmap="Blues", vmin=0)
-            axis.set_xticks(range(len(labels)), labels, rotation=30)
-            axis.set_yticks(range(len(labels)), labels)
-            axis.set_xlabel("Predicted")
-            axis.set_ylabel("Actual")
-            axis.set_title(title, fontsize=9)
-            for i in range(len(labels)):
-                for j in range(len(labels)):
-                    axis.text(j, i, str(array[i, j]), ha="center", va="center",
-                              color="white" if array[i, j] > array.max() / 2 else "black")
-            figure.tight_layout()
-            path.parent.mkdir(parents=True, exist_ok=True)
-            figure.savefig(path, dpi=140)
-            plt.close(figure)
+        plot_matrix = save_confusion_matrix
 
 
         def read_index():
-            with (IMAGES / "index.csv").open(encoding="utf-8") as handle:
-                return list(csv_module.DictReader(handle))
+            return read_image_records(IMAGES)
 
         def load(rows):
-            images = []
-            for row in rows:
-                image = load_image(str(IMAGES / row["file"]), cv2.IMREAD_COLOR)
-                if image is None:
-                    raise FileNotFoundError(f"Missing image {row['file']}: run export-images first")
-                channels = [0]  # infrared images are grayscale
-                image = image[:, :, channels].astype(np.float32).transpose(2, 0, 1)
-                image = (image - image.mean()) / (image.std() + 1e-6)  # per-image standardisation
-                images.append(image)
-            return np.stack(images)
+            return load_model_images(IMAGES, rows, channels=(0,))
 
         class Net(nn.Module):
             def __init__(self, in_channels, n_classes):
@@ -11818,47 +11217,11 @@ def _make_wheel_loader():
         SEGMENTS = 10   # test segments per held-out recording (segment-level score)
         MAX_EPOCHS, BATCH, LEARNING_RATE, SEED = 15, 32, 3e-4, 42
 
-        def unit_predictions(probabilities, classes, y, units):
-            """One prediction per test unit (recording or run): average the class probabilities of its rows."""
-            actual, predicted = [], []
-            for unit in sorted(set(units)):
-                rows = units == unit
-                if len(set(y[rows])) != 1:
-                    raise ValueError(f"Mixed labels within {unit}")
-                actual.append(y[rows][0])
-                predicted.append(classes[int(np.argmax(probabilities[rows].mean(axis=0)))])
-            return actual, predicted
+        unit_predictions = predict_recordings
 
-        def score(actual, predicted, labels):
-            precision, recall, f1, support = precision_recall_fscore_support(actual, predicted, labels=labels, zero_division=0)
-            return {
-                "test_units": len(actual),
-                "accuracy": round(float(accuracy_score(actual, predicted)), 4),
-                "balanced_accuracy": round(float(balanced_accuracy_score(actual, predicted)), 4),
-                "macro_precision": round(float(precision.mean()), 4),
-                "macro_recall": round(float(recall.mean()), 4),
-                "macro_f1": round(float(f1.mean()), 4),
-                "confusion_matrix": confusion_matrix(actual, predicted, labels=labels).tolist(),
-                "per_class_recall": {label: round(float(r), 4) for label, r in zip(labels, recall)},
-            }
+        score = classification_metrics
 
-        def plot_matrix(matrix, labels, title, path):
-            array = np.asarray(matrix)
-            figure, axis = plt.subplots(figsize=(1.4 + 1.1 * len(labels), 1.2 + 1.0 * len(labels)))
-            axis.imshow(array, cmap="Blues", vmin=0)
-            axis.set_xticks(range(len(labels)), labels, rotation=30)
-            axis.set_yticks(range(len(labels)), labels)
-            axis.set_xlabel("Predicted")
-            axis.set_ylabel("Actual")
-            axis.set_title(title, fontsize=9)
-            for i in range(len(labels)):
-                for j in range(len(labels)):
-                    axis.text(j, i, str(array[i, j]), ha="center", va="center",
-                              color="white" if array[i, j] > array.max() / 2 else "black")
-            figure.tight_layout()
-            path.parent.mkdir(parents=True, exist_ok=True)
-            figure.savefig(path, dpi=140)
-            plt.close(figure)
+        plot_matrix = save_confusion_matrix
 
         def plot_levels(result, title, path):
             """One panel per scoring level, so the figure shows how many images were really tested."""
@@ -12495,11 +11858,13 @@ def _make_wheel_loader():
             COMMANDS[name]()
 
 
-
     return SimpleNamespace(**locals())
+
+#endregion
 
 
 # DRILL_RIG MODEL IMPLEMENTATION
+#region Drill Rig: data, preprocessing, models and evaluation
 def _make_drill_rig():
     """Drill Rig (machine 7): rotary-head reduction gear. Gearbox vibration plus rendered gear images, separate data.
 
@@ -13315,6 +12680,8 @@ def _make_drill_rig():
 
     return SimpleNamespace(**locals())
 
+#endregion
+
 
 def _render_batch_entry(job):
     """Top-level worker for the Drill Rig gear renders (Windows process pools need a picklable function)."""
@@ -13322,6 +12689,7 @@ def _render_batch_entry(job):
 
 
 # CORA_FULLDATA MODEL IMPLEMENTATION
+#region Cora Fulldata: data, preprocessing, models and evaluation
 def _make_cora_fulldata():
     __doc__ = "Week 7 full-data sensor experiment for the CORA machines (Belt Conveyor, Dozer, Excavator, Wheel Loader).\n\nShared engine; each machine file has a `fulldata` command that calls `run(machine, conditions)`.\nUses every CORA sensor and every recording that exists for the machine's conditions:\n\n  - stationary runs (one 45-50 min run per condition and speed): vibration X/Y/Z (3 kHz), motor current\n    C1-C3 (4 kHz) and six temperature probes T1-T6 (1 kHz), EVERY 1-second window;\n  - start-up transient tests (FIVE 30 s repeats per condition and speed): vibration X/Y/Z and current\n    C1-C3; the steady part (10-30 s) is used, 20 one-second windows per repeat.\n\nMain test: each whole speed is held out in turn (4 rounds). Training uses all stationary and transient\nrecordings of the other three speeds; the held-out speed gives 6 test recordings per class (1 stationary\n+ 5 transient). One prediction per recording (mean class probabilities of its windows); every training\nrecording gets equal weight. The feature set and model are chosen by leave-one-speed-out validation\ninside the training speeds only. All features are computed per window from that window alone (vibration\nin shaft orders, current in supply-frequency orders), so no preprocessing looks at the held-out speed.\n\nSecondary (easier) time split: stationary runs only, first 60% of every run trains, last 30% tests.\nTemperature turned out to identify the recording session (it separates the conditions already in the\nfirst 5 minutes, before any fault heating), so temperature sets are reported but excluded from selection.\nTemperature is offered two ways: the pattern only (each probe relative to the others and to the run's first\nminute) and including absolute temperature, which mostly follows the room temperature of that recording day.\nResults go to Results/<machine>/<machine>_fulldata.json; the Week 6 results are not changed."
     """Week 7 full-data sensor experiment for the CORA machines (Belt Conveyor, Dozer, Excavator, Wheel Loader).
@@ -13887,11 +13255,22 @@ def _make_cora_fulldata():
 
     return SimpleNamespace(**locals())
 
+#endregion
+
 
 @lru_cache(maxsize=None)
 def get_model(equipment: str):
     """Construct one equipment namespace lazily, avoiding conflicting model names."""
-    factories = {"pump": _make_pump, "haul_truck": _make_haul_truck, "belt_conveyor": _make_belt_conveyor, "excavator": _make_excavator, "dozer": _make_dozer, "wheel_loader": _make_wheel_loader, "drill_rig": _make_drill_rig, "cora_fulldata": _make_cora_fulldata}
+    factories = {
+        "pump": _make_pump,
+        "haul_truck": _make_haul_truck,
+        "belt_conveyor": _make_belt_conveyor,
+        "excavator": _make_excavator,
+        "dozer": _make_dozer,
+        "wheel_loader": _make_wheel_loader,
+        "drill_rig": _make_drill_rig,
+        "cora_fulldata": _make_cora_fulldata,
+    }
     if equipment not in factories:
         raise ValueError(f"Unknown equipment: {equipment}")
     return factories[equipment]()
