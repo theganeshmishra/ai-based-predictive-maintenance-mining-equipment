@@ -1,0 +1,1361 @@
+{
+  "source": "JUST Slewing bearing datasets-1, Xiaodie Ren, Jiangsu University of Science and Technology, Mendeley Data hwg8v5j8t6 v1 (doi 10.17632/hwg8v5j8t6.1), CC BY 4.0",
+  "sha256_matches": {
+    "condition1": true,
+    "condition2": true,
+    "condition3": true,
+    "condition4": true,
+    "condition5": true,
+    "condition6": true
+  },
+  "zip_bytes": {
+    "condition1": 1484330344,
+    "condition2": 1612605347,
+    "condition3": 1558006294,
+    "condition4": 1538893457,
+    "condition5": 1649545043,
+    "condition6": 1637295870
+  },
+  "recordings_used": {
+    "healthy": 30,
+    "inner_ring": 30,
+    "outer_ring": 30,
+    "rolling_element": 30
+  },
+  "conditions": {
+    "condition1": {
+      "rpm": [
+        2
+      ],
+      "force_n": [
+        0
+      ],
+      "dates_by_class": {
+        "healthy": [
+          "20221208"
+        ],
+        "inner_ring": [
+          "20221208"
+        ],
+        "outer_ring": [
+          "20221208"
+        ],
+        "rolling_element": [
+          "20221208"
+        ]
+      }
+    },
+    "condition2": {
+      "rpm": [
+        2
+      ],
+      "force_n": [
+        30
+      ],
+      "dates_by_class": {
+        "healthy": [
+          "20221208"
+        ],
+        "inner_ring": [
+          "20221208"
+        ],
+        "outer_ring": [
+          "20221208"
+        ],
+        "rolling_element": [
+          "20221208"
+        ]
+      }
+    },
+    "condition3": {
+      "rpm": [
+        2
+      ],
+      "force_n": [
+        60
+      ],
+      "dates_by_class": {
+        "healthy": [
+          "20221208"
+        ],
+        "inner_ring": [
+          "20221208"
+        ],
+        "outer_ring": [
+          "20221208"
+        ],
+        "rolling_element": [
+          "20221208"
+        ]
+      }
+    },
+    "condition4": {
+      "rpm": [
+        6
+      ],
+      "force_n": [
+        0
+      ],
+      "dates_by_class": {
+        "healthy": [
+          "20221208"
+        ],
+        "inner_ring": [
+          "20221208"
+        ],
+        "outer_ring": [
+          "20221208"
+        ],
+        "rolling_element": [
+          "20221208"
+        ]
+      }
+    },
+    "condition5": {
+      "rpm": [
+        6
+      ],
+      "force_n": [
+        30
+      ],
+      "dates_by_class": {
+        "healthy": [
+          "20221208"
+        ],
+        "inner_ring": [
+          "20221208"
+        ],
+        "outer_ring": [
+          "20221208"
+        ],
+        "rolling_element": [
+          "20221208"
+        ]
+      }
+    },
+    "condition6": {
+      "rpm": [
+        6
+      ],
+      "force_n": [
+        60
+      ],
+      "dates_by_class": {
+        "healthy": [
+          "20221208"
+        ],
+        "inner_ring": [
+          "20221208"
+        ],
+        "outer_ring": [
+          "20221208"
+        ],
+        "rolling_element": [
+          "20221208"
+        ]
+      }
+    }
+  },
+  "recordings": [
+    {
+      "condition": "condition1",
+      "file": "╣ñ┐÷1/20221208-B1-2rpm-0N-1.csv",
+      "recording": "condition1_B1_1",
+      "class": "rolling_element",
+      "date": "20221208",
+      "rpm": 2,
+      "force_n": 0,
+      "repeat": 1
+    },
+    {
+      "condition": "condition1",
+      "file": "╣ñ┐÷1/20221208-B1-2rpm-0N-2.csv",
+      "recording": "condition1_B1_2",
+      "class": "rolling_element",
+      "date": "20221208",
+      "rpm": 2,
+      "force_n": 0,
+      "repeat": 2
+    },
+    {
+      "condition": "condition1",
+      "file": "╣ñ┐÷1/20221208-B1-2rpm-0N-3.csv",
+      "recording": "condition1_B1_3",
+      "class": "rolling_element",
+      "date": "20221208",
+      "rpm": 2,
+      "force_n": 0,
+      "repeat": 3
+    },
+    {
+      "condition": "condition1",
+      "file": "╣ñ┐÷1/20221208-B1-2rpm-0N-4.csv",
+      "recording": "condition1_B1_4",
+      "class": "rolling_element",
+      "date": "20221208",
+      "rpm": 2,
+      "force_n": 0,
+      "repeat": 4
+    },
+    {
+      "condition": "condition1",
+      "file": "╣ñ┐÷1/20221208-B1-2rpm-0N-5.csv",
+      "recording": "condition1_B1_5",
+      "class": "rolling_element",
+      "date": "20221208",
+      "rpm": 2,
+      "force_n": 0,
+      "repeat": 5
+    },
+    {
+      "condition": "condition1",
+      "file": "╣ñ┐÷1/20221208-I-2rpm-0N-1.csv",
+      "recording": "condition1_I_1",
+      "class": "inner_ring",
+      "date": "20221208",
+      "rpm": 2,
+      "force_n": 0,
+      "repeat": 1
+    },
+    {
+      "condition": "condition1",
+      "file": "╣ñ┐÷1/20221208-I-2rpm-0N-2.csv",
+      "recording": "condition1_I_2",
+      "class": "inner_ring",
+      "date": "20221208",
+      "rpm": 2,
+      "force_n": 0,
+      "repeat": 2
+    },
+    {
+      "condition": "condition1",
+      "file": "╣ñ┐÷1/20221208-I-2rpm-0N-3.csv",
+      "recording": "condition1_I_3",
+      "class": "inner_ring",
+      "date": "20221208",
+      "rpm": 2,
+      "force_n": 0,
+      "repeat": 3
+    },
+    {
+      "condition": "condition1",
+      "file": "╣ñ┐÷1/20221208-I-2rpm-0N-4.csv",
+      "recording": "condition1_I_4",
+      "class": "inner_ring",
+      "date": "20221208",
+      "rpm": 2,
+      "force_n": 0,
+      "repeat": 4
+    },
+    {
+      "condition": "condition1",
+      "file": "╣ñ┐÷1/20221208-I-2rpm-0N-5.csv",
+      "recording": "condition1_I_5",
+      "class": "inner_ring",
+      "date": "20221208",
+      "rpm": 2,
+      "force_n": 0,
+      "repeat": 5
+    },
+    {
+      "condition": "condition1",
+      "file": "╣ñ┐÷1/20221208-N-2rpm-0N-1.csv",
+      "recording": "condition1_N_1",
+      "class": "healthy",
+      "date": "20221208",
+      "rpm": 2,
+      "force_n": 0,
+      "repeat": 1
+    },
+    {
+      "condition": "condition1",
+      "file": "╣ñ┐÷1/20221208-N-2rpm-0N-2.csv",
+      "recording": "condition1_N_2",
+      "class": "healthy",
+      "date": "20221208",
+      "rpm": 2,
+      "force_n": 0,
+      "repeat": 2
+    },
+    {
+      "condition": "condition1",
+      "file": "╣ñ┐÷1/20221208-N-2rpm-0N-3.csv",
+      "recording": "condition1_N_3",
+      "class": "healthy",
+      "date": "20221208",
+      "rpm": 2,
+      "force_n": 0,
+      "repeat": 3
+    },
+    {
+      "condition": "condition1",
+      "file": "╣ñ┐÷1/20221208-N-2rpm-0N-4.csv",
+      "recording": "condition1_N_4",
+      "class": "healthy",
+      "date": "20221208",
+      "rpm": 2,
+      "force_n": 0,
+      "repeat": 4
+    },
+    {
+      "condition": "condition1",
+      "file": "╣ñ┐÷1/20221208-N-2rpm-0N-5.csv",
+      "recording": "condition1_N_5",
+      "class": "healthy",
+      "date": "20221208",
+      "rpm": 2,
+      "force_n": 0,
+      "repeat": 5
+    },
+    {
+      "condition": "condition1",
+      "file": "╣ñ┐÷1/20221208-O-2rpm-0N-1.csv",
+      "recording": "condition1_O_1",
+      "class": "outer_ring",
+      "date": "20221208",
+      "rpm": 2,
+      "force_n": 0,
+      "repeat": 1
+    },
+    {
+      "condition": "condition1",
+      "file": "╣ñ┐÷1/20221208-O-2rpm-0N-2.csv",
+      "recording": "condition1_O_2",
+      "class": "outer_ring",
+      "date": "20221208",
+      "rpm": 2,
+      "force_n": 0,
+      "repeat": 2
+    },
+    {
+      "condition": "condition1",
+      "file": "╣ñ┐÷1/20221208-O-2rpm-0N-3.csv",
+      "recording": "condition1_O_3",
+      "class": "outer_ring",
+      "date": "20221208",
+      "rpm": 2,
+      "force_n": 0,
+      "repeat": 3
+    },
+    {
+      "condition": "condition1",
+      "file": "╣ñ┐÷1/20221208-O-2rpm-0N-4.csv",
+      "recording": "condition1_O_4",
+      "class": "outer_ring",
+      "date": "20221208",
+      "rpm": 2,
+      "force_n": 0,
+      "repeat": 4
+    },
+    {
+      "condition": "condition1",
+      "file": "╣ñ┐÷1/20221208-O-2rpm-0N-5.csv",
+      "recording": "condition1_O_5",
+      "class": "outer_ring",
+      "date": "20221208",
+      "rpm": 2,
+      "force_n": 0,
+      "repeat": 5
+    },
+    {
+      "condition": "condition2",
+      "file": "╣ñ┐÷2/20221208-B1-2rpm-30N-1.csv",
+      "recording": "condition2_B1_1",
+      "class": "rolling_element",
+      "date": "20221208",
+      "rpm": 2,
+      "force_n": 30,
+      "repeat": 1
+    },
+    {
+      "condition": "condition2",
+      "file": "╣ñ┐÷2/20221208-B1-2rpm-30N-2.csv",
+      "recording": "condition2_B1_2",
+      "class": "rolling_element",
+      "date": "20221208",
+      "rpm": 2,
+      "force_n": 30,
+      "repeat": 2
+    },
+    {
+      "condition": "condition2",
+      "file": "╣ñ┐÷2/20221208-B1-2rpm-30N-3.csv",
+      "recording": "condition2_B1_3",
+      "class": "rolling_element",
+      "date": "20221208",
+      "rpm": 2,
+      "force_n": 30,
+      "repeat": 3
+    },
+    {
+      "condition": "condition2",
+      "file": "╣ñ┐÷2/20221208-B1-2rpm-30N-4.csv",
+      "recording": "condition2_B1_4",
+      "class": "rolling_element",
+      "date": "20221208",
+      "rpm": 2,
+      "force_n": 30,
+      "repeat": 4
+    },
+    {
+      "condition": "condition2",
+      "file": "╣ñ┐÷2/20221208-B1-2rpm-30N-5.csv",
+      "recording": "condition2_B1_5",
+      "class": "rolling_element",
+      "date": "20221208",
+      "rpm": 2,
+      "force_n": 30,
+      "repeat": 5
+    },
+    {
+      "condition": "condition2",
+      "file": "╣ñ┐÷2/20221208-I-2rpm-30N-1.csv",
+      "recording": "condition2_I_1",
+      "class": "inner_ring",
+      "date": "20221208",
+      "rpm": 2,
+      "force_n": 30,
+      "repeat": 1
+    },
+    {
+      "condition": "condition2",
+      "file": "╣ñ┐÷2/20221208-I-2rpm-30N-2.csv",
+      "recording": "condition2_I_2",
+      "class": "inner_ring",
+      "date": "20221208",
+      "rpm": 2,
+      "force_n": 30,
+      "repeat": 2
+    },
+    {
+      "condition": "condition2",
+      "file": "╣ñ┐÷2/20221208-I-2rpm-30N-3.csv",
+      "recording": "condition2_I_3",
+      "class": "inner_ring",
+      "date": "20221208",
+      "rpm": 2,
+      "force_n": 30,
+      "repeat": 3
+    },
+    {
+      "condition": "condition2",
+      "file": "╣ñ┐÷2/20221208-I-2rpm-30N-4.csv",
+      "recording": "condition2_I_4",
+      "class": "inner_ring",
+      "date": "20221208",
+      "rpm": 2,
+      "force_n": 30,
+      "repeat": 4
+    },
+    {
+      "condition": "condition2",
+      "file": "╣ñ┐÷2/20221208-I-2rpm-30N-5.csv",
+      "recording": "condition2_I_5",
+      "class": "inner_ring",
+      "date": "20221208",
+      "rpm": 2,
+      "force_n": 30,
+      "repeat": 5
+    },
+    {
+      "condition": "condition2",
+      "file": "╣ñ┐÷2/20221208-N-2rpm-30N-1.csv",
+      "recording": "condition2_N_1",
+      "class": "healthy",
+      "date": "20221208",
+      "rpm": 2,
+      "force_n": 30,
+      "repeat": 1
+    },
+    {
+      "condition": "condition2",
+      "file": "╣ñ┐÷2/20221208-N-2rpm-30N-2.csv",
+      "recording": "condition2_N_2",
+      "class": "healthy",
+      "date": "20221208",
+      "rpm": 2,
+      "force_n": 30,
+      "repeat": 2
+    },
+    {
+      "condition": "condition2",
+      "file": "╣ñ┐÷2/20221208-N-2rpm-30N-3.csv",
+      "recording": "condition2_N_3",
+      "class": "healthy",
+      "date": "20221208",
+      "rpm": 2,
+      "force_n": 30,
+      "repeat": 3
+    },
+    {
+      "condition": "condition2",
+      "file": "╣ñ┐÷2/20221208-N-2rpm-30N-4.csv",
+      "recording": "condition2_N_4",
+      "class": "healthy",
+      "date": "20221208",
+      "rpm": 2,
+      "force_n": 30,
+      "repeat": 4
+    },
+    {
+      "condition": "condition2",
+      "file": "╣ñ┐÷2/20221208-N-2rpm-30N-5.csv",
+      "recording": "condition2_N_5",
+      "class": "healthy",
+      "date": "20221208",
+      "rpm": 2,
+      "force_n": 30,
+      "repeat": 5
+    },
+    {
+      "condition": "condition2",
+      "file": "╣ñ┐÷2/20221208-O-2rpm-30N-1.csv",
+      "recording": "condition2_O_1",
+      "class": "outer_ring",
+      "date": "20221208",
+      "rpm": 2,
+      "force_n": 30,
+      "repeat": 1
+    },
+    {
+      "condition": "condition2",
+      "file": "╣ñ┐÷2/20221208-O-2rpm-30N-2.csv",
+      "recording": "condition2_O_2",
+      "class": "outer_ring",
+      "date": "20221208",
+      "rpm": 2,
+      "force_n": 30,
+      "repeat": 2
+    },
+    {
+      "condition": "condition2",
+      "file": "╣ñ┐÷2/20221208-O-2rpm-30N-3.csv",
+      "recording": "condition2_O_3",
+      "class": "outer_ring",
+      "date": "20221208",
+      "rpm": 2,
+      "force_n": 30,
+      "repeat": 3
+    },
+    {
+      "condition": "condition2",
+      "file": "╣ñ┐÷2/20221208-O-2rpm-30N-4.csv",
+      "recording": "condition2_O_4",
+      "class": "outer_ring",
+      "date": "20221208",
+      "rpm": 2,
+      "force_n": 30,
+      "repeat": 4
+    },
+    {
+      "condition": "condition2",
+      "file": "╣ñ┐÷2/20221208-O-2rpm-30N-5.csv",
+      "recording": "condition2_O_5",
+      "class": "outer_ring",
+      "date": "20221208",
+      "rpm": 2,
+      "force_n": 30,
+      "repeat": 5
+    },
+    {
+      "condition": "condition3",
+      "file": "╣ñ┐÷3/20221208-B1-2rpm-60N-1.csv",
+      "recording": "condition3_B1_1",
+      "class": "rolling_element",
+      "date": "20221208",
+      "rpm": 2,
+      "force_n": 60,
+      "repeat": 1
+    },
+    {
+      "condition": "condition3",
+      "file": "╣ñ┐÷3/20221208-B1-2rpm-60N-2.csv",
+      "recording": "condition3_B1_2",
+      "class": "rolling_element",
+      "date": "20221208",
+      "rpm": 2,
+      "force_n": 60,
+      "repeat": 2
+    },
+    {
+      "condition": "condition3",
+      "file": "╣ñ┐÷3/20221208-B1-2rpm-60N-3.csv",
+      "recording": "condition3_B1_3",
+      "class": "rolling_element",
+      "date": "20221208",
+      "rpm": 2,
+      "force_n": 60,
+      "repeat": 3
+    },
+    {
+      "condition": "condition3",
+      "file": "╣ñ┐÷3/20221208-B1-2rpm-60N-4.csv",
+      "recording": "condition3_B1_4",
+      "class": "rolling_element",
+      "date": "20221208",
+      "rpm": 2,
+      "force_n": 60,
+      "repeat": 4
+    },
+    {
+      "condition": "condition3",
+      "file": "╣ñ┐÷3/20221208-B1-2rpm-60N-5.csv",
+      "recording": "condition3_B1_5",
+      "class": "rolling_element",
+      "date": "20221208",
+      "rpm": 2,
+      "force_n": 60,
+      "repeat": 5
+    },
+    {
+      "condition": "condition3",
+      "file": "╣ñ┐÷3/20221208-I-2rpm-60N-1.csv",
+      "recording": "condition3_I_1",
+      "class": "inner_ring",
+      "date": "20221208",
+      "rpm": 2,
+      "force_n": 60,
+      "repeat": 1
+    },
+    {
+      "condition": "condition3",
+      "file": "╣ñ┐÷3/20221208-I-2rpm-60N-2.csv",
+      "recording": "condition3_I_2",
+      "class": "inner_ring",
+      "date": "20221208",
+      "rpm": 2,
+      "force_n": 60,
+      "repeat": 2
+    },
+    {
+      "condition": "condition3",
+      "file": "╣ñ┐÷3/20221208-I-2rpm-60N-3.csv",
+      "recording": "condition3_I_3",
+      "class": "inner_ring",
+      "date": "20221208",
+      "rpm": 2,
+      "force_n": 60,
+      "repeat": 3
+    },
+    {
+      "condition": "condition3",
+      "file": "╣ñ┐÷3/20221208-I-2rpm-60N-4.csv",
+      "recording": "condition3_I_4",
+      "class": "inner_ring",
+      "date": "20221208",
+      "rpm": 2,
+      "force_n": 60,
+      "repeat": 4
+    },
+    {
+      "condition": "condition3",
+      "file": "╣ñ┐÷3/20221208-I-2rpm-60N-5.csv",
+      "recording": "condition3_I_5",
+      "class": "inner_ring",
+      "date": "20221208",
+      "rpm": 2,
+      "force_n": 60,
+      "repeat": 5
+    },
+    {
+      "condition": "condition3",
+      "file": "╣ñ┐÷3/20221208-N-2rpm-60N-1.csv",
+      "recording": "condition3_N_1",
+      "class": "healthy",
+      "date": "20221208",
+      "rpm": 2,
+      "force_n": 60,
+      "repeat": 1
+    },
+    {
+      "condition": "condition3",
+      "file": "╣ñ┐÷3/20221208-N-2rpm-60N-2.csv",
+      "recording": "condition3_N_2",
+      "class": "healthy",
+      "date": "20221208",
+      "rpm": 2,
+      "force_n": 60,
+      "repeat": 2
+    },
+    {
+      "condition": "condition3",
+      "file": "╣ñ┐÷3/20221208-N-2rpm-60N-3.csv",
+      "recording": "condition3_N_3",
+      "class": "healthy",
+      "date": "20221208",
+      "rpm": 2,
+      "force_n": 60,
+      "repeat": 3
+    },
+    {
+      "condition": "condition3",
+      "file": "╣ñ┐÷3/20221208-N-2rpm-60N-4.csv",
+      "recording": "condition3_N_4",
+      "class": "healthy",
+      "date": "20221208",
+      "rpm": 2,
+      "force_n": 60,
+      "repeat": 4
+    },
+    {
+      "condition": "condition3",
+      "file": "╣ñ┐÷3/20221208-N-2rpm-60N-5.csv",
+      "recording": "condition3_N_5",
+      "class": "healthy",
+      "date": "20221208",
+      "rpm": 2,
+      "force_n": 60,
+      "repeat": 5
+    },
+    {
+      "condition": "condition3",
+      "file": "╣ñ┐÷3/20221208-O-2rpm-60N-1.csv",
+      "recording": "condition3_O_1",
+      "class": "outer_ring",
+      "date": "20221208",
+      "rpm": 2,
+      "force_n": 60,
+      "repeat": 1
+    },
+    {
+      "condition": "condition3",
+      "file": "╣ñ┐÷3/20221208-O-2rpm-60N-2.csv",
+      "recording": "condition3_O_2",
+      "class": "outer_ring",
+      "date": "20221208",
+      "rpm": 2,
+      "force_n": 60,
+      "repeat": 2
+    },
+    {
+      "condition": "condition3",
+      "file": "╣ñ┐÷3/20221208-O-2rpm-60N-3.csv",
+      "recording": "condition3_O_3",
+      "class": "outer_ring",
+      "date": "20221208",
+      "rpm": 2,
+      "force_n": 60,
+      "repeat": 3
+    },
+    {
+      "condition": "condition3",
+      "file": "╣ñ┐÷3/20221208-O-2rpm-60N-4.csv",
+      "recording": "condition3_O_4",
+      "class": "outer_ring",
+      "date": "20221208",
+      "rpm": 2,
+      "force_n": 60,
+      "repeat": 4
+    },
+    {
+      "condition": "condition3",
+      "file": "╣ñ┐÷3/20221208-O-2rpm-60N-5.csv",
+      "recording": "condition3_O_5",
+      "class": "outer_ring",
+      "date": "20221208",
+      "rpm": 2,
+      "force_n": 60,
+      "repeat": 5
+    },
+    {
+      "condition": "condition4",
+      "file": "╣ñ┐÷4/20221208-B1-6rpm-0N-1.csv",
+      "recording": "condition4_B1_1",
+      "class": "rolling_element",
+      "date": "20221208",
+      "rpm": 6,
+      "force_n": 0,
+      "repeat": 1
+    },
+    {
+      "condition": "condition4",
+      "file": "╣ñ┐÷4/20221208-B1-6rpm-0N-2.csv",
+      "recording": "condition4_B1_2",
+      "class": "rolling_element",
+      "date": "20221208",
+      "rpm": 6,
+      "force_n": 0,
+      "repeat": 2
+    },
+    {
+      "condition": "condition4",
+      "file": "╣ñ┐÷4/20221208-B1-6rpm-0N-3.csv",
+      "recording": "condition4_B1_3",
+      "class": "rolling_element",
+      "date": "20221208",
+      "rpm": 6,
+      "force_n": 0,
+      "repeat": 3
+    },
+    {
+      "condition": "condition4",
+      "file": "╣ñ┐÷4/20221208-B1-6rpm-0N-4.csv",
+      "recording": "condition4_B1_4",
+      "class": "rolling_element",
+      "date": "20221208",
+      "rpm": 6,
+      "force_n": 0,
+      "repeat": 4
+    },
+    {
+      "condition": "condition4",
+      "file": "╣ñ┐÷4/20221208-B1-6rpm-0N-5.csv",
+      "recording": "condition4_B1_5",
+      "class": "rolling_element",
+      "date": "20221208",
+      "rpm": 6,
+      "force_n": 0,
+      "repeat": 5
+    },
+    {
+      "condition": "condition4",
+      "file": "╣ñ┐÷4/20221208-I-6rpm-0N-1.csv",
+      "recording": "condition4_I_1",
+      "class": "inner_ring",
+      "date": "20221208",
+      "rpm": 6,
+      "force_n": 0,
+      "repeat": 1
+    },
+    {
+      "condition": "condition4",
+      "file": "╣ñ┐÷4/20221208-I-6rpm-0N-2.csv",
+      "recording": "condition4_I_2",
+      "class": "inner_ring",
+      "date": "20221208",
+      "rpm": 6,
+      "force_n": 0,
+      "repeat": 2
+    },
+    {
+      "condition": "condition4",
+      "file": "╣ñ┐÷4/20221208-I-6rpm-0N-3.csv",
+      "recording": "condition4_I_3",
+      "class": "inner_ring",
+      "date": "20221208",
+      "rpm": 6,
+      "force_n": 0,
+      "repeat": 3
+    },
+    {
+      "condition": "condition4",
+      "file": "╣ñ┐÷4/20221208-I-6rpm-0N-4.csv",
+      "recording": "condition4_I_4",
+      "class": "inner_ring",
+      "date": "20221208",
+      "rpm": 6,
+      "force_n": 0,
+      "repeat": 4
+    },
+    {
+      "condition": "condition4",
+      "file": "╣ñ┐÷4/20221208-I-6rpm-0N-5.csv",
+      "recording": "condition4_I_5",
+      "class": "inner_ring",
+      "date": "20221208",
+      "rpm": 6,
+      "force_n": 0,
+      "repeat": 5
+    },
+    {
+      "condition": "condition4",
+      "file": "╣ñ┐÷4/20221208-N-6rpm-0N-1.csv",
+      "recording": "condition4_N_1",
+      "class": "healthy",
+      "date": "20221208",
+      "rpm": 6,
+      "force_n": 0,
+      "repeat": 1
+    },
+    {
+      "condition": "condition4",
+      "file": "╣ñ┐÷4/20221208-N-6rpm-0N-2.csv",
+      "recording": "condition4_N_2",
+      "class": "healthy",
+      "date": "20221208",
+      "rpm": 6,
+      "force_n": 0,
+      "repeat": 2
+    },
+    {
+      "condition": "condition4",
+      "file": "╣ñ┐÷4/20221208-N-6rpm-0N-3.csv",
+      "recording": "condition4_N_3",
+      "class": "healthy",
+      "date": "20221208",
+      "rpm": 6,
+      "force_n": 0,
+      "repeat": 3
+    },
+    {
+      "condition": "condition4",
+      "file": "╣ñ┐÷4/20221208-N-6rpm-0N-4.csv",
+      "recording": "condition4_N_4",
+      "class": "healthy",
+      "date": "20221208",
+      "rpm": 6,
+      "force_n": 0,
+      "repeat": 4
+    },
+    {
+      "condition": "condition4",
+      "file": "╣ñ┐÷4/20221208-N-6rpm-0N-5.csv",
+      "recording": "condition4_N_5",
+      "class": "healthy",
+      "date": "20221208",
+      "rpm": 6,
+      "force_n": 0,
+      "repeat": 5
+    },
+    {
+      "condition": "condition4",
+      "file": "╣ñ┐÷4/20221208-O-6rpm-0N-1.csv",
+      "recording": "condition4_O_1",
+      "class": "outer_ring",
+      "date": "20221208",
+      "rpm": 6,
+      "force_n": 0,
+      "repeat": 1
+    },
+    {
+      "condition": "condition4",
+      "file": "╣ñ┐÷4/20221208-O-6rpm-0N-2.csv",
+      "recording": "condition4_O_2",
+      "class": "outer_ring",
+      "date": "20221208",
+      "rpm": 6,
+      "force_n": 0,
+      "repeat": 2
+    },
+    {
+      "condition": "condition4",
+      "file": "╣ñ┐÷4/20221208-O-6rpm-0N-3.csv",
+      "recording": "condition4_O_3",
+      "class": "outer_ring",
+      "date": "20221208",
+      "rpm": 6,
+      "force_n": 0,
+      "repeat": 3
+    },
+    {
+      "condition": "condition4",
+      "file": "╣ñ┐÷4/20221208-O-6rpm-0N-4.csv",
+      "recording": "condition4_O_4",
+      "class": "outer_ring",
+      "date": "20221208",
+      "rpm": 6,
+      "force_n": 0,
+      "repeat": 4
+    },
+    {
+      "condition": "condition4",
+      "file": "╣ñ┐÷4/20221208-O-6rpm-0N-5.csv",
+      "recording": "condition4_O_5",
+      "class": "outer_ring",
+      "date": "20221208",
+      "rpm": 6,
+      "force_n": 0,
+      "repeat": 5
+    },
+    {
+      "condition": "condition5",
+      "file": "╣ñ┐÷5/20221208-B1-6rpm-30N-1.csv",
+      "recording": "condition5_B1_1",
+      "class": "rolling_element",
+      "date": "20221208",
+      "rpm": 6,
+      "force_n": 30,
+      "repeat": 1
+    },
+    {
+      "condition": "condition5",
+      "file": "╣ñ┐÷5/20221208-B1-6rpm-30N-2.csv",
+      "recording": "condition5_B1_2",
+      "class": "rolling_element",
+      "date": "20221208",
+      "rpm": 6,
+      "force_n": 30,
+      "repeat": 2
+    },
+    {
+      "condition": "condition5",
+      "file": "╣ñ┐÷5/20221208-B1-6rpm-30N-3.csv",
+      "recording": "condition5_B1_3",
+      "class": "rolling_element",
+      "date": "20221208",
+      "rpm": 6,
+      "force_n": 30,
+      "repeat": 3
+    },
+    {
+      "condition": "condition5",
+      "file": "╣ñ┐÷5/20221208-B1-6rpm-30N-4.csv",
+      "recording": "condition5_B1_4",
+      "class": "rolling_element",
+      "date": "20221208",
+      "rpm": 6,
+      "force_n": 30,
+      "repeat": 4
+    },
+    {
+      "condition": "condition5",
+      "file": "╣ñ┐÷5/20221208-B1-6rpm-30N-5.csv",
+      "recording": "condition5_B1_5",
+      "class": "rolling_element",
+      "date": "20221208",
+      "rpm": 6,
+      "force_n": 30,
+      "repeat": 5
+    },
+    {
+      "condition": "condition5",
+      "file": "╣ñ┐÷5/20221208-I-6rpm-30N-1.csv",
+      "recording": "condition5_I_1",
+      "class": "inner_ring",
+      "date": "20221208",
+      "rpm": 6,
+      "force_n": 30,
+      "repeat": 1
+    },
+    {
+      "condition": "condition5",
+      "file": "╣ñ┐÷5/20221208-I-6rpm-30N-2.csv",
+      "recording": "condition5_I_2",
+      "class": "inner_ring",
+      "date": "20221208",
+      "rpm": 6,
+      "force_n": 30,
+      "repeat": 2
+    },
+    {
+      "condition": "condition5",
+      "file": "╣ñ┐÷5/20221208-I-6rpm-30N-3.csv",
+      "recording": "condition5_I_3",
+      "class": "inner_ring",
+      "date": "20221208",
+      "rpm": 6,
+      "force_n": 30,
+      "repeat": 3
+    },
+    {
+      "condition": "condition5",
+      "file": "╣ñ┐÷5/20221208-I-6rpm-30N-4.csv",
+      "recording": "condition5_I_4",
+      "class": "inner_ring",
+      "date": "20221208",
+      "rpm": 6,
+      "force_n": 30,
+      "repeat": 4
+    },
+    {
+      "condition": "condition5",
+      "file": "╣ñ┐÷5/20221208-I-6rpm-30N-5.csv",
+      "recording": "condition5_I_5",
+      "class": "inner_ring",
+      "date": "20221208",
+      "rpm": 6,
+      "force_n": 30,
+      "repeat": 5
+    },
+    {
+      "condition": "condition5",
+      "file": "╣ñ┐÷5/20221208-N-6rpm-30N-1.csv",
+      "recording": "condition5_N_1",
+      "class": "healthy",
+      "date": "20221208",
+      "rpm": 6,
+      "force_n": 30,
+      "repeat": 1
+    },
+    {
+      "condition": "condition5",
+      "file": "╣ñ┐÷5/20221208-N-6rpm-30N-2.csv",
+      "recording": "condition5_N_2",
+      "class": "healthy",
+      "date": "20221208",
+      "rpm": 6,
+      "force_n": 30,
+      "repeat": 2
+    },
+    {
+      "condition": "condition5",
+      "file": "╣ñ┐÷5/20221208-N-6rpm-30N-3.csv",
+      "recording": "condition5_N_3",
+      "class": "healthy",
+      "date": "20221208",
+      "rpm": 6,
+      "force_n": 30,
+      "repeat": 3
+    },
+    {
+      "condition": "condition5",
+      "file": "╣ñ┐÷5/20221208-N-6rpm-30N-4.csv",
+      "recording": "condition5_N_4",
+      "class": "healthy",
+      "date": "20221208",
+      "rpm": 6,
+      "force_n": 30,
+      "repeat": 4
+    },
+    {
+      "condition": "condition5",
+      "file": "╣ñ┐÷5/20221208-N-6rpm-30N-5.csv",
+      "recording": "condition5_N_5",
+      "class": "healthy",
+      "date": "20221208",
+      "rpm": 6,
+      "force_n": 30,
+      "repeat": 5
+    },
+    {
+      "condition": "condition5",
+      "file": "╣ñ┐÷5/20221208-O-6rpm-30N-1.csv",
+      "recording": "condition5_O_1",
+      "class": "outer_ring",
+      "date": "20221208",
+      "rpm": 6,
+      "force_n": 30,
+      "repeat": 1
+    },
+    {
+      "condition": "condition5",
+      "file": "╣ñ┐÷5/20221208-O-6rpm-30N-2.csv",
+      "recording": "condition5_O_2",
+      "class": "outer_ring",
+      "date": "20221208",
+      "rpm": 6,
+      "force_n": 30,
+      "repeat": 2
+    },
+    {
+      "condition": "condition5",
+      "file": "╣ñ┐÷5/20221208-O-6rpm-30N-3.csv",
+      "recording": "condition5_O_3",
+      "class": "outer_ring",
+      "date": "20221208",
+      "rpm": 6,
+      "force_n": 30,
+      "repeat": 3
+    },
+    {
+      "condition": "condition5",
+      "file": "╣ñ┐÷5/20221208-O-6rpm-30N-4.csv",
+      "recording": "condition5_O_4",
+      "class": "outer_ring",
+      "date": "20221208",
+      "rpm": 6,
+      "force_n": 30,
+      "repeat": 4
+    },
+    {
+      "condition": "condition5",
+      "file": "╣ñ┐÷5/20221208-O-6rpm-30N-5.csv",
+      "recording": "condition5_O_5",
+      "class": "outer_ring",
+      "date": "20221208",
+      "rpm": 6,
+      "force_n": 30,
+      "repeat": 5
+    },
+    {
+      "condition": "condition6",
+      "file": "╣ñ┐÷6/20221208-B1-6rpm-60N-1.csv",
+      "recording": "condition6_B1_1",
+      "class": "rolling_element",
+      "date": "20221208",
+      "rpm": 6,
+      "force_n": 60,
+      "repeat": 1
+    },
+    {
+      "condition": "condition6",
+      "file": "╣ñ┐÷6/20221208-B1-6rpm-60N-2.csv",
+      "recording": "condition6_B1_2",
+      "class": "rolling_element",
+      "date": "20221208",
+      "rpm": 6,
+      "force_n": 60,
+      "repeat": 2
+    },
+    {
+      "condition": "condition6",
+      "file": "╣ñ┐÷6/20221208-B1-6rpm-60N-3.csv",
+      "recording": "condition6_B1_3",
+      "class": "rolling_element",
+      "date": "20221208",
+      "rpm": 6,
+      "force_n": 60,
+      "repeat": 3
+    },
+    {
+      "condition": "condition6",
+      "file": "╣ñ┐÷6/20221208-B1-6rpm-60N-4.csv",
+      "recording": "condition6_B1_4",
+      "class": "rolling_element",
+      "date": "20221208",
+      "rpm": 6,
+      "force_n": 60,
+      "repeat": 4
+    },
+    {
+      "condition": "condition6",
+      "file": "╣ñ┐÷6/20221208-B1-6rpm-60N-5.csv",
+      "recording": "condition6_B1_5",
+      "class": "rolling_element",
+      "date": "20221208",
+      "rpm": 6,
+      "force_n": 60,
+      "repeat": 5
+    },
+    {
+      "condition": "condition6",
+      "file": "╣ñ┐÷6/20221208-I-6rpm-60N-1.csv",
+      "recording": "condition6_I_1",
+      "class": "inner_ring",
+      "date": "20221208",
+      "rpm": 6,
+      "force_n": 60,
+      "repeat": 1
+    },
+    {
+      "condition": "condition6",
+      "file": "╣ñ┐÷6/20221208-I-6rpm-60N-2.csv",
+      "recording": "condition6_I_2",
+      "class": "inner_ring",
+      "date": "20221208",
+      "rpm": 6,
+      "force_n": 60,
+      "repeat": 2
+    },
+    {
+      "condition": "condition6",
+      "file": "╣ñ┐÷6/20221208-I-6rpm-60N-3.csv",
+      "recording": "condition6_I_3",
+      "class": "inner_ring",
+      "date": "20221208",
+      "rpm": 6,
+      "force_n": 60,
+      "repeat": 3
+    },
+    {
+      "condition": "condition6",
+      "file": "╣ñ┐÷6/20221208-I-6rpm-60N-4.csv",
+      "recording": "condition6_I_4",
+      "class": "inner_ring",
+      "date": "20221208",
+      "rpm": 6,
+      "force_n": 60,
+      "repeat": 4
+    },
+    {
+      "condition": "condition6",
+      "file": "╣ñ┐÷6/20221208-I-6rpm-60N-5.csv",
+      "recording": "condition6_I_5",
+      "class": "inner_ring",
+      "date": "20221208",
+      "rpm": 6,
+      "force_n": 60,
+      "repeat": 5
+    },
+    {
+      "condition": "condition6",
+      "file": "╣ñ┐÷6/20221208-N-6rpm-60N-1.csv",
+      "recording": "condition6_N_1",
+      "class": "healthy",
+      "date": "20221208",
+      "rpm": 6,
+      "force_n": 60,
+      "repeat": 1
+    },
+    {
+      "condition": "condition6",
+      "file": "╣ñ┐÷6/20221208-N-6rpm-60N-2.csv",
+      "recording": "condition6_N_2",
+      "class": "healthy",
+      "date": "20221208",
+      "rpm": 6,
+      "force_n": 60,
+      "repeat": 2
+    },
+    {
+      "condition": "condition6",
+      "file": "╣ñ┐÷6/20221208-N-6rpm-60N-3.csv",
+      "recording": "condition6_N_3",
+      "class": "healthy",
+      "date": "20221208",
+      "rpm": 6,
+      "force_n": 60,
+      "repeat": 3
+    },
+    {
+      "condition": "condition6",
+      "file": "╣ñ┐÷6/20221208-N-6rpm-60N-4.csv",
+      "recording": "condition6_N_4",
+      "class": "healthy",
+      "date": "20221208",
+      "rpm": 6,
+      "force_n": 60,
+      "repeat": 4
+    },
+    {
+      "condition": "condition6",
+      "file": "╣ñ┐÷6/20221208-N-6rpm-60N-5.csv",
+      "recording": "condition6_N_5",
+      "class": "healthy",
+      "date": "20221208",
+      "rpm": 6,
+      "force_n": 60,
+      "repeat": 5
+    },
+    {
+      "condition": "condition6",
+      "file": "╣ñ┐÷6/20221208-O-6rpm-60N-1.csv",
+      "recording": "condition6_O_1",
+      "class": "outer_ring",
+      "date": "20221208",
+      "rpm": 6,
+      "force_n": 60,
+      "repeat": 1
+    },
+    {
+      "condition": "condition6",
+      "file": "╣ñ┐÷6/20221208-O-6rpm-60N-2.csv",
+      "recording": "condition6_O_2",
+      "class": "outer_ring",
+      "date": "20221208",
+      "rpm": 6,
+      "force_n": 60,
+      "repeat": 2
+    },
+    {
+      "condition": "condition6",
+      "file": "╣ñ┐÷6/20221208-O-6rpm-60N-3.csv",
+      "recording": "condition6_O_3",
+      "class": "outer_ring",
+      "date": "20221208",
+      "rpm": 6,
+      "force_n": 60,
+      "repeat": 3
+    },
+    {
+      "condition": "condition6",
+      "file": "╣ñ┐÷6/20221208-O-6rpm-60N-4.csv",
+      "recording": "condition6_O_4",
+      "class": "outer_ring",
+      "date": "20221208",
+      "rpm": 6,
+      "force_n": 60,
+      "repeat": 4
+    },
+    {
+      "condition": "condition6",
+      "file": "╣ñ┐÷6/20221208-O-6rpm-60N-5.csv",
+      "recording": "condition6_O_5",
+      "class": "outer_ring",
+      "date": "20221208",
+      "rpm": 6,
+      "force_n": 60,
+      "repeat": 5
+    }
+  ]
+}

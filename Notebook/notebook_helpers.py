@@ -788,6 +788,25 @@ def _notebook_result_rows(machine: str, time_split: bool = False):
         rows.append(
             ("Sensor | Random forest (secondary)", sensor["models"]["Random forest"], sensor_name)
         )
+    if machine == "grader" and not time_split:
+        # the Grader has no camera data; its second side is the same rig's acoustic channel
+        acoustic = load("grader_acoustic_4class.json") or {}
+        if acoustic:
+            rows.append(
+                (
+                    "Acoustic | selected CSV baseline",
+                    acoustic["validation_selected"]["score"],
+                    "grader_acoustic_4class.json",
+                )
+            )
+        if "vibration_plus_acoustic" in sensor:
+            rows.append(
+                (
+                    "Sensor + acoustic | selected CSV baseline",
+                    sensor["vibration_plus_acoustic"]["validation_selected"]["score"],
+                    sensor_name,
+                )
+            )
 
     if time_split:
         visual_name = f"{machine}_cnn_pretrained_4class_timesplit.json"
@@ -853,6 +872,8 @@ def show_overview() -> None:
                 "Status": (
                     "Evaluated (synthetic visuals)"
                     if machine == "drill_rig" and visual
+                    else "Evaluated (sensor + acoustic, no camera)"
+                    if machine == "grader" and sensor
                     else "Evaluated" if sensor and visual else "Planned"
                 ),
             }
@@ -902,6 +923,7 @@ def show_equipment_results(machine: str, time_split: bool = False) -> None:
         in (
             "Sensor | selected CSV baseline",
             "Sensor | Random forest (secondary)",
+            "Acoustic | selected CSV baseline",
             "Visual | individual images",
         )
         and "confusion_matrix" in block
@@ -16752,6 +16774,331 @@ def _render_batch_entry(job):
     """Top-level worker for the Drill Rig gear renders (Windows process pools need a picklable function)."""
     return get_model("drill_rig")._render_batch(job)
 
+# GRADER MODEL IMPLEMENTATION
+# region Grader: data, preprocessing, models and evaluation
+def _make_grader():
+    """Grader (machine 8): circle drive, the large slow slewing ring the blade circle turns on. Separate data.
+
+    Data: JUST Slewing bearing datasets-1 (Xiaodie Ren, Jiangsu University of Science and Technology,
+    Mendeley Data hwg8v5j8t6 v1, doi 10.17632/hwg8v5j8t6.1, CC BY 4.0). A slewing support test rig turning at
+    2 or 6 rpm under an overturning force of 0, 30 or 60 N; six accelerometer channels (AI 1-6, m/s2) and one
+    acoustic channel (AI 7, dB), all at 50 kHz. Not the CORA rig and not the
+    MCC5-THU gearbox, so the Grader does not reuse another machine's data.
+    No public camera dataset of slewing-ring faults could be verified. The second side is therefore the
+    rig's own ACOUSTIC channel, recorded on the same rings at the same time. It is a second sensor, not a
+    camera, and is reported as such.
+
+    4 classes: healthy (N), inner ring fault (I), outer ring fault (O), one rolling element fault (B1).
+    One slewing support per class (four supports in total), five recordings per class under each of six
+    published working conditions (condition1..condition6.zip): 120 recordings of about 58 s each.
+
+    Fair test: leave one working condition out (six rounds, 20 test recordings each). Inside each training
+    set the other five conditions are held out one at a time to choose the model. Each held-out recording
+    gets one answer (mean of its 1 s windows). Vibration and acoustic are scored separately, then together.
+
+    Usage:
+        python Notebook/notebook_helpers.py grader <command>
+
+    Commands:
+        intake      check the six zips against the published SHA-256 values and list the recordings used
+        csv         4-class models on vibration, acoustic and both, leave one working condition out
+        all         run every command in order
+
+    Raw data stays in Raw_Data/ and Processed_Data/ (not in Git).
+    """
+    MACHINE = "grader"
+    RAW_DIR = ROOT / "Raw_Data" / "just_slewing"
+    ZIPS = {f"condition{n}": RAW_DIR / f"condition{n}.zip" for n in range(1, 7)}
+    SHA256 = {
+        "condition1": "27b6add40a742668c52bfe683a23d33de398aaa59dbbd5fa9ec756c576de36e3",
+        "condition2": "3692e2173577e0df08bc823702debfbee81a9756892d304f5b9ac9a1d3e46878",
+        "condition3": "f31e147bdc9ed657604bab9c8cb114531777aa38d3b7a28257974611f7caa2ef",
+        "condition4": "74ccb0d69c0f24b35a5823ed4ace5ffa597a201950489e201340f52f3e098e48",
+        "condition5": "f94ec5334a33a84d908c9675a1d1acd4ad0c3d2f94ae75740af53dbd240caa7f",
+        "condition6": "7c30f4bc7cae20669ae0337183ead3eaafb2dd72965d5c63ef28d5da3a696a86",
+    }
+    SOURCE = ("JUST Slewing bearing datasets-1, Xiaodie Ren, Jiangsu University of Science and Technology, "
+              "Mendeley Data hwg8v5j8t6 v1 (doi 10.17632/hwg8v5j8t6.1), CC BY 4.0")
+    CODE = {"N": "healthy", "I": "inner_ring", "O": "outer_ring", "B1": "rolling_element"}
+    LABELS = ["healthy", "inner_ring", "outer_ring", "rolling_element"]
+    VIBRATION = [f"AI {n} (m/s2)" for n in range(1, 7)]
+    ACOUSTIC = ["AI 7 (dB)"]
+    RATE, WINDOW_SECONDS, SEED = 50_000, 1.0, 613
+    FEATURES = ROOT / "Processed_Data" / f"{MACHINE}_sensor_features_4class.csv"
+    RESULT = ROOT / "Results" / MACHINE / f"{MACHINE}_csv_4class.json"
+    ACOUSTIC_RESULT = ROOT / "Results" / MACHINE / f"{MACHINE}_acoustic_4class.json"
+    INTAKE = ROOT / "Results" / MACHINE / f"{MACHINE}_just_intake.json"
+    FIGURE = ROOT / "Figures" / MACHINE / f"{MACHINE}_csv_4class.png"
+
+    def parse(condition, name):
+        """Date, class, speed, overturning force and repeat from a name such as 工况1/20221208-B1-2rpm-0N-1.csv."""
+        import re
+        match = re.search(r"(\d{8})-(N|I|O|B1)-(\d+)rpm-(\d+)N-(\d+)\.csv$", name)
+        if not match:
+            return None
+        date, code, rpm, force, repeat = match.groups()
+        return {"condition": condition, "file": name, "recording": f"{condition}_{code}_{repeat}",
+                "class": CODE[code], "date": date, "rpm": int(rpm), "force_n": int(force), "repeat": int(repeat)}
+
+    def members():
+        import zipfile
+        rows = []
+        for condition, path in ZIPS.items():
+            with zipfile.ZipFile(path) as archive:
+                rows += [parse(condition, i.filename) for i in archive.infolist() if i.filename.endswith(".csv")]
+        return [r for r in rows if r]
+
+    def intake(run: bool = True) -> dict:
+        """Check every zip's SHA-256 against the published value and record which recordings are used."""
+        import hashlib
+        import json
+
+        def main():
+            checks = {}
+            for condition, path in ZIPS.items():
+                if not path.is_file():
+                    raise SystemExit(f"Missing {path}: download {SOURCE}")
+                digest = hashlib.sha256()
+                with path.open("rb") as handle:
+                    for block in iter(lambda: handle.read(1 << 22), b""):
+                        digest.update(block)
+                checks[condition] = digest.hexdigest() == SHA256[condition]
+            rows = members()
+            counts = {label: sum(r["class"] == label for r in rows) for label in LABELS}
+            conditions = {c: {"rpm": sorted({r["rpm"] for r in rows if r["condition"] == c}),
+                              "force_n": sorted({r["force_n"] for r in rows if r["condition"] == c}),
+                              "dates_by_class": {label: sorted({r["date"] for r in rows
+                                                                if r["condition"] == c and r["class"] == label})
+                                                 for label in LABELS}}
+                          for c in ZIPS}
+            INTAKE.parent.mkdir(parents=True, exist_ok=True)
+            INTAKE.write_text(json.dumps({"source": SOURCE, "sha256_matches": checks,
+                                          "zip_bytes": {c: p.stat().st_size for c, p in ZIPS.items()},
+                                          "recordings_used": counts, "conditions": conditions,
+                                          "recordings": rows}, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+            ok = all(checks.values())
+            print(f"SHA-256 {'matches' if ok else 'DOES NOT MATCH'} for {sum(checks.values())}/{len(checks)} zips; "
+                  f"recordings used: {counts}")
+            for c, info in conditions.items():
+                print(f"  {c}: {info['rpm']} rpm, {info['force_n']} N, dates {sorted(set(sum(info['dates_by_class'].values(), [])))}")
+            if not ok:
+                raise SystemExit(2)
+
+        if run:
+            main()
+        return locals()
+
+    def features(signal):
+        """Fixed-size features of one 1 s window, per channel: time-domain statistics and 8 log band energies."""
+        import numpy as np
+        out = []
+        spectrum = np.abs(np.fft.rfft(signal - signal.mean(axis=0), axis=0)) ** 2
+        edges = np.linspace(0, spectrum.shape[0], 9).astype(int)
+        for c in range(signal.shape[1]):
+            x = signal[:, c]
+            rms = np.sqrt(np.mean(x ** 2))
+            centred = x - x.mean()
+            sd = centred.std() + 1e-12
+            out += [rms, sd, np.abs(x).max(), np.abs(x).max() / (rms + 1e-12),
+                    np.mean(centred ** 3) / sd ** 3, np.mean(centred ** 4) / sd ** 4]
+            total = spectrum[:, c].sum() + 1e-12
+            out += [np.log(spectrum[a:b, c].sum() / total + 1e-12) for a, b in zip(edges[:-1], edges[1:])]
+        return out
+
+    def feature_names(channels):
+        names = []
+        for c in channels:
+            short = c.split(" (")[0].replace(" ", "")
+            names += [f"{short}_{k}" for k in ("rms", "std", "peak", "crest", "skew", "kurtosis")]
+            names += [f"{short}_band{b}" for b in range(8)]
+        return names
+
+    FEATURE_SETS = {"vibration": lambda: feature_names(VIBRATION), "acoustic": lambda: feature_names(ACOUSTIC),
+                    "vibration + acoustic": lambda: feature_names(VIBRATION + ACOUSTIC)}
+
+    def _recording_features(r):
+        """Every whole 1 s window of one recording (runs in a worker process)."""
+        import zipfile
+        import pandas as pd
+        size = int(RATE * WINDOW_SECONDS)
+        with zipfile.ZipFile(ZIPS[r["condition"]]) as archive, archive.open(r["file"]) as handle:
+            signal = pd.read_csv(handle, usecols=VIBRATION + ACOUSTIC, dtype="float32")[VIBRATION + ACOUSTIC].to_numpy()
+        names = feature_names(VIBRATION + ACOUSTIC)
+        return [{**{k: r[k] for k in ("recording", "condition", "class", "date", "rpm", "force_n", "repeat")},
+                 "window": w, **dict(zip(names, features(signal[w * size:(w + 1) * size])))}
+                for w in range(len(signal) // size)]
+
+    def build_features():
+        from concurrent.futures import ProcessPoolExecutor
+        import pandas as pd
+        recordings, rows = members(), []
+        with ProcessPoolExecutor(6) as pool:
+            for n, part in enumerate(pool.map(_grader_features_entry, recordings), 1):
+                rows += part
+                print(f"  {n}/{len(recordings)} {recordings[n - 1]['recording']}: {len(part)} windows", flush=True)
+        table = pd.DataFrame(rows)
+        FEATURES.parent.mkdir(parents=True, exist_ok=True)
+        table.to_csv(FEATURES, index=False)
+        return table
+
+    def csv(run: bool = True) -> dict:
+        """4-class models on vibration, acoustic and both; leave one working condition out, model chosen inside."""
+        import json
+        import matplotlib
+        matplotlib.use("Agg")
+        import matplotlib.pyplot as plt
+        import numpy as np
+        import pandas as pd
+        from sklearn.dummy import DummyClassifier
+        from sklearn.ensemble import ExtraTreesClassifier, HistGradientBoostingClassifier, RandomForestClassifier
+        from sklearn.linear_model import LogisticRegression
+        from sklearn.metrics import accuracy_score, balanced_accuracy_score, confusion_matrix, f1_score
+        from sklearn.pipeline import make_pipeline
+        from sklearn.preprocessing import StandardScaler
+
+        def candidates():
+            return {
+                "Logistic regression": make_pipeline(StandardScaler(), LogisticRegression(max_iter=3000, C=0.5)),
+                "Random forest": RandomForestClassifier(300, min_samples_leaf=2, n_jobs=-1, random_state=SEED),
+                "Extra trees": ExtraTreesClassifier(300, min_samples_leaf=2, n_jobs=-1, random_state=SEED),
+                "Gradient boosting": HistGradientBoostingClassifier(max_iter=200, random_state=SEED),
+            }
+
+        def per_recording(model, table, rows, columns):
+            """One answer per recording: the class with the highest mean window probability."""
+            p = model.predict_proba(table.loc[rows, columns].to_numpy())
+            frame = pd.DataFrame(p, columns=model.classes_, index=table.index[rows])
+            frame["recording"] = table.loc[rows, "recording"].to_numpy()
+            mean = frame.groupby("recording").mean()
+            truth = table.loc[rows].groupby("recording")["class"].first().loc[mean.index]
+            return list(truth), list(mean.idxmax(axis=1))
+
+        def score(actual, predicted):
+            return {"test_units": len(actual),
+                    "accuracy": round(float(accuracy_score(actual, predicted)), 4),
+                    "balanced_accuracy": round(float(balanced_accuracy_score(actual, predicted)), 4),
+                    "macro_f1": round(float(f1_score(actual, predicted, labels=LABELS, average="macro", zero_division=0)), 4),
+                    "confusion_matrix": confusion_matrix(actual, predicted, labels=LABELS).tolist()}
+
+        def evaluate(table, columns):
+            """Leave one condition out; the model is chosen by inner leave-one-condition-out on the training conditions."""
+            conditions = sorted(table["condition"].unique())
+            names = list(candidates())
+            every = {name: ([], []) for name in names}
+            chosen, folds = ([], []), []
+            for held in conditions:
+                train, test = (table["condition"] != held).to_numpy(), (table["condition"] == held).to_numpy()
+                inner = {name: [] for name in names}
+                for check in sorted(set(table.loc[train, "condition"])):
+                    fit_rows = train & (table["condition"] != check).to_numpy()
+                    check_rows = (table["condition"] == check).to_numpy()
+                    for name, model in candidates().items():
+                        model.fit(table.loc[fit_rows, columns].to_numpy(), table.loc[fit_rows, "class"])
+                        a, p = per_recording(model, table, check_rows, columns)
+                        inner[name].append(f1_score(a, p, labels=LABELS, average="macro", zero_division=0))
+                choice = max(names, key=lambda n: np.mean(inner[n]))
+                for name, model in candidates().items():
+                    model.fit(table.loc[train, columns].to_numpy(), table.loc[train, "class"])
+                    a, p = per_recording(model, table, test, columns)
+                    every[name][0].extend(a)
+                    every[name][1].extend(p)
+                    if name == choice:
+                        chosen[0].extend(a)
+                        chosen[1].extend(p)
+                        fold_accuracy = accuracy_score(a, p)
+                folds.append({"held_out_condition": held, "test_recordings": int(table.loc[test, "recording"].nunique()),
+                              "chosen_model": choice, "accuracy": round(float(fold_accuracy), 4),
+                              "inner_macro_f1": {n: round(float(np.mean(v)), 4) for n, v in inner.items()}})
+                print(f"    held-out {held}: chose {choice}; accuracy {fold_accuracy:.3f}", flush=True)
+            majority = DummyClassifier(strategy="most_frequent")
+            control = ([], [])
+            for held in conditions:
+                train, test = (table["condition"] != held).to_numpy(), (table["condition"] == held).to_numpy()
+                majority.fit(table.loc[train, columns].to_numpy(), table.loc[train, "class"])
+                a, p = per_recording(majority, table, test, columns)
+                control[0].extend(a)
+                control[1].extend(p)
+            return {"folds": folds, "validation_selected": {"score": score(*chosen)},
+                    "models": {"Majority class (control)": score(*control),
+                               **{name: score(*every[name]) for name in names}}}
+
+        def main():
+            table = pd.read_csv(FEATURES) if FEATURES.is_file() else build_features()
+            print(f"{table['recording'].nunique()} recordings, {len(table)} windows; "
+                  f"held-out conditions {sorted(table['condition'].unique())}")
+            common = {"machine": MACHINE, "source": SOURCE, "classes": LABELS,
+                      "recordings": int(table["recording"].nunique()), "windows": int(len(table)),
+                      "test": "leave one working condition out (6 rounds); model chosen by inner leave-one-condition-out "
+                              "on the training conditions; one answer per recording (mean of its 1 s windows)",
+                      "caveat": "one slewing support per class, so the model may partly learn the individual ring rather "
+                                "than the fault; one laboratory rig at 2-4 rpm, not a grader circle; the acoustic side "
+                                "is a second sensor, not a camera"}
+            results = {}
+            for name, columns in FEATURE_SETS.items():
+                print(f"  {name}: {len(columns())} features per window", flush=True)
+                results[name] = evaluate(table, columns())
+            vibration = {**common, "modality": "vibration (6 accelerometer channels, 50 kHz)",
+                         "features": f"{len(FEATURE_SETS['vibration']())} per 1 s window: RMS, std, peak, crest, "
+                                     "skewness, kurtosis and 8 relative log band energies for each channel",
+                         **results["vibration"],
+                         "vibration_plus_acoustic": results["vibration + acoustic"]}
+            acoustic = {**common, "modality": "acoustic channel AI 7 (dB) of the same rig; a second sensor, not a camera",
+                        "features": f"{len(FEATURE_SETS['acoustic']())} per 1 s window, same definitions as vibration",
+                        **results["acoustic"]}
+            RESULT.parent.mkdir(parents=True, exist_ok=True)
+            RESULT.write_text(json.dumps(vibration, indent=2) + "\n", encoding="utf-8")
+            ACOUSTIC_RESULT.write_text(json.dumps(acoustic, indent=2) + "\n", encoding="utf-8")
+            figure, axes = plt.subplots(1, 3, figsize=(13.5, 4.6))
+            for axis, name in zip(axes, FEATURE_SETS):
+                s = results[name]["validation_selected"]["score"]
+                matrix = np.asarray(s["confusion_matrix"])
+                axis.imshow(matrix, cmap="Blues", vmin=0)
+                axis.set_xticks(range(len(LABELS)), LABELS, rotation=25, fontsize=8)
+                axis.set_yticks(range(len(LABELS)), LABELS, fontsize=8)
+                axis.set_xlabel("Predicted")
+                axis.set_ylabel("Actual")
+                for i in range(len(LABELS)):
+                    for j in range(len(LABELS)):
+                        axis.text(j, i, str(matrix[i, j]), ha="center", va="center",
+                                  color="white" if matrix[i, j] > matrix.max() / 2 else "black")
+                axis.set_title(f"{name}\naccuracy {s['accuracy']:.3f} on {s['test_units']} recordings", fontsize=10)
+            figure.suptitle("Grader circle drive stand-in: slewing bearing (JUST), unseen working condition", fontsize=11)
+            figure.tight_layout()
+            FIGURE.parent.mkdir(parents=True, exist_ok=True)
+            figure.savefig(FIGURE, dpi=120)
+            plt.close(figure)
+            for name in FEATURE_SETS:
+                s = results[name]["validation_selected"]["score"]
+                print(f"{name:22s} validation-selected accuracy {s['accuracy']:.3f}, macro F1 {s['macro_f1']:.3f}")
+                for model, block in results[name]["models"].items():
+                    print(f"    {model:26s} accuracy {block['accuracy']:.3f}")
+            print(f"Saved {RESULT.relative_to(ROOT)}, {ACOUSTIC_RESULT.relative_to(ROOT)} and {FIGURE.relative_to(ROOT)}")
+
+        if run:
+            main()
+        return locals()
+
+    COMMANDS = {"intake": intake, "csv": csv}
+    RUN_ALL = ["intake", "csv"]
+
+    def cli() -> None:
+        if len(sys.argv) < 2 or sys.argv[1] not in (*COMMANDS, "all"):
+            print(_make_grader.__doc__)
+            raise SystemExit(0 if len(sys.argv) < 2 or sys.argv[1] in ("-h", "--help") else 2)
+        command, options = sys.argv[1], sys.argv[2:]
+        for name in (RUN_ALL if command == "all" else [command]):
+            sys.argv = [f"grader {name}", *(options if command != "all" else [])]
+            COMMANDS[name]()
+
+    return SimpleNamespace(**locals())
+
+# endregion
+
+
+def _grader_features_entry(recording):
+    """Top-level worker for the Grader feature table (Windows process pools need a picklable function)."""
+    return get_model("grader")._recording_features(recording)
+
 
 # CORA_FULLDATA MODEL IMPLEMENTATION
 # region Cora Fulldata: data, preprocessing, models and evaluation
@@ -17606,6 +17953,7 @@ def get_model(equipment: str):
         "dozer": _make_dozer,
         "wheel_loader": _make_wheel_loader,
         "drill_rig": _make_drill_rig,
+        "grader": _make_grader,
         "cora_fulldata": _make_cora_fulldata,
     }
     if equipment not in factories:
@@ -17617,7 +17965,7 @@ if __name__ == "__main__":
     if len(sys.argv) < 2 or sys.argv[1] in ("-h", "--help"):
         print("Usage: python Notebook/notebook_helpers.py <equipment> <command> [options]")
         print(
-            "Equipment: pump, haul_truck, belt_conveyor, excavator, dozer, wheel_loader, drill_rig"
+            "Equipment: pump, haul_truck, belt_conveyor, excavator, dozer, wheel_loader, drill_rig, grader"
         )
     else:
         equipment = sys.argv.pop(1)
