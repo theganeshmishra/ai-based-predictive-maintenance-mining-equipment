@@ -788,39 +788,14 @@ def _notebook_result_rows(machine: str, time_split: bool = False):
         rows.append(
             ("Sensor | Random forest (secondary)", sensor["models"]["Random forest"], sensor_name)
         )
-    if machine == "grader" and not time_split:
-        # the Grader has no camera data; its second side is the same rig's acoustic channel
-        acoustic = load("grader_acoustic_4class.json") or {}
-        if acoustic:
-            rows.append(
-                (
-                    "Acoustic | selected CSV baseline",
-                    acoustic["validation_selected"]["score"],
-                    "grader_acoustic_4class.json",
-                )
-            )
-        photos = load("grader_gear_photos_teeth.json") or {}
-        if photos:
-            # real photos of small gears: a separate task, not the slewing ring of the sensor side
-            rows.append(
-                (
-                    "Visual | real gear photos, tooth crops (separate task)",
-                    photos["cnn_features"],
-                    "grader_gear_photos_teeth.json",
-                )
-            )
-        if "vibration_plus_acoustic" in sensor:
-            rows.append(
-                (
-                    "Sensor + acoustic | selected CSV baseline",
-                    sensor["vibration_plus_acoustic"]["validation_selected"]["score"],
-                    sensor_name,
-                )
-            )
-
     if time_split:
         visual_name = f"{machine}_cnn_pretrained_4class_timesplit.json"
         visual = load(visual_name)
+    elif machine == "grader":
+        # real photos of small gears, scored per tooth crop: a separate task, not the slewing ring
+        visual_name = "grader_gear_photos_teeth.json"
+        photos = load(visual_name)
+        visual = {"image_level": photos["cnn_features"]} if photos else None
     elif machine == "drill_rig":
         visual_name = "drill_rig_cnn_images_4class.json"
         visual = load(visual_name)
@@ -876,14 +851,19 @@ def show_overview() -> None:
             {
                 "Equipment": machine.replace("_", " ").title(),
                 "Sensor accuracy %": round(sensor["accuracy"] * 100, 2) if sensor else None,
-                "Visual image accuracy %": round(visual["accuracy"] * 100, 2) if visual else None,
+                # Grader tooth crops are 94% good teeth, so plain accuracy would mislead: show balanced accuracy
+                "Visual image accuracy %": (
+                    round(visual["balanced_accuracy" if machine == "grader" else "accuracy"] * 100, 2)
+                    if visual
+                    else None
+                ),
                 "Images tested": visual.get("test_units"),
                 "Visual test recordings/gears": units.get("test_units"),
                 "Status": (
                     "Evaluated (synthetic visuals)"
                     if machine == "drill_rig" and visual
-                    else "Evaluated (sensor + acoustic, no camera)"
-                    if machine == "grader" and sensor
+                    else "Evaluated (real photos, separate task; balanced accuracy)"
+                    if machine == "grader" and sensor and visual
                     else "Evaluated" if sensor and visual else "Planned"
                 ),
             }
@@ -933,7 +913,6 @@ def show_equipment_results(machine: str, time_split: bool = False) -> None:
         in (
             "Sensor | selected CSV baseline",
             "Sensor | Random forest (secondary)",
-            "Acoustic | selected CSV baseline",
             "Visual | individual images",
         )
         and "confusion_matrix" in block
@@ -16791,12 +16770,12 @@ def _make_grader():
 
     Data: JUST Slewing bearing datasets-1 (Xiaodie Ren, Jiangsu University of Science and Technology,
     Mendeley Data hwg8v5j8t6 v1, doi 10.17632/hwg8v5j8t6.1, CC BY 4.0). A slewing support test rig turning at
-    2 or 6 rpm under an overturning force of 0, 30 or 60 N; six accelerometer channels (AI 1-6, m/s2) and one
-    acoustic channel (AI 7, dB), all at 50 kHz. Not the CORA rig and not the
-    MCC5-THU gearbox, so the Grader does not reuse another machine's data.
-    No public camera dataset of slewing-ring faults could be verified. The second side is therefore the
-    rig's own ACOUSTIC channel, recorded on the same rings at the same time. It is a second sensor, not a
-    camera, and is reported as such.
+    2 or 6 rpm under an overturning force of 0, 30 or 60 N; six accelerometer channels (AI 1-6, m/s2) at
+    50 kHz (the rig's acoustic channel AI 7 is not used). Not the CORA rig and not the MCC5-THU gearbox, so
+    the Grader does not reuse another machine's data.
+    No public camera dataset of slewing-ring faults could be verified. The image side ("photos") is a
+    SEPARATE task on real photos of small manufactured gears (Roboflow GearBox_adddingImg, CC BY 4.0):
+    good vs damaged tooth crops. It is not the slewing ring and not the same faults.
 
     4 classes: healthy (N), inner ring fault (I), outer ring fault (O), one rolling element fault (B1).
     One slewing support per class (four supports in total), five recordings per class under each of six
@@ -16804,14 +16783,14 @@ def _make_grader():
 
     Fair test: leave one working condition out (six rounds, 20 test recordings each). Inside each training
     set the other five conditions are held out one at a time to choose the model. Each held-out recording
-    gets one answer (mean of its 1 s windows). Vibration and acoustic are scored separately, then together.
+    gets one answer (mean of its 1 s windows).
 
     Usage:
         python Notebook/notebook_helpers.py grader <command>
 
     Commands:
         intake      check the six zips against the published SHA-256 values and list the recordings used
-        csv         4-class models on vibration, acoustic and both, leave one working condition out
+        csv         4-class vibration model, leave one working condition out (validation-selected model)
         photos      real gear photos (Roboflow, CC BY 4.0): good vs damaged tooth crops, each video held out
         all         run every command in order
 
@@ -16833,11 +16812,9 @@ def _make_grader():
     CODE = {"N": "healthy", "I": "inner_ring", "O": "outer_ring", "B1": "rolling_element"}
     LABELS = ["healthy", "inner_ring", "outer_ring", "rolling_element"]
     VIBRATION = [f"AI {n} (m/s2)" for n in range(1, 7)]
-    ACOUSTIC = ["AI 7 (dB)"]
     RATE, WINDOW_SECONDS, SEED = 50_000, 1.0, 613
     FEATURES = ROOT / "Processed_Data" / f"{MACHINE}_sensor_features_4class.csv"
     RESULT = ROOT / "Results" / MACHINE / f"{MACHINE}_csv_4class.json"
-    ACOUSTIC_RESULT = ROOT / "Results" / MACHINE / f"{MACHINE}_acoustic_4class.json"
     INTAKE = ROOT / "Results" / MACHINE / f"{MACHINE}_just_intake.json"
     FIGURE = ROOT / "Figures" / MACHINE / f"{MACHINE}_csv_4class.png"
 
@@ -16924,8 +16901,6 @@ def _make_grader():
             names += [f"{short}_band{b}" for b in range(8)]
         return names
 
-    FEATURE_SETS = {"vibration": lambda: feature_names(VIBRATION), "acoustic": lambda: feature_names(ACOUSTIC),
-                    "vibration + acoustic": lambda: feature_names(VIBRATION + ACOUSTIC)}
 
     def _recording_features(r):
         """Every whole 1 s window of one recording (runs in a worker process)."""
@@ -16933,8 +16908,8 @@ def _make_grader():
         import pandas as pd
         size = int(RATE * WINDOW_SECONDS)
         with zipfile.ZipFile(ZIPS[r["condition"]]) as archive, archive.open(r["file"]) as handle:
-            signal = pd.read_csv(handle, usecols=VIBRATION + ACOUSTIC, dtype="float32")[VIBRATION + ACOUSTIC].to_numpy()
-        names = feature_names(VIBRATION + ACOUSTIC)
+            signal = pd.read_csv(handle, usecols=VIBRATION, dtype="float32")[VIBRATION].to_numpy()
+        names = feature_names(VIBRATION)
         return [{**{k: r[k] for k in ("recording", "condition", "class", "date", "rpm", "force_n", "repeat")},
                  "window": w, **dict(zip(names, features(signal[w * size:(w + 1) * size])))}
                 for w in range(len(signal) // size)]
@@ -16953,7 +16928,7 @@ def _make_grader():
         return table
 
     def csv(run: bool = True) -> dict:
-        """4-class models on vibration, acoustic and both; leave one working condition out, model chosen inside."""
+        """4-class vibration model; leave one working condition out, model chosen inside the training conditions."""
         import json
         import matplotlib
         matplotlib.use("Agg")
@@ -17037,53 +17012,42 @@ def _make_grader():
             table = pd.read_csv(FEATURES) if FEATURES.is_file() else build_features()
             print(f"{table['recording'].nunique()} recordings, {len(table)} windows; "
                   f"held-out conditions {sorted(table['condition'].unique())}")
-            common = {"machine": MACHINE, "source": SOURCE, "classes": LABELS,
-                      "recordings": int(table["recording"].nunique()), "windows": int(len(table)),
+            columns = feature_names(VIBRATION)
+            print(f"  vibration: {len(columns)} features per window", flush=True)
+            result = {"machine": MACHINE, "source": SOURCE, "modality": "vibration (6 accelerometer channels, 50 kHz)",
+                      "classes": LABELS, "recordings": int(table["recording"].nunique()), "windows": int(len(table)),
                       "test": "leave one working condition out (6 rounds); model chosen by inner leave-one-condition-out "
                               "on the training conditions; one answer per recording (mean of its 1 s windows)",
+                      "features": f"{len(columns)} per 1 s window: RMS, std, peak, crest, skewness, kurtosis and "
+                                  "8 relative log band energies for each channel",
+                      **evaluate(table, columns),
                       "caveat": "one slewing support per class, so the model may partly learn the individual ring rather "
-                                "than the fault; one laboratory rig at 2-4 rpm, not a grader circle; the acoustic side "
-                                "is a second sensor, not a camera"}
-            results = {}
-            for name, columns in FEATURE_SETS.items():
-                print(f"  {name}: {len(columns())} features per window", flush=True)
-                results[name] = evaluate(table, columns())
-            vibration = {**common, "modality": "vibration (6 accelerometer channels, 50 kHz)",
-                         "features": f"{len(FEATURE_SETS['vibration']())} per 1 s window: RMS, std, peak, crest, "
-                                     "skewness, kurtosis and 8 relative log band energies for each channel",
-                         **results["vibration"],
-                         "vibration_plus_acoustic": results["vibration + acoustic"]}
-            acoustic = {**common, "modality": "acoustic channel AI 7 (dB) of the same rig; a second sensor, not a camera",
-                        "features": f"{len(FEATURE_SETS['acoustic']())} per 1 s window, same definitions as vibration",
-                        **results["acoustic"]}
+                                "than the fault; one laboratory rig at 2 or 6 rpm, not a grader circle"}
             RESULT.parent.mkdir(parents=True, exist_ok=True)
-            RESULT.write_text(json.dumps(vibration, indent=2) + "\n", encoding="utf-8")
-            ACOUSTIC_RESULT.write_text(json.dumps(acoustic, indent=2) + "\n", encoding="utf-8")
-            figure, axes = plt.subplots(1, 3, figsize=(13.5, 4.6))
-            for axis, name in zip(axes, FEATURE_SETS):
-                s = results[name]["validation_selected"]["score"]
-                matrix = np.asarray(s["confusion_matrix"])
-                axis.imshow(matrix, cmap="Blues", vmin=0)
-                axis.set_xticks(range(len(LABELS)), LABELS, rotation=25, fontsize=8)
-                axis.set_yticks(range(len(LABELS)), LABELS, fontsize=8)
-                axis.set_xlabel("Predicted")
-                axis.set_ylabel("Actual")
-                for i in range(len(LABELS)):
-                    for j in range(len(LABELS)):
-                        axis.text(j, i, str(matrix[i, j]), ha="center", va="center",
-                                  color="white" if matrix[i, j] > matrix.max() / 2 else "black")
-                axis.set_title(f"{name}\naccuracy {s['accuracy']:.3f} on {s['test_units']} recordings", fontsize=10)
-            figure.suptitle("Grader circle drive stand-in: slewing bearing (JUST), unseen working condition", fontsize=11)
+            RESULT.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
+            s = result["validation_selected"]["score"]
+            matrix = np.asarray(s["confusion_matrix"])
+            figure, axis = plt.subplots(figsize=(5.6, 4.8))
+            axis.imshow(matrix, cmap="Blues", vmin=0)
+            axis.set_xticks(range(len(LABELS)), LABELS, rotation=25, fontsize=8)
+            axis.set_yticks(range(len(LABELS)), LABELS, fontsize=8)
+            axis.set_xlabel("Predicted")
+            axis.set_ylabel("Actual")
+            for i in range(len(LABELS)):
+                for j in range(len(LABELS)):
+                    axis.text(j, i, str(matrix[i, j]), ha="center", va="center",
+                              color="white" if matrix[i, j] > matrix.max() / 2 else "black")
+            axis.set_title(f"Grader slewing-bearing vibration (JUST), unseen working condition\n"
+                           f"{s['test_units']} test recordings, accuracy {s['accuracy']:.3f}", fontsize=10)
             figure.tight_layout()
             FIGURE.parent.mkdir(parents=True, exist_ok=True)
-            figure.savefig(FIGURE, dpi=120)
+            figure.savefig(FIGURE, dpi=130)
             plt.close(figure)
-            for name in FEATURE_SETS:
-                s = results[name]["validation_selected"]["score"]
-                print(f"{name:22s} validation-selected accuracy {s['accuracy']:.3f}, macro F1 {s['macro_f1']:.3f}")
-                for model, block in results[name]["models"].items():
-                    print(f"    {model:26s} accuracy {block['accuracy']:.3f}")
-            print(f"Saved {RESULT.relative_to(ROOT)}, {ACOUSTIC_RESULT.relative_to(ROOT)} and {FIGURE.relative_to(ROOT)}")
+            print(f"Validation-selected model: accuracy {s['accuracy']:.3f}, macro F1 {s['macro_f1']:.3f} "
+                  f"on {s['test_units']} unseen-condition recordings")
+            for model, block in result["models"].items():
+                print(f"  {model:26s} accuracy {block['accuracy']:.3f}")
+            print(f"Saved {RESULT.relative_to(ROOT)} and {FIGURE.relative_to(ROOT)}")
 
         if run:
             main()
@@ -17105,8 +17069,8 @@ def _make_grader():
         match = re.match(r"(.+?_\d+)_(front|back)_frame_\d+", original)
         return match.group(1) if match else re.sub(r"[-_ ]?\d+(_jpe?g|_png)?$|_jpg$", "", original)
 
-    def photo_crops():
-        """Every good or damaged tooth box as a 224 px crop (15% margin), with the source it came from."""
+    def photo_crops(margin=0.15):
+        """Every good or damaged tooth box as a 224 px crop (margin as a share of the box), with its source."""
         import json
         import zipfile
         import cv2
@@ -17125,7 +17089,7 @@ def _make_grader():
                     picture = cv2.imdecode(np.frombuffer(archive.read(f"{split}/{info['file_name']}"), np.uint8),
                                            cv2.IMREAD_COLOR)
                     x, y, w, h = box["bbox"]
-                    pad = 0.15 * max(w, h)
+                    pad = margin * max(w, h)
                     x0, y0 = int(max(0, x - pad)), int(max(0, y - pad))
                     x1, y1 = int(min(picture.shape[1], x + w + pad)), int(min(picture.shape[0], y + h + pad))
                     if x1 - x0 < 4 or y1 - y0 < 4:
@@ -17188,6 +17152,30 @@ def _make_grader():
                 predicted[test] = model.predict(features[test])
             return list(predicted)
 
+        def leave_source_out_selected(views, table):
+            """As leave_source_out, but the crop margin and C are chosen inside the training sources only
+            (4-fold grouped validation on balanced accuracy); the held-out source never takes part."""
+            from sklearn.model_selection import StratifiedGroupKFold
+            predicted, choices = np.empty(len(table), dtype=object), []
+            labels, groups = table["label"].to_numpy(), table["source"].to_numpy()
+            settings = [(margin, c) for margin in views for c in (0.01, 0.1, 1.0)]
+
+            def fit(x, y, c):
+                return make_pipeline(StandardScaler(), LogisticRegression(max_iter=5000, C=c,
+                                                                         class_weight="balanced")).fit(x, y)
+            for source in sorted(table["source"].unique()):
+                test = groups == source
+                train = np.flatnonzero(~test)
+                inner = StratifiedGroupKFold(4, shuffle=True, random_state=SEED)
+                splits = [(train[a], train[b]) for a, b in inner.split(train, labels[train], groups[train])
+                          if len(set(labels[train[b]])) == 2]
+                best = max(settings, key=lambda s: np.mean([
+                    balanced_accuracy_score(labels[b], fit(views[s[0]][a], labels[a], s[1]).predict(views[s[0]][b]))
+                    for a, b in splits]))
+                choices.append(best)
+                predicted[test] = fit(views[best[0]][train], labels[train], best[1]).predict(views[best[0]][test])
+            return list(predicted), choices
+
         def score(actual, predicted):
             return {"test_units": len(actual),
                     "accuracy": round(float(np.mean(np.asarray(actual) == np.asarray(predicted))), 4),
@@ -17208,14 +17196,21 @@ def _make_grader():
             counts = table["label"].value_counts().to_dict()
             print(f"{len(table)} tooth crops {counts} from {table['source'].nunique()} videos or photo sets")
             torch.manual_seed(SEED)
-            cnn = score(table["label"], leave_source_out(embed(crops), table))
+            features = embed(crops)
+            cnn = score(table["label"], leave_source_out(features, table))
             control = score(table["label"], leave_source_out(statistics(crops), table))
+            wide, wide_rows = photo_crops(margin=0.5)
+            if [r["frame"] for r in wide_rows] != list(table["frame"]):
+                raise ValueError("Crop order differs between margins")
+            selected_predictions, choices = leave_source_out_selected({0.15: features, 0.5: embed(wide)}, table)
+            selected = {**score(table["label"], selected_predictions),
+                        "choices": {f"margin {m}, C {c}": choices.count((m, c)) for m, c in sorted(set(choices))}}
             sources = (table.groupby("source")["label"].value_counts().unstack(fill_value=0)
                        .reindex(columns=PHOTO_LABELS, fill_value=0))
             result = {
                 "machine": MACHINE, "source": PHOTO_SOURCE,
                 "modality": "real photographs of small manufactured gears (camera); NOT the slewing ring of the "
-                            "sensor and acoustic sides, and not the same faults",
+                            "sensor side, and not the same faults",
                 "classes": PHOTO_LABELS,
                 "task": "classify one tooth crop as good or damaged (box labels goodTeeth vs "
                         + ", ".join(sorted(DAMAGED_TOOTH)) + ")",
@@ -17224,15 +17219,20 @@ def _make_grader():
                 "crops": int(len(table)), "crops_by_class": {k: int(v) for k, v in counts.items()},
                 "sources": int(table["source"].nunique()),
                 "sources_with_damaged_teeth": sources.index[sources["damaged_tooth"] > 0].tolist(),
-                "cnn_features": cnn, "colour_statistics_control": control,
+                "cnn_selected": selected, "cnn_features": cnn, "colour_statistics_control": control,
+                "selection": "cnn_features (main): setting fixed before any result was seen (margin 0.15, C 0.1); "
+                             "cnn_selected (check): crop margin (0.15 or 0.5 of the box) and C (0.01, 0.1, 1) chosen per "
+                             "held-out source by 4-fold grouped validation inside the training sources",
                 "caveat": "uploader unknown, no description; 645 of 838 images are frames of 15 short videos and 279 "
                           "frames appear more than once; damaged teeth come from few sources; manufacturing defects "
                           "on small gears, not field wear of a grader circle",
             }
             PHOTO_RESULT.parent.mkdir(parents=True, exist_ok=True)
             PHOTO_RESULT.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
-            figure, axes = plt.subplots(1, 2, figsize=(9, 4.2))
-            for axis, (title, block) in zip(axes, (("ResNet-18 features", cnn), ("colour statistics (control)", control))):
+            panels = (("ResNet-18, settings chosen inside", selected), ("ResNet-18, fixed settings", cnn),
+                      ("colour statistics (control)", control))
+            figure, axes = plt.subplots(1, 3, figsize=(13, 4.2))
+            for axis, (title, block) in zip(axes, panels):
                 matrix = np.asarray(block["confusion_matrix"])
                 axis.imshow(matrix, cmap="Blues", vmin=0)
                 axis.set_xticks(range(2), PHOTO_LABELS)
@@ -17249,8 +17249,9 @@ def _make_grader():
             PHOTO_FIGURE.parent.mkdir(parents=True, exist_ok=True)
             figure.savefig(PHOTO_FIGURE, dpi=120)
             plt.close(figure)
-            for title, block in (("ResNet-18 features", cnn), ("colour statistics (control)", control)):
-                print(f"{title:30s} balanced accuracy {block['balanced_accuracy']:.3f}, "
+            print(f"Settings chosen inside the training sources: {selected['choices']}")
+            for title, block in panels:
+                print(f"{title:36s} balanced accuracy {block['balanced_accuracy']:.3f}, "
                       f"damaged-tooth recall {block['damaged_tooth_recall']:.3f}, accuracy {block['accuracy']:.3f}")
             print(f"Saved {PHOTO_RESULT.relative_to(ROOT)} and {PHOTO_FIGURE.relative_to(ROOT)}")
 
