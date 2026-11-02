@@ -372,40 +372,103 @@ def show(rows: dict) -> None:
     display(pd.DataFrame({name: metrics(block) for name, block in rows.items()}).T)
 
 
-def show_overview() -> None:
-    """Summarize the eight planned mappings from their saved result files."""
-    equipment = (
-        ("Pump", "pump"), ("Haul Truck", "haul_truck"),
-        ("Belt Conveyor", "belt_conveyor"), ("Excavator", "excavator"),
-        ("Dozer", "dozer"), ("Wheel Loader", "wheel_loader"),
-        ("Drill Rig", "drill_rig"), ("Grader", "grader"),
-    )
-
-    def result(machine: str, suffix: str) -> dict:
-        path = RESULTS / machine / f"{machine}_{suffix}.json"
-        return json.loads(path.read_text(encoding="utf-8")) if path.is_file() else {}
-
-    def percent(score):
-        return round(score * 100, 2) if score is not None else None
-
+def _notebook_result_rows(machine: str, time_split: bool = False):
+    """Read saved scores only. Keep evaluation units and source files explicit."""
+    suffix = "_timesplit" if time_split else ""
     rows = []
-    for name, machine in equipment:
-        sensor = result(machine, "csv_4class").get("validation_selected", {}).get("score", {})
-        visual = (result(machine, "cnn_pretrained_4class").get("recording_level")
-                  or result(machine, "cnn_images_4class").get("gear_level", {}))
-        sensor_time = result(machine, "csv_4class_timesplit").get("models", {}).get("Random forest", {})
-        visual_time = result(machine, "cnn_pretrained_4class_timesplit").get("recording_level", {})
-        s, v = sensor.get("accuracy"), visual.get("accuracy")
+    sensor_name = f"{machine}_csv_4class{suffix}.json"
+    sensor = load(sensor_name) or {}
+    selected = sensor.get("validation_selected", {}).get("score")
+    if selected:
+        rows.append(("Sensor | selected CSV baseline", selected, sensor_name))
+    elif time_split and "Random forest" in sensor.get("models", {}):
+        rows.append(("Sensor | Random forest (secondary)", sensor["models"]["Random forest"], sensor_name))
+
+    if time_split:
+        visual_name = f"{machine}_cnn_pretrained_4class_timesplit.json"
+        visual = load(visual_name)
+    elif machine == "drill_rig":
+        visual_name = "drill_rig_cnn_images_4class.json"
+        visual = load(visual_name)
+        raw = load("drill_rig_cnn_raw_4class.json")
+        if raw:
+            rows.append(("Sensor | raw-vibration CNN", raw["score"], "drill_rig_cnn_raw_4class.json"))
+    else:
+        visual = _preferred_cnn_result(machine)
+        visual_name = next((f"{machine}_cnn_pretrained_4class{variant}.json"
+                            for variant in ("_denseframes", "_allframes", "")
+                            if load(f"{machine}_cnn_pretrained_4class{variant}.json") == visual), "") if visual else ""
+
+    if visual:
+        rows.append(("Visual | individual images", visual["image_level"], visual_name))
+        unit = "gear_level" if machine == "drill_rig" else "recording_level"
+        if unit in visual:
+            label = "Visual | whole gears" if machine == "drill_rig" else "Visual | whole recordings"
+            rows.append((label, visual[unit], visual_name))
+    return rows
+
+
+def show_overview() -> None:
+    """Compact overview of the main saved baselines; no training or downloads."""
+    rows = []
+    for machine in ("pump", "haul_truck", "belt_conveyor", "excavator", "dozer",
+                    "wheel_loader", "drill_rig", "grader"):
+        scores = {label: block for label, block, _ in _notebook_result_rows(machine)}
+        sensor = scores.get("Sensor | selected CSV baseline", {})
+        visual = scores.get("Visual | individual images", {})
+        units = scores.get("Visual | whole recordings", scores.get("Visual | whole gears", {}))
         rows.append({
-            "Equipment": name,
-            "Strict sensor %": percent(s),
-            "Strict visual %": percent(v),
-            "Time sensor %": percent(sensor_time.get("accuracy")),
-            "Time visual %": percent(visual_time.get("accuracy")),
-            "Status": "Both >80%" if s is not None and v is not None and s > .8 and v > .8
-                      else "Evaluated" if s is not None and v is not None else "Pending",
+            "Equipment": machine.replace("_", " ").title(),
+            "Sensor accuracy %": round(sensor["accuracy"] * 100, 2) if sensor else None,
+            "Visual image accuracy %": round(visual["accuracy"] * 100, 2) if visual else None,
+            "Images tested": visual.get("test_units"),
+            "Visual test recordings/gears": units.get("test_units"),
+            "Status": "Evaluated (synthetic visuals)" if machine == "drill_rig" and visual
+                      else "Evaluated" if sensor and visual else "Planned",
         })
-    display(pd.DataFrame(rows).set_index("Equipment"))
+    table = pd.DataFrame(rows).set_index("Equipment")
+    for column in ("Images tested", "Visual test recordings/gears"):
+        table[column] = pd.array(table[column], dtype="Int64")
+    display(table)
+
+
+def show_equipment_results(machine: str, time_split: bool = False) -> None:
+    """Show a short score table and sensor/image matrices from saved results.
+
+    Time-split scores are optional and displayed separately. No saved JSON is
+    modified, no raw files are opened and no models are fitted by this view.
+    """
+    import matplotlib.pyplot as plt
+
+    rows = _notebook_result_rows(machine, time_split)
+    if not rows:
+        print(f"No saved results for {machine} in this evaluation.")
+        return
+    table = []
+    for label, block, filename in rows:
+        row = {"Evaluation unit / model": label, "Tested": block.get("test_units")}
+        for key, title in (("accuracy", "Accuracy %"), ("macro_precision", "Precision %"),
+                           ("macro_recall", "Recall %"), ("macro_f1", "F1 %")):
+            value = block.get(key)
+            row[title] = round(value * 100, 2) if value is not None else None
+        table.append(row)
+    display(pd.DataFrame(table).set_index("Evaluation unit / model"))
+    print("Secondary time split: shares source recordings." if time_split else "Main held-out evaluation: see each dataset's grouping protocol.")
+
+    # Show one sensor and one visual matrix, with their different units named.
+    matrices = [(label, block, filename) for label, block, filename in rows
+                if label in ("Sensor | selected CSV baseline", "Sensor | Random forest (secondary)",
+                             "Visual | individual images")
+                and "confusion_matrix" in block]
+    if matrices:
+        figure, axes = plt.subplots(1, len(matrices), figsize=(5 * len(matrices), 4.6), squeeze=False)
+        for axis, (label, block, filename) in zip(axes[0], matrices):
+            document = load(filename)
+            labels = document.get("classes", document.get("labels", []))
+            _draw_image_matrix(axis, block, labels, label, level="test units")
+        figure.tight_layout()
+        plt.show()
+    print("Sources: " + ", ".join(dict.fromkeys(f"Results/{machine}/{filename}" for _, _, filename in rows)))
 
 
 def check(before, after, paths, name: str) -> None:
