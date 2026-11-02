@@ -1,0 +1,203 @@
+{
+  "classes": [
+    "healthy",
+    "faulty"
+  ],
+  "plan": {
+    "target": "Healthy vs Faulty, 16 existing CORA recordings",
+    "features": "recording medians of the same 13 raw vibration-order features",
+    "normalization": "fit a linear trend in log(speed setting) for each feature, using healthy training recordings only; subtract it from each recording",
+    "validation": "leave one complete speed out; model selected by leave-one-training-speed-out balanced accuracy then macro F1",
+    "candidates": "balanced LR C=0.1/1/10, balanced RBF SVM C=0.1/1/10, RF100 and ExtraTrees100; random seed613",
+    "scope": "exploratory repeated benchmark use; training-only reference has only two healthy points in inner validation, so extrapolation is uncertain"
+  },
+  "recording_level": {
+    "test_units": 16,
+    "accuracy": 0.625,
+    "balanced_accuracy": 0.5833,
+    "macro_precision": 0.5667,
+    "macro_recall": 0.5833,
+    "macro_f1": 0.5636,
+    "confusion_matrix": [
+      [
+        2,
+        2
+      ],
+      [
+        4,
+        8
+      ]
+    ],
+    "per_class_recall": {
+      "healthy": 0.5,
+      "faulty": 0.6667
+    },
+    "per_class": {
+      "healthy": {
+        "precision": 0.3333333333333333,
+        "recall": 0.5,
+        "f1-score": 0.4,
+        "support": 4.0
+      },
+      "faulty": {
+        "precision": 0.8,
+        "recall": 0.6666666666666666,
+        "f1-score": 0.7272727272727273,
+        "support": 12.0
+      },
+      "accuracy": 0.625,
+      "macro avg": {
+        "precision": 0.5666666666666667,
+        "recall": 0.5833333333333333,
+        "f1-score": 0.5636363636363637,
+        "support": 16.0
+      },
+      "weighted avg": {
+        "precision": 0.6833333333333335,
+        "recall": 0.625,
+        "f1-score": 0.6454545454545454,
+        "support": 16.0
+      }
+    }
+  },
+  "folds": [
+    {
+      "held_out_speed": "F5",
+      "model": "Logistic C=0.1",
+      "validation_balanced_accuracy": 0.7777777777777777,
+      "reference_fitted_on_healthy_training_only": true
+    },
+    {
+      "held_out_speed": "F15",
+      "model": "Logistic C=0.1",
+      "validation_balanced_accuracy": 0.7777777777777777,
+      "reference_fitted_on_healthy_training_only": true
+    },
+    {
+      "held_out_speed": "F50",
+      "model": "Random forest",
+      "validation_balanced_accuracy": 0.5555555555555556,
+      "reference_fitted_on_healthy_training_only": true
+    },
+    {
+      "held_out_speed": "F60",
+      "model": "Random forest",
+      "validation_balanced_accuracy": 0.6666666666666666,
+      "reference_fitted_on_healthy_training_only": true
+    }
+  ],
+  "predictions": [
+    {
+      "unit": "BD_F15_S",
+      "source_class": "bearing",
+      "speed": "F15",
+      "actual": "faulty",
+      "predicted": "faulty"
+    },
+    {
+      "unit": "BD_F50_S",
+      "source_class": "bearing",
+      "speed": "F50",
+      "actual": "faulty",
+      "predicted": "faulty"
+    },
+    {
+      "unit": "BD_F5_S",
+      "source_class": "bearing",
+      "speed": "F5",
+      "actual": "faulty",
+      "predicted": "healthy"
+    },
+    {
+      "unit": "BD_F60_S",
+      "source_class": "bearing",
+      "speed": "F60",
+      "actual": "faulty",
+      "predicted": "faulty"
+    },
+    {
+      "unit": "H_F15_S",
+      "source_class": "healthy",
+      "speed": "F15",
+      "actual": "healthy",
+      "predicted": "faulty"
+    },
+    {
+      "unit": "H_F50_S",
+      "source_class": "healthy",
+      "speed": "F50",
+      "actual": "healthy",
+      "predicted": "healthy"
+    },
+    {
+      "unit": "H_F5_S",
+      "source_class": "healthy",
+      "speed": "F5",
+      "actual": "healthy",
+      "predicted": "healthy"
+    },
+    {
+      "unit": "H_F60_S",
+      "source_class": "healthy",
+      "speed": "F60",
+      "actual": "healthy",
+      "predicted": "faulty"
+    },
+    {
+      "unit": "M_F15_S",
+      "source_class": "misalignment",
+      "speed": "F15",
+      "actual": "faulty",
+      "predicted": "healthy"
+    },
+    {
+      "unit": "M_F50_S",
+      "source_class": "misalignment",
+      "speed": "F50",
+      "actual": "faulty",
+      "predicted": "faulty"
+    },
+    {
+      "unit": "M_F5_S",
+      "source_class": "misalignment",
+      "speed": "F5",
+      "actual": "faulty",
+      "predicted": "healthy"
+    },
+    {
+      "unit": "M_F60_S",
+      "source_class": "misalignment",
+      "speed": "F60",
+      "actual": "faulty",
+      "predicted": "faulty"
+    },
+    {
+      "unit": "U_F15_S",
+      "source_class": "unbalance",
+      "speed": "F15",
+      "actual": "faulty",
+      "predicted": "faulty"
+    },
+    {
+      "unit": "U_F50_S",
+      "source_class": "unbalance",
+      "speed": "F50",
+      "actual": "faulty",
+      "predicted": "faulty"
+    },
+    {
+      "unit": "U_F5_S",
+      "source_class": "unbalance",
+      "speed": "F5",
+      "actual": "faulty",
+      "predicted": "healthy"
+    },
+    {
+      "unit": "U_F60_S",
+      "source_class": "unbalance",
+      "speed": "F60",
+      "actual": "faulty",
+      "predicted": "faulty"
+    }
+  ]
+}
