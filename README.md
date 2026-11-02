@@ -50,7 +50,7 @@ You need [Python 3.11](https://www.python.org/downloads/) (tick **Add python.exe
 
 1. **Get the project.** In VS Code press `Ctrl+Shift+P` → **Git: Clone**, paste `https://github.com/theganeshmishra/ai-based-predictive-maintenance-mining-equipment.git`, then open the folder.
 2. **Set it up once.** In the terminal run `powershell -ExecutionPolicy Bypass -File .\setup.ps1` (Mac/Linux: `bash setup.sh`). Add `-Data` (`--data`) to fetch only the source files available automatically. The CORA vibration files and other publisher-gated inputs need the separate intake steps in the [dataset manifest](Dataset_Manifest/manifest.md).
-3. **Run it.** Open the single working notebook, [Mining_Equipment_Condition_Monitoring.ipynb](Notebook/Mining_Equipment_Condition_Monitoring.ipynb), pick the **Capstone (.venv)** kernel, and click **Run All**. It contains the experiments and saved outputs for all six equipment types. In its default saved-results mode, model scripts do not run. Use the control cell near the top to set `ACTIVE_EQUIPMENT` to one equipment name when its local data are present; set `TRAIN_CNN = True` there only if you also want to retrain its image model.
+3. **Run it.** Open the single working notebook, [Mining_Equipment_Condition_Monitoring.ipynb](Notebook/Mining_Equipment_Condition_Monitoring.ipynb), pick the **Capstone (.venv)** kernel, and click **Run All**. It shows a compact overview and one results section for each of the seven implemented equipment mappings. Run All only reads saved results by default. Under **Optional tools**, choose `EQUIPMENT`, `COMMAND` and `OPTIONS`, then set `RUN_MODEL = True` only when you want to rerun that command using local data. Secondary time-split and historical experiments are separate optional views.
 
 The working notebook still shows saved results when raw data are missing. If you get `No module named cv2`, the wrong kernel is selected: choose **Capstone (.venv)**. The six old per-equipment notebooks were consolidated into this one file; their prior versions remain recoverable from Git history. Append future equipment as a new section in the same notebook.
 
@@ -60,7 +60,7 @@ On macOS, if an ensemble run cannot load `xgboost` or `lightgbm` because `libomp
 
 ```text
 Notebook/notebook_helpers.py   all equipment models, data loading and result helpers
-Notebook/        one working notebook for all equipment plus its small helper module
+Notebook/        one working notebook and the consolidated model/helper file
 Results/<machine>/   saved metrics (JSON) and written comparisons
 Figures/<machine>/   result charts
 Documentation/   weekly progress, methodology, full capstone details
