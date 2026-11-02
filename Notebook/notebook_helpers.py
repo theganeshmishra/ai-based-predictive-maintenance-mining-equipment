@@ -799,6 +799,16 @@ def _notebook_result_rows(machine: str, time_split: bool = False):
                     "grader_acoustic_4class.json",
                 )
             )
+        photos = load("grader_gear_photos_teeth.json") or {}
+        if photos:
+            # real photos of small gears: a separate task, not the slewing ring of the sensor side
+            rows.append(
+                (
+                    "Visual | real gear photos, tooth crops (separate task)",
+                    photos["cnn_features"],
+                    "grader_gear_photos_teeth.json",
+                )
+            )
         if "vibration_plus_acoustic" in sensor:
             rows.append(
                 (
@@ -16802,6 +16812,7 @@ def _make_grader():
     Commands:
         intake      check the six zips against the published SHA-256 values and list the recordings used
         csv         4-class models on vibration, acoustic and both, leave one working condition out
+        photos      real gear photos (Roboflow, CC BY 4.0): good vs damaged tooth crops, each video held out
         all         run every command in order
 
     Raw data stays in Raw_Data/ and Processed_Data/ (not in Git).
@@ -17078,8 +17089,177 @@ def _make_grader():
             main()
         return locals()
 
-    COMMANDS = {"intake": intake, "csv": csv}
-    RUN_ALL = ["intake", "csv"]
+    PHOTO_ZIP = ROOT / "Raw_Data" / "roboflow_gear_photos" / "GearBox_adddingImg.v1i.coco.zip"
+    PHOTO_SHA256 = "daae26100160b88554bd3c311e1b445376d59bcce2e4bd5ed48c41e2089136f6"
+    PHOTO_SOURCE = ("GearBox_adddingImg v1 by Vjs, Roboflow Universe "
+                    "(https://universe.roboflow.com/vjs-jek7v/gearbox_adddingimg), CC BY 4.0; COCO export of 2026-11-02")
+    PHOTO_RESULT = ROOT / "Results" / MACHINE / f"{MACHINE}_gear_photos_teeth.json"
+    PHOTO_FIGURE = ROOT / "Figures" / MACHINE / f"{MACHINE}_gear_photos_teeth.png"
+    DAMAGED_TOOTH = {"badTeeth", "tooth failure", "teethCrack", "Gear tooth breakage", "Breakage",
+                     "damage", "Wear and Tear", "pitting"}
+    PHOTO_LABELS = ["good_tooth", "damaged_tooth"]
+
+    def photo_source(original):
+        """The video or photo set an image came from, e.g. dot_on_top_1 from dot_on_top_1_front_frame_30_jpg."""
+        import re
+        match = re.match(r"(.+?_\d+)_(front|back)_frame_\d+", original)
+        return match.group(1) if match else re.sub(r"[-_ ]?\d+(_jpe?g|_png)?$|_jpg$", "", original)
+
+    def photo_crops():
+        """Every good or damaged tooth box as a 224 px crop (15% margin), with the source it came from."""
+        import json
+        import zipfile
+        import cv2
+        import numpy as np
+        crops, rows = [], []
+        with zipfile.ZipFile(PHOTO_ZIP) as archive:
+            for split in ("train", "valid", "test"):
+                document = json.loads(archive.read(f"{split}/_annotations.coco.json"))
+                names = {c["id"]: c["name"] for c in document["categories"]}
+                images = {i["id"]: i for i in document["images"]}
+                for box in document["annotations"]:
+                    name = names[box["category_id"]]
+                    if name != "goodTeeth" and name not in DAMAGED_TOOTH:
+                        continue
+                    info = images[box["image_id"]]
+                    picture = cv2.imdecode(np.frombuffer(archive.read(f"{split}/{info['file_name']}"), np.uint8),
+                                           cv2.IMREAD_COLOR)
+                    x, y, w, h = box["bbox"]
+                    pad = 0.15 * max(w, h)
+                    x0, y0 = int(max(0, x - pad)), int(max(0, y - pad))
+                    x1, y1 = int(min(picture.shape[1], x + w + pad)), int(min(picture.shape[0], y + h + pad))
+                    if x1 - x0 < 4 or y1 - y0 < 4:
+                        continue
+                    original = info["file_name"].split(".rf.")[0]
+                    crops.append(cv2.resize(picture[y0:y1, x0:x1], (224, 224), interpolation=cv2.INTER_AREA))
+                    rows.append({"source": photo_source(original), "frame": original, "box_label": name,
+                                 "label": "good_tooth" if name == "goodTeeth" else "damaged_tooth"})
+        return np.stack(crops), rows
+
+    def photos(run: bool = True) -> dict:
+        """Real gear photos: good vs damaged tooth crops, each video or photo set held out in turn."""
+        import hashlib
+        import json
+        import matplotlib
+        matplotlib.use("Agg")
+        import matplotlib.pyplot as plt
+        import numpy as np
+        import pandas as pd
+        import torch
+        from torchvision.models import resnet18
+        from sklearn.linear_model import LogisticRegression
+        from sklearn.metrics import balanced_accuracy_score, confusion_matrix, f1_score, recall_score
+        from sklearn.pipeline import make_pipeline
+        from sklearn.preprocessing import StandardScaler
+
+        def embed(crops):
+            """Frozen ImageNet ResNet-18 features (512 per crop) from the local checkpoint."""
+            checkpoint = Path(torch.hub.get_dir()) / "checkpoints/resnet18-f37072fd.pth"
+            if not checkpoint.is_file():
+                raise FileNotFoundError("The local ResNet18 checkpoint is required; no automatic download")
+            network = resnet18(weights=None)
+            network.load_state_dict(torch.load(checkpoint, map_location="cpu", weights_only=True))
+            encoder = torch.nn.Sequential(*list(network.children())[:-1]).eval()
+            mean = torch.tensor([0.485, 0.456, 0.406]).view(1, 3, 1, 1)
+            std = torch.tensor([0.229, 0.224, 0.225]).view(1, 3, 1, 1)
+            out = []
+            with torch.no_grad():
+                for start in range(0, len(crops), 64):
+                    batch = torch.from_numpy(crops[start:start + 64][..., ::-1].copy()).permute(0, 3, 1, 2).float() / 255
+                    out.append(encoder((batch - mean) / std).flatten(1).numpy())
+            return np.concatenate(out)
+
+        def statistics(crops):
+            """Control: colour and brightness statistics only (no shape)."""
+            x = crops.reshape(len(crops), -1, 3).astype(np.float32) / 255
+            spread = np.percentile(x, [5, 50, 95], axis=1).transpose(1, 0, 2).reshape(len(x), -1)
+            return np.concatenate([x.mean(1), x.std(1), spread], 1)
+
+        def leave_source_out(features, table):
+            """Each video or photo set held out in turn; fixed balanced logistic regression, no tuning."""
+            predicted = np.empty(len(table), dtype=object)
+            for source in sorted(table["source"].unique()):
+                test = (table["source"] == source).to_numpy()
+                if table.loc[~test, "label"].nunique() < 2:
+                    raise ValueError(f"Training data without both classes when holding out {source}")
+                model = make_pipeline(StandardScaler(), LogisticRegression(max_iter=5000, C=0.1,
+                                                                           class_weight="balanced"))
+                model.fit(features[~test], table.loc[~test, "label"])
+                predicted[test] = model.predict(features[test])
+            return list(predicted)
+
+        def score(actual, predicted):
+            return {"test_units": len(actual),
+                    "accuracy": round(float(np.mean(np.asarray(actual) == np.asarray(predicted))), 4),
+                    "balanced_accuracy": round(float(balanced_accuracy_score(actual, predicted)), 4),
+                    "macro_f1": round(float(f1_score(actual, predicted, labels=PHOTO_LABELS, average="macro")), 4),
+                    "damaged_tooth_recall": round(float(recall_score(actual, predicted, pos_label="damaged_tooth")), 4),
+                    "confusion_matrix": confusion_matrix(actual, predicted, labels=PHOTO_LABELS).tolist()}
+
+        def main():
+            if not PHOTO_ZIP.is_file():
+                raise SystemExit(f"Missing {PHOTO_ZIP}: download {PHOTO_SOURCE} (COCO, zip to computer)")
+            ok = hashlib.sha256(PHOTO_ZIP.read_bytes()).hexdigest() == PHOTO_SHA256
+            print(f"SHA-256 {'matches' if ok else 'DOES NOT MATCH'} the downloaded export")
+            if not ok:
+                raise SystemExit(2)
+            crops, rows = photo_crops()
+            table = pd.DataFrame(rows)
+            counts = table["label"].value_counts().to_dict()
+            print(f"{len(table)} tooth crops {counts} from {table['source'].nunique()} videos or photo sets")
+            torch.manual_seed(SEED)
+            cnn = score(table["label"], leave_source_out(embed(crops), table))
+            control = score(table["label"], leave_source_out(statistics(crops), table))
+            sources = (table.groupby("source")["label"].value_counts().unstack(fill_value=0)
+                       .reindex(columns=PHOTO_LABELS, fill_value=0))
+            result = {
+                "machine": MACHINE, "source": PHOTO_SOURCE,
+                "modality": "real photographs of small manufactured gears (camera); NOT the slewing ring of the "
+                            "sensor and acoustic sides, and not the same faults",
+                "classes": PHOTO_LABELS,
+                "task": "classify one tooth crop as good or damaged (box labels goodTeeth vs "
+                        + ", ".join(sorted(DAMAGED_TOOTH)) + ")",
+                "test": "leave one video or photo set out (frames of one video never in both training and test); "
+                        "frozen ImageNet ResNet-18 features + logistic regression (C 0.1, balanced), fixed in advance",
+                "crops": int(len(table)), "crops_by_class": {k: int(v) for k, v in counts.items()},
+                "sources": int(table["source"].nunique()),
+                "sources_with_damaged_teeth": sources.index[sources["damaged_tooth"] > 0].tolist(),
+                "cnn_features": cnn, "colour_statistics_control": control,
+                "caveat": "uploader unknown, no description; 645 of 838 images are frames of 15 short videos and 279 "
+                          "frames appear more than once; damaged teeth come from few sources; manufacturing defects "
+                          "on small gears, not field wear of a grader circle",
+            }
+            PHOTO_RESULT.parent.mkdir(parents=True, exist_ok=True)
+            PHOTO_RESULT.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
+            figure, axes = plt.subplots(1, 2, figsize=(9, 4.2))
+            for axis, (title, block) in zip(axes, (("ResNet-18 features", cnn), ("colour statistics (control)", control))):
+                matrix = np.asarray(block["confusion_matrix"])
+                axis.imshow(matrix, cmap="Blues", vmin=0)
+                axis.set_xticks(range(2), PHOTO_LABELS)
+                axis.set_yticks(range(2), PHOTO_LABELS)
+                axis.set_xlabel("Predicted")
+                axis.set_ylabel("Actual")
+                for i in range(2):
+                    for j in range(2):
+                        axis.text(j, i, f"{matrix[i, j]:,}", ha="center", va="center",
+                                  color="white" if matrix[i, j] > matrix.max() / 2 else "black")
+                axis.set_title(f"{title}\nbalanced accuracy {block['balanced_accuracy']:.3f}", fontsize=10)
+            figure.suptitle("Real gear photos (Roboflow, CC BY 4.0): tooth crops, unseen video or photo set", fontsize=10)
+            figure.tight_layout()
+            PHOTO_FIGURE.parent.mkdir(parents=True, exist_ok=True)
+            figure.savefig(PHOTO_FIGURE, dpi=120)
+            plt.close(figure)
+            for title, block in (("ResNet-18 features", cnn), ("colour statistics (control)", control)):
+                print(f"{title:30s} balanced accuracy {block['balanced_accuracy']:.3f}, "
+                      f"damaged-tooth recall {block['damaged_tooth_recall']:.3f}, accuracy {block['accuracy']:.3f}")
+            print(f"Saved {PHOTO_RESULT.relative_to(ROOT)} and {PHOTO_FIGURE.relative_to(ROOT)}")
+
+        if run:
+            main()
+        return locals()
+
+    COMMANDS = {"intake": intake, "csv": csv, "photos": photos}
+    RUN_ALL = ["intake", "csv", "photos"]
 
     def cli() -> None:
         if len(sys.argv) < 2 or sys.argv[1] not in (*COMMANDS, "all"):
