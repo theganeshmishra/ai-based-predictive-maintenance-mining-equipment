@@ -6,10 +6,11 @@ live in this file. The combined notebook calls a selected model or shows saved r
 Reading order:
 1. Data readers: load sensor recordings and image pixels from local folders.
 2. Shared evaluation: group predictions, calculate metrics and save figures.
-3. Notebook display helpers: show saved results without retraining.
-4. Equipment sections: Pump, Haul Truck, Belt Conveyor, Excavator, Dozer,
+3. Shared training: sensor model selection, CNNs and feature extraction.
+4. Notebook display helpers: show saved results without retraining.
+5. Equipment sections: Pump, Haul Truck, Belt Conveyor, Excavator, Dozer,
    Wheel Loader and Drill Rig. Expand only the section you need in VS Code.
-5. get_model / command-line entry: select and run an equipment pipeline.
+6. get_model / command-line entry: select and run an equipment pipeline.
 
 Pipeline: local files -> validation/features -> train/test split -> model -> results.
 Equipment-specific splits and historical experiment variants are preserved.
@@ -19,6 +20,7 @@ from __future__ import annotations
 
 import contextlib
 from functools import lru_cache
+from inspect import cleandoc
 from types import SimpleNamespace
 import csv
 import json
@@ -38,7 +40,7 @@ from IPython.display import Image, display
 # Harmless scikit-learn/joblib notice that can repeat thousands of times inside a notebook kernel
 warnings.filterwarnings("ignore", message=r".*sklearn\.utils\.parallel\.delayed.*")
 
-#region Local folders and data loading
+# region Local folders and data loading
 
 ROOT = Path(__file__).resolve().parents[1]
 RAW, PROCESSED, RESULTS = ROOT / "Raw_Data", ROOT / "Processed_Data", ROOT / "Results"
@@ -50,26 +52,31 @@ RAW_DATA, PROCESSED_DATA, IMAGE_DATA = RAW, PROCESSED, ROOT / "Images"
 
 def load_mat(path, *args, **kwargs):
     from scipy.io import loadmat
+
     return loadmat(path, *args, **kwargs)
 
 
 def load_csv(path, *args, **kwargs):
     import pandas as pd
+
     return pd.read_csv(path, *args, **kwargs)
 
 
 def load_excel(path, *args, **kwargs):
     import pandas as pd
+
     return pd.read_excel(path, *args, **kwargs)
 
 
 def load_numpy(path, *args, **kwargs):
     import numpy as np
+
     return np.load(path, *args, **kwargs)
 
 
 def load_image(path, flags=None):
     import cv2
+
     return cv2.imread(str(path), cv2.IMREAD_COLOR if flags is None else flags)
 
 
@@ -142,19 +149,20 @@ def read_image_records(image_folder):
         return list(csv.DictReader(handle))
 
 
-def load_image_index(machine, variant=''):
+def load_image_index(machine, variant=""):
     """Read filenames, labels and recording groups without loading image pixels."""
-    if variant not in ('', 'allframes', 'denseframes'):
-        raise ValueError('variant must be empty, allframes or denseframes')
-    if machine not in ('pump', 'haul_truck', 'belt_conveyor', 'excavator', 'dozer', 'wheel_loader'):
-        raise ValueError('Unknown equipment mapping')
-    folder = machine + (f'_{variant}' if variant else '')
+    if variant not in ("", "allframes", "denseframes"):
+        raise ValueError("variant must be empty, allframes or denseframes")
+    if machine not in ("pump", "haul_truck", "belt_conveyor", "excavator", "dozer", "wheel_loader"):
+        raise ValueError("Unknown equipment mapping")
+    folder = machine + (f"_{variant}" if variant else "")
     return read_image_records(IMAGE_DATA / folder)
 
 
-#endregion
+# endregion
 
-#region Shared evaluation and plotting
+# region Shared evaluation and plotting
+
 
 def predict_recordings(probabilities, classes, y, units):
     """One prediction per test unit (recording or run): average the class probabilities of its rows."""
@@ -172,11 +180,15 @@ def predict_recordings(probabilities, classes, y, units):
 
 def classification_metrics(actual, predicted, labels):
     from sklearn.metrics import (
-        accuracy_score, balanced_accuracy_score, confusion_matrix,
+        accuracy_score,
+        balanced_accuracy_score,
+        confusion_matrix,
         precision_recall_fscore_support,
     )
 
-    precision, recall, f1, support = precision_recall_fscore_support(actual, predicted, labels=labels, zero_division=0)
+    precision, recall, f1, support = precision_recall_fscore_support(
+        actual, predicted, labels=labels, zero_division=0
+    )
     return {
         "test_units": len(actual),
         "accuracy": round(float(accuracy_score(actual, predicted)), 4),
@@ -203,8 +215,14 @@ def save_confusion_matrix(matrix, labels, title, path):
     axis.set_title(title, fontsize=9)
     for i in range(len(labels)):
         for j in range(len(labels)):
-            axis.text(j, i, str(array[i, j]), ha="center", va="center",
-                      color="white" if array[i, j] > array.max() / 2 else "black")
+            axis.text(
+                j,
+                i,
+                str(array[i, j]),
+                ha="center",
+                va="center",
+                color="white" if array[i, j] > array.max() / 2 else "black",
+            )
     figure.tight_layout()
     path.parent.mkdir(parents=True, exist_ok=True)
     figure.savefig(path, dpi=140)
@@ -227,9 +245,361 @@ def augment_event_images(batch, generator):
     scale = 0.8 + 0.4 * torch.rand(n, 1, 1, 1, generator=generator)
     return batch * scale + 0.05 * torch.randn(batch.shape, generator=generator)
 
-#endregion
 
-#region Notebook controls and result displays
+# endregion
+
+# region Shared sensor and image training
+
+
+def sensor_model_candidates():
+    from sklearn.ensemble import RandomForestClassifier
+    from sklearn.linear_model import LogisticRegression
+    from sklearn.pipeline import make_pipeline
+    from sklearn.preprocessing import StandardScaler
+
+    from sklearn.ensemble import ExtraTreesClassifier, HistGradientBoostingClassifier
+    from sklearn.svm import SVC
+
+    return {
+        "Random forest": lambda: RandomForestClassifier(
+            n_estimators=250,
+            max_features="sqrt",
+            class_weight="balanced_subsample",
+            min_samples_leaf=2,
+            random_state=42,
+            n_jobs=-1,
+        ),
+        "Extra trees": lambda: ExtraTreesClassifier(
+            n_estimators=300,
+            max_features="sqrt",
+            class_weight="balanced",
+            min_samples_leaf=2,
+            random_state=42,
+            n_jobs=-1,
+        ),
+        "Gradient boosting": lambda: HistGradientBoostingClassifier(
+            max_iter=200, learning_rate=0.05, class_weight="balanced", random_state=42
+        ),
+        "SVM (RBF)": lambda: make_pipeline(
+            StandardScaler(),
+            SVC(C=10.0, gamma="scale", class_weight="balanced", probability=True, random_state=42),
+        ),
+        "Logistic regression": lambda: make_pipeline(
+            StandardScaler(),
+            LogisticRegression(
+                C=1.0, class_weight="balanced", solver="lbfgs", max_iter=5000, random_state=42
+            ),
+        ),
+    }
+
+
+def select_sensor_model(table, feature_sets, labels, outer_folds, inner_group):
+    """Pick a feature set and model on validation data inside each training set, then test once.
+
+    Inner validation holds out whole groups (recordings, bearings or speeds) of the training set
+    only; the outer test units are never used for the choice.
+    """
+    import numpy as np
+
+    from sklearn.metrics import f1_score
+    from sklearn.model_selection import GroupKFold
+
+    y = table["class"].to_numpy()
+    units = table["unit"].to_numpy()
+    groups = table[inner_group].to_numpy()
+    models = sensor_model_candidates()
+    actual, predicted, chosen = [], [], []
+    for test in outer_folds:
+        train_idx = np.flatnonzero(~test)
+        n_splits = min(4, len(set(groups[train_idx])))
+        inner = list(GroupKFold(n_splits=n_splits).split(train_idx, groups=groups[train_idx]))
+        best, best_score = None, -1.0
+        for set_name, names in feature_sets.items():
+            x = table[names].to_numpy(dtype=np.float64)
+            for model_name, factory in models.items():
+                f1s = []
+                for fit_part, val_part in inner:
+                    fit_rows, val_rows = train_idx[fit_part], train_idx[val_part]
+                    model = factory().fit(x[fit_rows], y[fit_rows])
+                    a, p = predict_recordings(
+                        model.predict_proba(x[val_rows]),
+                        model.classes_,
+                        y[val_rows],
+                        units[val_rows],
+                    )
+                    f1s.append(f1_score(a, p, labels=labels, average="macro", zero_division=0))
+                if float(np.mean(f1s)) > best_score:
+                    best, best_score = (set_name, model_name), float(np.mean(f1s))
+        x = table[feature_sets[best[0]]].to_numpy(dtype=np.float64)
+        model = models[best[1]]().fit(x[train_idx], y[train_idx])
+        a, p = predict_recordings(
+            model.predict_proba(x[test]), model.classes_, y[test], units[test]
+        )
+        actual += a
+        predicted += p
+        chosen.append(
+            {"feature_set": best[0], "model": best[1], "validation_macro_f1": round(best_score, 4)}
+        )
+    return classification_metrics(actual, predicted, labels), chosen
+
+
+def train_small_image_cnn(
+    x, y, *, network, augment, labels, seed, learning_rate, epochs, batch_size
+):
+    """Train the small CNN with the original seed, class weights and augmentation."""
+    import random
+    import numpy as np
+    import torch
+    from torch import nn
+
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    generator = torch.Generator().manual_seed(seed)
+    model = network(x.shape[1], len(labels))
+    counts = np.bincount(y, minlength=len(labels)).astype(np.float32)
+    weights = torch.tensor(counts.sum() / (len(labels) * np.maximum(counts, 1)))
+    loss_fn = nn.CrossEntropyLoss(weight=weights)
+    optimiser = torch.optim.Adam(model.parameters(), lr=learning_rate, weight_decay=1e-4)
+    xs, ys = torch.tensor(x), torch.tensor(y, dtype=torch.long)
+    for _ in range(epochs):
+        model.train()
+        order = torch.randperm(len(xs), generator=generator)
+        for start in range(0, len(xs), batch_size):
+            batch = order[start : start + batch_size]
+            optimiser.zero_grad()
+            loss = loss_fn(model(augment(xs[batch], generator)), ys[batch])
+            loss.backward()
+            optimiser.step()
+    return model
+
+
+def fit_pretrained_image_cnn(
+    x,
+    y,
+    epochs,
+    val=None,
+    *,
+    new_model,
+    augment,
+    labels,
+    seed,
+    learning_rate,
+    batch_size,
+    probabilities,
+):
+    """Fit the image model; optional training-only validation returns an F1 history."""
+    import random
+    import numpy as np
+    import torch
+    from torch import nn
+    from sklearn.metrics import f1_score
+
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    generator = torch.Generator().manual_seed(seed)
+    model = new_model()
+    counts = np.bincount(y, minlength=len(labels)).astype(np.float32)
+    loss_fn = nn.CrossEntropyLoss(
+        weight=torch.tensor(counts.sum() / (len(labels) * np.maximum(counts, 1)))
+    )
+    optimiser = torch.optim.AdamW(model.parameters(), lr=learning_rate, weight_decay=1e-4)
+    xs, ys = torch.tensor(x), torch.tensor(y, dtype=torch.long)
+    history = []
+    for _ in range(epochs):
+        model.train()
+        order = torch.randperm(len(xs), generator=generator)
+        for start in range(0, len(xs), batch_size):
+            batch = order[start : start + batch_size]
+            if len(batch) < 2:
+                continue
+            optimiser.zero_grad()
+            loss_fn(model(augment(xs[batch], generator)), ys[batch]).backward()
+            optimiser.step()
+        if val is not None:
+            vx, vnames, vunits = val
+            a, p = predict_recordings(probabilities(model, vx), np.asarray(labels), vnames, vunits)
+            history.append(f1_score(a, p, labels=labels, average="macro", zero_division=0))
+    return model, history
+
+
+def save_prediction_levels(result, title, path, labels):
+    """One panel per scoring level, so the figure shows how many images were really tested."""
+    import numpy as np
+    import matplotlib.pyplot as plt
+
+    levels = [
+        ("every test image", result["image_level"]),
+        ("per 1/10 recording segment", result.get("segment_level")),
+        ("per whole recording", result["recording_level"]),
+    ]
+    levels = [(name, block) for name, block in levels if block]
+    figure, axes = plt.subplots(1, len(levels), figsize=(4.6 * len(levels), 4.4))
+    for axis, (name, block) in zip(np.atleast_1d(axes), levels):
+        array = np.asarray(block["confusion_matrix"])
+        axis.imshow(array, cmap="Blues", vmin=0)
+        axis.set_xticks(range(len(labels)), labels, rotation=30, fontsize=8)
+        axis.set_yticks(range(len(labels)), labels, fontsize=8)
+        axis.set_xlabel("Predicted")
+        axis.set_ylabel("Actual")
+        axis.set_title(
+            f"{name}\n{block['test_units']:,} tested, accuracy {block['accuracy']:.3f}", fontsize=9
+        )
+        for i in range(len(labels)):
+            for j in range(len(labels)):
+                axis.text(
+                    j,
+                    i,
+                    f"{array[i, j]:,}",
+                    ha="center",
+                    va="center",
+                    fontsize=8,
+                    color="white" if array[i, j] > array.max() / 2 else "black",
+                )
+    figure.suptitle(title.replace("; ", "\n"), fontsize=10)
+    figure.tight_layout()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    figure.savefig(path, dpi=110)
+    plt.close(figure)
+
+
+def extract_cora_vibration(values, speed, feature_bands, feature_names):
+    """Order-domain vibration features for a raw 3 kHz Vx signal at speed setting F5/F15/F50/F60."""
+    import numpy as np
+
+    rate, shaft = 3000, float(speed[1:])
+    n = len(values) // rate
+    windows = values[: n * rate].reshape(n, rate)[::10]
+    centered = windows - windows.mean(axis=1, keepdims=True)
+    std = np.maximum(centered.std(axis=1), 1e-12)
+    freq = np.fft.rfftfreq(rate, d=1 / rate)
+    power = np.abs(np.fft.rfft(centered * np.hanning(rate), axis=1)) ** 2
+    order = freq / shaft
+    usable = (order >= 0.5) & (order < 20.5)
+    share = power[:, usable] / np.maximum(power[:, usable].sum(axis=1, keepdims=True), 1e-12)
+    o = order[usable]
+    bands = [share[:, (o >= lo) & (o < hi)].sum(axis=1) for lo, hi in feature_bands]
+    frame = pd.DataFrame(
+        np.column_stack(
+            [
+                np.log(std),
+                (centered**4).mean(axis=1) / std**4,
+                (centered**3).mean(axis=1) / std**3,
+                np.abs(centered).max(axis=1) / std,
+                o[np.argmax(share, axis=1)],
+                np.log((bands[1] + 1e-9) / (bands[0] + 1e-9)),
+                *bands,
+            ]
+        ),
+        columns=feature_names,
+    )
+    return frame
+
+
+def load_cora_feature_rows(run_name, label, speed, feature_builder):
+    """CORA Vx vibration (3 kHz) in 1 s windows (every 10th window), measured in shaft orders.
+
+    Orders = frequency / speed setting, so 1x, 2x and higher multiples line up across speeds:
+    unbalance shows at 1x, misalignment at 2x, bearing and gear damage at higher orders and spikes.
+    """
+    import numpy as np
+
+    cache = ROOT / "Processed_Data" / "cora_vibration" / f"{run_name}_Vx_features.csv"
+    if cache.is_file():
+        return load_csv(cache)
+    source = ROOT / "Raw_Data" / "cora_vibration" / f"{run_name}_Vx.csv"
+    if not source.is_file():
+        raise SystemExit(
+            f"Missing {source.relative_to(ROOT)}: download it and run the intake command"
+        )
+    values = load_cora_sensor(source.name)
+    frame = feature_builder(values, speed)
+    frame.insert(0, "window", np.arange(len(frame)))
+    frame.insert(0, "class", label)
+    frame.insert(0, "speed", speed)
+    frame.insert(0, "unit", run_name)
+    cache.parent.mkdir(parents=True, exist_ok=True)
+    frame.to_csv(cache, index=False)
+    return frame
+
+
+def image_probabilities(model, images, batch_size):
+    """Evaluate images in batches without gradients; preserve training-mode state rules."""
+    import numpy as np
+    import torch
+
+    model.eval()
+    with torch.no_grad():
+        return np.concatenate(
+            [
+                torch.softmax(
+                    model(torch.tensor(images[start : start + batch_size])), dim=1
+                ).numpy()
+                for start in range(0, len(images), batch_size)
+            ]
+        )
+
+
+def make_small_image_cnn(in_channels, n_classes):
+    """Build the historical four-block image CNN with its original architecture."""
+    from torch import nn
+
+    class Net(nn.Module):
+        def __init__(self, in_channels, n_classes):
+            super().__init__()
+
+            def block(a, b):
+                return nn.Sequential(
+                    nn.Conv2d(a, b, 3, padding=1), nn.BatchNorm2d(b), nn.ReLU(), nn.MaxPool2d(2)
+                )
+
+            self.features = nn.Sequential(
+                block(in_channels, 16), block(16, 32), block(32, 64), block(64, 64)
+            )
+            self.head = nn.Sequential(
+                nn.AdaptiveAvgPool2d(1), nn.Flatten(), nn.Dropout(0.3), nn.Linear(64, n_classes)
+            )
+
+        def forward(self, x):
+            return self.head(self.features(x))
+
+    return Net(in_channels, n_classes)
+
+
+def bin_event_stream(stream, *, frames, seconds, height, width, event_dtype, bin_microseconds):
+    """Bin events using the configured duration and frame interval; channels preserve polarity."""
+    import numpy as np
+
+    while True:
+        first = stream.read(1)
+        if first != b"%":
+            break
+        stream.readline()
+    stream.read(1)
+    counts = np.zeros((frames, 2, height, width), dtype=np.uint32)
+    end = seconds * 1_000_000
+    while True:
+        chunk = stream.read(8 * 500_000)
+        if not chunk:
+            break
+        ev = np.frombuffer(chunk, dtype=event_dtype)
+        keep = ev["t"] < end
+        t, xy = ev["t"][keep], ev["xy"][keep]
+        x, y, polarity = xy & 0x3FFF, (xy >> 14) & 0x3FFF, (xy >> 28) & 1
+        index = (
+            (((t // bin_microseconds) * 2 + (1 - polarity)) * height + (y * height // 480)) * width
+            + (x * width // 640)
+        ).astype(np.int64)
+        counts += np.bincount(index, minlength=counts.size).reshape(counts.shape).astype(np.uint32)
+        if len(ev) and ev["t"][-1] >= end:
+            break
+    return counts
+
+
+# endregion
+
+# region Notebook controls and result displays
 
 METRICS = ("accuracy", "balanced_accuracy", "macro_precision", "macro_recall", "macro_f1")
 
@@ -249,35 +619,67 @@ def setup(data: list[tuple[str, str, str, int]]) -> dict[str, bool]:
     Returns {label: True if present}.
     """
     try:
-        commit = subprocess.check_output(["git", "-C", str(ROOT), "rev-parse", "--short", "HEAD"], text=True).strip()
+        commit = subprocess.check_output(
+            ["git", "-C", str(ROOT), "rev-parse", "--short", "HEAD"], text=True
+        ).strip()
     except Exception:
         commit = "unknown"
     in_venv = (ROOT / ".venv").resolve() in Path(sys.executable).resolve().parents
-    environment = {"git commit": commit, "python": platform.python_version(),
-                   "kernel": "project .venv" if in_venv else "NOT the project .venv"}
-    environment.update({name: _package(name) for name in ("numpy", "scipy", "pandas", "scikit-learn", "opencv-python", "matplotlib")})
+    environment = {
+        "git commit": commit,
+        "python": platform.python_version(),
+        "kernel": "project .venv" if in_venv else "NOT the project .venv",
+    }
+    environment.update(
+        {
+            name: _package(name)
+            for name in ("numpy", "scipy", "pandas", "scikit-learn", "opencv-python", "matplotlib")
+        }
+    )
     display(pd.Series(environment, name="environment").to_frame())
     if not in_venv:
-        print("WARNING: this notebook is not using the project's .venv, so packages such as cv2 may be missing.\n"
-              "In VS Code: click the kernel name at the top right -> Select Another Kernel -> Jupyter Kernel -> Capstone (.venv).")
+        print(
+            "WARNING: this notebook is not using the project's .venv, so packages such as cv2 may be missing.\n"
+            "In VS Code: click the kernel name at the top right -> Select Another Kernel -> Jupyter Kernel -> Capstone (.venv)."
+        )
 
     rows = []
     for label, location, pattern, expected in data:
         path = ROOT / location
-        files = [f for f in path.rglob(pattern) if f.is_file()] if path.is_dir() else ([path] if path.is_file() else [])
-        rows.append({"data": label, "location": location, "files": f"{len(files)}/{expected}",
-                     "MB": round(sum(f.stat().st_size for f in files) / 1e6, 1), "local": len(files) >= expected})
+        files = (
+            [f for f in path.rglob(pattern) if f.is_file()]
+            if path.is_dir()
+            else ([path] if path.is_file() else [])
+        )
+        rows.append(
+            {
+                "data": label,
+                "location": location,
+                "files": f"{len(files)}/{expected}",
+                "MB": round(sum(f.stat().st_size for f in files) / 1e6, 1),
+                "local": len(files) >= expected,
+            }
+        )
     table = pd.DataFrame(rows).set_index("data")
     display(table)
     local = table["local"].to_dict()
     if all(local.values()):
-        for name in ("HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY", "http_proxy", "https_proxy", "all_proxy"):
+        for name in (
+            "HTTP_PROXY",
+            "HTTPS_PROXY",
+            "ALL_PROXY",
+            "http_proxy",
+            "https_proxy",
+            "all_proxy",
+        ):
             os.environ[name] = "http://127.0.0.1:9"  # any network call now fails loudly
         os.environ["NO_PROXY"] = ""
         print("All data is local: running fully offline.")
     else:
-        print("Some data is missing, so those steps are skipped and the saved results are shown instead.\n"
-              "To download the data, run  .\\setup.ps1 -Data  (Windows) or  bash setup.sh --data  (Mac/Linux) in the project folder.")
+        print(
+            "Some data is missing, so those steps are skipped and the saved results are shown instead.\n"
+            "To download the data, run  .\\setup.ps1 -Data  (Windows) or  bash setup.sh --data  (Mac/Linux) in the project folder."
+        )
     return local
 
 
@@ -345,6 +747,7 @@ def select_equipment(active: str | None, equipment: str):
     The returned functions call the module-level helpers directly, so they do
     not accidentally wrap a previous equipment section's functions.
     """
+
     def run_selected(relative_path: str, *args: str, **kwargs):
         if active == equipment:
             return run_script(relative_path, *args, **kwargs)
@@ -382,7 +785,9 @@ def _notebook_result_rows(machine: str, time_split: bool = False):
     if selected:
         rows.append(("Sensor | selected CSV baseline", selected, sensor_name))
     elif time_split and "Random forest" in sensor.get("models", {}):
-        rows.append(("Sensor | Random forest (secondary)", sensor["models"]["Random forest"], sensor_name))
+        rows.append(
+            ("Sensor | Random forest (secondary)", sensor["models"]["Random forest"], sensor_name)
+        )
 
     if time_split:
         visual_name = f"{machine}_cnn_pretrained_4class_timesplit.json"
@@ -392,18 +797,31 @@ def _notebook_result_rows(machine: str, time_split: bool = False):
         visual = load(visual_name)
         raw = load("drill_rig_cnn_raw_4class.json")
         if raw:
-            rows.append(("Sensor | raw-vibration CNN", raw["score"], "drill_rig_cnn_raw_4class.json"))
+            rows.append(
+                ("Sensor | raw-vibration CNN", raw["score"], "drill_rig_cnn_raw_4class.json")
+            )
     else:
         visual = _preferred_cnn_result(machine)
-        visual_name = next((f"{machine}_cnn_pretrained_4class{variant}.json"
-                            for variant in ("_denseframes", "_allframes", "")
-                            if load(f"{machine}_cnn_pretrained_4class{variant}.json") == visual), "") if visual else ""
+        visual_name = (
+            next(
+                (
+                    f"{machine}_cnn_pretrained_4class{variant}.json"
+                    for variant in ("_denseframes", "_allframes", "")
+                    if load(f"{machine}_cnn_pretrained_4class{variant}.json") == visual
+                ),
+                "",
+            )
+            if visual
+            else ""
+        )
 
     if visual:
         rows.append(("Visual | individual images", visual["image_level"], visual_name))
         unit = "gear_level" if machine == "drill_rig" else "recording_level"
         if unit in visual:
-            label = "Visual | whole gears" if machine == "drill_rig" else "Visual | whole recordings"
+            label = (
+                "Visual | whole gears" if machine == "drill_rig" else "Visual | whole recordings"
+            )
             rows.append((label, visual[unit], visual_name))
     return rows
 
@@ -411,21 +829,34 @@ def _notebook_result_rows(machine: str, time_split: bool = False):
 def show_overview() -> None:
     """Compact overview of the main saved baselines; no training or downloads."""
     rows = []
-    for machine in ("pump", "haul_truck", "belt_conveyor", "excavator", "dozer",
-                    "wheel_loader", "drill_rig", "grader"):
+    for machine in (
+        "pump",
+        "haul_truck",
+        "belt_conveyor",
+        "excavator",
+        "dozer",
+        "wheel_loader",
+        "drill_rig",
+        "grader",
+    ):
         scores = {label: block for label, block, _ in _notebook_result_rows(machine)}
         sensor = scores.get("Sensor | selected CSV baseline", {})
         visual = scores.get("Visual | individual images", {})
         units = scores.get("Visual | whole recordings", scores.get("Visual | whole gears", {}))
-        rows.append({
-            "Equipment": machine.replace("_", " ").title(),
-            "Sensor accuracy %": round(sensor["accuracy"] * 100, 2) if sensor else None,
-            "Visual image accuracy %": round(visual["accuracy"] * 100, 2) if visual else None,
-            "Images tested": visual.get("test_units"),
-            "Visual test recordings/gears": units.get("test_units"),
-            "Status": "Evaluated (synthetic visuals)" if machine == "drill_rig" and visual
-                      else "Evaluated" if sensor and visual else "Planned",
-        })
+        rows.append(
+            {
+                "Equipment": machine.replace("_", " ").title(),
+                "Sensor accuracy %": round(sensor["accuracy"] * 100, 2) if sensor else None,
+                "Visual image accuracy %": round(visual["accuracy"] * 100, 2) if visual else None,
+                "Images tested": visual.get("test_units"),
+                "Visual test recordings/gears": units.get("test_units"),
+                "Status": (
+                    "Evaluated (synthetic visuals)"
+                    if machine == "drill_rig" and visual
+                    else "Evaluated" if sensor and visual else "Planned"
+                ),
+            }
+        )
     table = pd.DataFrame(rows).set_index("Equipment")
     for column in ("Images tested", "Visual test recordings/gears"):
         table[column] = pd.array(table[column], dtype="Int64")
@@ -447,45 +878,71 @@ def show_equipment_results(machine: str, time_split: bool = False) -> None:
     table = []
     for label, block, filename in rows:
         row = {"Evaluation unit / model": label, "Tested": block.get("test_units")}
-        for key, title in (("accuracy", "Accuracy %"), ("macro_precision", "Precision %"),
-                           ("macro_recall", "Recall %"), ("macro_f1", "F1 %")):
+        for key, title in (
+            ("accuracy", "Accuracy %"),
+            ("macro_precision", "Precision %"),
+            ("macro_recall", "Recall %"),
+            ("macro_f1", "F1 %"),
+        ):
             value = block.get(key)
             row[title] = round(value * 100, 2) if value is not None else None
         table.append(row)
     display(pd.DataFrame(table).set_index("Evaluation unit / model"))
-    print("Secondary time split: shares source recordings." if time_split else "Main held-out evaluation: see each dataset's grouping protocol.")
+    print(
+        "Secondary time split: shares source recordings."
+        if time_split
+        else "Main held-out evaluation: see each dataset's grouping protocol."
+    )
 
     # Show one sensor and one visual matrix, with their different units named.
-    matrices = [(label, block, filename) for label, block, filename in rows
-                if label in ("Sensor | selected CSV baseline", "Sensor | Random forest (secondary)",
-                             "Visual | individual images")
-                and "confusion_matrix" in block]
+    matrices = [
+        (label, block, filename)
+        for label, block, filename in rows
+        if label
+        in (
+            "Sensor | selected CSV baseline",
+            "Sensor | Random forest (secondary)",
+            "Visual | individual images",
+        )
+        and "confusion_matrix" in block
+    ]
     if matrices:
-        figure, axes = plt.subplots(1, len(matrices), figsize=(5 * len(matrices), 4.6), squeeze=False)
+        figure, axes = plt.subplots(
+            1, len(matrices), figsize=(5 * len(matrices), 4.6), squeeze=False
+        )
         for axis, (label, block, filename) in zip(axes[0], matrices):
             document = load(filename)
             labels = document.get("classes", document.get("labels", []))
             _draw_image_matrix(axis, block, labels, label, level="test units")
         figure.tight_layout()
         plt.show()
-    print("Sources: " + ", ".join(dict.fromkeys(f"Results/{machine}/{filename}" for _, _, filename in rows)))
+    print(
+        "Sources: "
+        + ", ".join(dict.fromkeys(f"Results/{machine}/{filename}" for _, _, filename in rows))
+    )
 
 
 def check(before, after, paths, name: str) -> None:
     """Say whether this run reproduced the previously saved scores."""
+
     def pick(doc, path):
         for key in path:
             doc = doc[key]
         return metrics(doc)
+
     same = before is not None and all(pick(before, p) == pick(after, p) for p in paths)
     print(f"{name}: {'matches' if same else 'DIFFERS from'} the saved result")
 
 
 def show_baselines(result: dict) -> None:
     """Display the Week 5 baseline comparison: one row per branch and model type."""
-    show({f"{branch} | {name}": score
-          for branch, block in result["branches"].items()
-          for name, score in block["models"].items()})
+    show(
+        {
+            f"{branch} | {name}": score
+            for branch, block in result["branches"].items()
+            for name, score in block["models"].items()
+        }
+    )
 
 
 def show_week6(machine: str) -> None:
@@ -494,23 +951,35 @@ def show_week6(machine: str) -> None:
     rows = {}
     if csv_result:
         if "validation_selected" in csv_result:
-            rows["CSV sensor | validation-selected (main)"] = csv_result["validation_selected"]["score"]
+            rows["CSV sensor | validation-selected (main)"] = csv_result["validation_selected"][
+                "score"
+            ]
         rows.update({f"CSV sensor | {name}": score for name, score in csv_result["models"].items()})
     dense = load(f"{machine}_cnn_pretrained_4class_denseframes.json")
     pretrained_name = f"{machine}_cnn_pretrained_4class{'_denseframes' if dense else ''}.json"
-    pretrained_label = "Camera images | expanded ResNet18" if dense else "Camera images | original ResNet18"
-    for name, label in ((pretrained_name, pretrained_label),
-                        (f"{machine}_cnn_4class.json", "Camera images | historical small CNN")):
+    pretrained_label = (
+        "Camera images | expanded ResNet18" if dense else "Camera images | original ResNet18"
+    )
+    for name, label in (
+        (pretrained_name, pretrained_label),
+        (f"{machine}_cnn_4class.json", "Camera images | historical small CNN"),
+    ):
         result = load(name)
         if result:
             rows[f"{label}, per recording"] = result["recording_level"]
             if "segment_level" in result:
                 rows[f"{label}, per 1/10 recording segment"] = result["segment_level"]
-    time_csv, time_cnn = load(f"{machine}_csv_4class_timesplit.json"), load(f"{machine}_cnn_pretrained_4class_timesplit.json")
+    time_csv, time_cnn = load(f"{machine}_csv_4class_timesplit.json"), load(
+        f"{machine}_cnn_pretrained_4class_timesplit.json"
+    )
     if time_csv:
-        rows["TIME SPLIT (secondary) | CSV sensor | Random forest"] = time_csv["models"]["Random forest"]
+        rows["TIME SPLIT (secondary) | CSV sensor | Random forest"] = time_csv["models"][
+            "Random forest"
+        ]
     if time_cnn:
-        rows["TIME SPLIT (secondary) | Camera images | pretrained ResNet18"] = time_cnn["recording_level"]
+        rows["TIME SPLIT (secondary) | Camera images | pretrained ResNet18"] = time_cnn[
+            "recording_level"
+        ]
     show(rows)
 
 
@@ -530,8 +999,16 @@ def show_anomaly(machine: str) -> None:
     for suffix, label in (("", "MAIN"), ("_timesplit", "TIME SPLIT (secondary)")):
         result = load(f"{machine}_anomaly{suffix}.json")
         for name, block in (result or {}).get("detectors", {}).items():
-            rows[f"{label} | {name}"] = {k: block[k] for k in ("roc_auc", "fault_detection_rate", "false_alarm_rate",
-                                                                "accuracy", "test_recordings")}
+            rows[f"{label} | {name}"] = {
+                k: block[k]
+                for k in (
+                    "roc_auc",
+                    "fault_detection_rate",
+                    "false_alarm_rate",
+                    "accuracy",
+                    "test_recordings",
+                )
+            }
     display(pd.DataFrame(rows).T)
 
 
@@ -539,39 +1016,84 @@ def show_fulldata(machine: str) -> None:
     """Display the Week 7 full-data sensor experiment (every CORA sensor, window and start-up recording)."""
     result = load(f"{machine}_fulldata.json")
     if not result:
-        print(f"No full-data result yet: run  python Models/{machine}.py fulldata")
+        print(
+            f"No full-data result yet: run  python Notebook/notebook_helpers.py {machine} fulldata"
+        )
         return
+
     def row(block):
-        return {"accuracy (all recordings)": block["all"]["accuracy"], "test recordings": block["all"]["test_recordings"],
-                "stationary runs": block.get("stationary", {}).get("accuracy"),
-                "start-up tests": block.get("transient", {}).get("accuracy"), "macro F1": block["all"]["macro_f1"]}
-    rows = {"MAIN (unseen speed) | validation-selected": row(result["validation_selected"]["score"])}
-    rows.update({f"MAIN | {name}": row(block) for name, block in result["all_combinations"].items()})
-    rows.update({f"TIME SPLIT (stationary) | {name}": row(block)
-                 for name, block in result["time_split_stationary"].items()})
+        return {
+            "accuracy (all recordings)": block["all"]["accuracy"],
+            "test recordings": block["all"]["test_recordings"],
+            "stationary runs": block.get("stationary", {}).get("accuracy"),
+            "start-up tests": block.get("transient", {}).get("accuracy"),
+            "macro F1": block["all"]["macro_f1"],
+        }
+
+    rows = {
+        "MAIN (unseen speed) | validation-selected": row(result["validation_selected"]["score"])
+    }
+    rows.update(
+        {f"MAIN | {name}": row(block) for name, block in result["all_combinations"].items()}
+    )
+    rows.update(
+        {
+            f"TIME SPLIT (stationary) | {name}": row(block)
+            for name, block in result["time_split_stationary"].items()
+        }
+    )
     display(pd.DataFrame(rows).T)
-    print("Validation choices per held-out speed:",
-          "; ".join(f"{c['held_out_speed']}: {c['feature_set']} / {c['model']}" for c in result["validation_selected"]["choices"]))
+    print(
+        "Validation choices per held-out speed:",
+        "; ".join(
+            f"{c['held_out_speed']}: {c['feature_set']} / {c['model']}"
+            for c in result["validation_selected"]["choices"]
+        ),
+    )
 
 
 def show_fulldata_extras(machine: str) -> None:
     """Display the Week 7 full-data ensemble comparison and anomaly detection (fair test: unseen speed)."""
     ens, ano = load(f"{machine}_fulldata_ensembles.json"), load(f"{machine}_fulldata_anomaly.json")
     if not ens and not ano:
-        print(f"No result yet: run  python Models/{machine}.py fulldata --part all")
+        print(
+            f"No result yet: run  python Notebook/notebook_helpers.py {machine} fulldata --part all"
+        )
         return
     if ens:
-        display(pd.DataFrame({name: {"MAIN accuracy (unseen speed)": m["main"]["all"]["accuracy"],
-                                     "MAIN macro F1": m["main"]["all"]["macro_f1"],
-                                     "MAIN stationary": m["main"]["stationary"]["accuracy"],
-                                     "MAIN start-up": m["main"]["transient"]["accuracy"],
-                                     "TIME SPLIT (secondary)": m["time_split_stationary"]["all"]["accuracy"],
-                                     "seconds": m["seconds"]} for name, m in ens["models"].items()}).T)
+        display(
+            pd.DataFrame(
+                {
+                    name: {
+                        "MAIN accuracy (unseen speed)": m["main"]["all"]["accuracy"],
+                        "MAIN macro F1": m["main"]["all"]["macro_f1"],
+                        "MAIN stationary": m["main"]["stationary"]["accuracy"],
+                        "MAIN start-up": m["main"]["transient"]["accuracy"],
+                        "TIME SPLIT (secondary)": m["time_split_stationary"]["all"]["accuracy"],
+                        "seconds": m["seconds"],
+                    }
+                    for name, m in ens["models"].items()
+                }
+            ).T
+        )
     if ano:
-        display(pd.DataFrame({f"{label} | {name}": {k: b[part][k] for k in ("roc_auc", "fault_detection_rate",
-                                                                            "false_alarm_rate", "test_recordings")}
-                              for name, b in ano["detectors"].items()
-                              for part, label in (("main", "MAIN"), ("time_split_stationary", "TIME SPLIT"))}).T)
+        display(
+            pd.DataFrame(
+                {
+                    f"{label} | {name}": {
+                        k: b[part][k]
+                        for k in (
+                            "roc_auc",
+                            "fault_detection_rate",
+                            "false_alarm_rate",
+                            "test_recordings",
+                        )
+                    }
+                    for name, b in ano["detectors"].items()
+                    for part, label in (("main", "MAIN"), ("time_split_stationary", "TIME SPLIT"))
+                }
+            ).T
+        )
 
 
 def show_allframes(machine: str) -> None:
@@ -591,25 +1113,48 @@ def show_per_recording(machine: str, suffix: str = "") -> None:
     """Every test image, every 1/10 segment and every recording of the pretrained CNN, with the counts tested."""
     result = load(f"{machine}_cnn_pretrained_4class{suffix}.json")
     if not result:
-        print(f"No result yet: run  python Models/{machine}.py cnn-pretrained")
+        print(f"No result yet: run  python Notebook/notebook_helpers.py {machine} cnn-pretrained")
         return
     levels = {"every test image": result["image_level"]}
     if "segment_level" in result:
         levels["per 1/10 recording segment"] = result["segment_level"]
     levels["per whole recording"] = result["recording_level"]
-    _levels_figure(levels, result["classes"],
-                   f"{machine}: pretrained ResNet18 on {result['images']:,} images in total, "
-                   f"{result['recording_level']['test_units']} test recordings"
-                   + (" (time split, secondary)" if "timesplit" in suffix else ", each never seen in training"))
+    _levels_figure(
+        levels,
+        result["classes"],
+        f"{machine}: pretrained ResNet18 on {result['images']:,} images in total, "
+        f"{result['recording_level']['test_units']} test recordings"
+        + (
+            " (time split, secondary)" if "timesplit" in suffix else ", each never seen in training"
+        ),
+    )
     if "per_recording" in result:
-        display(pd.DataFrame({unit: {"class": r["class"], **r["images_predicted"], "final answer": r["recording_prediction"]}
-                              for unit, r in result["per_recording"].items()}).T)
+        display(
+            pd.DataFrame(
+                {
+                    unit: {
+                        "class": r["class"],
+                        **r["images_predicted"],
+                        "final answer": r["recording_prediction"],
+                    }
+                    for unit, r in result["per_recording"].items()
+                }
+            ).T
+        )
     else:
-        print(f"Images per class for each recording appear after rerunning  python Models/{machine}.py cnn-pretrained")
+        print(
+            f"Images per class for each recording appear after rerunning  python Notebook/notebook_helpers.py {machine} cnn-pretrained"
+        )
 
 
-_TEST_IMAGE_MACHINES = (("Pump", "pump"), ("Haul Truck", "haul_truck"), ("Belt Conveyor", "belt_conveyor"),
-                        ("Excavator", "excavator"), ("Dozer", "dozer"), ("Wheel Loader", "wheel_loader"))
+_TEST_IMAGE_MACHINES = (
+    ("Pump", "pump"),
+    ("Haul Truck", "haul_truck"),
+    ("Belt Conveyor", "belt_conveyor"),
+    ("Excavator", "excavator"),
+    ("Dozer", "dozer"),
+    ("Wheel Loader", "wheel_loader"),
+)
 
 
 def _preferred_cnn_result(machine: str):
@@ -624,13 +1169,19 @@ def _preferred_cnn_result(machine: str):
 def _levels_figure(levels: dict, labels: list, title: str) -> None:
     """One image: the score table on top and one confusion matrix per scoring level below."""
     import matplotlib.pyplot as plt
+
     figure = plt.figure(figsize=(4.4 * len(levels), 6.2), dpi=90)
     grid = figure.add_gridspec(2, len(levels), height_ratios=[1, 4.2])
     top = figure.add_subplot(grid[0, :])
     top.axis("off")
     columns = ["tested", *METRICS]
-    cells = [[f"{block['test_units']:,}", *(f"{block[k]:.3f}" for k in METRICS)] for block in levels.values()]
-    table = top.table(cellText=cells, rowLabels=list(levels), colLabels=columns, loc="center", cellLoc="center")
+    cells = [
+        [f"{block['test_units']:,}", *(f"{block[k]:.3f}" for k in METRICS)]
+        for block in levels.values()
+    ]
+    table = top.table(
+        cellText=cells, rowLabels=list(levels), colLabels=columns, loc="center", cellLoc="center"
+    )
     table.auto_set_font_size(False)
     table.set_fontsize(9)
     table.scale(1, 1.3)
@@ -643,6 +1194,7 @@ def _levels_figure(levels: dict, labels: list, title: str) -> None:
 
 def _draw_image_matrix(axis, block, labels, title, level="every test image"):
     import numpy as np
+
     array = np.asarray(block["confusion_matrix"])
     axis.imshow(array, cmap="Blues", vmin=0)
     axis.set_xticks(range(len(labels)), labels, rotation=30, fontsize=8)
@@ -650,27 +1202,44 @@ def _draw_image_matrix(axis, block, labels, title, level="every test image"):
     axis.set_xlabel("Predicted")
     axis.set_ylabel("Actual")
     prefix = f"{level}: " if level else ""
-    axis.set_title(f"{title}\n{prefix}{block['test_units']:,} tested, accuracy {block['accuracy']:.3f}", fontsize=9)
+    axis.set_title(
+        f"{title}\n{prefix}{block['test_units']:,} tested, accuracy {block['accuracy']:.3f}",
+        fontsize=9,
+    )
     for i in range(len(labels)):
         for j in range(len(labels)):
-            axis.text(j, i, f"{array[i, j]:,}", ha="center", va="center", fontsize=8,
-                      color="white" if array[i, j] > array.max() / 2 else "black")
+            axis.text(
+                j,
+                i,
+                f"{array[i, j]:,}",
+                ha="center",
+                va="center",
+                fontsize=8,
+                color="white" if array[i, j] > array.max() / 2 else "black",
+            )
 
 
 def show_test_images(machine: str | None = None) -> None:
     """Confusion matrix over every test image of the fair-test CNN: one machine, or each of the six in turn
     (a separate image per machine) when machine is None."""
     import matplotlib.pyplot as plt
+
     machines = [(n, m) for n, m in _TEST_IMAGE_MACHINES if machine in (None, m)]
     found = [(n, m, r) for n, m in machines if (r := _preferred_cnn_result(m))]
     if not found:
-        print(f"No CNN result yet: run  python Models/{machine}.py cnn-pretrained")
+        print(
+            f"No CNN result yet: run  python Notebook/notebook_helpers.py {machine} cnn-pretrained"
+        )
         return
     for name, m, result in found:
         figure, axis = plt.subplots(figsize=(4.8, 4.6), dpi=100)
-        _draw_image_matrix(axis, result["image_level"], result["classes"],
-                           f"{name}: {result['images']:,} images, "
-                           f"{result['recording_level']['test_units']} test recordings")
+        _draw_image_matrix(
+            axis,
+            result["image_level"],
+            result["classes"],
+            f"{name}: {result['images']:,} images, "
+            f"{result['recording_level']['test_units']} test recordings",
+        )
         figure.tight_layout()
         plt.show()
 
@@ -681,7 +1250,10 @@ def show_drill_rig() -> None:
     if not result:
         print("No result yet: run  python Notebook/notebook_helpers.py drill_rig all")
         return
-    rows = {"validation-selected model (main result)": result["validation_selected"]["score"], **result["models"]}
+    rows = {
+        "validation-selected model (main result)": result["validation_selected"]["score"],
+        **result["models"],
+    }
     table = pd.DataFrame({name: metrics(block) for name, block in rows.items()}).T
     table.insert(0, "tested", [f"{block['test_units']} recordings" for block in rows.values()])
     display(table)
@@ -689,7 +1261,9 @@ def show_drill_rig() -> None:
     figure = ROOT / "Figures" / "drill_rig" / "drill_rig_csv_4class.png"
     if figure.exists():
         display(Image(filename=str(figure), width=480))
-    print(f"{result['recordings']} recordings, {result['windows']:,} windows. Caveat: {result['caveat']}")
+    print(
+        f"{result['recordings']} recordings, {result['windows']:,} windows. Caveat: {result['caveat']}"
+    )
 
 
 def show_drill_rig_cnn() -> None:
@@ -697,19 +1271,29 @@ def show_drill_rig_cnn() -> None:
     raw, gears = load("drill_rig_cnn_raw_4class.json"), load("drill_rig_cnn_images_4class.json")
     rows = {}
     if raw:
-        rows["Sensor: 1D CNN on raw vibration"] = {**metrics(raw["score"]),
-                                                   "tested": f"{raw['score']['test_units']} recordings"}
+        rows["Sensor: 1D CNN on raw vibration"] = {
+            **metrics(raw["score"]),
+            "tested": f"{raw['score']['test_units']} recordings",
+        }
     if gears:
-        rows["Camera: ResNet-18, per gear (2 views)"] = {**metrics(gears["gear_level"]),
-                                                         "tested": f"{gears['gear_level']['test_units']} gears"}
-        rows["Camera: ResNet-18, per image"] = {**metrics(gears["image_level"]),
-                                                "tested": f"{gears['image_level']['test_units']} images"}
+        rows["Camera: ResNet-18, per gear (2 views)"] = {
+            **metrics(gears["gear_level"]),
+            "tested": f"{gears['gear_level']['test_units']} gears",
+        }
+        rows["Camera: ResNet-18, per image"] = {
+            **metrics(gears["image_level"]),
+            "tested": f"{gears['image_level']['test_units']} images",
+        }
     if not rows:
-        print("No result yet: run  python Notebook/notebook_helpers.py drill_rig cnn  (and images, cnn-images)")
+        print(
+            "No result yet: run  python Notebook/notebook_helpers.py drill_rig cnn  (and images, cnn-images)"
+        )
         return
     display(pd.DataFrame(rows).T)
     if gears:
-        display(pd.DataFrame(gears["folds"])[["held_out_designs", "epochs", "test_gears", "accuracy"]])
+        display(
+            pd.DataFrame(gears["folds"])[["held_out_designs", "epochs", "test_gears", "accuracy"]]
+        )
     for name in ("drill_rig_cnn_raw_4class.png", "drill_rig_cnn_images_4class.png"):
         figure = ROOT / "Figures" / "drill_rig" / name
         if figure.exists():
@@ -724,11 +1308,16 @@ def show_thermal_motor() -> None:
     if not result:
         print("No result yet: run  python Notebook/notebook_helpers.py excavator thermal-motor")
         return
-    levels = {"every test image": result["image_level"], "per 1/10 session segment": result["segment_level"],
-              "per whole session": result["session_level"],
-              "control: brightness only (per image)": result["brightness_control_image_level"]}
+    levels = {
+        "every test image": result["image_level"],
+        "per 1/10 session segment": result["segment_level"],
+        "per whole session": result["session_level"],
+        "control: brightness only (per image)": result["brightness_control_image_level"],
+    }
     if "border_only_control_image_level" in result:
-        levels["control: border only, motor hidden (per image)"] = result["border_only_control_image_level"]
+        levels["control: border only, motor hidden (per image)"] = result[
+            "border_only_control_image_level"
+        ]
     table = pd.DataFrame({name: metrics(block) for name, block in levels.items()}).T
     table.insert(0, "tested", [f"{block['test_units']:,}" for block in levels.values()])
     display(table)
@@ -737,6 +1326,7 @@ def show_thermal_motor() -> None:
     if figure.exists():
         import io
         from PIL import Image as PILImage
+
         buffer = io.BytesIO()
         picture = PILImage.open(figure).convert("RGB")
         picture.thumbnail((1000, 1000))
@@ -748,8 +1338,12 @@ def show_thermal_motor() -> None:
 def save_test_image_counts() -> Path:
     """Recreate the notebook's held-out image-count chart from saved evaluations."""
     import matplotlib.pyplot as plt
-    found = [(name, result) for name, machine in _TEST_IMAGE_MACHINES
-             if (result := _preferred_cnn_result(machine))]
+
+    found = [
+        (name, result)
+        for name, machine in _TEST_IMAGE_MACHINES
+        if (result := _preferred_cnn_result(machine))
+    ]
     if not found:
         raise ValueError("No saved held-out image evaluations are available")
     figure, axis = plt.subplots(figsize=(10, 5))
@@ -761,9 +1355,14 @@ def save_test_image_counts() -> Path:
     axis.set_xlabel("Number of held-out test images")
     axis.set_title("Images tested for each equipment mapping")
     axis.spines[["top", "right"]].set_visible(False)
-    figure.text(.5, .015, "Frames from the same recording are related. Dozer reuses the Belt Conveyor benchmark.",
-                ha="center", fontsize=9)
-    figure.tight_layout(rect=(0, .05, 1, 1))
+    figure.text(
+        0.5,
+        0.015,
+        "Frames from the same recording are related. Dozer reuses the Belt Conveyor benchmark.",
+        ha="center",
+        fontsize=9,
+    )
+    figure.tight_layout(rect=(0, 0.05, 1, 1))
     path = ROOT / "Figures" / "test_image_counts.png"
     figure.savefig(path, dpi=160)
     plt.close(figure)
@@ -773,31 +1372,1031 @@ def save_test_image_counts() -> Path:
 def save_test_image_result_graphs() -> None:
     """Recreate image counts and performance graphs from the saved held-out evaluations."""
     import matplotlib.pyplot as plt
-    root=ROOT;machines=('pump','haul_truck','belt_conveyor','excavator','dozer','wheel_loader')
+
+    root = ROOT
+    machines = ("pump", "haul_truck", "belt_conveyor", "excavator", "dozer", "wheel_loader")
     for m in machines:
-     folder=root/'Results'/m
-     p=next(folder/f'{m}_cnn_pretrained_4class{s}.json' for s in ('_denseframes','_allframes','') if (folder/f'{m}_cnn_pretrained_4class{s}.json').exists())
-     r=json.loads(p.read_text());b=r['image_level'];matrix=b['confusion_matrix'];correct=sum(row[i] for i,row in enumerate(matrix));total=b['test_units'];wrong=total-correct
-     fig,axes=plt.subplots(1,2,figsize=(10,4.5))
-     bars=axes[0].bar(['Tested','Correct','Incorrect'],[total,correct,wrong],color=['#2878a5','#33865a','#bf5656'])
-     axes[0].bar_label(bars,labels=[f'{n:,}' for n in (total,correct,wrong)],padding=5)
-     axes[0].set_ylim(0,total*1.18);axes[0].set_ylabel('Number of held-out test images')
-     keys=('accuracy','macro_precision','macro_recall','macro_f1');vals=[b[k]*100 for k in keys]
-     bars=axes[1].bar(['Accuracy','Precision','Recall','F1'],vals,color='#2878a5')
-     axes[1].bar_label(bars,labels=[f'{v:.1f}%' for v in vals],padding=5)
-     axes[1].set_ylim(0,115);axes[1].set_ylabel('Image-level performance (%)')
-     for ax in axes:ax.spines[['top','right']].set_visible(False)
-     fig.suptitle(f"{m.replace('_',' ').title()}: {total:,} held-out test images from {r['recording_level']['test_units']} recordings")
-     fig.text(.5,.015,'Frames from the same recording are related. Precision, recall and F1 are macro averages.',ha='center',fontsize=9)
-     fig.tight_layout(rect=(0,.05,1,.95));fig.savefig(root/'Figures'/m/f'{m}_test_image_results.png',dpi=150);plt.close(fig)
+        folder = root / "Results" / m
+        p = next(
+            folder / f"{m}_cnn_pretrained_4class{s}.json"
+            for s in ("_denseframes", "_allframes", "")
+            if (folder / f"{m}_cnn_pretrained_4class{s}.json").exists()
+        )
+        r = json.loads(p.read_text())
+        b = r["image_level"]
+        matrix = b["confusion_matrix"]
+        correct = sum(row[i] for i, row in enumerate(matrix))
+        total = b["test_units"]
+        wrong = total - correct
+        fig, axes = plt.subplots(1, 2, figsize=(10, 4.5))
+        bars = axes[0].bar(
+            ["Tested", "Correct", "Incorrect"],
+            [total, correct, wrong],
+            color=["#2878a5", "#33865a", "#bf5656"],
+        )
+        axes[0].bar_label(bars, labels=[f"{n:,}" for n in (total, correct, wrong)], padding=5)
+        axes[0].set_ylim(0, total * 1.18)
+        axes[0].set_ylabel("Number of held-out test images")
+        keys = ("accuracy", "macro_precision", "macro_recall", "macro_f1")
+        vals = [b[k] * 100 for k in keys]
+        bars = axes[1].bar(["Accuracy", "Precision", "Recall", "F1"], vals, color="#2878a5")
+        axes[1].bar_label(bars, labels=[f"{v:.1f}%" for v in vals], padding=5)
+        axes[1].set_ylim(0, 115)
+        axes[1].set_ylabel("Image-level performance (%)")
+        for ax in axes:
+            ax.spines[["top", "right"]].set_visible(False)
+        fig.suptitle(
+            f"{m.replace('_',' ').title()}: {total:,} held-out test images from {r['recording_level']['test_units']} recordings"
+        )
+        fig.text(
+            0.5,
+            0.015,
+            "Frames from the same recording are related. Precision, recall and F1 are macro averages.",
+            ha="center",
+            fontsize=9,
+        )
+        fig.tight_layout(rect=(0, 0.05, 1, 0.95))
+        fig.savefig(root / "Figures" / m / f"{m}_test_image_results.png", dpi=150)
+        plt.close(fig)
 
 
 # PUMP MODEL IMPLEMENTATION
-#endregion
+# endregion
 
-#region Pump: data, preprocessing, models and evaluation
+
+# region Excavator binary follow-up
+
+
+def run_excavator_binary():
+    """Try Healthy vs Faulty using nested, whole-speed-held-out evaluation.
+
+    A separate exploratory experiment: no four-class result is overwritten.
+    ImageNet features are frozen; only the classifiers are fitted here.
+    """
+    import hashlib
+    import cv2
+    import numpy as np
+    import torch
+    from PIL import Image as PILImage
+    from sklearn.ensemble import RandomForestClassifier
+    from sklearn.linear_model import LogisticRegression
+    from sklearn.pipeline import make_pipeline
+    from sklearn.preprocessing import StandardScaler
+    from sklearn.metrics import balanced_accuracy_score, f1_score, classification_report
+    from torchvision.models import ResNet18_Weights, resnet18
+
+    labels = ["healthy", "faulty"]
+    speeds = ["F5", "F15", "F50", "F60"]
+    output = RESULTS / "excavator" / "excavator_binary_condition.json"
+    cache_folder = PROCESSED / "excavator_binary"
+    cache_folder.mkdir(parents=True, exist_ok=True)
+    plan = {
+        "target": "healthy versus faulty (bearing, unbalance and misalignment combined)",
+        "outer_test": "leave one entire speed out, four folds; no shared recording between train/test",
+        "inner_validation": "leave one of the three training speeds out; select feature set, classifier and threshold",
+        "primary_selection_metric": "recording-level balanced accuracy, then macro F1",
+        "classifiers": [
+            "Logistic regression C=0.1",
+            "Logistic regression C=1",
+            "Logistic regression C=10",
+            "Random forest 100 trees",
+        ],
+        "thresholds": [0.35, 0.5, 0.65],
+        "image_features": "frozen ImageNet ResNet18; full-frame or fixed central 75% crop, selected within training only",
+        "sensor_features": "existing raw order-domain features; all or shape-only (excluding log_rms)",
+        "excluded": "per-speed-normalized CSV columns (would use the held-out distribution)",
+        "scope": "16 CORA laboratory stationary runs, not an actual excavator; no new independent recordings added",
+        "status": "exploratory benchmark reanalysis; these outer recordings have been evaluated in earlier experiments",
+        "baseline": "75% accuracy by always predicting faulty; 50% balanced accuracy",
+    }
+    (cache_folder / "plan.json").write_text(json.dumps(plan, indent=2) + "\n")
+
+    sensor = load_csv(PROCESSED / "excavator_sensor_features_4class.csv")
+    columns = get_model("excavator").csv(run=False)["VIB_NAMES"]
+    sensor_features = {
+        "all_order_features": sensor[columns].to_numpy(dtype=np.float64),
+        "shape_only": sensor[[c for c in columns if c != "log_rms"]].to_numpy(dtype=np.float64),
+    }
+    image_folder = IMAGE_DATA / "excavator"
+    index_path = image_folder / "index.csv"
+    image_index = load_csv(index_path)
+    image_index = image_index.rename(columns={"group": "speed"})
+    for table in (sensor, image_index):
+        table["target"] = np.where(table["class"] == "healthy", "healthy", "faulty")
+        if set(table["speed"]) != set(speeds) or table["unit"].nunique() != 16:
+            raise ValueError("Expected exactly 16 recordings at four speeds")
+        if table.groupby("unit")["target"].nunique().max() != 1:
+            raise ValueError("A recording has mixed condition labels")
+    if set(sensor["unit"]) != set(image_index["unit"]):
+        raise ValueError("Sensor and image recording manifests do not match")
+
+    checkpoint = Path(torch.hub.get_dir()) / "checkpoints/resnet18-f37072fd.pth"
+    if not checkpoint.is_file():
+        raise FileNotFoundError(
+            "The existing local ResNet18 checkpoint is required; no automatic download"
+        )
+    digest = hashlib.sha256(index_path.read_bytes() + b"full-and-central75-imagenet-v1")
+    for filename in image_index["file"]:
+        stat = (image_folder / filename).stat()
+        digest.update(f"{filename}:{stat.st_size}:{stat.st_mtime_ns}".encode())
+    fingerprint = digest.hexdigest()
+    feature_cache = cache_folder / "resnet18_features.npz"
+    image_features = None
+    if feature_cache.is_file():
+        with np.load(feature_cache, allow_pickle=False) as saved:
+            if str(saved["fingerprint"]) == fingerprint:
+                image_features = {
+                    "full_frame": saved["full_frame"],
+                    "central_crop": saved["central_crop"],
+                }
+    if image_features is None:
+        device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
+        network = resnet18(weights=None)
+        network.load_state_dict(torch.load(checkpoint, map_location="cpu", weights_only=True))
+        encoder = torch.nn.Sequential(*list(network.children())[:-1]).to(device).eval()
+        transform = ResNet18_Weights.IMAGENET1K_V1.transforms()
+        image_features = {}
+        for view in ("full_frame", "central_crop"):
+            batches = []
+            for start in range(0, len(image_index), 32):
+                images = []
+                for filename in image_index["file"].iloc[start : start + 32]:
+                    image = cv2.imread(str(image_folder / filename))
+                    if image is None:
+                        raise ValueError(f"Unreadable image: {filename}")
+                    if view == "central_crop":
+                        height, width = image.shape[:2]
+                        image = image[
+                            height // 8 : height - height // 8, width // 8 : width - width // 8
+                        ]
+                    image = PILImage.fromarray(cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
+                    images.append(transform(image))
+                with torch.inference_mode():
+                    encoded = encoder(torch.stack(images).to(device)).flatten(1).cpu().numpy()
+                batches.append(encoded)
+                if start % 320 == 0:
+                    print(
+                        f"Image features ({view}): {min(start+32,len(image_index))}/{len(image_index)}",
+                        flush=True,
+                    )
+            image_features[view] = np.concatenate(batches)
+        np.savez_compressed(feature_cache, fingerprint=fingerprint, **image_features)
+        del encoder, network
+        if device.type == "mps":
+            torch.mps.empty_cache()
+
+    candidates = {
+        f"Logistic regression C={c:g}": (
+            lambda c=c: make_pipeline(
+                StandardScaler(),
+                LogisticRegression(
+                    C=c, class_weight="balanced", solver="liblinear", max_iter=2000, random_state=42
+                ),
+            )
+        )
+        for c in (0.1, 1.0, 10.0)
+    }
+    candidates["Random forest"] = lambda: RandomForestClassifier(
+        n_estimators=100,
+        min_samples_leaf=3,
+        class_weight="balanced_subsample",
+        random_state=42,
+        n_jobs=-1,
+    )
+
+    def recording_predictions(scores, table, threshold):
+        frame = pd.DataFrame(
+            {
+                "unit": table["unit"].to_numpy(),
+                "actual": table["target"].to_numpy(),
+                "fault_score": scores,
+            }
+        )
+        grouped = frame.groupby("unit", sort=True).agg(
+            actual=("actual", "first"), fault_score=("fault_score", "mean")
+        )
+        grouped["predicted"] = np.where(grouped["fault_score"] >= threshold, "faulty", "healthy")
+        return grouped.reset_index()
+
+    def fault_scores(model, x):
+        column = list(model.classes_).index("faulty")
+        return model.predict_proba(x)[:, column]
+
+    def metrics(actual, predicted):
+        result = classification_metrics(actual, predicted, labels)
+        result["per_class"] = classification_report(
+            actual, predicted, labels=labels, output_dict=True, zero_division=0
+        )
+        return result
+
+    result = {"machine": "excavator", "classes": labels, "plan": plan, "modalities": {}}
+    for modality, table, feature_sets in (
+        ("sensor", sensor, sensor_features),
+        ("visual", image_index, image_features),
+    ):
+        if not all(np.isfinite(x).all() for x in feature_sets.values()):
+            raise ValueError("Invalid feature values")
+        test_records, test_samples, folds = [], [], []
+        for test_speed in speeds:
+            train = table["speed"].to_numpy() != test_speed
+            test = ~train
+            if set(table.loc[train, "unit"]) & set(table.loc[test, "unit"]):
+                raise ValueError("Recording leakage")
+            best = None
+            for feature_name, x in feature_sets.items():
+                for model_name, factory in candidates.items():
+                    validation = []
+                    for validation_speed in [s for s in speeds if s != test_speed]:
+                        fit = train & (table["speed"].to_numpy() != validation_speed)
+                        check = train & ~fit
+                        model = factory().fit(x[fit], table.loc[fit, "target"])
+                        scores = fault_scores(model, x[check])
+                        validation.append((scores, table.loc[check]))
+                    for threshold in plan["thresholds"]:
+                        validation_rows = pd.concat(
+                            [recording_predictions(p, t, threshold) for p, t in validation]
+                        )
+                        quality = (
+                            balanced_accuracy_score(
+                                validation_rows["actual"], validation_rows["predicted"]
+                            ),
+                            f1_score(
+                                validation_rows["actual"],
+                                validation_rows["predicted"],
+                                labels=labels,
+                                average="macro",
+                                zero_division=0,
+                            ),
+                        )
+                        if best is None or quality > best[0]:
+                            best = (quality, feature_name, model_name, threshold)
+            quality, feature_name, model_name, threshold = best
+            model = candidates[model_name]().fit(
+                feature_sets[feature_name][train], table.loc[train, "target"]
+            )
+            scores = fault_scores(model, feature_sets[feature_name][test])
+            recordings = recording_predictions(scores, table.loc[test], threshold)
+            recordings["speed"] = test_speed
+            recordings["modality"] = modality
+            test_records.append(recordings)
+            sample_columns = ["unit", "class", "target", "speed"]
+            sample_columns += [name for name in ("file", "window") if name in table]
+            sample = table.loc[test, sample_columns].copy()
+            sample["fault_score"] = scores
+            sample["predicted"] = np.where(scores >= threshold, "faulty", "healthy")
+            test_samples.append(sample)
+            folds.append(
+                {
+                    "held_out_speed": test_speed,
+                    "feature_set": feature_name,
+                    "model": model_name,
+                    "threshold": threshold,
+                    "validation_balanced_accuracy": float(quality[0]),
+                    "test_recordings": len(recordings),
+                }
+            )
+            print(
+                f"{modality}: completed held-out {test_speed}; choice from training-only validation: {model_name}, {feature_name}",
+                flush=True,
+            )
+        recordings = pd.concat(test_records, ignore_index=True)
+        samples = pd.concat(test_samples, ignore_index=True)
+        recordings.to_csv(cache_folder / f"{modality}_heldout_recordings.csv", index=False)
+        samples.to_csv(cache_folder / f"{modality}_heldout_samples.csv", index=False)
+        recording_score = metrics(recordings["actual"], recordings["predicted"])
+        sample_score = metrics(samples["target"], samples["predicted"])
+        result["modalities"][modality] = {
+            "recording_level": recording_score,
+            "sample_level": sample_score,
+            "sample_unit": "sensor window" if modality == "sensor" else "thermal image",
+            "folds": folds,
+            "majority_recording_baseline": metrics(
+                recordings["actual"], ["faulty"] * len(recordings)
+            ),
+            "heldout_recordings": recordings.to_dict("records"),
+            "target_met_recording_accuracy": recording_score["accuracy"] >= 0.8,
+            "target_met_recording_balanced_accuracy": recording_score["balanced_accuracy"] >= 0.8,
+        }
+    result["provenance"] = {
+        "sensor_csv_sha256": hashlib.sha256(
+            (PROCESSED / "excavator_sensor_features_4class.csv").read_bytes()
+        ).hexdigest(),
+        "image_index_sha256": hashlib.sha256(index_path.read_bytes()).hexdigest(),
+        "image_features_signature": fingerprint,
+        "encoder_checkpoint": checkpoint.name,
+        "encoder_sha256": hashlib.sha256(checkpoint.read_bytes()).hexdigest(),
+        "images": len(image_index),
+        "recordings": int(image_index["unit"].nunique()),
+    }
+    result["limits"] = [
+        "Binary condition monitoring is not four-class fault diagnosis or remaining-life prediction.",
+        "Only four healthy runs and twelve faulty runs; classes are imbalanced 1:3.",
+        "Repeated frames/windows are correlated; the recording is the primary evaluation unit.",
+        "CORA is one laboratory rig; thermal framing/session confounds may remain even after central cropping.",
+        "Prior analysis has exposed these benchmark recordings; independent new recordings are required for confirmatory evidence.",
+    ]
+    output.write_text(json.dumps(result, indent=2) + "\n")
+    import matplotlib.pyplot as plt
+
+    figure, axes = plt.subplots(1, 3, figsize=(13, 4.6))
+    panels = [
+        ("Sensor: 16 held-out recordings", result["modalities"]["sensor"]["recording_level"]),
+        ("Thermal: 16 held-out recordings", result["modalities"]["visual"]["recording_level"]),
+        ("Thermal: individual images", result["modalities"]["visual"]["sample_level"]),
+    ]
+    for axis, (title, block) in zip(axes, panels):
+        _draw_image_matrix(axis, block, labels, title, level="test units")
+    figure.tight_layout()
+    figure.savefig(ROOT / "Figures/excavator/excavator_binary_condition.png", dpi=140)
+    plt.close(figure)
+    print("Saved Results/excavator/excavator_binary_condition.json", flush=True)
+    return result
+
+
+# endregion
+
+
+def run_excavator_recording_followup():
+    """Exploratory binary diagnosis from complete-recording patterns and controls."""
+    import hashlib
+    import cv2
+    import numpy as np
+    from scipy.io import loadmat
+    from sklearn.ensemble import ExtraTreesClassifier, RandomForestClassifier
+    from sklearn.linear_model import LogisticRegression
+    from sklearn.metrics import balanced_accuracy_score, f1_score, classification_report
+    from sklearn.pipeline import make_pipeline
+    from sklearn.preprocessing import StandardScaler
+    from sklearn.svm import SVC
+
+    labels, speeds = ["healthy", "faulty"], ["F5", "F15", "F50", "F60"]
+    folder = PROCESSED / "excavator_recording_followup"
+    folder.mkdir(parents=True, exist_ok=True)
+    plan = {
+        "target": "Healthy vs Faulty (bearing/unbalance/misalignment), same 16 existing CORA runs",
+        "primary_unit": "one complete recording, not a frame/window",
+        "test": "four outer folds holding out a complete speed; inner validation holds out training speeds",
+        "selection": "inner recording balanced accuracy, then macro F1; no outer-score-based model choice",
+        "sensor_features": "within-run median, IQR and temporal changes of existing raw vibration order features; no per-speed normalization",
+        "visual_features": "fixed equipment ROI contrast relative to background, full-record temporal changes; or frozen CNN feature mean and drift",
+        "background_control": "same nested evaluation, background-only thermal intensity/variation; high control scores flag session confounding",
+        "scope": "exploratory repeated use of previously analyzed recordings; no new independent evidence",
+        "seed": 613,
+        "majority_accuracy": 0.75,
+    }
+    (folder / "plan.json").write_text(json.dumps(plan, indent=2) + "\n")
+    sensor_path = PROCESSED / "excavator_sensor_features_4class.csv"
+    sensor = load_csv(sensor_path)
+    names = get_model("excavator").csv(run=False)["VIB_NAMES"]
+    meta = (
+        sensor.groupby("unit", sort=True)
+        .agg(source_class=("class", "first"), speed=("speed", "first"))
+        .reset_index()
+    )
+    if len(meta) != 16 or set(meta["speed"]) != set(speeds):
+        raise ValueError("Unexpected recording manifest")
+    y = np.where(meta["source_class"] == "healthy", "healthy", "faulty")
+
+    def summarize(series):
+        series = np.asarray(series, dtype=np.float64)
+        third = max(1, len(series) // 3)
+        t = np.linspace(-0.5, 0.5, len(series))
+        return np.concatenate(
+            [
+                np.median(series, axis=0),
+                np.percentile(series, 75, axis=0) - np.percentile(series, 25, axis=0),
+                series[-third:].mean(axis=0) - series[:third].mean(axis=0),
+                t @ series / (t @ t),
+            ]
+        )
+
+    sensor_rows = []
+    for unit in meta["unit"]:
+        part = sensor[sensor["unit"] == unit].sort_values("window")
+        sensor_rows.append(summarize(part[names].to_numpy()))
+    sx = np.stack(sensor_rows)
+    shape_columns = [
+        i
+        for k in range(4)
+        for i in range(k * len(names), (k + 1) * len(names))
+        if names[i % len(names)] != "log_rms"
+    ]
+    sensor_sets = {
+        "median_order_features": sx[:, : len(names)],
+        "distribution_and_drift": sx,
+        "shape_only_distribution_and_drift": sx[:, shape_columns],
+    }
+
+    # Regions were fixed before scoring from the rig geometry, not class labels.
+    rois = [
+        (slice(65, 155), slice(25, 160)),
+        (slice(65, 155), slice(165, 245)),
+        (slice(65, 155), slice(250, 315)),
+    ]
+    thermal_rows, background_rows, raw_hashes = [], [], {}
+    frame_count = 0
+    for unit in meta["unit"]:
+        raw_folder = "cora_gear_wear" if unit.startswith("H_") else "cora_drive_faults"
+        source = RAW_DATA / raw_folder / f"{unit}.mat"
+        raw_hashes[str(source.relative_to(ROOT))] = hashlib.sha256(source.read_bytes()).hexdigest()
+        cells = loadmat(source, variable_names=["imagenes_celda"])["imagenes_celda"]
+        if cells.size != 450:
+            raise ValueError("Expected 450 native thermal frames per recording")
+        gray = np.stack([cv2.cvtColor(np.asarray(f), cv2.COLOR_RGB2GRAY) for f in cells.flat])
+        frame_count += len(gray)
+        background = gray[:, 175:215, 15:305].astype(np.float32)
+        bmean, bstd = background.mean(axis=(1, 2)), background.std(axis=(1, 2))
+        scale = gray.std(axis=(1, 2)) + 1e-6
+        curves = []
+        for rows, cols in rois:
+            roi = gray[:, rows, cols].astype(np.float32)
+            curves += [
+                (roi.mean(axis=(1, 2)) - bmean) / scale,
+                roi.std(axis=(1, 2)) / scale,
+                (np.percentile(roi, 90, axis=(1, 2)) - bmean) / scale,
+            ]
+        thermal_rows.append(summarize(np.asarray(curves).T))
+        background_rows.append(summarize(np.column_stack([bmean, bstd])))
+        print(f"Native thermal recording processed: {unit}", flush=True)
+    thermal_sets = {"relative_ROI_distribution_and_drift": np.stack(thermal_rows)}
+    # Reuse the already-computed frozen encoder; do not rerun the image experiment.
+    index_path = IMAGE_DATA / "excavator/index.csv"
+    index = load_csv(index_path)
+    signature = hashlib.sha256(index_path.read_bytes() + b"full-and-central75-imagenet-v1")
+    for filename in index["file"]:
+        stat = (index_path.parent / filename).stat()
+        signature.update(f"{filename}:{stat.st_size}:{stat.st_mtime_ns}".encode())
+    with np.load(PROCESSED / "excavator_binary/resnet18_features.npz", allow_pickle=False) as cache:
+        if str(cache["fingerprint"]) != signature.hexdigest():
+            raise ValueError("Image feature cache does not match the current source images")
+        embedding_rows = []
+        for unit in meta["unit"]:
+            part = cache["central_crop"][index["unit"].to_numpy() == unit]
+            embedding_rows.append(
+                np.concatenate(
+                    [part.mean(axis=0), part[-50:].mean(axis=0) - part[:50].mean(axis=0)]
+                )
+            )
+        thermal_sets["central_CNN_mean_and_drift"] = np.stack(embedding_rows)
+    np.savez_compressed(
+        folder / "recording_features.npz",
+        sensor=sx,
+        thermal=thermal_sets["relative_ROI_distribution_and_drift"],
+        background=np.stack(background_rows),
+    )
+
+    candidates = {}
+    for c in (0.01, 0.1, 1.0):
+        candidates[f"Logistic C={c}"] = lambda c=c: make_pipeline(
+            StandardScaler(),
+            LogisticRegression(
+                C=c, class_weight="balanced", solver="liblinear", max_iter=3000, random_state=613
+            ),
+        )
+    for c in (0.1, 1.0, 10.0):
+        candidates[f"RBF SVM C={c}"] = lambda c=c: make_pipeline(
+            StandardScaler(), SVC(C=c, class_weight="balanced", random_state=613)
+        )
+    candidates["Random forest"] = lambda: RandomForestClassifier(
+        n_estimators=100, min_samples_leaf=1, class_weight="balanced", random_state=613, n_jobs=-1
+    )
+    candidates["Extra trees"] = lambda: ExtraTreesClassifier(
+        n_estimators=100, class_weight="balanced", random_state=613, n_jobs=-1
+    )
+
+    def evaluate(feature_sets, name):
+        predictions = np.empty(len(y), dtype=object)
+        folds = []
+        for test_speed in speeds:
+            test = meta["speed"].to_numpy() == test_speed
+            train = ~test
+            best = None
+            for feature_name, x in feature_sets.items():
+                if not np.isfinite(x).all():
+                    raise ValueError("Invalid features")
+                for model_name, factory in candidates.items():
+                    actual, guesses = [], []
+                    for check_speed in [s for s in speeds if s != test_speed]:
+                        check = train & (meta["speed"].to_numpy() == check_speed)
+                        fit = train & ~check
+                        model = factory().fit(x[fit], y[fit])
+                        actual.extend(y[check])
+                        guesses.extend(model.predict(x[check]))
+                    quality = (
+                        balanced_accuracy_score(actual, guesses),
+                        f1_score(actual, guesses, labels=labels, average="macro", zero_division=0),
+                    )
+                    if best is None or quality > best[0]:
+                        best = (quality, feature_name, model_name)
+            quality, feature_name, model_name = best
+            model = candidates[model_name]().fit(feature_sets[feature_name][train], y[train])
+            predictions[test] = model.predict(feature_sets[feature_name][test])
+            folds.append(
+                {
+                    "test_speed": test_speed,
+                    "training_speeds": [s for s in speeds if s != test_speed],
+                    "features": feature_name,
+                    "model": model_name,
+                    "inner_balanced_accuracy": float(quality[0]),
+                }
+            )
+            print(f"{name}: held-out {test_speed} complete", flush=True)
+        score = classification_metrics(y, predictions, labels)
+        score["per_class"] = classification_report(
+            y, predictions, labels=labels, output_dict=True, zero_division=0
+        )
+        records = meta.assign(actual=y, predicted=predictions)
+        records.to_csv(folder / f"{name}_predictions.csv", index=False)
+        return {"recording_level": score, "folds": folds, "predictions": records.to_dict("records")}
+
+    result = {
+        "classes": labels,
+        "plan": plan,
+        "visual_source_frames": frame_count,
+        "source_recordings": 16,
+        "source_hashes": raw_hashes,
+        "sensor_csv_sha256": hashlib.sha256(sensor_path.read_bytes()).hexdigest(),
+    }
+    for name, features in [
+        ("sensor", sensor_sets),
+        ("visual", thermal_sets),
+        ("background_only_control", {"background": np.stack(background_rows)}),
+    ]:
+        result[name] = evaluate(features, name)
+    result["both_modalities_reach_80_accuracy_and_balanced_accuracy"] = all(
+        result[m]["recording_level"][k] >= 0.8
+        for m in ("sensor", "visual")
+        for k in ("accuracy", "balanced_accuracy")
+    )
+    output = RESULTS / "excavator/excavator_binary_recording_followup.json"
+    output.write_text(json.dumps(result, indent=2) + "\n")
+    import matplotlib.pyplot as plt
+
+    fig, axes = plt.subplots(1, 3, figsize=(13, 4.6))
+    for axis, key in zip(axes, ["sensor", "visual", "background_only_control"]):
+        _draw_image_matrix(
+            axis, result[key]["recording_level"], labels, key.replace("_", " "), level="recordings"
+        )
+    fig.tight_layout()
+    fig.savefig(ROOT / "Figures/excavator/excavator_binary_recording_followup.png", dpi=140)
+    plt.close(fig)
+    print("Saved", output.relative_to(ROOT), flush=True)
+    return result
+
+
+def run_excavator_speed_reference():
+    """Binary sensor follow-up: normal operating-speed trend fitted on healthy training runs."""
+    import numpy as np
+    from sklearn.base import BaseEstimator, TransformerMixin
+    from sklearn.ensemble import ExtraTreesClassifier, RandomForestClassifier
+    from sklearn.linear_model import LogisticRegression
+    from sklearn.pipeline import make_pipeline
+    from sklearn.preprocessing import StandardScaler
+    from sklearn.svm import SVC
+    from sklearn.metrics import balanced_accuracy_score, f1_score, classification_report
+
+    labels, speeds = ["healthy", "faulty"], ["F5", "F15", "F50", "F60"]
+    folder = PROCESSED / "excavator_speed_reference"
+    folder.mkdir(parents=True, exist_ok=True)
+    plan = {
+        "target": "Healthy vs Faulty, 16 existing CORA recordings",
+        "features": "recording medians of the same 13 raw vibration-order features",
+        "normalization": "fit a linear trend in log(speed setting) for each feature, using healthy training recordings only; subtract it from each recording",
+        "validation": "leave one complete speed out; model selected by leave-one-training-speed-out balanced accuracy then macro F1",
+        "candidates": "balanced LR C=0.1/1/10, balanced RBF SVM C=0.1/1/10, RF100 and ExtraTrees100; random seed613",
+        "scope": "exploratory repeated benchmark use; training-only reference has only two healthy points in inner validation, so extrapolation is uncertain",
+    }
+    (folder / "plan.json").write_text(json.dumps(plan, indent=2) + "\n")
+    source = load_csv(PROCESSED / "excavator_sensor_features_4class.csv")
+    features = get_model("excavator").csv(run=False)["VIB_NAMES"]
+    grouped = source.groupby("unit", sort=True)
+    meta = grouped.agg(source_class=("class", "first"), speed=("speed", "first")).reset_index()
+    median = grouped[features].median().to_numpy()
+    x = np.column_stack([np.log([float(s[1:]) for s in meta["speed"]]), median])
+    y = np.where(meta["source_class"] == "healthy", "healthy", "faulty")
+
+    class HealthyReference(BaseEstimator, TransformerMixin):
+        def fit(self, x, y):
+            design = np.column_stack([np.ones(len(x)), x[:, 0]])
+            healthy = np.asarray(y) == "healthy"
+            if healthy.sum() < 2:
+                raise ValueError("Need two healthy training speeds")
+            self.coefficients_ = np.linalg.lstsq(design[healthy], x[healthy, 1:], rcond=None)[0]
+            return self
+
+        def transform(self, x):
+            design = np.column_stack([np.ones(len(x)), x[:, 0]])
+            return x[:, 1:] - design @ self.coefficients_
+
+    candidates = {}
+    for c in (0.1, 1.0, 10.0):
+        candidates[f"Logistic C={c}"] = lambda c=c: make_pipeline(
+            HealthyReference(),
+            StandardScaler(),
+            LogisticRegression(
+                C=c, class_weight="balanced", solver="liblinear", max_iter=3000, random_state=613
+            ),
+        )
+        candidates[f"RBF SVM C={c}"] = lambda c=c: make_pipeline(
+            HealthyReference(),
+            StandardScaler(),
+            SVC(C=c, class_weight="balanced", random_state=613),
+        )
+    candidates["Random forest"] = lambda: make_pipeline(
+        HealthyReference(),
+        RandomForestClassifier(
+            n_estimators=100, class_weight="balanced", random_state=613, n_jobs=-1
+        ),
+    )
+    candidates["Extra trees"] = lambda: make_pipeline(
+        HealthyReference(),
+        ExtraTreesClassifier(
+            n_estimators=100, class_weight="balanced", random_state=613, n_jobs=-1
+        ),
+    )
+    predicted = np.empty(len(y), dtype=object)
+    folds = []
+    for speed in speeds:
+        test = meta["speed"].to_numpy() == speed
+        train = ~test
+        best = None
+        for name, factory in candidates.items():
+            actual, guess = [], []
+            for check_speed in [s for s in speeds if s != speed]:
+                check = train & (meta["speed"].to_numpy() == check_speed)
+                fit = train & ~check
+                model = factory().fit(x[fit], y[fit])
+                actual.extend(y[check])
+                guess.extend(model.predict(x[check]))
+            quality = (
+                balanced_accuracy_score(actual, guess),
+                f1_score(actual, guess, labels=labels, average="macro", zero_division=0),
+            )
+            if best is None or quality > best[0]:
+                best = (quality, name)
+        quality, name = best
+        model = candidates[name]().fit(x[train], y[train])
+        predicted[test] = model.predict(x[test])
+        folds.append(
+            {
+                "held_out_speed": speed,
+                "model": name,
+                "validation_balanced_accuracy": float(quality[0]),
+                "reference_fitted_on_healthy_training_only": True,
+            }
+        )
+    score = classification_metrics(y, predicted, labels)
+    score["per_class"] = classification_report(
+        y, predicted, labels=labels, output_dict=True, zero_division=0
+    )
+    records = meta.assign(actual=y, predicted=predicted)
+    result = {
+        "classes": labels,
+        "plan": plan,
+        "recording_level": score,
+        "folds": folds,
+        "predictions": records.to_dict("records"),
+    }
+    (RESULTS / "excavator/excavator_binary_speed_reference.json").write_text(
+        json.dumps(result, indent=2) + "\n"
+    )
+    records.to_csv(folder / "predictions.csv", index=False)
+    save_confusion_matrix(
+        score["confusion_matrix"],
+        labels,
+        "Excavator binary: training-only healthy speed reference",
+        ROOT / "Figures/excavator/excavator_binary_speed_reference.png",
+    )
+    print("Speed-reference sensor result", score, flush=True)
+    return result
+
+
+def run_excavator_binary_cnn():
+    """Fine-tune equipment-region images; nested speed tests, separate binary result."""
+    import hashlib
+    import random
+    import cv2
+    import numpy as np
+    import torch
+    from sklearn.metrics import balanced_accuracy_score, f1_score, classification_report
+    from torchvision.models import resnet18
+
+    labels, speeds = ["healthy", "faulty"], ["F5", "F15", "F50", "F60"]
+    seed, epochs, batch_size, learning_rate = 613, 8, 32, 3e-4
+    cache = PROCESSED / "excavator_binary_cnn"
+    cache.mkdir(parents=True, exist_ok=True)
+    index_path = IMAGE_DATA / "excavator/index.csv"
+    rows = load_csv(index_path)
+    names = np.where(rows["class"].to_numpy() == "healthy", "healthy", "faulty")
+    y = np.where(names == "healthy", 0, 1)
+    units, groups = rows["unit"].to_numpy(), rows["group"].to_numpy()
+    if len(rows) != 2400 or len(set(units)) != 16:
+        raise ValueError("Expected the existing 2400 images from 16 source runs")
+    checkpoint = Path(torch.hub.get_dir()) / "checkpoints/resnet18-f37072fd.pth"
+    if not checkpoint.is_file():
+        raise FileNotFoundError("Local pretrained weights required")
+    signature = hashlib.sha256(
+        index_path.read_bytes() + b"binary-cnn-equipment-roi-v1-seed613-8epochs"
+    )
+    x = []
+    for filename in rows["file"]:
+        path = index_path.parent / filename
+        signature.update(path.read_bytes())
+        image = cv2.imread(str(path), cv2.IMREAD_GRAYSCALE)
+        # Native rig region y=65:155, x=15:315 mapped onto the 128x96 export.
+        height, width = image.shape
+        image = image[
+            round(height * 65 / 240) : round(height * 155 / 240),
+            round(width * 15 / 320) : round(width * 315 / 320),
+        ]
+        image = cv2.resize(image, (128, 96)).astype(np.float32)
+        image = (image - image.mean()) / (image.std() + 1e-6)
+        x.append(np.repeat(image[None], 3, axis=0))
+    x = np.stack(x)
+    fingerprint = signature.hexdigest()
+    plan = {
+        "target": "Healthy vs Faulty (bearing, unbalance, misalignment)",
+        "evaluation": "four whole-speed-held-out folds; epoch choice from leave-one-training-speed-out validation",
+        "selection_metric": "recording-level balanced accuracy, then macro F1; earliest epoch breaks ties",
+        "input": "2400 existing frames; fixed equipment strip (native y65:155,x15:315), resize128x96, per-image z-score, replicated RGB",
+        "model": "ImageNet ResNet18: only layer4 and fc trainable; earlier layers and their BatchNorm statistics frozen",
+        "training": {
+            "seed": seed,
+            "max_epochs": epochs,
+            "batch": batch_size,
+            "lr": learning_rate,
+            "optimizer": "AdamW, weight_decay1e-4",
+            "augmentation": "horizontal flip, 8px shift, intensity scale and Gaussian noise",
+        },
+        "scope": "exploratory third binary attempt on previously analyzed CORA recordings, no fresh independent confirmation",
+        "fingerprint": fingerprint,
+    }
+    (cache / "plan.json").write_text(json.dumps(plan, indent=2) + "\n")
+    device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
+    weights = torch.load(checkpoint, map_location="cpu", weights_only=True)
+
+    def probabilities(model, images):
+        model.eval()
+        output = []
+        with torch.inference_mode():
+            for start in range(0, len(images), 64):
+                batch = torch.from_numpy(images[start : start + 64]).to(device)
+                output.append(torch.softmax(model(batch), dim=1).cpu().numpy())
+        return np.concatenate(output)
+
+    def fit(fit_rows, count, check_rows=None):
+        random.seed(seed)
+        np.random.seed(seed)
+        torch.manual_seed(seed)
+        model = resnet18(weights=None)
+        model.load_state_dict(weights)
+        for parameter in model.parameters():
+            parameter.requires_grad = False
+        for parameter in model.layer4.parameters():
+            parameter.requires_grad = True
+        model.fc = torch.nn.Linear(model.fc.in_features, 2)
+        model = model.to(device)
+        optimizer = torch.optim.AdamW(
+            [p for p in model.parameters() if p.requires_grad], lr=learning_rate, weight_decay=1e-4
+        )
+        class_counts = np.bincount(y[fit_rows], minlength=2)
+        class_weights = torch.tensor(
+            len(fit_rows) / (2 * class_counts), dtype=torch.float32, device=device
+        )
+        loss_fn = torch.nn.CrossEntropyLoss(weight=class_weights)
+        generator = torch.Generator().manual_seed(seed)
+        curve = []
+        for epoch in range(count):
+            model.eval()
+            model.layer4.train()
+            model.fc.train()
+            order = torch.randperm(len(fit_rows), generator=generator).numpy()
+            total = 0.0
+            for start in range(0, len(order), batch_size):
+                chosen = fit_rows[order[start : start + batch_size]]
+                if len(chosen) < 2:
+                    continue
+                images = augment_event_images(torch.from_numpy(x[chosen]), generator).to(device)
+                truth = torch.from_numpy(y[chosen]).to(device)
+                optimizer.zero_grad(set_to_none=True)
+                loss = loss_fn(model(images), truth)
+                loss.backward()
+                optimizer.step()
+                total += float(loss.detach().cpu())
+            if check_rows is not None:
+                actual, predicted = predict_recordings(
+                    probabilities(model, x[check_rows]),
+                    np.asarray(labels),
+                    names[check_rows],
+                    units[check_rows],
+                )
+                curve.append(
+                    [
+                        float(balanced_accuracy_score(actual, predicted)),
+                        float(
+                            f1_score(
+                                actual, predicted, labels=labels, average="macro", zero_division=0
+                            )
+                        ),
+                    ]
+                )
+            print(
+                f"  epoch {epoch+1}/{count}, training loss {total/max(1,len(order)/batch_size):.4f}",
+                flush=True,
+            )
+        return model, curve
+
+    all_records, all_images, folds = [], [], []
+    for test_speed in speeds:
+        saved = cache / f"fold_{test_speed}.json"
+        if saved.is_file() and json.loads(saved.read_text()).get("fingerprint") == fingerprint:
+            fold = json.loads(saved.read_text())
+            print(f"Reusing completed CNN fold {test_speed}", flush=True)
+        else:
+            test = groups == test_speed
+            train = ~test
+            assert not (set(units[train]) & set(units[test]))
+            curves = []
+            for validation_speed in [s for s in speeds if s != test_speed]:
+                check = train & (groups == validation_speed)
+                fit_rows = np.flatnonzero(train & ~check)
+                print(f"CNN outer {test_speed}; inner validation {validation_speed}", flush=True)
+                model, curve = fit(fit_rows, epochs, np.flatnonzero(check))
+                curves.append(curve)
+                del model
+                if device.type == "mps":
+                    torch.mps.empty_cache()
+            quality = np.asarray(curves).mean(axis=0)
+            chosen = max(range(epochs), key=lambda i: (quality[i, 0], quality[i, 1], -i)) + 1
+            print(
+                f"CNN final fit for held-out {test_speed}: {chosen} epochs (training-only choice)",
+                flush=True,
+            )
+            model, _ = fit(np.flatnonzero(train), chosen)
+            probability = probabilities(model, x[test])
+            del model
+            actual, predicted = predict_recordings(
+                probability, np.asarray(labels), names[test], units[test]
+            )
+            unit_list = sorted(set(units[test]))
+            fold = {
+                "fingerprint": fingerprint,
+                "held_out_speed": test_speed,
+                "chosen_epochs": chosen,
+                "inner_mean_curve": quality.tolist(),
+                "recordings": [
+                    {"unit": u, "actual": str(a), "predicted": str(p)}
+                    for u, a, p in zip(unit_list, actual, predicted)
+                ],
+                "images": [
+                    {"file": f, "unit": u, "actual": str(a), "predicted": labels[int(p)]}
+                    for f, u, a, p in zip(
+                        rows.loc[test, "file"], units[test], names[test], probability.argmax(axis=1)
+                    )
+                ],
+            }
+            saved.write_text(json.dumps(fold, indent=2) + "\n")
+            if device.type == "mps":
+                torch.mps.empty_cache()
+        all_records += fold["recordings"]
+        all_images += fold["images"]
+        folds.append({k: v for k, v in fold.items() if k not in ("images", "recordings")})
+
+    def score(items):
+        a = [r["actual"] for r in items]
+        p = [r["predicted"] for r in items]
+        result = classification_metrics(a, p, labels)
+        result["per_class"] = classification_report(
+            a, p, labels=labels, output_dict=True, zero_division=0
+        )
+        return result
+
+    result = {
+        "classes": labels,
+        "plan": plan,
+        "recording_level": score(all_records),
+        "image_level": score(all_images),
+        "folds": folds,
+        "recordings": all_records,
+        "limits": [
+            "Only four healthy and twelve faulty recordings, from one lab rig.",
+            "Majority accuracy is75%; balanced accuracy and healthy recall must also be checked.",
+            "Prior exposure of benchmark recordings makes this exploratory; a new confirmation set is required.",
+            "No original four-class or earlier binary result is replaced.",
+        ],
+    }
+    output = RESULTS / "excavator/excavator_binary_cnn.json"
+    output.write_text(json.dumps(result, indent=2) + "\n")
+    pd.DataFrame(all_images).to_csv(cache / "heldout_image_predictions.csv", index=False)
+    import matplotlib.pyplot as plt
+
+    fig, axes = plt.subplots(1, 2, figsize=(9, 4.5))
+    for axis, key in zip(axes, ["recording_level", "image_level"]):
+        _draw_image_matrix(axis, result[key], labels, key.replace("_", " "), level="test units")
+    fig.tight_layout()
+    fig.savefig(ROOT / "Figures/excavator/excavator_binary_cnn.png", dpi=140)
+    plt.close(fig)
+    print("CNN FINAL", result["recording_level"], flush=True)
+    return result
+
+
+def show_excavator_binary_trials():
+    """Compare every exploratory binary attempt; never replace the four-class overview."""
+    rows = []
+    files = [
+        ("excavator_binary_condition.json", "window / frozen-image classifiers"),
+        (
+            "excavator_binary_recording_followup.json",
+            "recording distributions and temporal changes",
+        ),
+        ("excavator_binary_speed_reference.json", "training-only healthy speed reference"),
+        ("excavator_binary_cnn.json", "equipment-region CNN fine-tuning"),
+    ]
+    for filename, trial in files:
+        document = load(filename)
+        if not document:
+            continue
+        if "modalities" in document:
+            blocks = document["modalities"]
+        elif "sensor" in document:
+            blocks = {key: document[key] for key in ("sensor", "visual", "background_only_control")}
+        else:
+            blocks = {"visual" if "cnn" in filename else "sensor": document}
+        for modality, block in blocks.items():
+            score = block["recording_level"]
+            rows.append(
+                {
+                    "Trial": trial,
+                    "Modality": modality,
+                    "Recordings": score["test_units"],
+                    "Accuracy %": 100 * score["accuracy"],
+                    "Balanced accuracy %": 100 * score["balanced_accuracy"],
+                    "Macro F1 %": 100 * score["macro_f1"],
+                }
+            )
+    display(pd.DataFrame(rows).set_index(["Trial", "Modality"]).round(2))
+    print(
+        "Binary target; 16 existing recordings (4 healthy, 12 faulty). Always-faulty baseline: 75% accuracy / 50% balanced accuracy."
+    )
+    print(
+        "Repeated benchmark development is exploratory; separate new recordings are required for confirmation."
+    )
+
+
+def show_excavator_recording_followup():
+    """Display the second exploratory binary attempt without replacing earlier results."""
+    result = load("excavator_binary_recording_followup.json")
+    if not result:
+        print("No recording-level follow-up has been saved.")
+        return
+    rows = {}
+    for name in ("sensor", "visual", "background_only_control"):
+        score = result[name]["recording_level"]
+        rows[name] = {
+            "Accuracy %": 100 * score["accuracy"],
+            "Balanced accuracy %": 100 * score["balanced_accuracy"],
+            "Macro F1 %": 100 * score["macro_f1"],
+        }
+    display(pd.DataFrame(rows).T.round(2))
+    print("16 held-out recordings per modality. The 80% target was not met.")
+    path = ROOT / "Figures/excavator/excavator_binary_recording_followup.png"
+    if path.is_file():
+        display(Image(filename=str(path), width=1100))
+
+
+def show_excavator_binary():
+    """Read the separate binary follow-up, without replacing the four-class overview."""
+    result = load("excavator_binary_condition.json")
+    if not result:
+        print("No binary result yet: run excavator binary with local inputs.")
+        return
+    rows = []
+    for modality, block in result["modalities"].items():
+        levels = [("recordings", block["recording_level"])]
+        if modality == "visual":
+            levels.append(("images", block["sample_level"]))
+        for unit, score in levels:
+            rows.append(
+                {
+                    "Model / unit": f"{modality} / {unit}",
+                    "Tested": score["test_units"],
+                    "Accuracy %": 100 * score["accuracy"],
+                    "Balanced accuracy %": 100 * score["balanced_accuracy"],
+                    "Macro F1 %": 100 * score["macro_f1"],
+                }
+            )
+    display(pd.DataFrame(rows).set_index("Model / unit").round(2))
+    print(
+        "Separate Healthy vs Faulty experiment. Majority baseline: 75% accuracy, 50% balanced accuracy."
+    )
+    print("The 80% target was not met. The visual model classified every test recording as faulty.")
+    figure = ROOT / "Figures/excavator/excavator_binary_condition.png"
+    if figure.is_file():
+        display(Image(filename=str(figure), width=1100))
+
+
+# region Pump: data, preprocessing, models and evaluation
 def _make_pump():
-    __doc__ = "Pump: support bearing, vibration sensor vs XJTU event camera.\n\nThis equipment section contains its model implementation. The combined notebook\nNotebook/Mining_Equipment_Condition_Monitoring.ipynb runs these commands and shows the results.\n\nUsage:\n    python Notebook/notebook_helpers.py pump <command> [options]\n    python Notebook/notebook_helpers.py pump <command> --help\n\nCommands:\n    intake          download and verify the 48 Ottawa vibration recordings\n    sensor          vibration sensor model\n    camera          XJTU event-camera model (OpenCV HOG)\n    compare         sensor vs camera report and figure\n    original-xlsx   extra: original centrifugal-pump XLSX diagnostic (sensor only)\n    uci-hydraulic   extra: UCI hydraulic pump leakage (sensor only)\n    espset          extra: ESPset V3 pump vibration (sensor only)\n    baselines       Week 5: compare majority class, logistic regression, decision tree and random forest\n    export-images   Week 6: save the camera images as named files in Images/<machine>/ (local only)\n    csv             Week 6: 4-class sensor model from a CSV feature table\n    cnn             Week 6: CNN with data augmentation on the named images (run export-images first)\n    cnn-pretrained  Week 6: transfer learning, pretrained ResNet18 on the named images\n    train-final     train the sensor model on all data and save it (--exclude to leave recordings out)\n    predict         predict from any CSV (feature table or raw recording) and show accuracy if labels are known\n    ensembles       proposal Week 6: XGBoost / LightGBM vs random forest etc. (--split time for the secondary test)\n    anomaly         Week 7: anomaly detection trained on healthy data only (--split time for the secondary test)\n    all             run sensor, then camera, then compare\n\nRaw data stays in Raw_Data/ and Processed_Data/ (not in Git)."
     """Pump: support bearing, vibration sensor vs XJTU event camera.
 
     This equipment section contains its model implementation. The combined notebook
@@ -828,11 +2427,10 @@ def _make_pump():
 
     Raw data stays in Raw_Data/ and Processed_Data/ (not in Git).
     """
-
+    __doc__ = cleandoc(_make_pump.__doc__)
 
     import sys
     from pathlib import Path
-
 
     # ==================================================================================================
     # intake: download and verify the 48 Ottawa vibration recordings
@@ -847,7 +2445,6 @@ def _make_pump():
         The files describe an independent bearing test rig, not the XJTU pump.
         """
 
-
         import hashlib
         import json
         import os
@@ -856,7 +2453,6 @@ def _make_pump():
         from concurrent.futures import ThreadPoolExecutor, as_completed
         from pathlib import Path
         from urllib.request import Request, urlopen
-
 
         CAPSTONE = ROOT
         RAW = CAPSTONE / "Raw_Data" / "uottawa_bearing"
@@ -870,11 +2466,11 @@ def _make_pump():
         }
         NAME = re.compile(r"^([HIOB])-([ABCD])-([123])\.mat$")
 
-
         def get_json(url: str):
-            with urlopen(Request(url, headers={"User-Agent": "PROJ613-capstone/1.0"}), timeout=45) as response:
+            with urlopen(
+                Request(url, headers={"User-Agent": "PROJ613-capstone/1.0"}), timeout=45
+            ) as response:
                 return json.load(response)
-
 
         def inventory() -> list[dict]:
             folders = get_json(f"{BASE}/folders/2")
@@ -887,7 +2483,9 @@ def _make_pump():
                 url = f"{BASE}/files?folder_id={folder_id}&version=2&%24start=0&%24limit=1000"
                 members = get_json(url)
                 if len(members) != 12:
-                    raise ValueError(f"Expected 12 separate files in {folder_name}; found {len(members)}")
+                    raise ValueError(
+                        f"Expected 12 separate files in {folder_name}; found {len(members)}"
+                    )
                 for item in members:
                     name = item["filename"]
                     match = NAME.fullmatch(name)
@@ -897,20 +2495,21 @@ def _make_pump():
                     digest = details["sha256_hash"]
                     if not re.fullmatch(r"[a-f0-9]{64}", digest):
                         raise ValueError(f"Missing publisher SHA-256 for {name}")
-                    selected.append({
-                        "name": name,
-                        "class_code": prefix,
-                        "speed_profile": match.group(2),
-                        "trial": int(match.group(3)),
-                        "source_file_id": item["id"],
-                        "source_sha256": digest,
-                        "source_size_bytes": int(details["size"]),
-                        "url": details["download_url"] + "?version=2",
-                    })
+                    selected.append(
+                        {
+                            "name": name,
+                            "class_code": prefix,
+                            "speed_profile": match.group(2),
+                            "trial": int(match.group(3)),
+                            "source_file_id": item["id"],
+                            "source_sha256": digest,
+                            "source_size_bytes": int(details["size"]),
+                            "url": details["download_url"] + "?version=2",
+                        }
+                    )
             if len({item["name"] for item in selected}) != 48:
                 raise ValueError("Expected 48 unique H/I/O/B recordings")
             return sorted(selected, key=lambda item: item["name"])
-
 
         def sha256(path: Path) -> str:
             checksum = hashlib.sha256()
@@ -919,12 +2518,16 @@ def _make_pump():
                     checksum.update(block)
             return checksum.hexdigest()
 
-
         def acquire(item: dict) -> tuple[str, str]:
             destination = RAW / item["name"]
             if destination.is_file():
-                if destination.stat().st_size != item["source_size_bytes"] or sha256(destination) != item["source_sha256"]:
-                    raise ValueError(f"Existing source file failed publisher hash check: {destination}")
+                if (
+                    destination.stat().st_size != item["source_size_bytes"]
+                    or sha256(destination) != item["source_sha256"]
+                ):
+                    raise ValueError(
+                        f"Existing source file failed publisher hash check: {destination}"
+                    )
                 return item["name"], "cached-and-verified"
             temporary = destination.with_suffix(".mat.part")
             for attempt in range(3):
@@ -933,7 +2536,10 @@ def _make_pump():
                     with urlopen(request, timeout=120) as response, temporary.open("wb") as output:
                         for block in iter(lambda: response.read(1024 * 1024), b""):
                             output.write(block)
-                    if temporary.stat().st_size != item["source_size_bytes"] or sha256(temporary) != item["source_sha256"]:
+                    if (
+                        temporary.stat().st_size != item["source_size_bytes"]
+                        or sha256(temporary) != item["source_sha256"]
+                    ):
                         raise ValueError(f"Publisher hash/size mismatch for {item['name']}")
                     os.replace(temporary, destination)
                     return item["name"], "downloaded-and-verified"
@@ -942,7 +2548,6 @@ def _make_pump():
                         raise
                     time.sleep(3 * (attempt + 1))
             raise AssertionError("Unreachable")
-
 
         def main() -> None:
             items = inventory()
@@ -975,7 +2580,6 @@ def _make_pump():
             main()
         return locals()
 
-
     # ==================================================================================================
     # sensor: vibration sensor model
     # (formerly Models/pump_bearing_independent_baseline.py)
@@ -989,7 +2593,6 @@ def _make_pump():
         This model uses whole-run evaluation and never joins its rows to Pump images.
         """
 
-
         import argparse
         import json
         from pathlib import Path
@@ -998,8 +2601,11 @@ def _make_pump():
         import numpy as np
         from sklearn.dummy import DummyClassifier
         from sklearn.ensemble import RandomForestClassifier
-        from sklearn.metrics import accuracy_score, confusion_matrix, precision_recall_fscore_support
-
+        from sklearn.metrics import (
+            accuracy_score,
+            confusion_matrix,
+            precision_recall_fscore_support,
+        )
 
         CAPSTONE = ROOT
         INTAKE = CAPSTONE / "Results" / "pump" / "pump_uottawa_intake.json"
@@ -1011,20 +2617,33 @@ def _make_pump():
         CODE_TO_CLASS = {"H": "healthy", "I": "inner", "O": "outer", "B": "ball"}
         SAMPLE_RATE_HZ = 200_000
         WINDOW_SAMPLES = 20_000  # 100 ms; 100 non-overlapping windows per 10 s source recording
-        BANDS_HZ = ((0, 2_000), (2_000, 5_000), (5_000, 10_000),
-                    (10_000, 20_000), (20_000, 50_000), (50_000, 100_000))
+        BANDS_HZ = (
+            (0, 2_000),
+            (2_000, 5_000),
+            (5_000, 10_000),
+            (10_000, 20_000),
+            (20_000, 50_000),
+            (50_000, 100_000),
+        )
         FEATURE_NAMES = (
-            "mean", "std", "rms", "peak_to_peak", "crest_factor", "skew", "excess_kurtosis",
-            "spectral_centroid_hz", "dominant_frequency_hz", "spectral_entropy",
+            "mean",
+            "std",
+            "rms",
+            "peak_to_peak",
+            "crest_factor",
+            "skew",
+            "excess_kurtosis",
+            "spectral_centroid_hz",
+            "dominant_frequency_hz",
+            "spectral_entropy",
             *(f"power_{low}_{high}_hz" for low, high in BANDS_HZ),
         )
-
 
         def extract(signal: np.ndarray) -> np.ndarray:
             count = len(signal) // WINDOW_SAMPLES
             if count < 80:
                 raise ValueError(f"Recording is unexpectedly short: {len(signal)} samples")
-            windows = signal[:count * WINDOW_SAMPLES].reshape(count, WINDOW_SAMPLES)
+            windows = signal[: count * WINDOW_SAMPLES].reshape(count, WINDOW_SAMPLES)
             mean = windows.mean(axis=1)
             centered = windows - mean[:, None]
             std = centered.std(axis=1)
@@ -1040,15 +2659,27 @@ def _make_pump():
             centroid = (relative * frequency[None, :]).sum(axis=1)
             dominant = frequency[np.argmax(power[:, 1:], axis=1) + 1]
             entropy = -(relative * np.log(np.maximum(relative, 1e-12))).sum(axis=1)
-            band_features = [relative[:, (frequency >= low) & (frequency < high)].sum(axis=1)
-                             for low, high in BANDS_HZ]
-            columns = [mean, std, rms, np.ptp(windows, axis=1), crest, skew, kurt,
-                       centroid, dominant, entropy, *band_features]
+            band_features = [
+                relative[:, (frequency >= low) & (frequency < high)].sum(axis=1)
+                for low, high in BANDS_HZ
+            ]
+            columns = [
+                mean,
+                std,
+                rms,
+                np.ptp(windows, axis=1),
+                crest,
+                skew,
+                kurt,
+                centroid,
+                dominant,
+                entropy,
+                *band_features,
+            ]
             result = np.column_stack(columns).astype(np.float32)
             if not np.isfinite(result).all():
                 raise ValueError("Non-finite vibration feature encountered")
             return result
-
 
         def preprocess() -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, list[dict]]:
             intake = json.loads(INTAKE.read_text(encoding="utf-8"))
@@ -1067,25 +2698,44 @@ def _make_pump():
                 all_y.extend([label] * len(run_x))
                 all_profile.extend([item["speed_profile"]] * len(run_x))
                 all_run.extend([name] * len(run_x))
-                provenance.append({"file": name, "label": label, "speed_profile": item["speed_profile"],
-                                   "trial": item["trial"], "source_sha256": item["source_sha256"],
-                                   "samples": int(len(signal)), "windows": len(run_x)})
+                provenance.append(
+                    {
+                        "file": name,
+                        "label": label,
+                        "speed_profile": item["speed_profile"],
+                        "trial": item["trial"],
+                        "source_sha256": item["source_sha256"],
+                        "samples": int(len(signal)),
+                        "windows": len(run_x),
+                    }
+                )
                 print(f"{number}/48 {name}: {len(run_x)} non-overlapping windows", flush=True)
             x = np.vstack(all_x)
             y, profile, run = np.asarray(all_y), np.asarray(all_profile), np.asarray(all_run)
             CACHE.parent.mkdir(parents=True, exist_ok=True)
-            np.savez_compressed(CACHE, x=x, y=y, profile=profile, run=run,
-                                provenance=np.asarray(json.dumps(provenance)))
+            np.savez_compressed(
+                CACHE,
+                x=x,
+                y=y,
+                profile=profile,
+                run=run,
+                provenance=np.asarray(json.dumps(provenance)),
+            )
             return x, y, profile, run, provenance
 
-
         def build_model() -> RandomForestClassifier:
-            return RandomForestClassifier(n_estimators=250, max_features="sqrt",
-                                          class_weight="balanced_subsample", min_samples_leaf=2,
-                                          random_state=42, n_jobs=-1)
+            return RandomForestClassifier(
+                n_estimators=250,
+                max_features="sqrt",
+                class_weight="balanced_subsample",
+                min_samples_leaf=2,
+                random_state=42,
+                n_jobs=-1,
+            )
 
-
-        def run_predictions(model, x: np.ndarray, y: np.ndarray, run: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+        def run_predictions(
+            model, x: np.ndarray, y: np.ndarray, run: np.ndarray
+        ) -> tuple[np.ndarray, np.ndarray]:
             actual, predicted = [], []
             for name in sorted(set(run)):
                 mask = run == name
@@ -1095,7 +2745,6 @@ def _make_pump():
                 probability = model.predict_proba(x[mask]).mean(axis=0)
                 predicted.append(model.classes_[int(np.argmax(probability))])
             return np.asarray(actual), np.asarray(predicted)
-
 
         def metrics(actual: np.ndarray, predicted: np.ndarray) -> dict:
             precision, recall, f1, support = precision_recall_fscore_support(
@@ -1107,17 +2756,24 @@ def _make_pump():
                 "macro_recall": round(float(recall.mean()), 4),
                 "macro_f1": round(float(f1.mean()), 4),
                 "confusion_matrix": confusion_matrix(actual, predicted, labels=CLASSES).tolist(),
-                "per_class": {label: {"precision": round(float(p), 4), "recall": round(float(r), 4),
-                                      "f1": round(float(f), 4), "support": int(n)}
-                              for label, p, r, f, n in zip(CLASSES, precision, recall, f1, support)},
+                "per_class": {
+                    label: {
+                        "precision": round(float(p), 4),
+                        "recall": round(float(r), 4),
+                        "f1": round(float(f), 4),
+                        "support": int(n),
+                    }
+                    for label, p, r, f, n in zip(CLASSES, precision, recall, f1, support)
+                },
             }
-
 
         def plot(primary: list[list[int]], secondary: list[list[int]]) -> None:
             figure, axes = plt.subplots(1, 2, figsize=(11, 4.5))
-            for axis, matrix, title in zip(axes, (primary, secondary),
-                                           ("A/B train → C/D test (24 runs)",
-                                            "Held-out speed-profile folds (48 runs)")):
+            for axis, matrix, title in zip(
+                axes,
+                (primary, secondary),
+                ("A/B train → C/D test (24 runs)", "Held-out speed-profile folds (48 runs)"),
+            ):
                 array = np.asarray(matrix)
                 axis.imshow(array, cmap="Blues", vmin=0)
                 axis.set_xticks(range(4), CLASSES, rotation=30)
@@ -1127,17 +2783,26 @@ def _make_pump():
                 axis.set_title(title)
                 for i in range(4):
                     for j in range(4):
-                        axis.text(j, i, str(array[i, j]), ha="center", va="center",
-                                  color="white" if array[i, j] > array.max() / 2 else "black")
+                        axis.text(
+                            j,
+                            i,
+                            str(array[i, j]),
+                            ha="center",
+                            va="center",
+                            color="white" if array[i, j] > array.max() / 2 else "black",
+                        )
             figure.tight_layout()
             FIGURE.parent.mkdir(parents=True, exist_ok=True)
             figure.savefig(FIGURE, dpi=160)
             plt.close(figure)
 
-
         def main() -> None:
             parser = argparse.ArgumentParser()
-            parser.add_argument("--refresh", action="store_true", help="Re-extract features from verified raw MAT files")
+            parser.add_argument(
+                "--refresh",
+                action="store_true",
+                help="Re-extract features from verified raw MAT files",
+            )
             args = parser.parse_args()
             if CACHE.is_file() and not args.refresh:
                 with load_numpy(CACHE, allow_pickle=False) as saved:
@@ -1146,7 +2811,11 @@ def _make_pump():
             else:
                 x, y, profile, run, provenance = preprocess()
             train, test = np.isin(profile, ["A", "B"]), np.isin(profile, ["C", "D"])
-            if len(set(run[train])) != 24 or len(set(run[test])) != 24 or set(run[train]) & set(run[test]):
+            if (
+                len(set(run[train])) != 24
+                or len(set(run[test])) != 24
+                or set(run[train]) & set(run[test])
+            ):
                 raise ValueError("Expected disjoint groups of 24 full recordings")
             forest = build_model()
             forest.fit(x[train], y[train])
@@ -1170,7 +2839,9 @@ def _make_pump():
             training_runs = sorted(set(run[train]))
             original = {name: y[run == name][0] for name in training_runs}
             rng = np.random.default_rng(42)
-            shuffled = dict(zip(training_runs, rng.permutation([original[name] for name in training_runs])))
+            shuffled = dict(
+                zip(training_runs, rng.permutation([original[name] for name in training_runs]))
+            )
             shuffled_y = np.asarray([shuffled[name] for name in run[train]])
             negative = build_model()
             negative.fit(x[train], shuffled_y)
@@ -1192,7 +2863,9 @@ def _make_pump():
                 "source_recordings": provenance,
                 "random_forest_run_level": metrics(actual, predicted),
                 "dummy_run_level": metrics(dummy_actual, dummy_pred),
-                "held_out_speed_profile_run_level": metrics(np.asarray(fold_actual), np.asarray(fold_pred)),
+                "held_out_speed_profile_run_level": metrics(
+                    np.asarray(fold_actual), np.asarray(fold_pred)
+                ),
                 "shuffled_training_run_labels_control": metrics(actual, negative_pred),
                 "limitations": [
                     "Separate whole recordings are held out, but the dataset does not document independent physical bearing specimens for every trial/profile.",
@@ -1203,15 +2876,18 @@ def _make_pump():
             }
             RESULT.parent.mkdir(parents=True, exist_ok=True)
             RESULT.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
-            plot(result["random_forest_run_level"]["confusion_matrix"],
-                 result["held_out_speed_profile_run_level"]["confusion_matrix"])
+            plot(
+                result["random_forest_run_level"]["confusion_matrix"],
+                result["held_out_speed_profile_run_level"]["confusion_matrix"],
+            )
             print(f"Saved {RESULT} and {FIGURE}")
-            print(f"Held-out run accuracy {result['random_forest_run_level']['accuracy']:.4f}; macro F1 {result['random_forest_run_level']['macro_f1']:.4f}")
+            print(
+                f"Held-out run accuracy {result['random_forest_run_level']['accuracy']:.4f}; macro F1 {result['random_forest_run_level']['macro_f1']:.4f}"
+            )
 
         if run:
             main()
         return locals()
-
 
     # ==================================================================================================
     # camera: XJTU event-camera model (OpenCV HOG)
@@ -1227,7 +2903,6 @@ def _make_pump():
         Each source recording is one evaluation unit; no sensor row is paired to it.
         """
 
-
         import argparse
         import hashlib
         import json
@@ -1242,8 +2917,11 @@ def _make_pump():
         from remotezip import RemoteZip
         from sklearn.dummy import DummyClassifier
         from sklearn.ensemble import RandomForestClassifier
-        from sklearn.metrics import accuracy_score, confusion_matrix, precision_recall_fscore_support
-
+        from sklearn.metrics import (
+            accuracy_score,
+            confusion_matrix,
+            precision_recall_fscore_support,
+        )
 
         CAPSTONE = ROOT
         CACHE = CAPSTONE / "Processed_Data" / "pump_event_features.npz"
@@ -1262,7 +2940,6 @@ def _make_pump():
         EVENT_DTYPE = np.dtype([("t", "<u4"), ("xy", "<u4")])
         HOG = cv2.HOGDescriptor((64, 64), (16, 16), (8, 8), (8, 8), 9)
 
-
         def selected_members(archive: RemoteZip, hz: int) -> list[tuple[str, str, int, int]]:
             selected = []
             for info in archive.infolist():
@@ -1274,7 +2951,6 @@ def _make_pump():
             if counts != {label: 6 for label in CLASSES}:
                 raise ValueError(f"Expected six runs per class at {hz} Hz; found {counts}")
             return sorted(selected)
-
 
         def parse_header(stream) -> tuple[int, int]:
             while True:
@@ -1293,7 +2969,6 @@ def _make_pump():
             if event_size != 8:
                 raise ValueError(f"Expected 8-byte events, found {event_size}")
             return event_type, event_size
-
 
         def event_images(stream) -> tuple[np.ndarray, int, int]:
             event_type, _ = parse_header(stream)
@@ -1320,27 +2995,35 @@ def _make_pump():
                     frame = (t - START_US) // BIN_US
                     coarse_x = x // (WIDTH // GRID_W)
                     coarse_y = y // (HEIGHT // GRID_H)
-                    index = (((frame * 2 + p) * GRID_H + coarse_y) * GRID_W + coarse_x).astype(np.int64)
-                    counts += np.bincount(index, minlength=counts.size).reshape(counts.shape).astype(np.uint32)
+                    index = (((frame * 2 + p) * GRID_H + coarse_y) * GRID_W + coarse_x).astype(
+                        np.int64
+                    )
+                    counts += (
+                        np.bincount(index, minlength=counts.size)
+                        .reshape(counts.shape)
+                        .astype(np.uint32)
+                    )
                     retained += len(t)
                 if last_timestamp >= END_US:
                     break
             if last_timestamp < END_US or retained < 1000:
-                raise ValueError(f"Recording did not cover the requested interval (last={last_timestamp}, kept={retained})")
+                raise ValueError(
+                    f"Recording did not cover the requested interval (last={last_timestamp}, kept={retained})"
+                )
             return counts, event_type, retained
-
 
         def frame_features(counts: np.ndarray) -> np.ndarray:
             rows = []
             for frame in counts:
                 # Signed event contrast; normalization suppresses absolute event-count
                 # differences caused by illumination or exposure, but not all rig bias.
-                signed = np.log1p(frame[1].astype(np.float32)) - np.log1p(frame[0].astype(np.float32))
+                signed = np.log1p(frame[1].astype(np.float32)) - np.log1p(
+                    frame[0].astype(np.float32)
+                )
                 image = cv2.resize(signed, (64, 64), interpolation=cv2.INTER_LINEAR)
                 image = cv2.normalize(image, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
                 rows.append(HOG.compute(image).ravel())
             return np.asarray(rows, dtype=np.float32)
-
 
         def process_member(job: tuple[str, str, str, int, int]) -> tuple[np.ndarray, dict]:
             url, member, label, hz, crc = job
@@ -1351,8 +3034,11 @@ def _make_pump():
                 with load_numpy(cached_run, allow_pickle=False) as saved:
                     x = saved["x"]
                     record = json.loads(str(saved["record"]))
-                if (record["member"] != member or record["zip_member_crc32"] != f"{crc:08x}"
-                        or record["analysis_interval_us"] != [START_US, END_US]):
+                if (
+                    record["member"] != member
+                    or record["zip_member_crc32"] != f"{crc:08x}"
+                    or record["analysis_interval_us"] != [START_US, END_US]
+                ):
                     raise ValueError(f"Cached event run does not match current protocol: {member}")
                 return x, record
 
@@ -1368,17 +3054,22 @@ def _make_pump():
                         raise
                     time.sleep(2 * (attempt + 1))
             x = frame_features(counts)
-            record = {"member": member, "label": label, "speed_hz": hz,
-                      "frames": len(x), "events_in_interval": retained,
-                      "event_type": event_type, "zip_member_crc32": f"{crc:08x}",
-                      "analysis_interval_us": [START_US, END_US]}
+            record = {
+                "member": member,
+                "label": label,
+                "speed_hz": hz,
+                "frames": len(x),
+                "events_in_interval": retained,
+                "event_type": event_type,
+                "zip_member_crc32": f"{crc:08x}",
+                "analysis_interval_us": [START_US, END_US],
+            }
             RUN_CACHE.mkdir(parents=True, exist_ok=True)
             temporary = cached_run.with_suffix(".tmp")
             with temporary.open("wb") as handle:
                 np.savez_compressed(handle, x=x, record=np.asarray(json.dumps(record)))
             os.replace(temporary, cached_run)
             return x, record
-
 
         def preprocess() -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, list[dict]]:
             features, labels, speeds, run_ids, provenance = [], [], [], [], []
@@ -1396,7 +3087,10 @@ def _make_pump():
                         speeds.extend([hz] * len(x))
                         run_ids.extend([member] * len(x))
                         provenance.append(record)
-                        print(f"{hz} Hz {number}/{len(members)}: {label} {record['events_in_interval']:,} events", flush=True)
+                        print(
+                            f"{hz} Hz {number}/{len(members)}: {label} {record['events_in_interval']:,} events",
+                            flush=True,
+                        )
             x = np.asarray(features, dtype=np.float32)
             y = np.asarray(labels)
             speed = np.asarray(speeds)
@@ -1404,12 +3098,14 @@ def _make_pump():
             if not np.isfinite(x).all() or len(set(run)) != 48:
                 raise ValueError("Non-finite features or incorrect released-run count")
             CACHE.parent.mkdir(parents=True, exist_ok=True)
-            np.savez_compressed(CACHE, x=x, y=y, speed=speed, run=run,
-                                provenance=np.asarray(json.dumps(provenance)))
+            np.savez_compressed(
+                CACHE, x=x, y=y, speed=speed, run=run, provenance=np.asarray(json.dumps(provenance))
+            )
             return x, y, speed, run, provenance
 
-
-        def run_predictions(model, x: np.ndarray, y: np.ndarray, run: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+        def run_predictions(
+            model, x: np.ndarray, y: np.ndarray, run: np.ndarray
+        ) -> tuple[np.ndarray, np.ndarray]:
             true_labels, predicted = [], []
             for run_id in sorted(set(run)):
                 mask = run == run_id
@@ -1419,7 +3115,6 @@ def _make_pump():
                 probability = model.predict_proba(x[mask]).mean(axis=0)
                 predicted.append(model.classes_[int(np.argmax(probability))])
             return np.asarray(true_labels), np.asarray(predicted)
-
 
         def metrics(y_true: np.ndarray, y_pred: np.ndarray) -> dict:
             precision, recall, f1, support = precision_recall_fscore_support(
@@ -1431,18 +3126,26 @@ def _make_pump():
                 "macro_recall": round(float(np.mean(recall)), 4),
                 "macro_f1": round(float(np.mean(f1)), 4),
                 "confusion_matrix": confusion_matrix(y_true, y_pred, labels=CLASSES).tolist(),
-                "per_class": {label: {"precision": round(float(p), 4), "recall": round(float(r), 4),
-                                       "f1": round(float(f), 4), "support": int(n)}
-                              for label, p, r, f, n in zip(CLASSES, precision, recall, f1, support)},
+                "per_class": {
+                    label: {
+                        "precision": round(float(p), 4),
+                        "recall": round(float(r), 4),
+                        "f1": round(float(f), 4),
+                        "support": int(n),
+                    }
+                    for label, p, r, f, n in zip(CLASSES, precision, recall, f1, support)
+                },
             }
-
 
         def camera_configuration(run_id: str) -> str:
             parts = Path(run_id).stem.split("_")
-            if len(parts) < 4 or parts[-2] not in {"15", "18"} or parts[-1] not in {"-30", "0", "30"}:
+            if (
+                len(parts) < 4
+                or parts[-2] not in {"15", "18"}
+                or parts[-1] not in {"-30", "0", "30"}
+            ):
                 raise ValueError(f"Cannot identify camera configuration in {run_id}")
             return "_".join(parts[-2:])
-
 
         def plot_confusion(matrix: list[list[int]]) -> None:
             figure, axis = plt.subplots(figsize=(6, 5))
@@ -1454,17 +3157,24 @@ def _make_pump():
             axis.set_title("Pump event-camera, held-out 30 Hz runs")
             for i in range(4):
                 for j in range(4):
-                    axis.text(j, i, str(matrix[i][j]), ha="center", va="center",
-                              color="white" if matrix[i][j] > np.max(matrix) / 2 else "black")
+                    axis.text(
+                        j,
+                        i,
+                        str(matrix[i][j]),
+                        ha="center",
+                        va="center",
+                        color="white" if matrix[i][j] > np.max(matrix) / 2 else "black",
+                    )
             figure.tight_layout()
             FIGURE.parent.mkdir(parents=True, exist_ok=True)
             figure.savefig(FIGURE, dpi=160)
             plt.close(figure)
 
-
         def main() -> None:
             parser = argparse.ArgumentParser()
-            parser.add_argument("--refresh", action="store_true", help="Reprocess the remote event streams")
+            parser.add_argument(
+                "--refresh", action="store_true", help="Reprocess the remote event streams"
+            )
             args = parser.parse_args()
             if CACHE.is_file() and not args.refresh:
                 with load_numpy(CACHE, allow_pickle=False) as saved:
@@ -1473,12 +3183,22 @@ def _make_pump():
             else:
                 x, y, speed, run, provenance = preprocess()
             train, test = speed == 20, speed == 30
-            if len(set(run[train])) != 24 or len(set(run[test])) != 24 or set(run[train]) & set(run[test]):
+            if (
+                len(set(run[train])) != 24
+                or len(set(run[test])) != 24
+                or set(run[train]) & set(run[test])
+            ):
                 raise ValueError("Expected 24 independent source recordings per speed")
             dummy = DummyClassifier(strategy="most_frequent")
             dummy.fit(x[train], y[train])
-            forest = RandomForestClassifier(n_estimators=250, max_features="sqrt", class_weight="balanced_subsample",
-                                            min_samples_leaf=2, random_state=42, n_jobs=-1)
+            forest = RandomForestClassifier(
+                n_estimators=250,
+                max_features="sqrt",
+                class_weight="balanced_subsample",
+                min_samples_leaf=2,
+                random_state=42,
+                n_jobs=-1,
+            )
             forest.fit(x[train], y[train])
             yt_dummy, yp_dummy = run_predictions(dummy, x[test], y[test], run[test])
             yt, yp = run_predictions(forest, x[test], y[test], run[test])
@@ -1489,10 +3209,18 @@ def _make_pump():
             for held_out in sorted(set(config)):
                 train_config = config != held_out
                 test_config = config == held_out
-                probe = RandomForestClassifier(n_estimators=250, max_features="sqrt", class_weight="balanced_subsample",
-                                               min_samples_leaf=2, random_state=42, n_jobs=-1)
+                probe = RandomForestClassifier(
+                    n_estimators=250,
+                    max_features="sqrt",
+                    class_weight="balanced_subsample",
+                    min_samples_leaf=2,
+                    random_state=42,
+                    n_jobs=-1,
+                )
                 probe.fit(x[train_config], y[train_config])
-                actual, predicted = run_predictions(probe, x[test_config], y[test_config], run[test_config])
+                actual, predicted = run_predictions(
+                    probe, x[test_config], y[test_config], run[test_config]
+                )
                 config_true.extend(actual)
                 config_pred.extend(predicted)
 
@@ -1500,10 +3228,21 @@ def _make_pump():
             training_runs = sorted(set(run[train]))
             rng = np.random.default_rng(42)
             original_labels = {name: y[run == name][0] for name in training_runs}
-            shuffled_labels = dict(zip(training_runs, rng.permutation([original_labels[name] for name in training_runs])))
+            shuffled_labels = dict(
+                zip(
+                    training_runs,
+                    rng.permutation([original_labels[name] for name in training_runs]),
+                )
+            )
             shuffled_y = np.asarray([shuffled_labels[name] for name in run[train]])
-            shuffled_model = RandomForestClassifier(n_estimators=250, max_features="sqrt", class_weight="balanced_subsample",
-                                                     min_samples_leaf=2, random_state=42, n_jobs=-1)
+            shuffled_model = RandomForestClassifier(
+                n_estimators=250,
+                max_features="sqrt",
+                class_weight="balanced_subsample",
+                min_samples_leaf=2,
+                random_state=42,
+                n_jobs=-1,
+            )
             shuffled_model.fit(x[train], shuffled_y)
             _, shuffled_pred = run_predictions(shuffled_model, x[test], y[test], run[test])
             result = {
@@ -1516,11 +3255,15 @@ def _make_pump():
                 "frame_bin_ms": BIN_US / 1000,
                 "preprocessing": "event polarity counts at 64×48, signed log contrast, OpenCV 64×64 HOG",
                 "split": "all 20 Hz recordings train; all 30 Hz recordings test; evaluate by recording, averaging frame probabilities",
-                "train_runs": 24, "test_runs": 24, "frames_per_run": FRAME_COUNT,
+                "train_runs": 24,
+                "test_runs": 24,
+                "frames_per_run": FRAME_COUNT,
                 "source_recordings": provenance,
                 "dummy_run_level": metrics(yt_dummy, yp_dummy),
                 "random_forest_run_level": metrics(yt, yp),
-                "held_out_camera_configuration_run_level": metrics(np.asarray(config_true), np.asarray(config_pred)),
+                "held_out_camera_configuration_run_level": metrics(
+                    np.asarray(config_true), np.asarray(config_pred)
+                ),
                 "shuffled_training_run_labels_control": metrics(yt, shuffled_pred),
                 "limitations": [
                     "Event frames show bearing-housing motion; they are not RGB photographs of visible damage.",
@@ -1540,7 +3283,6 @@ def _make_pump():
             main()
         return locals()
 
-
     # ==================================================================================================
     # compare: sensor vs camera report and figure
     # (formerly Models/pump_compare_modalities.py)
@@ -1553,14 +3295,12 @@ def _make_pump():
         their accuracy values are descriptive and cannot establish modality superiority.
         """
 
-
         import json
         from pathlib import Path
 
         import matplotlib.pyplot as plt
         import numpy as np
         from scipy.stats import binomtest
-
 
         CAPSTONE = ROOT
         SENSOR = CAPSTONE / "Results" / "pump" / "pump_bearing_independent.json"
@@ -1570,34 +3310,39 @@ def _make_pump():
         FIGURE = CAPSTONE / "Figures" / "pump" / "pump_sensor_visual_confusions.png"
         CLASSES = ("healthy", "inner", "outer", "ball")
 
-
         def fmt(value: float) -> str:
             return f"{value:.3f}"
 
-
         def metric_line(name: str, unit: str, record: dict) -> str:
-            return (f"| {name} | {unit} | {fmt(record['accuracy'])} | "
-                    f"{fmt(record['macro_precision'])} | {fmt(record['macro_recall'])} | "
-                    f"{fmt(record['macro_f1'])} |")
-
+            return (
+                f"| {name} | {unit} | {fmt(record['accuracy'])} | "
+                f"{fmt(record['macro_precision'])} | {fmt(record['macro_recall'])} | "
+                f"{fmt(record['macro_f1'])} |"
+            )
 
         def per_class(lines: list[str], record: dict, unit: str) -> None:
-            lines.extend([f"| Condition | Precision | Recall | F1 | {unit} |",
-                          "|---|---:|---:|---:|---:|"])
+            lines.extend(
+                [f"| Condition | Precision | Recall | F1 | {unit} |", "|---|---:|---:|---:|---:|"]
+            )
             for label in CLASSES:
                 row = record["per_class"][label]
-                lines.append(f"| {label} | {fmt(row['precision'])} | {fmt(row['recall'])} | "
-                             f"{fmt(row['f1'])} | {row['support']} |")
-
+                lines.append(
+                    f"| {label} | {fmt(row['precision'])} | {fmt(row['recall'])} | "
+                    f"{fmt(row['f1'])} | {row['support']} |"
+                )
 
         def matrix_table(lines: list[str], title: str, record: dict) -> None:
-            lines.extend([f"### {title}", "",
-                          "| Actual \\ predicted | Healthy | Inner | Outer | Ball |",
-                          "|---|---:|---:|---:|---:|"])
+            lines.extend(
+                [
+                    f"### {title}",
+                    "",
+                    "| Actual \\ predicted | Healthy | Inner | Outer | Ball |",
+                    "|---|---:|---:|---:|---:|",
+                ]
+            )
             for label, row in zip(CLASSES, record["confusion_matrix"]):
                 lines.append(f"| {label} | " + " | ".join(str(value) for value in row) + " |")
             lines.append("")
-
 
         def draw_matrices(records: list[dict], titles: list[str]) -> None:
             figure, axes = plt.subplots(1, 4, figsize=(19, 5.7))
@@ -1611,14 +3356,22 @@ def _make_pump():
                 axis.set_title(title)
                 for i in range(4):
                     for j in range(4):
-                        axis.text(j, i, str(array[i, j]), ha="center", va="center",
-                                  color="white" if array[i, j] > array.max() / 2 else "black")
-            figure.suptitle("Separate recording-level evaluations — not a paired or controlled modality trial", fontsize=13)
+                        axis.text(
+                            j,
+                            i,
+                            str(array[i, j]),
+                            ha="center",
+                            va="center",
+                            color="white" if array[i, j] > array.max() / 2 else "black",
+                        )
+            figure.suptitle(
+                "Separate recording-level evaluations — not a paired or controlled modality trial",
+                fontsize=13,
+            )
             figure.subplots_adjust(left=0.05, right=0.99, bottom=0.20, top=0.84, wspace=0.40)
             FIGURE.parent.mkdir(parents=True, exist_ok=True)
             figure.savefig(FIGURE, dpi=160)
             plt.close(figure)
-
 
         def main() -> None:
             sensor = json.loads(SENSOR.read_text(encoding="utf-8"))
@@ -1636,8 +3389,12 @@ def _make_pump():
             vm = visual["random_forest_run_level"]
             sp = sensor["held_out_speed_profile_run_level"]
             vc = visual["held_out_camera_configuration_run_level"]
-            for name, record, expected in (("sensor primary", sm, 24), ("visual primary", vm, 24),
-                                           ("sensor profile folds", sp, 48), ("visual camera folds", vc, 48)):
+            for name, record, expected in (
+                ("sensor primary", sm, 24),
+                ("visual primary", vm, 24),
+                ("sensor profile folds", sp, 48),
+                ("visual camera folds", vc, 48),
+            ):
                 if sum(map(sum, record["confusion_matrix"])) != expected:
                     raise ValueError(f"Incorrect recording-level confusion support: {name}")
             sensor_correct = sum(sm["confusion_matrix"][i][i] for i in range(4))
@@ -1664,9 +3421,19 @@ def _make_pump():
                 "| Evaluation | Test unit | Accuracy | Macro precision | Macro recall | Macro F1 |",
                 "|---|---|---:|---:|---:|---:|",
                 metric_line("A/B speed profiles train → C/D test", "24 distinct recordings", sm),
-                metric_line("Four-fold held-out speed profile", "48 fold-held-out run predictions", sp),
-                metric_line("Most-frequent-class control", "Same 24 primary test runs", sensor["dummy_run_level"]),
-                metric_line("Shuffled training-run labels", "Same 24 primary test runs", sensor["shuffled_training_run_labels_control"]),
+                metric_line(
+                    "Four-fold held-out speed profile", "48 fold-held-out run predictions", sp
+                ),
+                metric_line(
+                    "Most-frequent-class control",
+                    "Same 24 primary test runs",
+                    sensor["dummy_run_level"],
+                ),
+                metric_line(
+                    "Shuffled training-run labels",
+                    "Same 24 primary test runs",
+                    sensor["shuffled_training_run_labels_control"],
+                ),
                 "",
                 f"Primary test: **{sensor_correct}/24** correctly classified; an exploratory exact 95% binomial interval is **{sensor_ci.low:.3f}–{sensor_ci.high:.3f}**. It treats run outcomes as independent, which may be optimistic on one rig/possibly shared fault specimens, and does not include uncertainty from changing pumps or sites.",
                 "",
@@ -1674,62 +3441,87 @@ def _make_pump():
                 "",
             ]
             per_class(lines, sm, "Test runs")
-            lines.extend([
-                "",
-                "## Visual branch: recording-held-out test",
-                "",
-                "| Evaluation | Test unit | Accuracy | Macro precision | Macro recall | Macro F1 |",
-                "|---|---|---:|---:|---:|---:|",
-                metric_line("20 Hz train → 30 Hz test", "24 distinct recordings", vm),
-                metric_line("Six-fold held-out camera configuration", "48 fold-held-out run predictions", vc),
-                metric_line("Most-frequent-class control", "Same 24 primary test runs", visual["dummy_run_level"]),
-                metric_line("Shuffled training-run labels", "Same 24 primary test runs", visual["shuffled_training_run_labels_control"]),
-                "",
-                f"Primary test: **{visual_correct}/24** correctly classified; an exploratory exact 95% binomial interval is **{visual_ci.low:.3f}–{visual_ci.high:.3f}**. It treats run outcomes as independent despite one shared rig; the harder camera-configuration check is not a second independent dataset.",
-                "",
-                "### Visual per-class results on held-out 30 Hz recordings",
-                "",
-            ])
+            lines.extend(
+                [
+                    "",
+                    "## Visual branch: recording-held-out test",
+                    "",
+                    "| Evaluation | Test unit | Accuracy | Macro precision | Macro recall | Macro F1 |",
+                    "|---|---|---:|---:|---:|---:|",
+                    metric_line("20 Hz train → 30 Hz test", "24 distinct recordings", vm),
+                    metric_line(
+                        "Six-fold held-out camera configuration",
+                        "48 fold-held-out run predictions",
+                        vc,
+                    ),
+                    metric_line(
+                        "Most-frequent-class control",
+                        "Same 24 primary test runs",
+                        visual["dummy_run_level"],
+                    ),
+                    metric_line(
+                        "Shuffled training-run labels",
+                        "Same 24 primary test runs",
+                        visual["shuffled_training_run_labels_control"],
+                    ),
+                    "",
+                    f"Primary test: **{visual_correct}/24** correctly classified; an exploratory exact 95% binomial interval is **{visual_ci.low:.3f}–{visual_ci.high:.3f}**. It treats run outcomes as independent despite one shared rig; the harder camera-configuration check is not a second independent dataset.",
+                    "",
+                    "### Visual per-class results on held-out 30 Hz recordings",
+                    "",
+                ]
+            )
             per_class(lines, vm, "Test runs")
-            lines.extend(["", "### Visual per-class sensitivity to held-out camera configurations", ""])
+            lines.extend(
+                ["", "### Visual per-class sensitivity to held-out camera configurations", ""]
+            )
             per_class(lines, vc, "Fold-held-out runs")
-            lines.extend([
-                "",
-                "## Confusion matrices",
-                "",
-                "Rows are actual classes and columns predicted classes, ordered healthy / inner / outer / ball. The secondary fold matrices reuse the same 48 source recordings across different training fits; they are sensitivity checks, not extra independent tests.",
-                "",
-            ])
+            lines.extend(
+                [
+                    "",
+                    "## Confusion matrices",
+                    "",
+                    "Rows are actual classes and columns predicted classes, ordered healthy / inner / outer / ball. The secondary fold matrices reuse the same 48 source recordings across different training fits; they are sensitivity checks, not extra independent tests.",
+                    "",
+                ]
+            )
             matrix_table(lines, "Sensor: held-out C/D speed-profile recordings", sm)
             matrix_table(lines, "Visual: held-out 30 Hz event recordings", vm)
             matrix_table(lines, "Sensor: held-out speed-profile folds", sp)
             matrix_table(lines, "Visual: held-out camera-configuration folds", vc)
-            lines.extend([
-                "## Method and provenance",
-                "",
-                "- **Sensor source:** [Huang and Baddour, University of Ottawa bearing vibration V2](https://data.mendeley.com/datasets/v43hmbwxpm/2), DOI 10.17632/v43hmbwxpm.2, CC BY 4.0. Four single-condition classes, four speed profiles and three trials per profile yield 48 source MAT files. The [verified intake record](pump_uottawa_intake.json) contains publisher SHA-256 values for every file. The compound-fault fifth class is excluded.",
-                "- **Sensor preprocessing:** only accelerometer `Channel_1` at 200 kHz is used; encoder `Channel_2` and file names are not predictors. Each 10 s run becomes 100 non-overlapping 0.1 s windows, with 16 time/spectral features. A fixed random forest is fit only on A/B runs. Window probabilities are averaged before **one prediction per held-out C/D recording**; no window from a test recording appears in training. Hyperparameters were not selected on the test runs.",
-                "- **Visual source and unchanged experiment:** [XJTU-DV-Pump](https://zenodo.org/records/17447083), CC BY 4.0. The first two seconds of each of 48 relevant released recordings become eight 250 ms polarity-count event images. OpenCV HOG feeds a fixed random forest trained on 20 Hz runs; average frame probabilities produce one prediction per separate 30 Hz recording. These are event-camera motion images, **not RGB photographs of visible surface damage**. Full-file CRCs were not checked because only bounded intervals were read remotely.",
-                "- **Original pump-vibration source:** [Jiang centrifugal-pump multi-fault V1](https://data.mendeley.com/datasets/63gjxpn7s6/1) was retained as a pump-domain pipeline diagnostic, but it has one file per selected class. Its within-file window score is **excluded from the independent comparison**. The Ottawa rig supplies repeat-run evidence at the same bearing-fault taxonomy, not direct pump-domain validation.",
-                "- **Limits:** none of these evaluations holds out a new physical pump or mine. The Ottawa data do not establish independent fault-bearing specimens across all trials. Different source rigs and operating shifts preclude a causal claim that one modality is better. No matching timestamps, sample-level pairing, multimodal fusion, maintenance dates, failure horizon, or remaining-useful-life target exist.",
-                "",
-                "## Professor-requirement decision",
-                "",
-                "**Yes, for the professor's explicitly allowed component/fault-level comparison using sufficiently similar machines:** real vibration and real event-camera images both classify healthy/inner/outer/ball bearing conditions, and both now have recording-held-out Accuracy, Precision, Recall, F1, per-class results and confusion matrices. **No**, if the requirement means paired sensor-plus-camera observations from the *same physical mining pump*, a controlled modality-superiority experiment, image–sensor fusion, or prediction of a future repair date. The sensor proxy is a bearing rig, so this is a defensible component-level Pump proof of concept, **not validated mining-pump deployment**. Confirm that scope with the professor before describing the project as fully predictive maintenance.",
-                "",
-                f"![Separate recording-level confusion matrices](../../Figures/pump/{FIGURE.name})",
-                "",
-            ])
+            lines.extend(
+                [
+                    "## Method and provenance",
+                    "",
+                    "- **Sensor source:** [Huang and Baddour, University of Ottawa bearing vibration V2](https://data.mendeley.com/datasets/v43hmbwxpm/2), DOI 10.17632/v43hmbwxpm.2, CC BY 4.0. Four single-condition classes, four speed profiles and three trials per profile yield 48 source MAT files. The [verified intake record](pump_uottawa_intake.json) contains publisher SHA-256 values for every file. The compound-fault fifth class is excluded.",
+                    "- **Sensor preprocessing:** only accelerometer `Channel_1` at 200 kHz is used; encoder `Channel_2` and file names are not predictors. Each 10 s run becomes 100 non-overlapping 0.1 s windows, with 16 time/spectral features. A fixed random forest is fit only on A/B runs. Window probabilities are averaged before **one prediction per held-out C/D recording**; no window from a test recording appears in training. Hyperparameters were not selected on the test runs.",
+                    "- **Visual source and unchanged experiment:** [XJTU-DV-Pump](https://zenodo.org/records/17447083), CC BY 4.0. The first two seconds of each of 48 relevant released recordings become eight 250 ms polarity-count event images. OpenCV HOG feeds a fixed random forest trained on 20 Hz runs; average frame probabilities produce one prediction per separate 30 Hz recording. These are event-camera motion images, **not RGB photographs of visible surface damage**. Full-file CRCs were not checked because only bounded intervals were read remotely.",
+                    "- **Original pump-vibration source:** [Jiang centrifugal-pump multi-fault V1](https://data.mendeley.com/datasets/63gjxpn7s6/1) was retained as a pump-domain pipeline diagnostic, but it has one file per selected class. Its within-file window score is **excluded from the independent comparison**. The Ottawa rig supplies repeat-run evidence at the same bearing-fault taxonomy, not direct pump-domain validation.",
+                    "- **Limits:** none of these evaluations holds out a new physical pump or mine. The Ottawa data do not establish independent fault-bearing specimens across all trials. Different source rigs and operating shifts preclude a causal claim that one modality is better. No matching timestamps, sample-level pairing, multimodal fusion, maintenance dates, failure horizon, or remaining-useful-life target exist.",
+                    "",
+                    "## Professor-requirement decision",
+                    "",
+                    "**Yes, for the professor's explicitly allowed component/fault-level comparison using sufficiently similar machines:** real vibration and real event-camera images both classify healthy/inner/outer/ball bearing conditions, and both now have recording-held-out Accuracy, Precision, Recall, F1, per-class results and confusion matrices. **No**, if the requirement means paired sensor-plus-camera observations from the *same physical mining pump*, a controlled modality-superiority experiment, image–sensor fusion, or prediction of a future repair date. The sensor proxy is a bearing rig, so this is a defensible component-level Pump proof of concept, **not validated mining-pump deployment**. Confirm that scope with the professor before describing the project as fully predictive maintenance.",
+                    "",
+                    f"![Separate recording-level confusion matrices](../../Figures/pump/{FIGURE.name})",
+                    "",
+                ]
+            )
             REPORT.write_text("\n".join(lines), encoding="utf-8")
-            draw_matrices([sm, vm, sp, vc],
-                          ["Sensor: held-out C/D runs", "Event camera: held-out 30 Hz",
-                           "Sensor: held-out profiles", "Event camera: held-out configs"])
+            draw_matrices(
+                [sm, vm, sp, vc],
+                [
+                    "Sensor: held-out C/D runs",
+                    "Event camera: held-out 30 Hz",
+                    "Sensor: held-out profiles",
+                    "Event camera: held-out configs",
+                ],
+            )
             print(f"Saved {REPORT} and {FIGURE}")
 
         if run:
             main()
         return locals()
-
 
     # ==================================================================================================
     # original-xlsx: extra: original centrifugal-pump XLSX diagnostic (sensor only)
@@ -1744,7 +3536,6 @@ def _make_pump():
         is *not* independent-run, independent-pump, or image-versus-sensor accuracy.
         """
 
-
         import hashlib
         import json
         from pathlib import Path
@@ -1754,8 +3545,12 @@ def _make_pump():
         from scipy.stats import kurtosis, skew
         from sklearn.dummy import DummyClassifier
         from sklearn.ensemble import RandomForestClassifier
-        from sklearn.metrics import accuracy_score, balanced_accuracy_score, confusion_matrix, precision_recall_fscore_support
-
+        from sklearn.metrics import (
+            accuracy_score,
+            balanced_accuracy_score,
+            confusion_matrix,
+            precision_recall_fscore_support,
+        )
 
         CAPSTONE = ROOT
         RAW = CAPSTONE / "Raw_Data" / "pump_bearing"
@@ -1767,18 +3562,31 @@ def _make_pump():
         # Source: https://data.mendeley.com/datasets/63gjxpn7s6/1 (CC BY 4.0).
         # These are the four single-fault/healthy files, not compound impeller faults.
         SOURCES = {
-            "healthy": ("0_正常_00000", "a16aa7cedbd9c471bbb29ae152821177d8bb94d2956a6d25604ff211d2a3d6bf"),
-            "inner": ("1_内圈_10000", "b8f63a3925186c78c3100cacc15ce4a12755333f6fa3064da0948cc646843596"),
-            "outer": ("2_外圈_20000", "1ef1fbdc195d7c7a66d34b93804c2604c529c80bb3d0e287cb5daed4f4e29307"),
-            "ball": ("3_滚动体_30000", "49d7ef08b515d092931a8d7d212d686391a855470a713b974a8de8f4337af279"),
+            "healthy": (
+                "0_正常_00000",
+                "a16aa7cedbd9c471bbb29ae152821177d8bb94d2956a6d25604ff211d2a3d6bf",
+            ),
+            "inner": (
+                "1_内圈_10000",
+                "b8f63a3925186c78c3100cacc15ce4a12755333f6fa3064da0948cc646843596",
+            ),
+            "outer": (
+                "2_外圈_20000",
+                "1ef1fbdc195d7c7a66d34b93804c2604c529c80bb3d0e287cb5daed4f4e29307",
+            ),
+            "ball": (
+                "3_滚动体_30000",
+                "49d7ef08b515d092931a8d7d212d686391a855470a713b974a8de8f4337af279",
+            ),
         }
-
 
         def read_signal(label: str) -> np.ndarray:
             sheet, expected_hash = SOURCES[label]
             path = RAW / f"{label}.xlsx"
             if not path.is_file():
-                raise FileNotFoundError(f"Missing {path}; see the capstone README for the four official download links")
+                raise FileNotFoundError(
+                    f"Missing {path}; see the capstone README for the four official download links"
+                )
             actual_hash = hashlib.sha256(path.read_bytes()).hexdigest()
             if actual_hash != expected_hash:
                 raise ValueError(f"Unexpected source checksum for {path.name}: {actual_hash}")
@@ -1789,12 +3597,13 @@ def _make_pump():
                     raise ValueError(f"Unexpected worksheet in {path.name}: {workbook.sheet_names}")
                 frame = load_excel(workbook, sheet_name=sheet, header=None)
             if frame.shape[1] != 1:
-                raise ValueError(f"Expected one vibration channel in {path.name}, found {frame.shape[1]}")
+                raise ValueError(
+                    f"Expected one vibration channel in {path.name}, found {frame.shape[1]}"
+                )
             signal = pd.to_numeric(frame.iloc[:, 0], errors="raise").to_numpy(dtype=np.float64)
             if not np.isfinite(signal).all() or len(signal) < 10 * WINDOW_SAMPLES:
                 raise ValueError(f"Non-finite or insufficient vibration samples in {path.name}")
             return signal
-
 
         def window_features(window: np.ndarray) -> list[float]:
             centered = window - window.mean()
@@ -1813,10 +3622,18 @@ def _make_pump():
                 float(kurtosis(window)),
                 float(np.sum(frequencies * spectrum) / total_power) if total_power else 0.0,
                 float(frequencies[int(np.argmax(spectrum[1:])) + 1]),
-                *[float(spectrum[(frequencies >= low) & (frequencies < high)].sum() / total_power)
-                  if total_power else 0.0 for low, high in bands],
+                *[
+                    (
+                        float(
+                            spectrum[(frequencies >= low) & (frequencies < high)].sum()
+                            / total_power
+                        )
+                        if total_power
+                        else 0.0
+                    )
+                    for low, high in bands
+                ],
             ]
-
 
         def summarize(model, x_test: np.ndarray, y_test: np.ndarray) -> dict:
             prediction = model.predict(x_test)
@@ -1831,12 +3648,15 @@ def _make_pump():
                 "balanced_accuracy": round(float(balanced_accuracy_score(y_test, prediction)), 4),
                 "confusion_matrix": confusion_matrix(y_test, prediction, labels=CLASSES).tolist(),
                 "per_class": {
-                    label: {"precision": round(float(p), 4), "recall": round(float(r), 4),
-                            "f1": round(float(f), 4), "support": int(n)}
+                    label: {
+                        "precision": round(float(p), 4),
+                        "recall": round(float(r), 4),
+                        "f1": round(float(f), 4),
+                        "support": int(n),
+                    }
                     for label, p, r, f, n in zip(CLASSES, precision, recall, f1, support)
                 },
             }
-
 
         def main() -> None:
             features = []
@@ -1846,7 +3666,7 @@ def _make_pump():
             for label in CLASSES:
                 signal = read_signal(label)
                 count = len(signal) // WINDOW_SAMPLES
-                windows = signal[:count * WINDOW_SAMPLES].reshape(count, WINDOW_SAMPLES)
+                windows = signal[: count * WINDOW_SAMPLES].reshape(count, WINDOW_SAMPLES)
                 # Chronological blocks with a 20% unused middle gap prevent adjacent
                 # windows from straddling the train/test boundary. They do NOT remove
                 # the shared-run confound: every class still has just one source file.
@@ -1856,7 +3676,11 @@ def _make_pump():
                     raise ValueError(f"Too few windows for the declared split: {label}")
                 features.extend(window_features(window) for window in windows)
                 labels.extend([label] * count)
-                partitions.extend(["train"] * train_end + ["unused_gap"] * (test_start - train_end) + ["test"] * (count - test_start))
+                partitions.extend(
+                    ["train"] * train_end
+                    + ["unused_gap"] * (test_start - train_end)
+                    + ["test"] * (count - test_start)
+                )
                 source_summary[label] = {
                     "samples": int(len(signal)),
                     "seconds": round(len(signal) / SAMPLE_RATE_HZ, 3),
@@ -1877,9 +3701,24 @@ def _make_pump():
 
             dummy = DummyClassifier(strategy="most_frequent")
             dummy.fit(x_train, y_train)
-            forest = RandomForestClassifier(n_estimators=200, class_weight="balanced_subsample", random_state=42, n_jobs=-1)
+            forest = RandomForestClassifier(
+                n_estimators=200, class_weight="balanced_subsample", random_state=42, n_jobs=-1
+            )
             forest.fit(x_train, y_train)
-            feature_names = ["mean", "std", "rms", "peak_to_peak", "crest_factor", "skew", "kurtosis", "spectral_centroid_hz", "dominant_frequency_hz", "power_0_250", "power_250_500", "power_500_1000"]
+            feature_names = [
+                "mean",
+                "std",
+                "rms",
+                "peak_to_peak",
+                "crest_factor",
+                "skew",
+                "kurtosis",
+                "spectral_centroid_hz",
+                "dominant_frequency_hz",
+                "power_0_250",
+                "power_250_500",
+                "power_500_1000",
+            ]
             result = {
                 "status": "exploratory_same_file_temporal_split_only",
                 "independent_run_accuracy": None,
@@ -1903,14 +3742,17 @@ def _make_pump():
                 ],
             }
             OUTPUT.parent.mkdir(parents=True, exist_ok=True)
-            OUTPUT.write_text(json.dumps(result, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+            OUTPUT.write_text(
+                json.dumps(result, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+            )
             print(f"Saved exploratory result: {OUTPUT}")
-            print(f"RF macro F1 {result['random_forest']['macro_f1']:.4f}; scientifically valid independent-run score: unavailable")
+            print(
+                f"RF macro F1 {result['random_forest']['macro_f1']:.4f}; scientifically valid independent-run score: unavailable"
+            )
 
         if run:
             main()
         return locals()
-
 
     # ==================================================================================================
     # uci-hydraulic: extra: UCI hydraulic pump leakage (sensor only)
@@ -1927,7 +3769,6 @@ def _make_pump():
         Run from the repository root:
             .venv/bin/python Notebook/notebook_helpers.py pump uci-hydraulic
         """
-
 
         import hashlib
         import json
@@ -1954,7 +3795,6 @@ def _make_pump():
         from sklearn.pipeline import make_pipeline
         from sklearn.preprocessing import StandardScaler
 
-
         PROJECT = ROOT
         ARCHIVE = PROJECT / "Raw_Data/uci_hydraulic/condition_monitoring_of_hydraulic_systems.zip"
         FEATURES = PROJECT / "Processed_Data/uci_hydraulic_cycle_features.npz"
@@ -1962,11 +3802,25 @@ def _make_pump():
         FIGURE = PROJECT / "Figures/pump/uci_hydraulic_pump_leakage.png"
         EXPECTED_SHA256 = "24128aad2ee45eea7e6b63ebbd9992cdf25d0483a2cebefbfc13bc69079af1f2"
         SENSORS = (
-            "PS1", "PS2", "PS3", "PS4", "PS5", "PS6", "EPS1", "FS1", "FS2",
-            "TS1", "TS2", "TS3", "TS4", "VS1", "CE", "CP", "SE",
+            "PS1",
+            "PS2",
+            "PS3",
+            "PS4",
+            "PS5",
+            "PS6",
+            "EPS1",
+            "FS1",
+            "FS2",
+            "TS1",
+            "TS2",
+            "TS3",
+            "TS4",
+            "VS1",
+            "CE",
+            "CP",
+            "SE",
         )
         LABELS = (0, 1, 2)
-
 
         def checked_archive() -> zipfile.ZipFile:
             if not ARCHIVE.is_file():
@@ -1978,9 +3832,10 @@ def _make_pump():
                 for chunk in iter(lambda: source.read(1024 * 1024), b""):
                     digest.update(chunk)
             if digest.hexdigest() != EXPECTED_SHA256:
-                raise ValueError("UCI ZIP checksum differs from the inspected source; verify the new archive.")
+                raise ValueError(
+                    "UCI ZIP checksum differs from the inspected source; verify the new archive."
+                )
             return open_archive(ARCHIVE)
-
 
         def extract_cycle_features() -> tuple[np.ndarray, np.ndarray, np.ndarray, list[str], dict]:
             with checked_archive() as source:
@@ -1991,16 +3846,20 @@ def _make_pump():
                 names = []
                 sample_widths = {}
                 for sensor in SENSORS:
-                    values = np.loadtxt(source.open(f"{sensor}.txt"), delimiter="\t", dtype=np.float64)
+                    values = np.loadtxt(
+                        source.open(f"{sensor}.txt"), delimiter="\t", dtype=np.float64
+                    )
                     if values.ndim != 2 or values.shape[0] != profile.shape[0]:
                         raise ValueError(f"Unexpected shape for {sensor}: {values.shape}")
                     sample_widths[sensor] = int(values.shape[1])
-                    feature_arrays.extend((
-                        values.mean(axis=1),
-                        values.std(axis=1),
-                        np.sqrt(np.mean(np.square(values), axis=1)),
-                        np.ptp(values, axis=1),
-                    ))
+                    feature_arrays.extend(
+                        (
+                            values.mean(axis=1),
+                            values.std(axis=1),
+                            np.sqrt(np.mean(np.square(values), axis=1)),
+                            np.ptp(values, axis=1),
+                        )
+                    )
                     names.extend(f"{sensor}_{stat}" for stat in ("mean", "std", "rms", "range"))
                     del values
             x_all = np.column_stack(feature_arrays)
@@ -2025,11 +3884,14 @@ def _make_pump():
                 "class_counts": {str(label): int((y == label).sum()) for label in LABELS},
             }
             FEATURES.parent.mkdir(parents=True, exist_ok=True)
-            np.savez_compressed(FEATURES, x=x.astype(np.float32), y=y, groups=groups, names=np.array(names))
+            np.savez_compressed(
+                FEATURES, x=x.astype(np.float32), y=y, groups=groups, names=np.array(names)
+            )
             return x, y, groups, names, details
 
-
-        def split_by_condition(y: np.ndarray, groups: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+        def split_by_condition(
+            y: np.ndarray, groups: np.ndarray
+        ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
             indices = np.arange(len(y))
             first = StratifiedGroupKFold(n_splits=5, shuffle=True, random_state=42)
             train_val, test = next(first.split(indices, y, groups))
@@ -2044,7 +3906,6 @@ def _make_pump():
                     raise ValueError("A split lacks a pump-leakage class; revise the group split.")
             return train, val, test
 
-
         def metrics(y_true: np.ndarray, y_pred: np.ndarray) -> dict:
             precision, recall, f1, support = precision_recall_fscore_support(
                 y_true, y_pred, labels=LABELS, zero_division=0
@@ -2055,28 +3916,33 @@ def _make_pump():
                 "macro_f1": float(f1_score(y_true, y_pred, average="macro", zero_division=0)),
                 "per_class": {
                     str(label): {
-                        "precision": float(precision[i]), "recall": float(recall[i]),
-                        "f1": float(f1[i]), "support": int(support[i]),
+                        "precision": float(precision[i]),
+                        "recall": float(recall[i]),
+                        "f1": float(f1[i]),
+                        "support": int(support[i]),
                     }
                     for i, label in enumerate(LABELS)
                 },
                 "confusion_matrix": confusion_matrix(y_true, y_pred, labels=LABELS).tolist(),
             }
 
-
         def evaluate(x: np.ndarray, y: np.ndarray, groups: np.ndarray, details: dict) -> dict:
             train, val, test = split_by_condition(y, groups)
             candidates = {
                 "dummy_most_frequent": DummyClassifier(strategy="most_frequent"),
                 "logistic_regression": make_pipeline(
-                    SimpleImputer(strategy="median"), StandardScaler(),
+                    SimpleImputer(strategy="median"),
+                    StandardScaler(),
                     LogisticRegression(max_iter=3000, class_weight="balanced", random_state=42),
                 ),
                 "random_forest": make_pipeline(
                     SimpleImputer(strategy="median"),
                     RandomForestClassifier(
-                        n_estimators=200, min_samples_leaf=2, class_weight="balanced_subsample",
-                        random_state=42, n_jobs=-1,
+                        n_estimators=200,
+                        min_samples_leaf=2,
+                        class_weight="balanced_subsample",
+                        random_state=42,
+                        n_jobs=-1,
                     ),
                 ),
             }
@@ -2086,7 +3952,10 @@ def _make_pump():
                 validation[name] = metrics(y[val], model.predict(x[val]))
             selected = max(
                 (name for name in candidates if name != "dummy_most_frequent"),
-                key=lambda name: (validation[name]["macro_f1"], validation[name]["balanced_accuracy"]),
+                key=lambda name: (
+                    validation[name]["macro_f1"],
+                    validation[name]["balanced_accuracy"],
+                ),
             )
             train_val = np.concatenate((train, val))
             selected_model = candidates[selected].fit(x[train_val], y[train_val])
@@ -2106,7 +3975,9 @@ def _make_pump():
                     part_name: {
                         "cycles": int(len(part)),
                         "full_condition_state_groups": int(len(np.unique(groups[part]))),
-                        "class_counts": {str(label): int((y[part] == label).sum()) for label in LABELS},
+                        "class_counts": {
+                            str(label): int((y[part] == label).sum()) for label in LABELS
+                        },
                     }
                     for part_name, part in (("train", train), ("validation", val), ("test", test))
                 },
@@ -2121,7 +3992,6 @@ def _make_pump():
                 ],
             }
             return result
-
 
         def save_figure(result: dict) -> None:
             classes = ["No leakage", "Weak", "Severe"]
@@ -2140,14 +4010,17 @@ def _make_pump():
             for row in range(3):
                 for col in range(3):
                     axes[1].text(
-                        col, row, str(matrix[row, col]), ha="center", va="center",
+                        col,
+                        row,
+                        str(matrix[row, col]),
+                        ha="center",
+                        va="center",
                         color="white" if matrix[row, col] > matrix.max() / 2 else "black",
                     )
             fig.tight_layout()
             FIGURE.parent.mkdir(parents=True, exist_ok=True)
             fig.savefig(FIGURE, dpi=160)
             plt.close(fig)
-
 
         def main() -> None:
             x, y, groups, names, details = extract_cycle_features()
@@ -2156,7 +4029,9 @@ def _make_pump():
             RESULTS.parent.mkdir(parents=True, exist_ok=True)
             RESULTS.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
             save_figure(result)
-            print(f"Stable cycles: {details['stable_cycle_count']} / {details['source_cycle_count']}")
+            print(
+                f"Stable cycles: {details['stable_cycle_count']} / {details['source_cycle_count']}"
+            )
             print(f"Selected: {result['selected_model']}")
             print(f"Test macro F1: {result['test_selected']['macro_f1']:.3f}")
             print(f"Test balanced accuracy: {result['test_selected']['balanced_accuracy']:.3f}")
@@ -2165,7 +4040,6 @@ def _make_pump():
         if run:
             main()
         return locals()
-
 
     # ==================================================================================================
     # espset: extra: ESPset V3 pump vibration (sensor only)
@@ -2179,7 +4053,6 @@ def _make_pump():
         paired with these sensor rows. Run from the repository root with the project's
         Python environment after placing the official features.zip under Raw_Data.
         """
-
 
         import hashlib
         import json
@@ -2195,12 +4068,15 @@ def _make_pump():
         from sklearn.dummy import DummyClassifier
         from sklearn.ensemble import RandomForestClassifier
         from sklearn.metrics import (
-            accuracy_score, balanced_accuracy_score, confusion_matrix, f1_score,
-            precision_score, recall_score,
+            accuracy_score,
+            balanced_accuracy_score,
+            confusion_matrix,
+            f1_score,
+            precision_score,
+            recall_score,
         )
         from sklearn.model_selection import GroupShuffleSplit
         from sklearn.tree import DecisionTreeClassifier
-
 
         PROJECT = ROOT
         ARCHIVE = PROJECT / "Raw_Data/espset_v3/features.zip"
@@ -2209,14 +4085,20 @@ def _make_pump():
         FIGURE = PROJECT / "Figures/pump/espset_v3_binary_fault.png"
         EXPECTED_SHA256 = "b8214c10ba5b5b211c00a058f2fffa3ed7ccc46f67219b4769c907baec9a724d"
         FEATURE_COLUMNS = (
-            "median(8,13)", "rms(98,102)", "median(98,102)",
-            "peak1x", "peak2x", "a", "b",
+            "median(8,13)",
+            "rms(98,102)",
+            "median(98,102)",
+            "peak1x",
+            "peak2x",
+            "a",
+            "b",
         )
-
 
         def load_data() -> tuple[np.ndarray, np.ndarray, np.ndarray, dict]:
             if not ARCHIVE.is_file():
-                raise FileNotFoundError(f"Missing {ARCHIVE}; see the project README for the official link.")
+                raise FileNotFoundError(
+                    f"Missing {ARCHIVE}; see the project README for the official link."
+                )
             digest = hashlib.sha256(ARCHIVE.read_bytes()).hexdigest()
             if digest != EXPECTED_SHA256:
                 raise ValueError("ESPset features.zip checksum differs from the inspected V3 file.")
@@ -2224,7 +4106,9 @@ def _make_pump():
                 frame = load_csv(source.open("features.csv"), sep=";")
             required = {"id", "esp_id", "label", *FEATURE_COLUMNS}
             if frame.shape != (6032, 10) or set(frame.columns) != required:
-                raise ValueError(f"Unexpected ESPset shape/columns: {frame.shape}, {frame.columns.tolist()}")
+                raise ValueError(
+                    f"Unexpected ESPset shape/columns: {frame.shape}, {frame.columns.tolist()}"
+                )
             if frame["id"].duplicated().any() or frame["esp_id"].isna().any():
                 raise ValueError("ESPset IDs are missing or duplicated; inspect the source file.")
             x = frame[list(FEATURE_COLUMNS)].to_numpy(dtype=np.float64)
@@ -2236,18 +4120,28 @@ def _make_pump():
                 "rows": int(len(frame)),
                 "columns": frame.columns.tolist(),
                 "distinct_pumps": int(frame["esp_id"].nunique()),
-                "missing_values_by_column": {key: int(value) for key, value in frame.isna().sum().items()},
-                "original_condition_counts": {str(key): int(value) for key, value in frame["label"].value_counts().items()},
+                "missing_values_by_column": {
+                    key: int(value) for key, value in frame.isna().sum().items()
+                },
+                "original_condition_counts": {
+                    str(key): int(value) for key, value in frame["label"].value_counts().items()
+                },
                 "binary_counts": {"normal": int((y == 0).sum()), "abnormal": int((y == 1).sum())},
                 "duplicate_feature_rows": int(frame[list(FEATURE_COLUMNS)].duplicated().sum()),
             }
             PROCESSED.parent.mkdir(parents=True, exist_ok=True)
-            np.savez_compressed(PROCESSED, x=x.astype(np.float32), y=y, esp_id=groups,
-                                names=np.array(FEATURE_COLUMNS))
+            np.savez_compressed(
+                PROCESSED,
+                x=x.astype(np.float32),
+                y=y,
+                esp_id=groups,
+                names=np.array(FEATURE_COLUMNS),
+            )
             return x, y, groups, details
 
-
-        def split_by_pump(y: np.ndarray, groups: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+        def split_by_pump(
+            y: np.ndarray, groups: np.ndarray
+        ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
             indexes = np.arange(len(y))
             outer = GroupShuffleSplit(n_splits=1, test_size=0.2, random_state=42)
             train_val, test = next(outer.split(indexes, y, groups))
@@ -2259,9 +4153,10 @@ def _make_pump():
                     raise AssertionError("A physical pump occurs in more than one split.")
             for part in (train, val, test):
                 if set(np.unique(y[part])) != {0, 1}:
-                    raise ValueError("A split lacks normal or abnormal rows; revise the group split.")
+                    raise ValueError(
+                        "A split lacks normal or abnormal rows; revise the group split."
+                    )
             return train, val, test
-
 
         def metrics(y_true: np.ndarray, y_pred: np.ndarray) -> dict:
             return {
@@ -2274,24 +4169,32 @@ def _make_pump():
                 "confusion_matrix": confusion_matrix(y_true, y_pred, labels=[0, 1]).tolist(),
             }
 
-
         def main() -> None:
             x, y, groups, details = load_data()
             train, val, test = split_by_pump(y, groups)
             candidates = {
-                "decision_tree": DecisionTreeClassifier(max_depth=5, min_samples_leaf=20, random_state=42),
+                "decision_tree": DecisionTreeClassifier(
+                    max_depth=5, min_samples_leaf=20, random_state=42
+                ),
                 "random_forest": RandomForestClassifier(
-                    n_estimators=200, min_samples_leaf=5, class_weight="balanced_subsample",
-                    random_state=42, n_jobs=-1,
+                    n_estimators=200,
+                    min_samples_leaf=5,
+                    class_weight="balanced_subsample",
+                    random_state=42,
+                    n_jobs=-1,
                 ),
             }
             validation = {}
             for name, model in candidates.items():
                 model.fit(x[train], y[train])
                 validation[name] = metrics(y[val], model.predict(x[val]))
-            chosen = max(candidates, key=lambda name: (
-                validation[name]["macro_f1"], validation[name]["recall_abnormal"]
-            ))
+            chosen = max(
+                candidates,
+                key=lambda name: (
+                    validation[name]["macro_f1"],
+                    validation[name]["recall_abnormal"],
+                ),
+            )
             train_val = np.concatenate((train, val))
             model = candidates[chosen].fit(x[train_val], y[train_val])
             selected_test = metrics(y[test], model.predict(x[test]))
@@ -2342,8 +4245,14 @@ def _make_pump():
             axes[1].set_ylabel("Actual")
             for row in range(2):
                 for col in range(2):
-                    axes[1].text(col, row, str(matrix[row, col]), ha="center", va="center",
-                                 color="white" if matrix[row, col] > matrix.max() / 2 else "black")
+                    axes[1].text(
+                        col,
+                        row,
+                        str(matrix[row, col]),
+                        ha="center",
+                        va="center",
+                        color="white" if matrix[row, col] > matrix.max() / 2 else "black",
+                    )
             fig.tight_layout()
             FIGURE.parent.mkdir(parents=True, exist_ok=True)
             fig.savefig(FIGURE, dpi=160)
@@ -2357,10 +4266,7 @@ def _make_pump():
             main()
         return locals()
 
-
-    # ====================================================================================================
-    # baselines: Week 5 baseline model comparison (majority class, logistic regression, decision tree, random forest)
-    # ====================================================================================================
+    # --- baselines: Week 5 baseline model comparison (majority class, logistic regression, decision tree, random forest) ---
 
     def baselines(run: bool = True) -> dict:
         """Week 5: compare baseline model families on the same held-out tests as the main experiment.
@@ -2379,8 +4285,12 @@ def _make_pump():
         from sklearn.dummy import DummyClassifier
         from sklearn.ensemble import RandomForestClassifier
         from sklearn.linear_model import LogisticRegression
-        from sklearn.metrics import (accuracy_score, balanced_accuracy_score, confusion_matrix,
-                                     precision_recall_fscore_support)
+        from sklearn.metrics import (
+            accuracy_score,
+            balanced_accuracy_score,
+            confusion_matrix,
+            precision_recall_fscore_support,
+        )
         from sklearn.pipeline import make_pipeline
         from sklearn.preprocessing import StandardScaler
         from sklearn.tree import DecisionTreeClassifier
@@ -2389,12 +4299,23 @@ def _make_pump():
         FIGURE = ROOT / "Figures" / "pump" / "pump_baselines.png"
         MODELS = {
             "Majority class (control)": lambda: DummyClassifier(strategy="most_frequent"),
-            "Logistic regression": lambda: make_pipeline(StandardScaler(), LogisticRegression(
-                C=1.0, class_weight="balanced", solver="lbfgs", max_iter=5000, random_state=42)),
-            "Decision tree": lambda: DecisionTreeClassifier(class_weight="balanced", min_samples_leaf=2, random_state=42),
+            "Logistic regression": lambda: make_pipeline(
+                StandardScaler(),
+                LogisticRegression(
+                    C=1.0, class_weight="balanced", solver="lbfgs", max_iter=5000, random_state=42
+                ),
+            ),
+            "Decision tree": lambda: DecisionTreeClassifier(
+                class_weight="balanced", min_samples_leaf=2, random_state=42
+            ),
             "Random forest": lambda: RandomForestClassifier(
-                n_estimators=250, max_features="sqrt", class_weight="balanced_subsample",
-                min_samples_leaf=2, random_state=42, n_jobs=-1),
+                n_estimators=250,
+                max_features="sqrt",
+                class_weight="balanced_subsample",
+                min_samples_leaf=2,
+                random_state=42,
+                n_jobs=-1,
+            ),
         }
         SETTINGS = {
             "Majority class (control)": "always predicts the most common training class",
@@ -2411,7 +4332,9 @@ def _make_pump():
                 if len(set(y[rows])) != 1:
                     raise ValueError(f"Mixed labels within {unit}")
                 actual.append(y[rows][0])
-                predicted.append(model.classes_[int(np.argmax(model.predict_proba(x[rows]).mean(axis=0)))])
+                predicted.append(
+                    model.classes_[int(np.argmax(model.predict_proba(x[rows]).mean(axis=0)))]
+                )
             return actual, predicted
 
         def evaluate(x, y, units, folds, classes):
@@ -2428,15 +4351,20 @@ def _make_pump():
                     actual += list(a)
                     predicted += list(p)
                 precision, recall, f1, _ = precision_recall_fscore_support(
-                    actual, predicted, labels=classes, zero_division=0)
+                    actual, predicted, labels=classes, zero_division=0
+                )
                 scores[name] = {
                     "test_units": len(actual),
                     "accuracy": round(float(accuracy_score(actual, predicted)), 4),
-                    "balanced_accuracy": round(float(balanced_accuracy_score(actual, predicted)), 4),
+                    "balanced_accuracy": round(
+                        float(balanced_accuracy_score(actual, predicted)), 4
+                    ),
                     "macro_precision": round(float(precision.mean()), 4),
                     "macro_recall": round(float(recall.mean()), 4),
                     "macro_f1": round(float(f1.mean()), 4),
-                    "confusion_matrix": confusion_matrix(actual, predicted, labels=classes).tolist(),
+                    "confusion_matrix": confusion_matrix(
+                        actual, predicted, labels=classes
+                    ).tolist(),
                 }
             return scores
 
@@ -2446,7 +4374,12 @@ def _make_pump():
             figure, axis = plt.subplots(figsize=(2.2 + 2.8 * len(branches), 4.0))
             for i, name in enumerate(names):
                 values = [result["branches"][b]["models"][name]["macro_f1"] for b in branches]
-                bars = axis.bar(np.arange(len(branches)) + (i - (len(names) - 1) / 2) * width, values, width, label=name)
+                bars = axis.bar(
+                    np.arange(len(branches)) + (i - (len(names) - 1) / 2) * width,
+                    values,
+                    width,
+                    label=name,
+                )
                 axis.bar_label(bars, fmt="%.2f", fontsize=7)
             axis.set_xticks(range(len(branches)), branches)
             axis.set_ylim(0, 1.15)
@@ -2469,7 +4402,8 @@ def _make_pump():
             branches["Sensor: vibration"] = {
                 "test": "train on speed profiles A/B; test on 24 separate C/D recordings",
                 "classes": list(s["CLASSES"]),
-                "models": evaluate(x, y, units, [np.isin(profile, ["C", "D"])], list(s["CLASSES"]))}
+                "models": evaluate(x, y, units, [np.isin(profile, ["C", "D"])], list(s["CLASSES"])),
+            }
             c = camera(run=False)
             if c["CACHE"].is_file():
                 with load_numpy(c["CACHE"], allow_pickle=False) as saved:
@@ -2479,7 +4413,8 @@ def _make_pump():
             branches["Camera: event camera"] = {
                 "test": "train on 24 recordings at 20 Hz; test on 24 separate recordings at 30 Hz",
                 "classes": list(c["CLASSES"]),
-                "models": evaluate(x, y, units, [speed == 30], list(c["CLASSES"]))}
+                "models": evaluate(x, y, units, [speed == 30], list(c["CLASSES"])),
+            }
             result = {
                 "title": "Pump: baseline models on held-out recordings",
                 "purpose": "Week 5 baseline model comparison on the same held-out tests as the main experiment",
@@ -2492,17 +4427,16 @@ def _make_pump():
             plot(result)
             for branch, block in branches.items():
                 for name, score in block["models"].items():
-                    print(f"{branch:<24} {name:<26} accuracy {score['accuracy']:.3f}  macro F1 {score['macro_f1']:.3f}")
+                    print(
+                        f"{branch:<24} {name:<26} accuracy {score['accuracy']:.3f}  macro F1 {score['macro_f1']:.3f}"
+                    )
             print(f"Saved {RESULT.relative_to(ROOT)} and {FIGURE.relative_to(ROOT)}")
 
         if run:
             main()
         return locals()
 
-
-    # ====================================================================================================
-    # export-images: Week 6, save the camera images as named files (professor remark)
-    # ====================================================================================================
+    # --- export-images: Week 6, save the camera images as named files (professor remark) ---
 
     def export_images(run: bool = True) -> dict:
         """Week 6: save this machine's camera images as named PNG files for the CNN.
@@ -2529,29 +4463,15 @@ def _make_pump():
         FRAMES = SECONDS * 1_000_000 // BIN_US
 
         def event_frames(stream):
-            """Bin events using the configured duration and frame interval; channels preserve polarity."""
-            while True:
-                first = stream.read(1)
-                if first != b"%":
-                    break
-                stream.readline()
-            stream.read(1)
-            counts = np.zeros((FRAMES, 2, HEIGHT, WIDTH), dtype=np.uint32)
-            end = SECONDS * 1_000_000
-            while True:
-                chunk = stream.read(8 * 500_000)
-                if not chunk:
-                    break
-                ev = np.frombuffer(chunk, dtype=EVENT)
-                keep = ev["t"] < end
-                t, xy = ev["t"][keep], ev["xy"][keep]
-                x, y, polarity = xy & 0x3FFF, (xy >> 14) & 0x3FFF, (xy >> 28) & 1
-                index = ((((t // BIN_US) * 2 + (1 - polarity)) * HEIGHT + (y * HEIGHT // 480)) * WIDTH
-                         + (x * WIDTH // 640)).astype(np.int64)
-                counts += np.bincount(index, minlength=counts.size).reshape(counts.shape).astype(np.uint32)
-                if len(ev) and ev["t"][-1] >= end:
-                    break
-            return counts
+            return bin_event_stream(
+                stream,
+                frames=FRAMES,
+                seconds=SECONDS,
+                height=HEIGHT,
+                width=WIDTH,
+                event_dtype=EVENT,
+                bin_microseconds=BIN_US,
+            )
 
         def event_png(frame):
             """Brighter events in red, darker events in green, log-scaled to 0-255."""
@@ -2563,16 +4483,30 @@ def _make_pump():
             folder = OUT / label
             folder.mkdir(parents=True, exist_ok=True)
             cv2.imwrite(str(folder / name), image)
-            rows.append({"file": f"{label}/{name}", "machine": MACHINE, "class": label, "unit": unit, "group": group})
+            rows.append(
+                {
+                    "file": f"{label}/{name}",
+                    "machine": MACHINE,
+                    "class": label,
+                    "unit": unit,
+                    "group": group,
+                }
+            )
 
         def export():
             rows = []
             folders = {"healthy": "Healthy", "inner": "Inner", "outer": "Outer", "ball": "Ball"}
             for hz, part in (("20Hz", "part1"), ("30Hz", "part2")):
-                with open_archive(ROOT / "Raw_Data" / "xjtu_dv_pump" / f"XJTU-DV-Pump_{part}.zip") as archive:
+                with open_archive(
+                    ROOT / "Raw_Data" / "xjtu_dv_pump" / f"XJTU-DV-Pump_{part}.zip"
+                ) as archive:
                     for label, folder in folders.items():
-                        members = sorted(i.filename for i in archive.infolist()
-                                         if i.filename.startswith(f"XJTU-DV-Pump/Data/{folder}/{hz[:2]}") and i.filename.endswith(".dat"))
+                        members = sorted(
+                            i.filename
+                            for i in archive.infolist()
+                            if i.filename.startswith(f"XJTU-DV-Pump/Data/{folder}/{hz[:2]}")
+                            and i.filename.endswith(".dat")
+                        )
                         for member in members:
                             setup = "_".join(Path(member).stem.split("_")[-2:])
                             unit = f"{hz}_{label}_{setup}"
@@ -2580,14 +4514,26 @@ def _make_pump():
                                 counts = event_frames(stream)
                             for k, frame in enumerate(counts):
                                 if frame.sum() > 0:
-                                    write(rows, label, unit, hz, f"{MACHINE}_{label}_{hz}_{setup}_" + NAME.format(k=k) + ".png", event_png(frame))
+                                    write(
+                                        rows,
+                                        label,
+                                        unit,
+                                        hz,
+                                        f"{MACHINE}_{label}_{hz}_{setup}_"
+                                        + NAME.format(k=k)
+                                        + ".png",
+                                        event_png(frame),
+                                    )
                             print(f"{unit}: done", flush=True)
             return rows
 
-
         def main():
             parser = argparse.ArgumentParser(description=export_images.__doc__)
-            parser.add_argument("--dense-frames", action="store_true", help="125 ms frames over up to 30 seconds; separate denseframes output")
+            parser.add_argument(
+                "--dense-frames",
+                action="store_true",
+                help="125 ms frames over up to 30 seconds; separate denseframes output",
+            )
             args = parser.parse_args()
             nonlocal OUT, SECONDS, FRAMES, BIN_US, NAME
             if args.dense_frames:
@@ -2598,7 +4544,9 @@ def _make_pump():
                 shutil.rmtree(OUT)
             rows = export()
             with (OUT / "index.csv").open("w", newline="", encoding="utf-8") as handle:
-                writer = csv_module.DictWriter(handle, fieldnames=["file", "machine", "class", "unit", "group"])
+                writer = csv_module.DictWriter(
+                    handle, fieldnames=["file", "machine", "class", "unit", "group"]
+                )
                 writer.writeheader()
                 writer.writerows(rows)
             counts = {}
@@ -2610,10 +4558,7 @@ def _make_pump():
             main()
         return locals()
 
-
-    # ====================================================================================================
-    # csv: Week 6, 4-class sensor model from a CSV feature table (professor remark: "csv accuracy 90 plus")
-    # ====================================================================================================
+    # --- csv: Week 6, 4-class sensor model from a CSV feature table (professor remark: "csv accuracy 90 plus") ---
 
     def csv(run: bool = True) -> dict:
         """Week 6: write the sensor features to a CSV table and train 4-class models on it.
@@ -2632,8 +4577,12 @@ def _make_pump():
         matplotlib.use("Agg")
         import matplotlib.pyplot as plt
         import numpy as np
-        from sklearn.metrics import (accuracy_score, balanced_accuracy_score, confusion_matrix,
-                                     precision_recall_fscore_support)
+        from sklearn.metrics import (
+            accuracy_score,
+            balanced_accuracy_score,
+            confusion_matrix,
+            precision_recall_fscore_support,
+        )
 
         import pandas as pd
         from sklearn.dummy import DummyClassifier
@@ -2648,11 +4597,20 @@ def _make_pump():
         FIGURE = ROOT / "Figures" / "pump" / f"{MACHINE}_csv_4class.png"
         MODELS = {
             "Majority class (control)": lambda: DummyClassifier(strategy="most_frequent"),
-            "Logistic regression": lambda: make_pipeline(StandardScaler(), LogisticRegression(
-                C=1.0, class_weight="balanced", solver="lbfgs", max_iter=5000, random_state=42)),
+            "Logistic regression": lambda: make_pipeline(
+                StandardScaler(),
+                LogisticRegression(
+                    C=1.0, class_weight="balanced", solver="lbfgs", max_iter=5000, random_state=42
+                ),
+            ),
             "Random forest": lambda: RandomForestClassifier(
-                n_estimators=250, max_features="sqrt", class_weight="balanced_subsample",
-                min_samples_leaf=2, random_state=42, n_jobs=-1),
+                n_estimators=250,
+                max_features="sqrt",
+                class_weight="balanced_subsample",
+                min_samples_leaf=2,
+                random_state=42,
+                n_jobs=-1,
+            ),
         }
 
         unit_predictions = predict_recordings
@@ -2660,7 +4618,6 @@ def _make_pump():
         score = classification_metrics
 
         plot_matrix = save_confusion_matrix
-
 
         def build_table():
             s = sensor(run=False)
@@ -2675,74 +4632,30 @@ def _make_pump():
             table.insert(0, "speed_profile", profile)
             table.insert(0, "unit", units)
             folds = lambda t: [t["speed_profile"].isin(["C", "D"]).to_numpy()]
-            return (table, names, ["healthy", "inner", "outer", "ball"], folds,
-                    "train on speed profiles A/B; test on 24 separate C/D recordings",
-                    ["Ottawa bearing rig vibration; one row per 0.1 s window, 100 windows per recording"])
-
+            return (
+                table,
+                names,
+                ["healthy", "inner", "outer", "ball"],
+                folds,
+                "train on speed profiles A/B; test on 24 separate C/D recordings",
+                [
+                    "Ottawa bearing rig vibration; one row per 0.1 s window, 100 windows per recording"
+                ],
+            )
 
         INNER_GROUP = "unit"
 
-        def candidate_models():
-            from sklearn.ensemble import ExtraTreesClassifier, HistGradientBoostingClassifier
-            from sklearn.svm import SVC
-            return {
-                "Random forest": lambda: RandomForestClassifier(
-                    n_estimators=250, max_features="sqrt", class_weight="balanced_subsample",
-                    min_samples_leaf=2, random_state=42, n_jobs=-1),
-                "Extra trees": lambda: ExtraTreesClassifier(
-                    n_estimators=300, max_features="sqrt", class_weight="balanced",
-                    min_samples_leaf=2, random_state=42, n_jobs=-1),
-                "Gradient boosting": lambda: HistGradientBoostingClassifier(
-                    max_iter=200, learning_rate=0.05, class_weight="balanced", random_state=42),
-                "SVM (RBF)": lambda: make_pipeline(StandardScaler(), SVC(
-                    C=10.0, gamma="scale", class_weight="balanced", probability=True, random_state=42)),
-                "Logistic regression": lambda: make_pipeline(StandardScaler(), LogisticRegression(
-                    C=1.0, class_weight="balanced", solver="lbfgs", max_iter=5000, random_state=42)),
-            }
+        candidate_models = sensor_model_candidates
 
-        def nested_selection(table, feature_sets, labels, outer_folds, inner_group):
-            """Pick a feature set and model on validation data inside each training set, then test once.
-
-            Inner validation holds out whole groups (recordings, bearings or speeds) of the training set
-            only; the outer test units are never used for the choice.
-            """
-            from sklearn.metrics import f1_score
-            from sklearn.model_selection import GroupKFold
-
-            y = table["class"].to_numpy()
-            units = table["unit"].to_numpy()
-            groups = table[inner_group].to_numpy()
-            models = candidate_models()
-            actual, predicted, chosen = [], [], []
-            for test in outer_folds:
-                train_idx = np.flatnonzero(~test)
-                n_splits = min(4, len(set(groups[train_idx])))
-                inner = list(GroupKFold(n_splits=n_splits).split(train_idx, groups=groups[train_idx]))
-                best, best_score = None, -1.0
-                for set_name, names in feature_sets.items():
-                    x = table[names].to_numpy(dtype=np.float64)
-                    for model_name, factory in models.items():
-                        f1s = []
-                        for fit_part, val_part in inner:
-                            fit_rows, val_rows = train_idx[fit_part], train_idx[val_part]
-                            model = factory().fit(x[fit_rows], y[fit_rows])
-                            a, p = unit_predictions(model.predict_proba(x[val_rows]), model.classes_, y[val_rows], units[val_rows])
-                            f1s.append(f1_score(a, p, labels=labels, average="macro", zero_division=0))
-                        if float(np.mean(f1s)) > best_score:
-                            best, best_score = (set_name, model_name), float(np.mean(f1s))
-                x = table[feature_sets[best[0]]].to_numpy(dtype=np.float64)
-                model = models[best[1]]().fit(x[train_idx], y[train_idx])
-                a, p = unit_predictions(model.predict_proba(x[test]), model.classes_, y[test], units[test])
-                actual += a
-                predicted += p
-                chosen.append({"feature_set": best[0], "model": best[1], "validation_macro_f1": round(best_score, 4)})
-            return score(actual, predicted, labels), chosen
+        nested_selection = select_sensor_model
 
         def main():
             parser = argparse.ArgumentParser(description=csv.__doc__)
             parser.parse_args()
             table, feature_names, labels, folds, test_description, notes = build_table()
-            feature_sets = feature_names if isinstance(feature_names, dict) else {"base": feature_names}
+            feature_sets = (
+                feature_names if isinstance(feature_names, dict) else {"base": feature_names}
+            )
             feature_names = next(iter(feature_sets.values()))
             CSV_PATH.parent.mkdir(parents=True, exist_ok=True)
             table.to_csv(CSV_PATH, index=False)
@@ -2757,45 +4670,66 @@ def _make_pump():
                     if set(units[train]) & set(units[test]):
                         raise ValueError("A test unit also appears in training")
                     model = factory().fit(x[train], y[train])
-                    a, p = unit_predictions(model.predict_proba(x[test]), model.classes_, y[test], units[test])
+                    a, p = unit_predictions(
+                        model.predict_proba(x[test]), model.classes_, y[test], units[test]
+                    )
                     actual += a
                     predicted += p
                 scores[name] = score(actual, predicted, labels)
             result = {
                 "purpose": "Week 6 professor remark: 4-class sensor model from a CSV feature table",
                 "csv_file": str(CSV_PATH.relative_to(ROOT)).replace("\\", "/"),
-                "rows": int(len(table)), "features": feature_names, "classes": labels,
-                "test": test_description, "main_model": "Random forest",
+                "rows": int(len(table)),
+                "features": feature_names,
+                "classes": labels,
+                "test": test_description,
+                "main_model": "Random forest",
                 "selection_rule": "settings fixed in advance; no model or setting chosen from these test results",
-                "notes": notes, "models": scores,
+                "notes": notes,
+                "models": scores,
             }
-            selected, chosen = nested_selection(table, feature_sets, labels, folds(table), INNER_GROUP)
+            selected, chosen = nested_selection(
+                table, feature_sets, labels, folds(table), INNER_GROUP
+            )
             result["validation_selected"] = {
                 "description": "feature set and model chosen per round on validation groups inside the training set only "
-                               "(candidates: " + ", ".join(candidate_models()) + "; feature sets: " + ", ".join(feature_sets) + ")",
-                "feature_sets": feature_sets, "score": selected, "chosen_per_round": chosen}
+                "(candidates: "
+                + ", ".join(candidate_models())
+                + "; feature sets: "
+                + ", ".join(feature_sets)
+                + ")",
+                "feature_sets": feature_sets,
+                "score": selected,
+                "chosen_per_round": chosen,
+            }
             result["main_model"] = "validation-selected"
             RESULT.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
             main_score = selected
-            plot_matrix(main_score["confusion_matrix"], labels,
-                        f"{MACHINE}: CSV sensor model (validation-selected), accuracy {main_score['accuracy']:.3f}", FIGURE)
+            plot_matrix(
+                main_score["confusion_matrix"],
+                labels,
+                f"{MACHINE}: CSV sensor model (validation-selected), accuracy {main_score['accuracy']:.3f}",
+                FIGURE,
+            )
             for name, s in scores.items():
-                print(f"{name:<26} accuracy {s['accuracy']:.3f}  macro F1 {s['macro_f1']:.3f}  ({s['test_units']} test units)")
-            print(f"Validation-selected model: accuracy {selected['accuracy']:.3f}  macro F1 {selected['macro_f1']:.3f}  "
-                  f"(choices: {[c['feature_set'] + ' / ' + c['model'] for c in chosen]})")
-            print(f"Saved {CSV_PATH.relative_to(ROOT)}, {RESULT.relative_to(ROOT)} and {FIGURE.relative_to(ROOT)}")
+                print(
+                    f"{name:<26} accuracy {s['accuracy']:.3f}  macro F1 {s['macro_f1']:.3f}  ({s['test_units']} test units)"
+                )
+            print(
+                f"Validation-selected model: accuracy {selected['accuracy']:.3f}  macro F1 {selected['macro_f1']:.3f}  "
+                f"(choices: {[c['feature_set'] + ' / ' + c['model'] for c in chosen]})"
+            )
+            print(
+                f"Saved {CSV_PATH.relative_to(ROOT)}, {RESULT.relative_to(ROOT)} and {FIGURE.relative_to(ROOT)}"
+            )
 
         if run:
             main()
         return locals()
 
-
-    # ====================================================================================================
-    # cnn: Week 6, CNN with data augmentation on the named images (professor remark)
-    # ====================================================================================================
+    # --- cnn: Week 6, CNN with data augmentation on the named images (professor remark) ---
 
     _augment_event_batch = augment_event_images
-
 
     def cnn(run: bool = True) -> dict:
         """Week 6: a small CNN with data augmentation, trained on the named images, 4 classes.
@@ -2816,8 +4750,12 @@ def _make_pump():
         matplotlib.use("Agg")
         import matplotlib.pyplot as plt
         import numpy as np
-        from sklearn.metrics import (accuracy_score, balanced_accuracy_score, confusion_matrix,
-                                     precision_recall_fscore_support)
+        from sklearn.metrics import (
+            accuracy_score,
+            balanced_accuracy_score,
+            confusion_matrix,
+            precision_recall_fscore_support,
+        )
 
         import random
 
@@ -2838,53 +4776,31 @@ def _make_pump():
 
         plot_matrix = save_confusion_matrix
 
-
         def read_index():
             return read_image_records(IMAGES)
 
         def load(rows):
             return load_model_images(IMAGES, rows, channels=(2, 1))
 
-        class Net(nn.Module):
-            def __init__(self, in_channels, n_classes):
-                super().__init__()
-                def block(a, b):
-                    return nn.Sequential(nn.Conv2d(a, b, 3, padding=1), nn.BatchNorm2d(b), nn.ReLU(), nn.MaxPool2d(2))
-                self.features = nn.Sequential(block(in_channels, 16), block(16, 32), block(32, 64), block(64, 64))
-                self.head = nn.Sequential(nn.AdaptiveAvgPool2d(1), nn.Flatten(), nn.Dropout(0.3), nn.Linear(64, n_classes))
-
-            def forward(self, x):
-                return self.head(self.features(x))
+        Net = make_small_image_cnn
 
         augment = _augment_event_batch
 
         def train(x, y):
-            random.seed(SEED)
-            np.random.seed(SEED)
-            torch.manual_seed(SEED)
-            generator = torch.Generator().manual_seed(SEED)
-            model = Net(x.shape[1], len(LABELS))
-            counts = np.bincount(y, minlength=len(LABELS)).astype(np.float32)
-            weights = torch.tensor(counts.sum() / (len(LABELS) * np.maximum(counts, 1)))
-            loss_fn = nn.CrossEntropyLoss(weight=weights)
-            optimiser = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE, weight_decay=1e-4)
-            xs, ys = torch.tensor(x), torch.tensor(y, dtype=torch.long)
-            for _ in range(EPOCHS):
-                model.train()
-                order = torch.randperm(len(xs), generator=generator)
-                for start in range(0, len(xs), BATCH):
-                    batch = order[start:start + BATCH]
-                    optimiser.zero_grad()
-                    loss = loss_fn(model(augment(xs[batch], generator)), ys[batch])
-                    loss.backward()
-                    optimiser.step()
-            return model
+            return train_small_image_cnn(
+                x,
+                y,
+                network=Net,
+                augment=augment,
+                labels=LABELS,
+                seed=SEED,
+                learning_rate=LEARNING_RATE,
+                epochs=EPOCHS,
+                batch_size=BATCH,
+            )
 
         def probabilities(model, x):
-            model.eval()
-            with torch.no_grad():
-                return np.concatenate([torch.softmax(model(torch.tensor(x[i:i + 256])), dim=1).numpy()
-                                       for i in range(0, len(x), 256)])
+            return image_probabilities(model, x, batch_size=256)
 
         def main():
             parser = argparse.ArgumentParser(description=cnn.__doc__)
@@ -2909,34 +4825,47 @@ def _make_pump():
                 unit_predicted += pr
                 image_actual += list(names[test])
                 image_predicted += [LABELS[i] for i in p.argmax(axis=1)]
-                print(f"fold {number}: trained on {int(train_mask.sum())} images, tested on {int(test.sum())}", flush=True)
+                print(
+                    f"fold {number}: trained on {int(train_mask.sum())} images, tested on {int(test.sum())}",
+                    flush=True,
+                )
             result = {
                 "purpose": "Week 6 professor remark: CNN with data augmentation on named images, 4 classes",
-                "images": int(len(rows)), "classes": LABELS, "test": "train on the 24 recordings at 20 Hz; test on the 24 separate recordings at 30 Hz",
-                "settings": {"epochs": EPOCHS, "batch": BATCH, "learning_rate": LEARNING_RATE, "seed": SEED,
-                             "architecture": "4 conv blocks (16, 32, 64, 64 channels) + global average pool + dropout 0.3",
-                             "augmentation": "random horizontal flip, shift up to 8 px, brightness/contrast x0.8-1.2, Gaussian noise 0.05",
-                             "normalisation": "each image standardised on its own"},
+                "images": int(len(rows)),
+                "classes": LABELS,
+                "test": "train on the 24 recordings at 20 Hz; test on the 24 separate recordings at 30 Hz",
+                "settings": {
+                    "epochs": EPOCHS,
+                    "batch": BATCH,
+                    "learning_rate": LEARNING_RATE,
+                    "seed": SEED,
+                    "architecture": "4 conv blocks (16, 32, 64, 64 channels) + global average pool + dropout 0.3",
+                    "augmentation": "random horizontal flip, shift up to 8 px, brightness/contrast x0.8-1.2, Gaussian noise 0.05",
+                    "normalisation": "each image standardised on its own",
+                },
                 "selection_rule": "settings fixed in advance; the test set is never used to choose epochs or settings",
                 "recording_level": score(unit_actual, unit_predicted, LABELS),
                 "image_level": score(image_actual, image_predicted, LABELS),
             }
             RESULT.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
             r = result["recording_level"]
-            plot_matrix(r["confusion_matrix"], LABELS,
-                        f"{MACHINE}: CNN on images, accuracy {r['accuracy']:.3f} ({r['test_units']} test units)", FIGURE)
-            print(f"CNN recording-level accuracy {r['accuracy']:.3f}, macro F1 {r['macro_f1']:.3f}; "
-                  f"image-level accuracy {result['image_level']['accuracy']:.3f}")
+            plot_matrix(
+                r["confusion_matrix"],
+                LABELS,
+                f"{MACHINE}: CNN on images, accuracy {r['accuracy']:.3f} ({r['test_units']} test units)",
+                FIGURE,
+            )
+            print(
+                f"CNN recording-level accuracy {r['accuracy']:.3f}, macro F1 {r['macro_f1']:.3f}; "
+                f"image-level accuracy {result['image_level']['accuracy']:.3f}"
+            )
             print(f"Saved {RESULT.relative_to(ROOT)} and {FIGURE.relative_to(ROOT)}")
 
         if run:
             main()
         return locals()
 
-
-    # ====================================================================================================
-    # cnn-pretrained: Week 6, transfer learning with a pretrained ResNet18 on the named images
-    # ====================================================================================================
+    # --- cnn-pretrained: Week 6, transfer learning with a pretrained ResNet18 on the named images ---
 
     def cnn_pretrained(run: bool = True) -> dict:
         """Week 6: transfer learning, an ImageNet-pretrained ResNet18 fine-tuned on the named images (4 classes).
@@ -2957,8 +4886,13 @@ def _make_pump():
         import matplotlib.pyplot as plt
         import numpy as np
         import torch
-        from sklearn.metrics import (accuracy_score, balanced_accuracy_score, confusion_matrix, f1_score,
-                                     precision_recall_fscore_support)
+        from sklearn.metrics import (
+            accuracy_score,
+            balanced_accuracy_score,
+            confusion_matrix,
+            f1_score,
+            precision_recall_fscore_support,
+        )
         from torch import nn
         from torchvision.models import ResNet18_Weights, resnet18
 
@@ -2967,7 +4901,7 @@ def _make_pump():
         RESULT = ROOT / "Results" / "pump" / f"{MACHINE}_cnn_pretrained_4class.json"
         FIGURE = ROOT / "Figures" / "pump" / f"{MACHINE}_cnn_pretrained_4class.png"
         LABELS = ["healthy", "inner", "outer", "ball"]
-        SEGMENTS = 10   # test segments per held-out recording (segment-level score)
+        SEGMENTS = 10  # test segments per held-out recording (segment-level score)
         MAX_EPOCHS, BATCH, LEARNING_RATE, SEED = 15, 32, 3e-4, 42
 
         unit_predictions = predict_recordings
@@ -2977,28 +4911,7 @@ def _make_pump():
         plot_matrix = save_confusion_matrix
 
         def plot_levels(result, title, path):
-            """One panel per scoring level, so the figure shows how many images were really tested."""
-            levels = [("every test image", result["image_level"]), ("per 1/10 recording segment", result.get("segment_level")),
-                      ("per whole recording", result["recording_level"])]
-            levels = [(name, block) for name, block in levels if block]
-            figure, axes = plt.subplots(1, len(levels), figsize=(4.6 * len(levels), 4.4))
-            for axis, (name, block) in zip(np.atleast_1d(axes), levels):
-                array = np.asarray(block["confusion_matrix"])
-                axis.imshow(array, cmap="Blues", vmin=0)
-                axis.set_xticks(range(len(LABELS)), LABELS, rotation=30, fontsize=8)
-                axis.set_yticks(range(len(LABELS)), LABELS, fontsize=8)
-                axis.set_xlabel("Predicted")
-                axis.set_ylabel("Actual")
-                axis.set_title(f"{name}\n{block['test_units']:,} tested, accuracy {block['accuracy']:.3f}", fontsize=9)
-                for i in range(len(LABELS)):
-                    for j in range(len(LABELS)):
-                        axis.text(j, i, f"{array[i, j]:,}", ha="center", va="center", fontsize=8,
-                                  color="white" if array[i, j] > array.max() / 2 else "black")
-            figure.suptitle(title.replace("; ", "\n"), fontsize=10)
-            figure.tight_layout()
-            path.parent.mkdir(parents=True, exist_ok=True)
-            figure.savefig(path, dpi=110)
-            plt.close(figure)
+            save_prediction_levels(result, title, path, LABELS)
 
         augment = _augment_event_batch
 
@@ -3011,41 +4924,30 @@ def _make_pump():
             return model
 
         def fit(x, y, epochs, val=None):
-            random.seed(SEED)
-            np.random.seed(SEED)
-            torch.manual_seed(SEED)
-            generator = torch.Generator().manual_seed(SEED)
-            model = new_model()
-            counts = np.bincount(y, minlength=len(LABELS)).astype(np.float32)
-            loss_fn = nn.CrossEntropyLoss(weight=torch.tensor(counts.sum() / (len(LABELS) * np.maximum(counts, 1))))
-            optimiser = torch.optim.AdamW(model.parameters(), lr=LEARNING_RATE, weight_decay=1e-4)
-            xs, ys = torch.tensor(x), torch.tensor(y, dtype=torch.long)
-            history = []
-            for _ in range(epochs):
-                model.train()
-                order = torch.randperm(len(xs), generator=generator)
-                for start in range(0, len(xs), BATCH):
-                    batch = order[start:start + BATCH]
-                    if len(batch) < 2:
-                        continue
-                    optimiser.zero_grad()
-                    loss_fn(model(augment(xs[batch], generator)), ys[batch]).backward()
-                    optimiser.step()
-                if val is not None:
-                    vx, vnames, vunits = val
-                    a, p = unit_predictions(probabilities(model, vx), np.asarray(LABELS), vnames, vunits)
-                    history.append(f1_score(a, p, labels=LABELS, average="macro", zero_division=0))
-            return model, history
+            return fit_pretrained_image_cnn(
+                x,
+                y,
+                epochs,
+                val,
+                new_model=new_model,
+                augment=augment,
+                labels=LABELS,
+                seed=SEED,
+                learning_rate=LEARNING_RATE,
+                batch_size=BATCH,
+                probabilities=probabilities,
+            )
 
         def probabilities(model, x):
-            model.eval()
-            with torch.no_grad():
-                return np.concatenate([torch.softmax(model(torch.tensor(x[i:i + 128])), dim=1).numpy()
-                                       for i in range(0, len(x), 128)])
+            return image_probabilities(model, x, batch_size=128)
 
         def main():
             parser = argparse.ArgumentParser(description=cnn_pretrained.__doc__)
-            parser.add_argument("--dense-frames", action="store_true", help="use separately exported 125 ms full-duration frames")
+            parser.add_argument(
+                "--dense-frames",
+                action="store_true",
+                help="use separately exported 125 ms full-duration frames",
+            )
             args = parser.parse_args()
             nonlocal IMAGES, RESULT, FIGURE
             if args.dense_frames:
@@ -3061,16 +4963,26 @@ def _make_pump():
             units = np.asarray([row["unit"] for row in rows])
             groups = np.asarray([row["group"] for row in rows])
             rng = np.random.default_rng(SEED)
-            unit_actual, unit_predicted, image_actual, image_predicted, epochs_chosen = [], [], [], [], []
+            unit_actual, unit_predicted, image_actual, image_predicted, epochs_chosen = (
+                [],
+                [],
+                [],
+                [],
+                [],
+            )
             segment_actual, segment_predicted, per_recording = [], [], {}
             for number, test in enumerate([groups == "30Hz"], 1):
                 train = ~test
                 if set(units[train]) & set(units[test]):
                     raise ValueError("A test recording also appears in training")
-                val_units = [rng.choice(sorted(set(units[train & (names == label)]))) for label in LABELS]
+                val_units = [
+                    rng.choice(sorted(set(units[train & (names == label)]))) for label in LABELS
+                ]
                 val = train & np.isin(units, val_units)
                 fit_part = train & ~val
-                _, history = fit(x[fit_part], y[fit_part], MAX_EPOCHS, (x[val], names[val], units[val]))
+                _, history = fit(
+                    x[fit_part], y[fit_part], MAX_EPOCHS, (x[val], names[val], units[val])
+                )
                 best_epochs = int(np.argmax(history)) + 1
                 model, _ = fit(x[train], y[train], best_epochs)
                 p = probabilities(model, x[test])
@@ -3087,53 +4999,83 @@ def _make_pump():
                     for part in np.array_split(np.arange(len(pu)), min(SEGMENTS, len(pu))):
                         segment_actual.append(true)
                         segment_predicted.append(LABELS[int(pu[part].mean(axis=0).argmax())])
-                    per_recording[str(unit)] = {"class": str(true), "images": int(len(pu)),
-                                                "images_predicted": {l: int((pu.argmax(axis=1) == i).sum())
-                                                                     for i, l in enumerate(LABELS)},
-                                                "recording_prediction": LABELS[int(pu.mean(axis=0).argmax())]}
+                    per_recording[str(unit)] = {
+                        "class": str(true),
+                        "images": int(len(pu)),
+                        "images_predicted": {
+                            l: int((pu.argmax(axis=1) == i).sum()) for i, l in enumerate(LABELS)
+                        },
+                        "recording_prediction": LABELS[int(pu.mean(axis=0).argmax())],
+                    }
                 epochs_chosen.append(best_epochs)
-                print(f"fold {number}: validation chose {best_epochs} epochs; tested on {int(test.sum())} images", flush=True)
+                print(
+                    f"fold {number}: validation chose {best_epochs} epochs; tested on {int(test.sum())} images",
+                    flush=True,
+                )
             result = {
                 "purpose": "Week 6: transfer learning (ImageNet-pretrained ResNet18) on named images, 4 classes",
-                "images": int(len(rows)), "classes": LABELS, "test": "train on the 24 recordings at 20 Hz; test on the 24 separate recordings at 30 Hz",
-                "settings": {"model": "ResNet18, ImageNet weights, all layers fine-tuned", "max_epochs": MAX_EPOCHS,
-                             "batch": BATCH, "learning_rate": LEARNING_RATE, "optimiser": "AdamW", "seed": SEED,
-                             "epochs_chosen_per_round": epochs_chosen,
-                             "epoch_selection": "one training recording per class held out for validation; best validation macro F1",
-                             "augmentation": "random horizontal flip, shift up to 8 px, brightness/contrast x0.8-1.2, Gaussian noise 0.05"},
+                "images": int(len(rows)),
+                "classes": LABELS,
+                "test": "train on the 24 recordings at 20 Hz; test on the 24 separate recordings at 30 Hz",
+                "settings": {
+                    "model": "ResNet18, ImageNet weights, all layers fine-tuned",
+                    "max_epochs": MAX_EPOCHS,
+                    "batch": BATCH,
+                    "learning_rate": LEARNING_RATE,
+                    "optimiser": "AdamW",
+                    "seed": SEED,
+                    "epochs_chosen_per_round": epochs_chosen,
+                    "epoch_selection": "one training recording per class held out for validation; best validation macro F1",
+                    "augmentation": "random horizontal flip, shift up to 8 px, brightness/contrast x0.8-1.2, Gaussian noise 0.05",
+                },
                 "selection_rule": "the test set is never used to choose epochs or settings",
                 "recording_level": score(unit_actual, unit_predicted, LABELS),
                 "image_level": score(image_actual, image_predicted, LABELS),
-                "segment_level": {**score(segment_actual, segment_predicted, LABELS),
-                                  "segments_per_recording": SEGMENTS,
-                                  "note": "each held-out recording split in time order into consecutive parts, one "
-                                          "prediction per part; parts of one recording are related, so the "
-                                          "recording-level score stays the main result"},
+                "segment_level": {
+                    **score(segment_actual, segment_predicted, LABELS),
+                    "segments_per_recording": SEGMENTS,
+                    "note": "each held-out recording split in time order into consecutive parts, one "
+                    "prediction per part; parts of one recording are related, so the "
+                    "recording-level score stays the main result",
+                },
                 "per_recording": per_recording,
             }
             RESULT.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
             s = result["segment_level"]
-            plot_matrix(s["confusion_matrix"], LABELS,
-                        f"{MACHINE}: pretrained ResNet18 per segment, accuracy {s['accuracy']:.3f} "
-                        f"({s['test_units']} test segments)", FIGURE.with_name(FIGURE.stem + "_segments.png"))
-            print(f"Segment-level accuracy {s['accuracy']:.3f} on {s['test_units']} test segments "
-                  f"({SEGMENTS} per held-out recording)")
+            plot_matrix(
+                s["confusion_matrix"],
+                LABELS,
+                f"{MACHINE}: pretrained ResNet18 per segment, accuracy {s['accuracy']:.3f} "
+                f"({s['test_units']} test segments)",
+                FIGURE.with_name(FIGURE.stem + "_segments.png"),
+            )
+            print(
+                f"Segment-level accuracy {s['accuracy']:.3f} on {s['test_units']} test segments "
+                f"({SEGMENTS} per held-out recording)"
+            )
             r = result["recording_level"]
-            plot_levels(result, f"{MACHINE}: pretrained ResNet18 on {result['images']:,} images in total; "
-                                f"{r['test_units']} test recordings" + (" (time split, secondary: later frames of training recordings)"
-                                if "timesplit" in FIGURE.stem else ", each never seen in training"), FIGURE)
-            print(f"Pretrained CNN recording-level accuracy {r['accuracy']:.3f}, macro F1 {r['macro_f1']:.3f}; "
-                  f"image-level accuracy {result['image_level']['accuracy']:.3f}")
+            plot_levels(
+                result,
+                f"{MACHINE}: pretrained ResNet18 on {result['images']:,} images in total; "
+                f"{r['test_units']} test recordings"
+                + (
+                    " (time split, secondary: later frames of training recordings)"
+                    if "timesplit" in FIGURE.stem
+                    else ", each never seen in training"
+                ),
+                FIGURE,
+            )
+            print(
+                f"Pretrained CNN recording-level accuracy {r['accuracy']:.3f}, macro F1 {r['macro_f1']:.3f}; "
+                f"image-level accuracy {result['image_level']['accuracy']:.3f}"
+            )
             print(f"Saved {RESULT.relative_to(ROOT)} and {FIGURE.relative_to(ROOT)}")
 
         if run:
             main()
         return locals()
 
-
-    # ====================================================================================================
-    # train-final / predict: use the trained sensor model on any CSV
-    # ====================================================================================================
+    # --- train-final / predict: use the trained sensor model on any CSV ---
 
     def train_final(run: bool = True) -> dict:
         """Train the sensor model on all of this machine's data and save it (Processed_Data/models/, not in Git).
@@ -3152,29 +5094,53 @@ def _make_pump():
 
         def main():
             parser = argparse.ArgumentParser(description=train_final.__doc__)
-            parser.add_argument("--exclude", nargs="*", default=[], help="recording names to leave out, e.g. B-C-1.mat")
+            parser.add_argument(
+                "--exclude",
+                nargs="*",
+                default=[],
+                help="recording names to leave out, e.g. B-C-1.mat",
+            )
             args = parser.parse_args()
             table, feature_sets, labels, *_ = csv(run=False)["build_table"]()
-            feature_sets = feature_sets if isinstance(feature_sets, dict) else {"base": feature_sets}
+            feature_sets = (
+                feature_sets if isinstance(feature_sets, dict) else {"base": feature_sets}
+            )
             features = feature_sets["base"]
             unknown = set(args.exclude) - set(table["unit"])
             if unknown:
                 raise SystemExit(f"Unknown recording names: {sorted(unknown)}")
             train = ~table["unit"].isin(args.exclude)
-            model = RandomForestClassifier(n_estimators=250, max_features="sqrt", class_weight="balanced_subsample",
-                                           min_samples_leaf=2, random_state=42, n_jobs=-1)
-            model.fit(table.loc[train, features].to_numpy(dtype=np.float64), table.loc[train, "class"])
+            model = RandomForestClassifier(
+                n_estimators=250,
+                max_features="sqrt",
+                class_weight="balanced_subsample",
+                min_samples_leaf=2,
+                random_state=42,
+                n_jobs=-1,
+            )
+            model.fit(
+                table.loc[train, features].to_numpy(dtype=np.float64), table.loc[train, "class"]
+            )
             MODEL_PATH.parent.mkdir(parents=True, exist_ok=True)
-            joblib.dump({"model": model, "features": features, "classes": list(labels), "machine": "pump",
-                         "trained_units": sorted(set(table.loc[train, "unit"])), "excluded_units": sorted(args.exclude)},
-                        MODEL_PATH)
-            print(f"Trained on {int(train.sum())} rows from {table.loc[train, 'unit'].nunique()} recordings "
-                  f"(excluded: {args.exclude or 'none'}); saved {MODEL_PATH.relative_to(ROOT)}")
+            joblib.dump(
+                {
+                    "model": model,
+                    "features": features,
+                    "classes": list(labels),
+                    "machine": "pump",
+                    "trained_units": sorted(set(table.loc[train, "unit"])),
+                    "excluded_units": sorted(args.exclude),
+                },
+                MODEL_PATH,
+            )
+            print(
+                f"Trained on {int(train.sum())} rows from {table.loc[train, 'unit'].nunique()} recordings "
+                f"(excluded: {args.exclude or 'none'}); saved {MODEL_PATH.relative_to(ROOT)}"
+            )
 
         if run:
             main()
         return locals()
-
 
     def predict(run: bool = True) -> dict:
         """Predict the condition from any CSV and, if the true class is known, show the accuracy.
@@ -3197,7 +5163,9 @@ def _make_pump():
 
         def read_any(path):
             table = load_csv(path)
-            if all(_is_number(c) for c in table.columns):   # no header row: plain column(s) of numbers
+            if all(
+                _is_number(c) for c in table.columns
+            ):  # no header row: plain column(s) of numbers
                 table = load_csv(path, header=None)
             return table
 
@@ -3211,12 +5179,15 @@ def _make_pump():
         def raw_features(values, args):
             return sensor(run=False)["extract"](values)
 
-
         def main():
             parser = argparse.ArgumentParser(description=predict.__doc__)
             parser.add_argument("--csv", required=True, help="path to the CSV file")
-            parser.add_argument("--label", help="true class of a raw recording, one of: healthy, inner, outer, ball")
-            parser.add_argument("--column", help="column holding the raw signal (default: first numeric column)")
+            parser.add_argument(
+                "--label", help="true class of a raw recording, one of: healthy, inner, outer, ball"
+            )
+            parser.add_argument(
+                "--column", help="column holding the raw signal (default: first numeric column)"
+            )
 
             args = parser.parse_args()
             if not MODEL_PATH.is_file():
@@ -3229,12 +5200,26 @@ def _make_pump():
             if set(features) <= set(table.columns):
                 mode = "feature table"
                 x = table[features].to_numpy(dtype=np.float64)
-                units = table["unit"].astype(str).to_numpy() if "unit" in table.columns else np.full(len(table), path.stem)
-                truth = table["class"].astype(str).to_numpy() if "class" in table.columns else np.full(len(table), args.label)
+                units = (
+                    table["unit"].astype(str).to_numpy()
+                    if "unit" in table.columns
+                    else np.full(len(table), path.stem)
+                )
+                truth = (
+                    table["class"].astype(str).to_numpy()
+                    if "class" in table.columns
+                    else np.full(len(table), args.label)
+                )
             else:
                 mode = "raw recording"
-                column = args.column if args.column is not None else table.select_dtypes("number").columns[0]
-                values = table[column if column in table.columns else int(column)].to_numpy(dtype=np.float64)
+                column = (
+                    args.column
+                    if args.column is not None
+                    else table.select_dtypes("number").columns[0]
+                )
+                values = table[column if column in table.columns else int(column)].to_numpy(
+                    dtype=np.float64
+                )
                 x = raw_features(values, args)
                 units = np.full(len(x), path.stem)
                 truth = np.full(len(x), args.label)
@@ -3243,34 +5228,46 @@ def _make_pump():
             for unit in dict.fromkeys(units):
                 mask = units == unit
                 mean = probabilities[mask].mean(axis=0)
-                rows.append({"recording": unit, "predicted": model.classes_[int(mean.argmax())],
-                             "confidence": round(float(mean.max()), 3), "true": truth[mask][0], "rows": int(mask.sum())})
+                rows.append(
+                    {
+                        "recording": unit,
+                        "predicted": model.classes_[int(mean.argmax())],
+                        "confidence": round(float(mean.max()), 3),
+                        "true": truth[mask][0],
+                        "rows": int(mask.sum()),
+                    }
+                )
             report = pd.DataFrame(rows)
-            print(f"Model: {saved['machine']} random forest | input: {mode} | {len(report)} recording(s)")
+            print(
+                f"Model: {saved['machine']} random forest | input: {mode} | {len(report)} recording(s)"
+            )
             print(report.to_string(index=False))
             seen = sorted(set(report["recording"]) & set(saved["trained_units"]))
             if seen:
-                print(f"WARNING: {seen} were used to train this model, so their accuracy is optimistic. "
-                      "Use train-final --exclude ... to test fairly.")
+                print(
+                    f"WARNING: {seen} were used to train this model, so their accuracy is optimistic. "
+                    "Use train-final --exclude ... to test fairly."
+                )
             known = report["true"].notna() & (report["true"].astype(str) != "None")
             if known.any():
                 k = report[known]
-                print(f"\nAccuracy: {accuracy_score(k['true'], k['predicted']):.3f} "
-                      f"({int((k['true'] == k['predicted']).sum())}/{len(k)} recordings)")
+                print(
+                    f"\nAccuracy: {accuracy_score(k['true'], k['predicted']):.3f} "
+                    f"({int((k['true'] == k['predicted']).sum())}/{len(k)} recordings)"
+                )
                 labels = saved["classes"]
                 print("Confusion matrix (rows = true, columns = predicted):", labels)
                 print(confusion_matrix(k["true"], k["predicted"], labels=labels))
             else:
-                print("\nNo true class given (use --label or a 'class' column) so accuracy cannot be computed.")
+                print(
+                    "\nNo true class given (use --label or a 'class' column) so accuracy cannot be computed."
+                )
 
         if run:
             main()
         return locals()
 
-
-    # ====================================================================================================
-    # Proposal Week 6: advanced ensemble models (XGBoost / LightGBM comparison table)
-    # ====================================================================================================
+    # --- Proposal Week 6: advanced ensemble models (XGBoost / LightGBM comparison table) ---
 
     def ensembles(run: bool = True) -> dict:
         """Proposal Week 6: compare advanced ensemble models on the same CSV sensor features and held-out tests.
@@ -3291,14 +5288,25 @@ def _make_pump():
         import matplotlib.pyplot as plt
         import numpy as np
         from sklearn.dummy import DummyClassifier
-        from sklearn.ensemble import ExtraTreesClassifier, HistGradientBoostingClassifier, RandomForestClassifier
-        from sklearn.metrics import accuracy_score, balanced_accuracy_score, confusion_matrix, f1_score
+        from sklearn.ensemble import (
+            ExtraTreesClassifier,
+            HistGradientBoostingClassifier,
+            RandomForestClassifier,
+        )
+        from sklearn.metrics import (
+            accuracy_score,
+            balanced_accuracy_score,
+            confusion_matrix,
+            f1_score,
+        )
 
         try:
             from lightgbm import LGBMClassifier
             from xgboost import XGBClassifier
         except ImportError:
-            raise SystemExit("Install the ensemble libraries first:  python -m pip install xgboost lightgbm")
+            raise SystemExit(
+                "Install the ensemble libraries first:  python -m pip install xgboost lightgbm"
+            )
 
         MACHINE = "pump"
         RESULT = ROOT / "Results" / MACHINE / f"{MACHINE}_ensembles.json"
@@ -3306,30 +5314,66 @@ def _make_pump():
         MODELS = {
             "Majority class (control)": lambda: DummyClassifier(strategy="most_frequent"),
             "Random forest": lambda: RandomForestClassifier(
-                n_estimators=250, max_features="sqrt", class_weight="balanced_subsample",
-                min_samples_leaf=2, random_state=42, n_jobs=-1),
+                n_estimators=250,
+                max_features="sqrt",
+                class_weight="balanced_subsample",
+                min_samples_leaf=2,
+                random_state=42,
+                n_jobs=-1,
+            ),
             "Extra trees": lambda: ExtraTreesClassifier(
-                n_estimators=300, max_features="sqrt", class_weight="balanced",
-                min_samples_leaf=2, random_state=42, n_jobs=-1),
+                n_estimators=300,
+                max_features="sqrt",
+                class_weight="balanced",
+                min_samples_leaf=2,
+                random_state=42,
+                n_jobs=-1,
+            ),
             "Gradient boosting (scikit-learn)": lambda: HistGradientBoostingClassifier(
-                max_iter=200, learning_rate=0.05, class_weight="balanced", random_state=42),
+                max_iter=200, learning_rate=0.05, class_weight="balanced", random_state=42
+            ),
             "XGBoost": lambda: XGBClassifier(
-                n_estimators=300, max_depth=4, learning_rate=0.05, subsample=0.8, colsample_bytree=0.8,
-                tree_method="hist", random_state=42, n_jobs=-1, verbosity=0),
+                n_estimators=300,
+                max_depth=4,
+                learning_rate=0.05,
+                subsample=0.8,
+                colsample_bytree=0.8,
+                tree_method="hist",
+                random_state=42,
+                n_jobs=-1,
+                verbosity=0,
+            ),
             "LightGBM": lambda: LGBMClassifier(
-                n_estimators=300, num_leaves=15, learning_rate=0.05, subsample=0.8, subsample_freq=1,
-                colsample_bytree=0.8, class_weight="balanced", random_state=42, n_jobs=-1, verbose=-1),
+                n_estimators=300,
+                num_leaves=15,
+                learning_rate=0.05,
+                subsample=0.8,
+                subsample_freq=1,
+                colsample_bytree=0.8,
+                class_weight="balanced",
+                random_state=42,
+                n_jobs=-1,
+                verbose=-1,
+            ),
         }
 
         def main():
             parser = argparse.ArgumentParser(description=ensembles.__doc__)
-            parser.add_argument("--split", choices=("main", "time"), default="main",
-                                help="main (fair test) or time (secondary: first 60%% of every recording trains, "
-                                     "last 30%% tests, 10%% gap)")
+            parser.add_argument(
+                "--split",
+                choices=("main", "time"),
+                default="main",
+                help="main (fair test) or time (secondary: first 60%% of every recording trains, "
+                "last 30%% tests, 10%% gap)",
+            )
             args = parser.parse_args()
             nonlocal RESULT, FIGURE
-            table, feature_sets, labels, folds, test_description, notes = csv(run=False)["build_table"]()
-            feature_sets = feature_sets if isinstance(feature_sets, dict) else {"base": feature_sets}
+            table, feature_sets, labels, folds, test_description, notes = csv(run=False)[
+                "build_table"
+            ]()
+            feature_sets = (
+                feature_sets if isinstance(feature_sets, dict) else {"base": feature_sets}
+            )
             set_name, features = next(iter(feature_sets.items()))
             if args.split == "time":
                 if "window" not in table.columns:
@@ -3339,19 +5383,26 @@ def _make_pump():
                 late = position.loc[table.index] > 0.7
                 table["unit"] = table["unit"] + np.where(late, "_late", "_early")
                 folds = lambda t: [t["unit"].str.endswith("_late").to_numpy()]
-                test_description = ("TIME SPLIT (secondary): first 60% of every recording trains, last 30% tests, 10% gap; "
-                                    "the same recordings appear in training, so this is easier than the main test")
+                test_description = (
+                    "TIME SPLIT (secondary): first 60% of every recording trains, last 30% tests, 10% gap; "
+                    "the same recordings appear in training, so this is easier than the main test"
+                )
                 RESULT = RESULT.with_name(RESULT.stem + "_timesplit.json")
                 FIGURE = FIGURE.with_name(FIGURE.stem + "_timesplit.png")
             x = table[features].to_numpy(dtype=np.float64)
             code = {label: i for i, label in enumerate(labels)}
             y = table["class"].map(code).to_numpy()
             units = table["unit"].astype(str).to_numpy()
-            result = {"purpose": "Proposal Week 6: advanced ensemble comparison (XGBoost / LightGBM)",
-                      "machine": MACHINE, "features": f"{set_name} ({len(features)} sensor features, same CSV as Week 6)",
-                      "classes": list(labels), "test": test_description,
-                      "selection_rule": "settings fixed in advance; no model or setting chosen from these test results",
-                      "notes": notes, "models": {}}
+            result = {
+                "purpose": "Proposal Week 6: advanced ensemble comparison (XGBoost / LightGBM)",
+                "machine": MACHINE,
+                "features": f"{set_name} ({len(features)} sensor features, same CSV as Week 6)",
+                "classes": list(labels),
+                "test": test_description,
+                "selection_rule": "settings fixed in advance; no model or setting chosen from these test results",
+                "notes": notes,
+                "models": {},
+            }
             for name, make in MODELS.items():
                 actual, predicted, seconds = [], [], 0.0
                 for test in folds(table):
@@ -3371,26 +5422,55 @@ def _make_pump():
                 result["models"][name] = {
                     "test_units": len(actual),
                     "accuracy": round(float(accuracy_score(actual, predicted)), 4),
-                    "balanced_accuracy": round(float(balanced_accuracy_score(actual, predicted)), 4),
-                    "macro_f1": round(float(f1_score(actual, predicted, average="macro", labels=list(range(len(labels))),
-                                                     zero_division=0)), 4),
+                    "balanced_accuracy": round(
+                        float(balanced_accuracy_score(actual, predicted)), 4
+                    ),
+                    "macro_f1": round(
+                        float(
+                            f1_score(
+                                actual,
+                                predicted,
+                                average="macro",
+                                labels=list(range(len(labels))),
+                                zero_division=0,
+                            )
+                        ),
+                        4,
+                    ),
                     "train_seconds": round(seconds, 2),
-                    "confusion_matrix": confusion_matrix(actual, predicted, labels=list(range(len(labels)))).tolist(),
+                    "confusion_matrix": confusion_matrix(
+                        actual, predicted, labels=list(range(len(labels)))
+                    ).tolist(),
                 }
                 block = result["models"][name]
-                print(f"{name:33s} accuracy {block['accuracy']:.3f}  macro F1 {block['macro_f1']:.3f}  "
-                      f"({block['test_units']} recordings, {seconds:.1f} s to train)")
+                print(
+                    f"{name:33s} accuracy {block['accuracy']:.3f}  macro F1 {block['macro_f1']:.3f}  "
+                    f"({block['test_units']} recordings, {seconds:.1f} s to train)"
+                )
             names = list(result["models"])
             figure, axis = plt.subplots(figsize=(8, 3.6))
             positions = np.arange(len(names))
-            axis.bar(positions - 0.2, [result["models"][n]["accuracy"] for n in names], 0.4, label="accuracy")
-            axis.bar(positions + 0.2, [result["models"][n]["macro_f1"] for n in names], 0.4, label="macro F1")
+            axis.bar(
+                positions - 0.2,
+                [result["models"][n]["accuracy"] for n in names],
+                0.4,
+                label="accuracy",
+            )
+            axis.bar(
+                positions + 0.2,
+                [result["models"][n]["macro_f1"] for n in names],
+                0.4,
+                label="macro F1",
+            )
             axis.axhline(0.9, color="grey", ls="--", lw=1)
             axis.set_xticks(positions, [n.replace(" (", "\n(") for n in names], fontsize=7.5)
             axis.set_ylim(0, 1.05)
             axis.legend(fontsize=8)
-            axis.set_title(f"{MACHINE.replace('_', ' ').title()}: ensemble comparison"
-                           + (" - TIME SPLIT" if args.split == "time" else " (main test)"), fontsize=10)
+            axis.set_title(
+                f"{MACHINE.replace('_', ' ').title()}: ensemble comparison"
+                + (" - TIME SPLIT" if args.split == "time" else " (main test)"),
+                fontsize=10,
+            )
             figure.tight_layout()
             FIGURE.parent.mkdir(parents=True, exist_ok=True)
             figure.savefig(FIGURE, dpi=110)
@@ -3403,10 +5483,7 @@ def _make_pump():
             main()
         return locals()
 
-
-    # ====================================================================================================
-    # Week 7: anomaly detection (proposal Week 7: Isolation Forest / One-Class SVM)
-    # ====================================================================================================
+    # --- Week 7: anomaly detection (proposal Week 7: Isolation Forest / One-Class SVM) ---
 
     def anomaly(run: bool = True) -> dict:
         """Week 7: anomaly detection. Learn what HEALTHY looks like, then flag anything unusual as a possible fault.
@@ -3436,24 +5513,32 @@ def _make_pump():
         RESULT = ROOT / "Results" / MACHINE / f"{MACHINE}_anomaly.json"
         FIGURE = ROOT / "Figures" / MACHINE / f"{MACHINE}_anomaly.png"
         DETECTORS = {
-            "Isolation Forest": lambda: make_pipeline(StandardScaler(), IsolationForest(
-                n_estimators=300, max_samples=256, random_state=42, n_jobs=-1)),
-            "One-Class SVM": lambda: make_pipeline(StandardScaler(), OneClassSVM(kernel="rbf", gamma="scale", nu=0.05)),
+            "Isolation Forest": lambda: make_pipeline(
+                StandardScaler(),
+                IsolationForest(n_estimators=300, max_samples=256, random_state=42, n_jobs=-1),
+            ),
+            "One-Class SVM": lambda: make_pipeline(
+                StandardScaler(), OneClassSVM(kernel="rbf", gamma="scale", nu=0.05)
+            ),
         }
-        MAX_FIT_ROWS = 4000   # One-Class SVM gets slow on many rows; a fixed, evenly spaced subset is used
+        MAX_FIT_ROWS = (
+            4000  # One-Class SVM gets slow on many rows; a fixed, evenly spaced subset is used
+        )
 
         def fit(make, x):
             rows = np.linspace(0, len(x) - 1, min(len(x), MAX_FIT_ROWS)).astype(int)
             return make().fit(x[rows])
 
         def recording_scores(model, x, units):
-            window = -model.decision_function(x)   # higher = more unusual
+            window = -model.decision_function(x)  # higher = more unusual
             return {unit: float(window[units == unit].mean()) for unit in dict.fromkeys(units)}
 
         def threshold(make, x, units, healthy_units):
             """Highest score of any healthy training recording when it is left out of fitting (no test data used)."""
             if len(healthy_units) < 2:
-                raise SystemExit("Need at least two healthy training recordings to set the threshold")
+                raise SystemExit(
+                    "Need at least two healthy training recordings to set the threshold"
+                )
             scores = []
             for unit in healthy_units:
                 others = np.isin(units, [u for u in healthy_units if u != unit])
@@ -3463,13 +5548,21 @@ def _make_pump():
 
         def main():
             parser = argparse.ArgumentParser(description=anomaly.__doc__)
-            parser.add_argument("--split", choices=("main", "time"), default="main",
-                                help="main (fair: held-out recordings) or time (secondary: first 60%% of every recording "
-                                     "trains, last 30%% tests, 10%% gap)")
+            parser.add_argument(
+                "--split",
+                choices=("main", "time"),
+                default="main",
+                help="main (fair: held-out recordings) or time (secondary: first 60%% of every recording "
+                "trains, last 30%% tests, 10%% gap)",
+            )
             args = parser.parse_args()
             nonlocal RESULT, FIGURE
-            table, feature_sets, labels, folds, test_description, notes = csv(run=False)["build_table"]()
-            feature_sets = feature_sets if isinstance(feature_sets, dict) else {"base": feature_sets}
+            table, feature_sets, labels, folds, test_description, notes = csv(run=False)[
+                "build_table"
+            ]()
+            feature_sets = (
+                feature_sets if isinstance(feature_sets, dict) else {"base": feature_sets}
+            )
             set_name, features = next(iter(feature_sets.items()))
             if args.split == "time":
                 if "window" not in table.columns:
@@ -3479,8 +5572,10 @@ def _make_pump():
                 late = position.loc[table.index] > 0.7
                 table["unit"] = table["unit"] + np.where(late, "_late", "_early")
                 folds = lambda t: [t["unit"].str.endswith("_late").to_numpy()]
-                test_description = ("TIME SPLIT (secondary): healthy rows from the first 60% of every recording train, "
-                                    "the last 30% of every recording is tested (10% gap); easier than the main test")
+                test_description = (
+                    "TIME SPLIT (secondary): healthy rows from the first 60% of every recording train, "
+                    "the last 30% of every recording is tested (10% gap); easier than the main test"
+                )
                 RESULT = RESULT.with_name(RESULT.stem + "_timesplit.json")
                 FIGURE = FIGURE.with_name(FIGURE.stem + "_timesplit.png")
             x = table[features].to_numpy(dtype=np.float64)
@@ -3489,11 +5584,13 @@ def _make_pump():
             fault_classes = [c for c in labels if c != "healthy"]
             result = {
                 "purpose": "Week 7 (proposal): anomaly detection trained on healthy data only",
-                "machine": MACHINE, "features": f"{set_name} ({len(features)} sensor features, same CSV as Week 6)",
+                "machine": MACHINE,
+                "features": f"{set_name} ({len(features)} sensor features, same CSV as Week 6)",
                 "test": test_description,
                 "threshold_rule": "highest leave-one-recording-out score among the healthy TRAINING recordings; "
-                                  "no test data and no fault labels are used to train or to set it",
-                "notes": notes, "detectors": {},
+                "no test data and no fault labels are used to train or to set it",
+                "notes": notes,
+                "detectors": {},
             }
             figure, axes = plt.subplots(1, len(DETECTORS), figsize=(5.2 * len(DETECTORS), 3.6))
             for axis, (name, make) in zip(np.atleast_1d(axes), DETECTORS.items()):
@@ -3504,15 +5601,26 @@ def _make_pump():
                     model = fit(make, x[np.isin(units, train_healthy)])
                     scores = recording_scores(model, x[test], units[test])
                     for unit, score in scores.items():
-                        rows.append({"unit": unit, "class": y[units == unit][0], "margin": score - cut})
+                        rows.append(
+                            {"unit": unit, "class": y[units == unit][0], "margin": score - cut}
+                        )
                 truth = np.array([r["class"] != "healthy" for r in rows])
                 margin = np.array([r["margin"] for r in rows])
                 alarm = margin > 0
-                per_class = {c: round(float(alarm[[r["class"] == c for r in rows]].mean()), 4)
-                             for c in fault_classes if any(r["class"] == c for r in rows)}
+                per_class = {
+                    c: round(float(alarm[[r["class"] == c for r in rows]].mean()), 4)
+                    for c in fault_classes
+                    if any(r["class"] == c for r in rows)
+                }
                 block = {
-                    "test_recordings": len(rows), "healthy": int((~truth).sum()), "faulty": int(truth.sum()),
-                    "roc_auc": round(float(roc_auc_score(truth, margin)), 4) if 0 < truth.sum() < len(truth) else None,
+                    "test_recordings": len(rows),
+                    "healthy": int((~truth).sum()),
+                    "faulty": int(truth.sum()),
+                    "roc_auc": (
+                        round(float(roc_auc_score(truth, margin)), 4)
+                        if 0 < truth.sum() < len(truth)
+                        else None
+                    ),
                     "fault_detection_rate": round(float(alarm[truth].mean()), 4),
                     "false_alarm_rate": round(float(alarm[~truth].mean()), 4),
                     "accuracy": round(float((alarm == truth).mean()), 4),
@@ -3520,20 +5628,32 @@ def _make_pump():
                     "recordings": [{**r, "margin": round(r["margin"], 4)} for r in rows],
                 }
                 result["detectors"][name] = block
-                print(f"{name:17s} ROC-AUC {block['roc_auc']}  faults detected {block['fault_detection_rate']:.3f}  "
-                      f"false alarms {block['false_alarm_rate']:.3f}  ({len(rows)} test recordings)")
+                print(
+                    f"{name:17s} ROC-AUC {block['roc_auc']}  faults detected {block['fault_detection_rate']:.3f}  "
+                    f"false alarms {block['false_alarm_rate']:.3f}  ({len(rows)} test recordings)"
+                )
                 order = ["healthy", *fault_classes]
                 for k, c in enumerate(order):
                     values = margin[[r["class"] == c for r in rows]]
-                    axis.scatter(np.full(len(values), k) + np.linspace(-0.15, 0.15, len(values)), values, s=18,
-                                 color="tab:green" if c == "healthy" else "tab:red")
+                    axis.scatter(
+                        np.full(len(values), k) + np.linspace(-0.15, 0.15, len(values)),
+                        values,
+                        s=18,
+                        color="tab:green" if c == "healthy" else "tab:red",
+                    )
                 axis.axhline(0, color="black", lw=1, ls="--")
                 axis.set_xticks(range(len(order)), order, rotation=20)
                 axis.set_ylabel("score minus alarm threshold")
-                axis.set_title(f"{name}: AUC {block['roc_auc']}, detect {block['fault_detection_rate']:.2f}, "
-                               f"false alarm {block['false_alarm_rate']:.2f}", fontsize=8.5)
-            figure.suptitle(f"{MACHINE.replace('_', ' ').title()} anomaly detection (above the line = alarm)"
-                            + (" - TIME SPLIT" if args.split == "time" else ""), fontsize=10)
+                axis.set_title(
+                    f"{name}: AUC {block['roc_auc']}, detect {block['fault_detection_rate']:.2f}, "
+                    f"false alarm {block['false_alarm_rate']:.2f}",
+                    fontsize=8.5,
+                )
+            figure.suptitle(
+                f"{MACHINE.replace('_', ' ').title()} anomaly detection (above the line = alarm)"
+                + (" - TIME SPLIT" if args.split == "time" else ""),
+                fontsize=10,
+            )
             figure.tight_layout()
             FIGURE.parent.mkdir(parents=True, exist_ok=True)
             figure.savefig(FIGURE, dpi=110)
@@ -3545,7 +5665,6 @@ def _make_pump():
         if run:
             main()
         return locals()
-
 
     COMMANDS = {
         "ensembles": ensembles,
@@ -3565,28 +5684,26 @@ def _make_pump():
         "cnn": cnn,
         "cnn-pretrained": cnn_pretrained,
     }
-    RUN_ALL = ['sensor', 'camera', 'compare']
-
+    RUN_ALL = ["sensor", "camera", "compare"]
 
     def cli() -> None:
         if len(sys.argv) < 2 or sys.argv[1] not in (*COMMANDS, "all"):
             print(__doc__)
             raise SystemExit(0 if len(sys.argv) < 2 or sys.argv[1] in ("-h", "--help") else 2)
         command, options = sys.argv[1], sys.argv[2:]
-        for name in (RUN_ALL if command == "all" else [command]):
+        for name in RUN_ALL if command == "all" else [command]:
             sys.argv = [f"pump.py {name}", *(options if command != "all" else [])]
             COMMANDS[name]()
 
-
     return SimpleNamespace(**locals())
 
-#endregion
+
+# endregion
 
 
 # HAUL_TRUCK MODEL IMPLEMENTATION
-#region Haul Truck: data, preprocessing, models and evaluation
+# region Haul Truck: data, preprocessing, models and evaluation
 def _make_haul_truck():
-    __doc__ = "Haul/Dump Truck: wheel-motor bearing, UODS vibration vs XJTU-Rotor event camera.\n\nThis equipment section contains its model implementation. The combined notebook\nNotebook/Mining_Equipment_Condition_Monitoring.ipynb runs these commands and shows the results.\n\nUsage:\n    python Notebook/notebook_helpers.py haul_truck <command> [options]\n    python Notebook/notebook_helpers.py haul_truck <command> --help\n\nCommands:\n    intake          download UODS vibration and the XJTU-Rotor zip\n    experiment      vibration and event-camera models, report and figure\n    baselines       Week 5: compare majority class, logistic regression, decision tree and random forest\n    export-images   Week 6: save the camera images as named files in Images/<machine>/ (local only)\n    csv             Week 6: 4-class sensor model from a CSV feature table\n    cnn             Week 6: CNN with data augmentation on the named images (run export-images first)\n    cnn-pretrained  Week 6: transfer learning, pretrained ResNet18 on the named images\n    train-final     train the sensor model on all data and save it (--exclude to leave recordings out)\n    predict         predict from any CSV (feature table or raw recording) and show accuracy if labels are known\n    ensembles       proposal Week 6: XGBoost / LightGBM vs random forest etc. (--split time for the secondary test)\n    anomaly         Week 7: anomaly detection trained on healthy data only (--split time for the secondary test)\n    all             run experiment\n\nRaw data stays in Raw_Data/ and Processed_Data/ (not in Git)."
     """Haul/Dump Truck: wheel-motor bearing, UODS vibration vs XJTU-Rotor event camera.
 
     This equipment section contains its model implementation. The combined notebook
@@ -3612,11 +5729,10 @@ def _make_haul_truck():
 
     Raw data stays in Raw_Data/ and Processed_Data/ (not in Git).
     """
-
+    __doc__ = cleandoc(_make_haul_truck.__doc__)
 
     import sys
     from pathlib import Path
-
 
     # ==================================================================================================
     # intake: download UODS vibration and the XJTU-Rotor zip
@@ -3640,7 +5756,6 @@ def _make_haul_truck():
         --visual-only to fetch one source.
         """
 
-
         import argparse
         import hashlib
         import json
@@ -3649,7 +5764,6 @@ def _make_haul_truck():
         import time
         from pathlib import Path
         from urllib.request import Request, urlopen
-
 
         CAPSTONE = ROOT
         SENSOR_RAW = CAPSTONE / "Raw_Data" / "uods_vafdc"
@@ -3665,11 +5779,9 @@ def _make_haul_truck():
         ROTOR_MD5 = "2dfed028950f3769ae62effa47faaccb"
         HEADERS = {"User-Agent": "PROJ613-capstone/1.0"}
 
-
         def get_json(url: str):
             with urlopen(Request(url, headers=HEADERS), timeout=60) as response:
                 return json.load(response)
-
 
         def selected(name: str) -> bool:
             match = NAME.fullmatch(name)
@@ -3684,7 +5796,6 @@ def _make_haul_truck():
                 return 6 <= bearing <= 10 and stage == 2
             return False
 
-
         def selected_ball(name: str) -> bool:
             """Optional 4th class: ball-fault bearings 11-15 (final stage 2) and their healthy stage-0 recordings.
             The publisher recorded ball faults with no load, while the other classes used 400 N."""
@@ -3692,8 +5803,9 @@ def _make_haul_truck():
             if not match:
                 return False
             code, bearing, stage = match.group(1), int(match.group(2)), int(match.group(3))
-            return 11 <= bearing <= 15 and ((code == "H" and stage == 0) or (code == "B" and stage == 2))
-
+            return 11 <= bearing <= 15 and (
+                (code == "H" and stage == 0) or (code == "B" and stage == 2)
+            )
 
         def sensor_inventory(ball: bool = False) -> list[dict]:
             folders, pick = (BALL_FOLDERS, selected_ball) if ball else (FOLDERS, selected)
@@ -3702,7 +5814,9 @@ def _make_haul_truck():
                 raise ValueError("Expected publisher fault folders are missing")
             items = []
             for code, folder in folders.items():
-                members = get_json(f"{MENDELEY}/files?folder_id={by_name[folder]}&version=1&%24start=0&%24limit=1000")
+                members = get_json(
+                    f"{MENDELEY}/files?folder_id={by_name[folder]}&version=1&%24start=0&%24limit=1000"
+                )
                 for member in members:
                     name = member["filename"]
                     if not pick(name):
@@ -3711,21 +5825,22 @@ def _make_haul_truck():
                     if not re.fullmatch(r"[a-f0-9]{64}", details.get("sha256_hash", "")):
                         raise ValueError(f"Missing publisher SHA-256 for {name}")
                     match = NAME.fullmatch(name)
-                    items.append({
-                        "name": name,
-                        "class_code": code,
-                        "bearing": int(match.group(2)),
-                        "stage": int(match.group(3)),
-                        "source_file_id": member["id"],
-                        "source_sha256": details["sha256_hash"],
-                        "source_size_bytes": int(details["size"]),
-                        "url": details["download_url"] + "?version=1",
-                    })
+                    items.append(
+                        {
+                            "name": name,
+                            "class_code": code,
+                            "bearing": int(match.group(2)),
+                            "stage": int(match.group(3)),
+                            "source_file_id": member["id"],
+                            "source_sha256": details["sha256_hash"],
+                            "source_size_bytes": int(details["size"]),
+                            "url": details["download_url"] + "?version=1",
+                        }
+                    )
             counts = {code: sum(item["class_code"] == code for item in items) for code in folders}
             if counts != ({"H": 5, "B": 5} if ball else {"H": 10, "I": 5, "O": 5}):
                 raise ValueError(f"Unexpected UODS selection: {counts}")
             return sorted(items, key=lambda item: (item["bearing"], item["stage"]))
-
 
         def digest(path: Path, algorithm: str) -> str:
             checksum = hashlib.new(algorithm)
@@ -3734,20 +5849,27 @@ def _make_haul_truck():
                     checksum.update(block)
             return checksum.hexdigest()
 
-
         def fetch_sensor(item: dict) -> str:
             destination = SENSOR_RAW / item["name"]
             if destination.is_file():
-                if destination.stat().st_size != item["source_size_bytes"] or digest(destination, "sha256") != item["source_sha256"]:
+                if (
+                    destination.stat().st_size != item["source_size_bytes"]
+                    or digest(destination, "sha256") != item["source_sha256"]
+                ):
                     raise ValueError(f"Existing file failed publisher hash check: {destination}")
                 return "cached-and-verified"
             temporary = destination.with_suffix(".mat.part")
             for attempt in range(3):
                 try:
-                    with urlopen(Request(item["url"], headers=HEADERS), timeout=120) as response, temporary.open("wb") as out:
+                    with urlopen(
+                        Request(item["url"], headers=HEADERS), timeout=120
+                    ) as response, temporary.open("wb") as out:
                         for block in iter(lambda: response.read(1 << 20), b""):
                             out.write(block)
-                    if temporary.stat().st_size != item["source_size_bytes"] or digest(temporary, "sha256") != item["source_sha256"]:
+                    if (
+                        temporary.stat().st_size != item["source_size_bytes"]
+                        or digest(temporary, "sha256") != item["source_sha256"]
+                    ):
                         raise ValueError(f"Publisher hash/size mismatch for {item['name']}")
                     os.replace(temporary, destination)
                     return "downloaded-and-verified"
@@ -3757,14 +5879,18 @@ def _make_haul_truck():
                     time.sleep(3 * (attempt + 1))
             raise AssertionError("Unreachable")
 
-
         def fetch_rotor() -> str:
             """Download the full Rotor ZIP, resuming a partial file, then check Zenodo's MD5."""
             VISUAL_RAW.mkdir(parents=True, exist_ok=True)
             destination = VISUAL_RAW / ROTOR_NAME
             if destination.is_file():
-                if destination.stat().st_size != ROTOR_SIZE or digest(destination, "md5") != ROTOR_MD5:
-                    raise ValueError(f"Existing Rotor ZIP failed the Zenodo MD5 check: {destination}")
+                if (
+                    destination.stat().st_size != ROTOR_SIZE
+                    or digest(destination, "md5") != ROTOR_MD5
+                ):
+                    raise ValueError(
+                        f"Existing Rotor ZIP failed the Zenodo MD5 check: {destination}"
+                    )
                 return "cached-and-verified"
             partial = destination.with_suffix(".zip.part")
             for attempt in range(20):
@@ -3784,21 +5910,27 @@ def _make_haul_truck():
                                 print(f"Rotor ZIP: {done / ROTOR_SIZE:.1%}", flush=True)
                                 last = time.time()
                 except Exception as error:
-                    print(f"Rotor ZIP interrupted at {done:,} bytes ({error}); resuming", flush=True)
+                    print(
+                        f"Rotor ZIP interrupted at {done:,} bytes ({error}); resuming", flush=True
+                    )
                     time.sleep(min(30, 3 * (attempt + 1)))
             if partial.stat().st_size != ROTOR_SIZE or digest(partial, "md5") != ROTOR_MD5:
-                raise ValueError("Rotor ZIP failed the Zenodo size/MD5 check; delete the .part file and retry")
+                raise ValueError(
+                    "Rotor ZIP failed the Zenodo size/MD5 check; delete the .part file and retry"
+                )
             os.replace(partial, destination)
             return "downloaded-and-verified"
-
 
         def main() -> None:
             parser = argparse.ArgumentParser()
             group = parser.add_mutually_exclusive_group()
             group.add_argument("--sensor-only", action="store_true")
             group.add_argument("--visual-only", action="store_true")
-            parser.add_argument("--with-ball", action="store_true",
-                                help="Also fetch the ball-fault bearings 11-15 for the 4-class experiment")
+            parser.add_argument(
+                "--with-ball",
+                action="store_true",
+                help="Also fetch the ball-fault bearings 11-15 for the 4-class experiment",
+            )
             args = parser.parse_args()
             record = json.loads(MANIFEST.read_text(encoding="utf-8")) if MANIFEST.is_file() else {}
 
@@ -3808,7 +5940,9 @@ def _make_haul_truck():
                 for number, item in enumerate(items, 1):
                     item["local_status"] = fetch_sensor(item)
                     item.pop("url")
-                    print(f"{number}/{len(items)} {item['name']}: {item['local_status']}", flush=True)
+                    print(
+                        f"{number}/{len(items)} {item['name']}: {item['local_status']}", flush=True
+                    )
                 record["sensor"] = {
                     "source": "https://data.mendeley.com/datasets/y2px5tg92h/1",
                     "doi": "10.17632/y2px5tg92h.1",
@@ -3825,7 +5959,10 @@ def _make_haul_truck():
                 for number, item in enumerate(items, 1):
                     item["local_status"] = fetch_sensor(item)
                     item.pop("url")
-                    print(f"ball {number}/{len(items)} {item['name']}: {item['local_status']}", flush=True)
+                    print(
+                        f"ball {number}/{len(items)} {item['name']}: {item['local_status']}",
+                        flush=True,
+                    )
                 record["sensor_ball"] = {
                     "source": "https://data.mendeley.com/datasets/y2px5tg92h/1",
                     "doi": "10.17632/y2px5tg92h.1",
@@ -3859,7 +5996,6 @@ def _make_haul_truck():
             main()
         return locals()
 
-
     # ==================================================================================================
     # experiment: vibration and event-camera models, report and figure
     # (formerly Models/haul_truck_wheel_motor_bearing.py)
@@ -3880,7 +6016,6 @@ def _make_haul_truck():
         No sensor recording is paired with a camera recording.
         """
 
-
         import argparse
         import hashlib
         import json
@@ -3896,13 +6031,16 @@ def _make_haul_truck():
         from remotezip import RemoteZip
         from sklearn.dummy import DummyClassifier
         from sklearn.ensemble import RandomForestClassifier
-        from sklearn.metrics import accuracy_score, confusion_matrix, precision_recall_fscore_support
+        from sklearn.metrics import (
+            accuracy_score,
+            confusion_matrix,
+            precision_recall_fscore_support,
+        )
 
         _pump_file = get_model("pump")
         _pump = _pump_file.camera(run=False)
         BIN_US, END_US, START_US = _pump["BIN_US"], _pump["END_US"], _pump["START_US"]
         event_images, frame_features = _pump["event_images"], _pump["frame_features"]
-
 
         CAPSTONE = ROOT
         INTAKE = CAPSTONE / "Results" / "haul_truck" / "haul_truck_intake.json"
@@ -3923,24 +6061,36 @@ def _make_haul_truck():
         # offset near +50 (and healthy H_2_0 one near +164), a recording artefact that
         # would otherwise let the model classify by sensor offset instead of vibration.
         FEATURE_NAMES = (
-            "std", "peak_to_peak", "crest_factor", "skew", "excess_kurtosis",
-            "spectral_centroid_hz", "dominant_frequency_hz", "spectral_entropy",
+            "std",
+            "peak_to_peak",
+            "crest_factor",
+            "skew",
+            "excess_kurtosis",
+            "spectral_centroid_hz",
+            "dominant_frequency_hz",
+            "spectral_entropy",
             *(f"power_{low}_{high}_hz" for low, high in BANDS_HZ),
         )
-        ROTOR_MEMBER = re.compile(r"^Data/(Healthy|Inner|Outer)/angle([123])_(Healthy|Inner|Outer)_(1000|2000)\.dat$")
-
+        ROTOR_MEMBER = re.compile(
+            r"^Data/(Healthy|Inner|Outer)/angle([123])_(Healthy|Inner|Outer)_(1000|2000)\.dat$"
+        )
 
         def forest() -> RandomForestClassifier:
-            return RandomForestClassifier(n_estimators=250, max_features="sqrt", class_weight="balanced_subsample",
-                                          min_samples_leaf=2, random_state=42, n_jobs=-1)
-
+            return RandomForestClassifier(
+                n_estimators=250,
+                max_features="sqrt",
+                class_weight="balanced_subsample",
+                min_samples_leaf=2,
+                random_state=42,
+                n_jobs=-1,
+            )
 
         # ----------------------------------------------------------------------------- sensor branch
         def vibration_features(signal: np.ndarray) -> np.ndarray:
             count = len(signal) // WINDOW_SAMPLES
             if count < 90:
                 raise ValueError(f"Recording is unexpectedly short: {len(signal)} samples")
-            windows = signal[:count * WINDOW_SAMPLES].reshape(count, WINDOW_SAMPLES)
+            windows = signal[: count * WINDOW_SAMPLES].reshape(count, WINDOW_SAMPLES)
             centered = windows - windows.mean(axis=1, keepdims=True)
             std = centered.std(axis=1)
             safe_std = np.maximum(std, 1e-12)
@@ -3953,18 +6103,37 @@ def _make_haul_truck():
             centroid = (relative * frequency[None, :]).sum(axis=1)
             dominant = frequency[np.argmax(power[:, 1:], axis=1) + 1]
             entropy = -(relative * np.log(np.maximum(relative, 1e-12))).sum(axis=1)
-            bands = [relative[:, (frequency >= low) & (frequency < high)].sum(axis=1) for low, high in BANDS_HZ]
-            result = np.column_stack([std, np.ptp(centered, axis=1), crest, skew, kurt,
-                                      centroid, dominant, entropy, *bands]).astype(np.float32)
+            bands = [
+                relative[:, (frequency >= low) & (frequency < high)].sum(axis=1)
+                for low, high in BANDS_HZ
+            ]
+            result = np.column_stack(
+                [
+                    std,
+                    np.ptp(centered, axis=1),
+                    crest,
+                    skew,
+                    kurt,
+                    centroid,
+                    dominant,
+                    entropy,
+                    *bands,
+                ]
+            ).astype(np.float32)
             if not np.isfinite(result).all():
                 raise ValueError("Non-finite vibration feature")
             return result
 
-
         def sensor_data(refresh: bool):
             if SENSOR_CACHE.is_file() and not refresh:
                 with load_numpy(SENSOR_CACHE, allow_pickle=False) as saved:
-                    return saved["x"], saved["y"], saved["bearing"], saved["run"], json.loads(str(saved["provenance"]))
+                    return (
+                        saved["x"],
+                        saved["y"],
+                        saved["bearing"],
+                        saved["run"],
+                        json.loads(str(saved["provenance"])),
+                    )
             files = json.loads(INTAKE.read_text(encoding="utf-8"))["sensor"]["files"]
             xs, ys, bearings, runs, provenance = [], [], [], [], []
             for item in files:
@@ -3976,18 +6145,37 @@ def _make_haul_truck():
                 ys += [label] * len(x)
                 bearings += [item["bearing"]] * len(x)
                 runs += [name] * len(x)
-                provenance.append({"file": name, "label": label, "bearing": item["bearing"], "stage": item["stage"],
-                                   "source_sha256": item["source_sha256"], "samples": len(signal), "windows": len(x)})
-            x, y, bearing, run = np.vstack(xs), np.asarray(ys), np.asarray(bearings), np.asarray(runs)
+                provenance.append(
+                    {
+                        "file": name,
+                        "label": label,
+                        "bearing": item["bearing"],
+                        "stage": item["stage"],
+                        "source_sha256": item["source_sha256"],
+                        "samples": len(signal),
+                        "windows": len(x),
+                    }
+                )
+            x, y, bearing, run = (
+                np.vstack(xs),
+                np.asarray(ys),
+                np.asarray(bearings),
+                np.asarray(runs),
+            )
             SENSOR_CACHE.parent.mkdir(parents=True, exist_ok=True)
-            np.savez_compressed(SENSOR_CACHE, x=x, y=y, bearing=bearing, run=run, provenance=np.asarray(json.dumps(provenance)))
+            np.savez_compressed(
+                SENSOR_CACHE,
+                x=x,
+                y=y,
+                bearing=bearing,
+                run=run,
+                provenance=np.asarray(json.dumps(provenance)),
+            )
             return x, y, bearing, run, provenance
-
 
         # ----------------------------------------------------------------------------- visual branch
         def open_rotor():
             return open_archive(ROTOR_ZIP) if ROTOR_ZIP.is_file() else RemoteZip(ROTOR_URL)
-
 
         def rotor_members() -> list[tuple[str, str, int, int, int]]:
             with open_rotor() as archive:
@@ -3995,16 +6183,21 @@ def _make_haul_truck():
                 for info in archive.infolist():
                     match = ROTOR_MEMBER.match(info.filename)
                     if match and match.group(1) == match.group(3):
-                        members.append((info.filename, match.group(1).lower(), int(match.group(2)),
-                                        int(match.group(4)), info.CRC))
+                        members.append(
+                            (
+                                info.filename,
+                                match.group(1).lower(),
+                                int(match.group(2)),
+                                int(match.group(4)),
+                                info.CRC,
+                            )
+                        )
             counts = {label: sum(m[1] == label for m in members) for label in CLASSES}
             if counts != {label: 6 for label in CLASSES}:
                 raise ValueError(f"Expected six Rotor recordings per class; found {counts}")
             return sorted(members)
 
-
         REFRESH_EVENTS = False
-
 
         def event_run(job: tuple[str, str, int, int, int]) -> tuple[np.ndarray, dict]:
             member, label, angle, rpm, crc = job
@@ -4019,16 +6212,23 @@ def _make_haul_truck():
             with open_rotor() as archive, archive.open(member) as stream:
                 counts, event_type, retained = event_images(stream)
             x = frame_features(counts)
-            record = {"member": member, "label": label, "camera_angle": angle, "speed_rpm": rpm,
-                      "frames": len(x), "events_in_interval": retained, "event_type": event_type,
-                      "zip_member_crc32": f"{crc:08x}", "analysis_interval_us": [START_US, END_US]}
+            record = {
+                "member": member,
+                "label": label,
+                "camera_angle": angle,
+                "speed_rpm": rpm,
+                "frames": len(x),
+                "events_in_interval": retained,
+                "event_type": event_type,
+                "zip_member_crc32": f"{crc:08x}",
+                "analysis_interval_us": [START_US, END_US],
+            }
             RUN_CACHE.mkdir(parents=True, exist_ok=True)
             temporary = cached.with_suffix(".tmp")
             with temporary.open("wb") as handle:
                 np.savez_compressed(handle, x=x, record=np.asarray(json.dumps(record)))
             os.replace(temporary, cached)
             return x, record
-
 
         def visual_data():
             xs, ys, angles, speeds, runs, provenance = [], [], [], [], [], []
@@ -4041,10 +6241,19 @@ def _make_haul_truck():
                     speeds += [record["speed_rpm"]] * n
                     runs += [record["member"]] * n
                     provenance.append(record)
-                    print(f"Rotor {number}/18: {record['label']} angle {record['camera_angle']} "
-                          f"{record['speed_rpm']} rpm, {record['events_in_interval']:,} events", flush=True)
-            return (np.vstack(xs), np.asarray(ys), np.asarray(angles), np.asarray(speeds), np.asarray(runs), provenance)
-
+                    print(
+                        f"Rotor {number}/18: {record['label']} angle {record['camera_angle']} "
+                        f"{record['speed_rpm']} rpm, {record['events_in_interval']:,} events",
+                        flush=True,
+                    )
+            return (
+                np.vstack(xs),
+                np.asarray(ys),
+                np.asarray(angles),
+                np.asarray(speeds),
+                np.asarray(runs),
+                provenance,
+            )
 
         # ----------------------------------------------------------------------------- evaluation
         def run_predictions(model, x, y, run):
@@ -4054,9 +6263,10 @@ def _make_haul_truck():
                 if len(set(y[mask])) != 1:
                     raise ValueError(f"Mixed labels within {name}")
                 actual.append(y[mask][0])
-                predicted.append(model.classes_[int(np.argmax(model.predict_proba(x[mask]).mean(axis=0)))])
+                predicted.append(
+                    model.classes_[int(np.argmax(model.predict_proba(x[mask]).mean(axis=0)))]
+                )
             return actual, predicted
-
 
         def shuffled_labels(y, run, mask, seed):
             """Permute labels between whole training recordings, never between windows."""
@@ -4065,26 +6275,36 @@ def _make_haul_truck():
             mapping = dict(zip(names, np.random.default_rng(seed).permutation(original)))
             return np.asarray([mapping[name] for name in run[mask]])
 
-
         def grouped_evaluation(x, y, run, folds):
             """folds: list of boolean test masks. Returns model, dummy and shuffled-label run predictions."""
-            out = {"model": ([], []), "most_frequent_control": ([], []), "shuffled_training_labels_control": ([], [])}
+            out = {
+                "model": ([], []),
+                "most_frequent_control": ([], []),
+                "shuffled_training_labels_control": ([], []),
+            }
             for number, test in enumerate(folds):
                 train = ~test
                 if set(run[train]) & set(run[test]):
                     raise ValueError("A recording appears in both train and test")
-                for key, model, labels in (("model", forest(), y[train]),
-                                           ("most_frequent_control", DummyClassifier(strategy="most_frequent"), y[train]),
-                                           ("shuffled_training_labels_control", forest(), shuffled_labels(y, run, train, 42 + number))):
+                for key, model, labels in (
+                    ("model", forest(), y[train]),
+                    ("most_frequent_control", DummyClassifier(strategy="most_frequent"), y[train]),
+                    (
+                        "shuffled_training_labels_control",
+                        forest(),
+                        shuffled_labels(y, run, train, 42 + number),
+                    ),
+                ):
                     model.fit(x[train], labels)
                     a, p = run_predictions(model, x[test], y[test], run[test])
                     out[key][0].extend(a)
                     out[key][1].extend(p)
             return {key: metrics(np.asarray(a), np.asarray(p)) for key, (a, p) in out.items()}
 
-
         def metrics(actual, predicted) -> dict:
-            precision, recall, f1, support = precision_recall_fscore_support(actual, predicted, labels=CLASSES, zero_division=0)
+            precision, recall, f1, support = precision_recall_fscore_support(
+                actual, predicted, labels=CLASSES, zero_division=0
+            )
             return {
                 "test_recordings": int(len(actual)),
                 "accuracy": round(float(accuracy_score(actual, predicted)), 4),
@@ -4092,11 +6312,16 @@ def _make_haul_truck():
                 "macro_recall": round(float(recall.mean()), 4),
                 "macro_f1": round(float(f1.mean()), 4),
                 "confusion_matrix": confusion_matrix(actual, predicted, labels=CLASSES).tolist(),
-                "per_class": {label: {"precision": round(float(p), 4), "recall": round(float(r), 4),
-                                      "f1": round(float(f), 4), "support": int(n)}
-                              for label, p, r, f, n in zip(CLASSES, precision, recall, f1, support)},
+                "per_class": {
+                    label: {
+                        "precision": round(float(p), 4),
+                        "recall": round(float(r), 4),
+                        "f1": round(float(f), 4),
+                        "support": int(n),
+                    }
+                    for label, p, r, f, n in zip(CLASSES, precision, recall, f1, support)
+                },
             }
-
 
         def plot(panels) -> None:
             figure, axes = plt.subplots(1, len(panels), figsize=(5 * len(panels), 4.4))
@@ -4110,26 +6335,36 @@ def _make_haul_truck():
                 axis.set_title(title, fontsize=10)
                 for i in range(3):
                     for j in range(3):
-                        axis.text(j, i, str(array[i, j]), ha="center", va="center",
-                                  color="white" if array[i, j] > array.max() / 2 else "black")
+                        axis.text(
+                            j,
+                            i,
+                            str(array[i, j]),
+                            ha="center",
+                            va="center",
+                            color="white" if array[i, j] > array.max() / 2 else "black",
+                        )
             figure.tight_layout()
             FIGURE.parent.mkdir(parents=True, exist_ok=True)
             figure.savefig(FIGURE, dpi=140)
             plt.close(figure)
 
-
         def row(name, block):
-            return (f"| {name} | {block['test_recordings']} | {block['accuracy']:.3f} | {block['macro_precision']:.3f} | "
-                    f"{block['macro_recall']:.3f} | {block['macro_f1']:.3f} |")
-
+            return (
+                f"| {name} | {block['test_recordings']} | {block['accuracy']:.3f} | {block['macro_precision']:.3f} | "
+                f"{block['macro_recall']:.3f} | {block['macro_f1']:.3f} |"
+            )
 
         def interpretation(result) -> list[str]:
             lines = []
-            for name, block in (("Sensor (held-out bearings)", result["sensor"]["held_out_bearings"]),
-                                ("Event camera (2000 rpm test)", result["visual"]["train_1000_test_2000_rpm"]),
-                                ("Event camera (held-out camera angle)", result["visual"]["held_out_camera_angle"])):
+            for name, block in (
+                ("Sensor (held-out bearings)", result["sensor"]["held_out_bearings"]),
+                ("Event camera (2000 rpm test)", result["visual"]["train_1000_test_2000_rpm"]),
+                ("Event camera (held-out camera angle)", result["visual"]["held_out_camera_angle"]),
+            ):
                 model, control = block["model"], block["most_frequent_control"]
-                missed = [label for label, stats in model["per_class"].items() if stats["recall"] == 0]
+                missed = [
+                    label for label, stats in model["per_class"].items() if stats["recall"] == 0
+                ]
                 extra = round((model["accuracy"] - control["accuracy"]) * model["test_recordings"])
                 if extra <= 0:
                     verdict = "not above"
@@ -4137,15 +6372,18 @@ def _make_haul_truck():
                     verdict = f"only {extra} more correct recording{'s' if extra > 1 else ''} than"
                 else:
                     verdict = "well above"
-                text = (f"{name}: accuracy {model['accuracy']:.3f} on {model['test_recordings']} recordings, "
-                        f"{verdict} the {control['accuracy']:.3f} most-frequent control.")
+                text = (
+                    f"{name}: accuracy {model['accuracy']:.3f} on {model['test_recordings']} recordings, "
+                    f"{verdict} the {control['accuracy']:.3f} most-frequent control."
+                )
                 if missed:
                     text += f" Never correctly predicted: {', '.join(missed)}."
                 lines.append(text)
-            lines.append("The two branches use different rigs and very small test sets, so the gap between them is not "
-                         "evidence that one modality is better in general; it describes these two fixed pipelines on these data.")
+            lines.append(
+                "The two branches use different rigs and very small test sets, so the gap between them is not "
+                "evidence that one modality is better in general; it describes these two fixed pipelines on these data."
+            )
             return lines
-
 
         def write_report(result) -> None:
             s, v = result["sensor"], result["visual"]
@@ -4158,12 +6396,29 @@ def _make_haul_truck():
                 "",
                 "| Branch and test | Test recordings | Accuracy | Macro precision | Macro recall | Macro F1 |",
                 "|---|---:|---:|---:|---:|---:|",
-                row("Sensor: UODS vibration, held-out bearings (5 folds)", s["held_out_bearings"]["model"]),
-                row("Sensor: most-frequent control", s["held_out_bearings"]["most_frequent_control"]),
-                row("Sensor: shuffled training labels", s["held_out_bearings"]["shuffled_training_labels_control"]),
-                row("CV: XJTU-Rotor event camera, train 1000 rpm, test 2000 rpm", v["train_1000_test_2000_rpm"]["model"]),
-                row("CV: most-frequent control", v["train_1000_test_2000_rpm"]["most_frequent_control"]),
-                row("CV: shuffled training labels", v["train_1000_test_2000_rpm"]["shuffled_training_labels_control"]),
+                row(
+                    "Sensor: UODS vibration, held-out bearings (5 folds)",
+                    s["held_out_bearings"]["model"],
+                ),
+                row(
+                    "Sensor: most-frequent control", s["held_out_bearings"]["most_frequent_control"]
+                ),
+                row(
+                    "Sensor: shuffled training labels",
+                    s["held_out_bearings"]["shuffled_training_labels_control"],
+                ),
+                row(
+                    "CV: XJTU-Rotor event camera, train 1000 rpm, test 2000 rpm",
+                    v["train_1000_test_2000_rpm"]["model"],
+                ),
+                row(
+                    "CV: most-frequent control",
+                    v["train_1000_test_2000_rpm"]["most_frequent_control"],
+                ),
+                row(
+                    "CV: shuffled training labels",
+                    v["train_1000_test_2000_rpm"]["shuffled_training_labels_control"],
+                ),
                 row("CV: held-out camera angle (3 folds)", v["held_out_camera_angle"]["model"]),
                 "",
                 "![Confusion matrices](../../Figures/haul_truck/haul_truck_confusions.png)",
@@ -4180,10 +6435,13 @@ def _make_haul_truck():
             ]
             REPORT.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
-
         def main() -> None:
             parser = argparse.ArgumentParser()
-            parser.add_argument("--refresh", action="store_true", help="Rebuild all features from the raw source files")
+            parser.add_argument(
+                "--refresh",
+                action="store_true",
+                help="Rebuild all features from the raw source files",
+            )
             args = parser.parse_args()
             nonlocal REFRESH_EVENTS
             REFRESH_EVENTS = args.refresh
@@ -4200,7 +6458,9 @@ def _make_haul_truck():
                 raise ValueError("Expected 18 Rotor recordings")
             visual = {
                 "train_1000_test_2000_rpm": grouped_evaluation(vx, vy, vrun, [vspeed == 2000]),
-                "held_out_camera_angle": grouped_evaluation(vx, vy, vrun, [vangle == a for a in (1, 2, 3)]),
+                "held_out_camera_angle": grouped_evaluation(
+                    vx, vy, vrun, [vangle == a for a in (1, 2, 3)]
+                ),
             }
 
             result = {
@@ -4210,7 +6470,9 @@ def _make_haul_truck():
                 "sensor": {
                     "source": "UODS-VAFDC, https://data.mendeley.com/datasets/y2px5tg92h/1, CC BY 4.0",
                     "selection": "bearings 1-10: healthy stage 0 (10 recordings), final stage 2 inner (bearings 1-5) and outer (bearings 6-10)",
-                    "sample_rate_hz": SAMPLE_RATE_HZ, "window_samples": WINDOW_SAMPLES, "feature_names": list(FEATURE_NAMES),
+                    "sample_rate_hz": SAMPLE_RATE_HZ,
+                    "window_samples": WINDOW_SAMPLES,
+                    "feature_names": list(FEATURE_NAMES),
                     "preprocessing_note": "Each window is mean-removed and the raw mean is not a feature, because inner-race recordings carry a DC offset near +50 that is a recording artefact.",
                     "split": "5 folds; fold k holds out bearings k (inner) and k+5 (outer) with both their healthy and fault recordings; one averaged prediction per recording",
                     "source_recordings": sprov,
@@ -4235,23 +6497,37 @@ def _make_haul_truck():
             }
             RESULT.parent.mkdir(parents=True, exist_ok=True)
             RESULT.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
-            plot([("Sensor: held-out bearings (20 recordings)", sensor["held_out_bearings"]["model"]["confusion_matrix"]),
-                  ("CV: train 1000, test 2000 rpm (9)", visual["train_1000_test_2000_rpm"]["model"]["confusion_matrix"]),
-                  ("CV: held-out camera angle (18)", visual["held_out_camera_angle"]["model"]["confusion_matrix"])])
+            plot(
+                [
+                    (
+                        "Sensor: held-out bearings (20 recordings)",
+                        sensor["held_out_bearings"]["model"]["confusion_matrix"],
+                    ),
+                    (
+                        "CV: train 1000, test 2000 rpm (9)",
+                        visual["train_1000_test_2000_rpm"]["model"]["confusion_matrix"],
+                    ),
+                    (
+                        "CV: held-out camera angle (18)",
+                        visual["held_out_camera_angle"]["model"]["confusion_matrix"],
+                    ),
+                ]
+            )
             write_report(result)
-            print(f"Saved {RESULT.relative_to(CAPSTONE)}, {REPORT.relative_to(CAPSTONE)} and {FIGURE.relative_to(CAPSTONE)}")
+            print(
+                f"Saved {RESULT.relative_to(CAPSTONE)}, {REPORT.relative_to(CAPSTONE)} and {FIGURE.relative_to(CAPSTONE)}"
+            )
             s, v = sensor["held_out_bearings"]["model"], visual["train_1000_test_2000_rpm"]["model"]
-            print(f"Sensor accuracy {s['accuracy']:.3f}, macro F1 {s['macro_f1']:.3f}; "
-                  f"camera accuracy {v['accuracy']:.3f}, macro F1 {v['macro_f1']:.3f}")
+            print(
+                f"Sensor accuracy {s['accuracy']:.3f}, macro F1 {s['macro_f1']:.3f}; "
+                f"camera accuracy {v['accuracy']:.3f}, macro F1 {v['macro_f1']:.3f}"
+            )
 
         if run:
             main()
         return locals()
 
-
-    # ====================================================================================================
-    # baselines: Week 5 baseline model comparison (majority class, logistic regression, decision tree, random forest)
-    # ====================================================================================================
+    # --- baselines: Week 5 baseline model comparison (majority class, logistic regression, decision tree, random forest) ---
 
     def baselines(run: bool = True) -> dict:
         """Week 5: compare baseline model families on the same held-out tests as the main experiment.
@@ -4270,8 +6546,12 @@ def _make_haul_truck():
         from sklearn.dummy import DummyClassifier
         from sklearn.ensemble import RandomForestClassifier
         from sklearn.linear_model import LogisticRegression
-        from sklearn.metrics import (accuracy_score, balanced_accuracy_score, confusion_matrix,
-                                     precision_recall_fscore_support)
+        from sklearn.metrics import (
+            accuracy_score,
+            balanced_accuracy_score,
+            confusion_matrix,
+            precision_recall_fscore_support,
+        )
         from sklearn.pipeline import make_pipeline
         from sklearn.preprocessing import StandardScaler
         from sklearn.tree import DecisionTreeClassifier
@@ -4280,12 +6560,23 @@ def _make_haul_truck():
         FIGURE = ROOT / "Figures" / "haul_truck" / "haul_truck_baselines.png"
         MODELS = {
             "Majority class (control)": lambda: DummyClassifier(strategy="most_frequent"),
-            "Logistic regression": lambda: make_pipeline(StandardScaler(), LogisticRegression(
-                C=1.0, class_weight="balanced", solver="lbfgs", max_iter=5000, random_state=42)),
-            "Decision tree": lambda: DecisionTreeClassifier(class_weight="balanced", min_samples_leaf=2, random_state=42),
+            "Logistic regression": lambda: make_pipeline(
+                StandardScaler(),
+                LogisticRegression(
+                    C=1.0, class_weight="balanced", solver="lbfgs", max_iter=5000, random_state=42
+                ),
+            ),
+            "Decision tree": lambda: DecisionTreeClassifier(
+                class_weight="balanced", min_samples_leaf=2, random_state=42
+            ),
             "Random forest": lambda: RandomForestClassifier(
-                n_estimators=250, max_features="sqrt", class_weight="balanced_subsample",
-                min_samples_leaf=2, random_state=42, n_jobs=-1),
+                n_estimators=250,
+                max_features="sqrt",
+                class_weight="balanced_subsample",
+                min_samples_leaf=2,
+                random_state=42,
+                n_jobs=-1,
+            ),
         }
         SETTINGS = {
             "Majority class (control)": "always predicts the most common training class",
@@ -4302,7 +6593,9 @@ def _make_haul_truck():
                 if len(set(y[rows])) != 1:
                     raise ValueError(f"Mixed labels within {unit}")
                 actual.append(y[rows][0])
-                predicted.append(model.classes_[int(np.argmax(model.predict_proba(x[rows]).mean(axis=0)))])
+                predicted.append(
+                    model.classes_[int(np.argmax(model.predict_proba(x[rows]).mean(axis=0)))]
+                )
             return actual, predicted
 
         def evaluate(x, y, units, folds, classes):
@@ -4319,15 +6612,20 @@ def _make_haul_truck():
                     actual += list(a)
                     predicted += list(p)
                 precision, recall, f1, _ = precision_recall_fscore_support(
-                    actual, predicted, labels=classes, zero_division=0)
+                    actual, predicted, labels=classes, zero_division=0
+                )
                 scores[name] = {
                     "test_units": len(actual),
                     "accuracy": round(float(accuracy_score(actual, predicted)), 4),
-                    "balanced_accuracy": round(float(balanced_accuracy_score(actual, predicted)), 4),
+                    "balanced_accuracy": round(
+                        float(balanced_accuracy_score(actual, predicted)), 4
+                    ),
                     "macro_precision": round(float(precision.mean()), 4),
                     "macro_recall": round(float(recall.mean()), 4),
                     "macro_f1": round(float(f1.mean()), 4),
-                    "confusion_matrix": confusion_matrix(actual, predicted, labels=classes).tolist(),
+                    "confusion_matrix": confusion_matrix(
+                        actual, predicted, labels=classes
+                    ).tolist(),
                 }
             return scores
 
@@ -4337,7 +6635,12 @@ def _make_haul_truck():
             figure, axis = plt.subplots(figsize=(2.2 + 2.8 * len(branches), 4.0))
             for i, name in enumerate(names):
                 values = [result["branches"][b]["models"][name]["macro_f1"] for b in branches]
-                bars = axis.bar(np.arange(len(branches)) + (i - (len(names) - 1) / 2) * width, values, width, label=name)
+                bars = axis.bar(
+                    np.arange(len(branches)) + (i - (len(names) - 1) / 2) * width,
+                    values,
+                    width,
+                    label=name,
+                )
                 axis.bar_label(bars, fmt="%.2f", fontsize=7)
             axis.set_xticks(range(len(branches)), branches)
             axis.set_ylim(0, 1.15)
@@ -4357,12 +6660,16 @@ def _make_haul_truck():
             branches["Sensor: vibration"] = {
                 "test": "five rounds, each holding out two whole bearings; 20 recording-level predictions",
                 "classes": classes,
-                "models": evaluate(x, y, units, [np.isin(bearing, [k, k + 5]) for k in range(1, 6)], classes)}
+                "models": evaluate(
+                    x, y, units, [np.isin(bearing, [k, k + 5]) for k in range(1, 6)], classes
+                ),
+            }
             vx, vy, angle, speed, vunits, _ = e["visual_data"]()
             branches["Camera: event camera"] = {
                 "test": "train on 1000 rpm; test on 9 separate recordings at 2000 rpm",
                 "classes": classes,
-                "models": evaluate(vx, vy, vunits, [speed == 2000], classes)}
+                "models": evaluate(vx, vy, vunits, [speed == 2000], classes),
+            }
             result = {
                 "title": "Haul Truck: baseline models on held-out bearings / speed",
                 "purpose": "Week 5 baseline model comparison on the same held-out tests as the main experiment",
@@ -4375,17 +6682,16 @@ def _make_haul_truck():
             plot(result)
             for branch, block in branches.items():
                 for name, score in block["models"].items():
-                    print(f"{branch:<24} {name:<26} accuracy {score['accuracy']:.3f}  macro F1 {score['macro_f1']:.3f}")
+                    print(
+                        f"{branch:<24} {name:<26} accuracy {score['accuracy']:.3f}  macro F1 {score['macro_f1']:.3f}"
+                    )
             print(f"Saved {RESULT.relative_to(ROOT)} and {FIGURE.relative_to(ROOT)}")
 
         if run:
             main()
         return locals()
 
-
-    # ====================================================================================================
-    # export-images: Week 6, save the camera images as named files (professor remark)
-    # ====================================================================================================
+    # --- export-images: Week 6, save the camera images as named files (professor remark) ---
 
     def export_images(run: bool = True) -> dict:
         """Week 6: save this machine's camera images as named PNG files for the CNN.
@@ -4407,34 +6713,23 @@ def _make_haul_truck():
         OUT = ROOT / "Images" / MACHINE
         HEIGHT, WIDTH = 96, 128
         EVENT = np.dtype([("t", "<u4"), ("xy", "<u4")])
-        BIN_US, SECONDS = 250_000, 5   # --all-frames: the whole recording (up to 30 s; recordings are 16-26 s)
+        BIN_US, SECONDS = (
+            250_000,
+            5,
+        )  # --all-frames: the whole recording (up to 30 s; recordings are 16-26 s)
         FRAMES = SECONDS * 1_000_000 // BIN_US
         NAME = "t{k:02d}"
 
         def event_frames(stream):
-            """Bin events using the configured duration and frame interval; channels preserve polarity."""
-            while True:
-                first = stream.read(1)
-                if first != b"%":
-                    break
-                stream.readline()
-            stream.read(1)
-            counts = np.zeros((FRAMES, 2, HEIGHT, WIDTH), dtype=np.uint32)
-            end = SECONDS * 1_000_000
-            while True:
-                chunk = stream.read(8 * 500_000)
-                if not chunk:
-                    break
-                ev = np.frombuffer(chunk, dtype=EVENT)
-                keep = ev["t"] < end
-                t, xy = ev["t"][keep], ev["xy"][keep]
-                x, y, polarity = xy & 0x3FFF, (xy >> 14) & 0x3FFF, (xy >> 28) & 1
-                index = ((((t // BIN_US) * 2 + (1 - polarity)) * HEIGHT + (y * HEIGHT // 480)) * WIDTH
-                         + (x * WIDTH // 640)).astype(np.int64)
-                counts += np.bincount(index, minlength=counts.size).reshape(counts.shape).astype(np.uint32)
-                if len(ev) and ev["t"][-1] >= end:
-                    break
-            return counts
+            return bin_event_stream(
+                stream,
+                frames=FRAMES,
+                seconds=SECONDS,
+                height=HEIGHT,
+                width=WIDTH,
+                event_dtype=EVENT,
+                bin_microseconds=BIN_US,
+            )
 
         def event_png(frame):
             """Brighter events in red, darker events in green, log-scaled to 0-255."""
@@ -4446,7 +6741,15 @@ def _make_haul_truck():
             folder = OUT / label
             folder.mkdir(parents=True, exist_ok=True)
             cv2.imwrite(str(folder / name), image)
-            rows.append({"file": f"{label}/{name}", "machine": MACHINE, "class": label, "unit": unit, "group": group})
+            rows.append(
+                {
+                    "file": f"{label}/{name}",
+                    "machine": MACHINE,
+                    "class": label,
+                    "unit": unit,
+                    "group": group,
+                }
+            )
 
         def export():
             rows = []
@@ -4456,21 +6759,37 @@ def _make_haul_truck():
                     for angle in (1, 2, 3):
                         for rpm in (1000, 2000):
                             unit = f"{rpm}rpm_{label}_angle{angle}"
-                            with archive.open(f"Data/{folder}/angle{angle}_{folder}_{rpm}.dat") as stream:
+                            with archive.open(
+                                f"Data/{folder}/angle{angle}_{folder}_{rpm}.dat"
+                            ) as stream:
                                 counts = event_frames(stream)
                             for k, frame in enumerate(counts):
                                 if frame.sum() > 0:
-                                    write(rows, label, unit, f"{rpm}rpm",
-                                          f"{MACHINE}_{label}_{rpm}rpm_angle{angle}_" + NAME.format(k=k) + ".png", event_png(frame))
+                                    write(
+                                        rows,
+                                        label,
+                                        unit,
+                                        f"{rpm}rpm",
+                                        f"{MACHINE}_{label}_{rpm}rpm_angle{angle}_"
+                                        + NAME.format(k=k)
+                                        + ".png",
+                                        event_png(frame),
+                                    )
                             print(f"{unit}: done", flush=True)
             return rows
 
-
         def main():
             parser = argparse.ArgumentParser(description=export_images.__doc__)
-            parser.add_argument("--all-frames", action="store_true",
-                                help="whole recordings (all 250 ms frames) to Images/haul_truck_allframes/ (Week 7)")
-            parser.add_argument("--dense-frames", action="store_true", help="125 ms frames over the whole recording; separate output")
+            parser.add_argument(
+                "--all-frames",
+                action="store_true",
+                help="whole recordings (all 250 ms frames) to Images/haul_truck_allframes/ (Week 7)",
+            )
+            parser.add_argument(
+                "--dense-frames",
+                action="store_true",
+                help="125 ms frames over the whole recording; separate output",
+            )
             args = parser.parse_args()
             nonlocal OUT, SECONDS, FRAMES, NAME, BIN_US
             if args.all_frames:
@@ -4484,7 +6803,9 @@ def _make_haul_truck():
                 shutil.rmtree(OUT)
             rows = export()
             with (OUT / "index.csv").open("w", newline="", encoding="utf-8") as handle:
-                writer = csv_module.DictWriter(handle, fieldnames=["file", "machine", "class", "unit", "group"])
+                writer = csv_module.DictWriter(
+                    handle, fieldnames=["file", "machine", "class", "unit", "group"]
+                )
                 writer.writeheader()
                 writer.writerows(rows)
             counts = {}
@@ -4496,10 +6817,7 @@ def _make_haul_truck():
             main()
         return locals()
 
-
-    # ====================================================================================================
-    # csv: Week 6, 4-class sensor model from a CSV feature table (professor remark: "csv accuracy 90 plus")
-    # ====================================================================================================
+    # --- csv: Week 6, 4-class sensor model from a CSV feature table (professor remark: "csv accuracy 90 plus") ---
 
     def csv(run: bool = True) -> dict:
         """Week 6: write the sensor features to a CSV table and train 4-class models on it.
@@ -4518,8 +6836,12 @@ def _make_haul_truck():
         matplotlib.use("Agg")
         import matplotlib.pyplot as plt
         import numpy as np
-        from sklearn.metrics import (accuracy_score, balanced_accuracy_score, confusion_matrix,
-                                     precision_recall_fscore_support)
+        from sklearn.metrics import (
+            accuracy_score,
+            balanced_accuracy_score,
+            confusion_matrix,
+            precision_recall_fscore_support,
+        )
 
         import pandas as pd
         from sklearn.dummy import DummyClassifier
@@ -4534,11 +6856,20 @@ def _make_haul_truck():
         FIGURE = ROOT / "Figures" / "haul_truck" / f"{MACHINE}_csv_4class.png"
         MODELS = {
             "Majority class (control)": lambda: DummyClassifier(strategy="most_frequent"),
-            "Logistic regression": lambda: make_pipeline(StandardScaler(), LogisticRegression(
-                C=1.0, class_weight="balanced", solver="lbfgs", max_iter=5000, random_state=42)),
+            "Logistic regression": lambda: make_pipeline(
+                StandardScaler(),
+                LogisticRegression(
+                    C=1.0, class_weight="balanced", solver="lbfgs", max_iter=5000, random_state=42
+                ),
+            ),
             "Random forest": lambda: RandomForestClassifier(
-                n_estimators=250, max_features="sqrt", class_weight="balanced_subsample",
-                min_samples_leaf=2, random_state=42, n_jobs=-1),
+                n_estimators=250,
+                max_features="sqrt",
+                class_weight="balanced_subsample",
+                min_samples_leaf=2,
+                random_state=42,
+                n_jobs=-1,
+            ),
         }
 
         unit_predictions = predict_recordings
@@ -4547,15 +6878,27 @@ def _make_haul_truck():
 
         plot_matrix = save_confusion_matrix
 
-
-        ENVELOPE_BANDS = ((5, 50), (50, 90), (90, 130), (130, 180), (180, 250), (250, 400), (400, 800))
-        ENVELOPE_NAMES = ["envelope_kurtosis", "envelope_peak_hz",
-                          *(f"envelope_power_{lo}_{hi}_hz" for lo, hi in ENVELOPE_BANDS)]
+        ENVELOPE_BANDS = (
+            (5, 50),
+            (50, 90),
+            (90, 130),
+            (130, 180),
+            (180, 250),
+            (250, 400),
+            (400, 800),
+        )
+        ENVELOPE_NAMES = [
+            "envelope_kurtosis",
+            "envelope_peak_hz",
+            *(f"envelope_power_{lo}_{hi}_hz" for lo, hi in ENVELOPE_BANDS),
+        ]
 
         def envelope_features(signal, n_windows, rate=42_000, window=4_200):
             """Envelope analysis, the standard bearing-fault method: band-pass the vibration (1-15 kHz), take
-            the Hilbert envelope and measure where its energy sits (fault 'knock' rates are 50-400 Hz)."""
+            the Hilbert envelope and measure where its energy sits (fault 'knock' rates are 50-400 Hz).
+            """
             from scipy.signal import butter, hilbert, sosfiltfilt
+
             sos = butter(4, (1_000, 15_000), btype="bandpass", fs=rate, output="sos")
             band = sosfiltfilt(sos, signal - signal.mean())
             env = np.abs(hilbert(band))[: n_windows * window].reshape(n_windows, window)
@@ -4566,30 +6909,43 @@ def _make_haul_truck():
             low = (freq >= 5) & (freq < 800)
             share = power[:, low] / np.maximum(power[:, low].sum(axis=1, keepdims=True), 1e-12)
             f = freq[low]
-            columns = [(env ** 4).mean(axis=1) / std ** 4, f[np.argmax(share, axis=1)],
-                       *[share[:, (f >= lo) & (f < hi)].sum(axis=1) for lo, hi in ENVELOPE_BANDS]]
+            columns = [
+                (env**4).mean(axis=1) / std**4,
+                f[np.argmax(share, axis=1)],
+                *[share[:, (f >= lo) & (f < hi)].sum(axis=1) for lo, hi in ENVELOPE_BANDS],
+            ]
             return np.column_stack(columns)
 
         def build_table():
             e = experiment(run=False)
-            intake = json.loads((ROOT / "Results" / "haul_truck" / "haul_truck_intake.json").read_text(encoding="utf-8"))
+            intake = json.loads(
+                (ROOT / "Results" / "haul_truck" / "haul_truck_intake.json").read_text(
+                    encoding="utf-8"
+                )
+            )
             if "sensor_ball" not in intake:
-                raise SystemExit("Ball-fault files missing: run  python Notebook/notebook_helpers.py haul_truck intake --sensor-only --with-ball")
+                raise SystemExit(
+                    "Ball-fault files missing: run  python Notebook/notebook_helpers.py haul_truck intake --sensor-only --with-ball"
+                )
             files = intake["sensor"]["files"] + intake["sensor_ball"]["files"]
             codes = {"H": "healthy", "I": "inner", "O": "outer", "B": "ball"}
             frames = []
             for item in files:
                 name = item["name"]
                 data = loadmat(ROOT / "Raw_Data" / "uods_vafdc" / name)[name[:-4]]
-                signal = data[:, 0].astype(np.float64)       # column 0 = accelerometer
-                microphone = data[:, 1].astype(np.float64)   # column 1 = microphone; speed and load columns not used
+                signal = data[:, 0].astype(np.float64)  # column 0 = accelerometer
+                microphone = data[:, 1].astype(
+                    np.float64
+                )  # column 1 = microphone; speed and load columns not used
                 features = e["vibration_features"](signal)
                 frame = pd.DataFrame(features, columns=list(e["FEATURE_NAMES"]))
                 envelope = envelope_features(signal, len(frame))
                 for k, column in enumerate(ENVELOPE_NAMES):
                     frame[column] = envelope[:, k]
                 # 0.5 s envelope windows (2 Hz resolution) repeated for their five 0.1 s rows
-                long_envelope = np.repeat(envelope_features(signal, len(frame) // 5, window=21_000), 5, axis=0)
+                long_envelope = np.repeat(
+                    envelope_features(signal, len(frame) // 5, window=21_000), 5, axis=0
+                )
                 for k, column in enumerate(ENVELOPE_NAMES):
                     frame[f"long_{column}"] = long_envelope[: len(frame), k]
                 sound = e["vibration_features"](microphone)
@@ -4600,87 +6956,51 @@ def _make_haul_truck():
                 frame.insert(0, "unit", name[:-4])
                 frames.append(frame)
             table = pd.concat(frames, ignore_index=True)
-            folds = lambda t: [t["bearing"].isin([k, k + 5, k + 10]).to_numpy() for k in range(1, 6)]
+            folds = lambda t: [
+                t["bearing"].isin([k, k + 5, k + 10]).to_numpy() for k in range(1, 6)
+            ]
             base = list(e["FEATURE_NAMES"])
             long_env = [f"long_{c}" for c in ENVELOPE_NAMES]
             mic = [f"mic_{c}" for c in e["FEATURE_NAMES"]]
-            return (table, {"base": base, "base+envelope": base + ENVELOPE_NAMES,
-                            "base+long envelope": base + long_env,
-                            "base+microphone": base + mic,
-                            "base+long envelope+microphone": base + long_env + mic},
-                    ["healthy", "inner", "outer", "ball"], folds,
-                    "five rounds, each holding out three whole bearings (inner, outer, ball) with their healthy recordings; 30 recording-level predictions",
-                    ["UODS vibration, bearings 1-15; one row per 0.1 s window; window mean removed (inner-race files carry a DC offset)",
-                     "ball faults were recorded with no load (load sensor reads zero) while all other files ran at about 400 N; the load column is not used, but no-load running also changes the vibration, so ball results may partly reflect load"])
-
+            return (
+                table,
+                {
+                    "base": base,
+                    "base+envelope": base + ENVELOPE_NAMES,
+                    "base+long envelope": base + long_env,
+                    "base+microphone": base + mic,
+                    "base+long envelope+microphone": base + long_env + mic,
+                },
+                ["healthy", "inner", "outer", "ball"],
+                folds,
+                "five rounds, each holding out three whole bearings (inner, outer, ball) with their healthy recordings; 30 recording-level predictions",
+                [
+                    "UODS vibration, bearings 1-15; one row per 0.1 s window; window mean removed (inner-race files carry a DC offset)",
+                    "ball faults were recorded with no load (load sensor reads zero) while all other files ran at about 400 N; the load column is not used, but no-load running also changes the vibration, so ball results may partly reflect load",
+                ],
+            )
 
         INNER_GROUP = "bearing"
 
-        def candidate_models():
-            from sklearn.ensemble import ExtraTreesClassifier, HistGradientBoostingClassifier
-            from sklearn.svm import SVC
-            return {
-                "Random forest": lambda: RandomForestClassifier(
-                    n_estimators=250, max_features="sqrt", class_weight="balanced_subsample",
-                    min_samples_leaf=2, random_state=42, n_jobs=-1),
-                "Extra trees": lambda: ExtraTreesClassifier(
-                    n_estimators=300, max_features="sqrt", class_weight="balanced",
-                    min_samples_leaf=2, random_state=42, n_jobs=-1),
-                "Gradient boosting": lambda: HistGradientBoostingClassifier(
-                    max_iter=200, learning_rate=0.05, class_weight="balanced", random_state=42),
-                "SVM (RBF)": lambda: make_pipeline(StandardScaler(), SVC(
-                    C=10.0, gamma="scale", class_weight="balanced", probability=True, random_state=42)),
-                "Logistic regression": lambda: make_pipeline(StandardScaler(), LogisticRegression(
-                    C=1.0, class_weight="balanced", solver="lbfgs", max_iter=5000, random_state=42)),
-            }
+        candidate_models = sensor_model_candidates
 
-        def nested_selection(table, feature_sets, labels, outer_folds, inner_group):
-            """Pick a feature set and model on validation data inside each training set, then test once.
-
-            Inner validation holds out whole groups (recordings, bearings or speeds) of the training set
-            only; the outer test units are never used for the choice.
-            """
-            from sklearn.metrics import f1_score
-            from sklearn.model_selection import GroupKFold
-
-            y = table["class"].to_numpy()
-            units = table["unit"].to_numpy()
-            groups = table[inner_group].to_numpy()
-            models = candidate_models()
-            actual, predicted, chosen = [], [], []
-            for test in outer_folds:
-                train_idx = np.flatnonzero(~test)
-                n_splits = min(4, len(set(groups[train_idx])))
-                inner = list(GroupKFold(n_splits=n_splits).split(train_idx, groups=groups[train_idx]))
-                best, best_score = None, -1.0
-                for set_name, names in feature_sets.items():
-                    x = table[names].to_numpy(dtype=np.float64)
-                    for model_name, factory in models.items():
-                        f1s = []
-                        for fit_part, val_part in inner:
-                            fit_rows, val_rows = train_idx[fit_part], train_idx[val_part]
-                            model = factory().fit(x[fit_rows], y[fit_rows])
-                            a, p = unit_predictions(model.predict_proba(x[val_rows]), model.classes_, y[val_rows], units[val_rows])
-                            f1s.append(f1_score(a, p, labels=labels, average="macro", zero_division=0))
-                        if float(np.mean(f1s)) > best_score:
-                            best, best_score = (set_name, model_name), float(np.mean(f1s))
-                x = table[feature_sets[best[0]]].to_numpy(dtype=np.float64)
-                model = models[best[1]]().fit(x[train_idx], y[train_idx])
-                a, p = unit_predictions(model.predict_proba(x[test]), model.classes_, y[test], units[test])
-                actual += a
-                predicted += p
-                chosen.append({"feature_set": best[0], "model": best[1], "validation_macro_f1": round(best_score, 4)})
-            return score(actual, predicted, labels), chosen
+        nested_selection = select_sensor_model
 
         def main():
             parser = argparse.ArgumentParser(description=csv.__doc__)
-            parser.add_argument("--split", choices=("main", "time"), default="main",
-                                help="main (fair test, as described in the result) or time (secondary, easier): train on "
-                                     "the first 60%% of every recording, test on the last 30%% (10%% gap)")
+            parser.add_argument(
+                "--split",
+                choices=("main", "time"),
+                default="main",
+                help="main (fair test, as described in the result) or time (secondary, easier): train on "
+                "the first 60%% of every recording, test on the last 30%% (10%% gap)",
+            )
             args = parser.parse_args()
             nonlocal RESULT, FIGURE
             table, feature_names, labels, folds, test_description, notes = build_table()
-            feature_sets = feature_names if isinstance(feature_names, dict) else {"base": feature_names}
+            feature_sets = (
+                feature_names if isinstance(feature_names, dict) else {"base": feature_names}
+            )
             feature_names = next(iter(feature_sets.values()))
             CSV_PATH.parent.mkdir(parents=True, exist_ok=True)
             table.to_csv(CSV_PATH, index=False)
@@ -4692,9 +7012,11 @@ def _make_haul_truck():
                 late = position.loc[table.index] > 0.7
                 table["unit"] = table["unit"] + np.where(late, "_late", "_early")
                 folds = lambda t: [t["unit"].str.endswith("_late").to_numpy()]
-                test_description = ("TIME SPLIT (secondary): first 60% of every recording trains, last 30% tests, 10% gap; "
-                                    "one prediction per recording; the same recordings appear in training, so this is easier "
-                                    "than the main test")
+                test_description = (
+                    "TIME SPLIT (secondary): first 60% of every recording trains, last 30% tests, 10% gap; "
+                    "one prediction per recording; the same recordings appear in training, so this is easier "
+                    "than the main test"
+                )
                 RESULT = RESULT.with_name(RESULT.stem + "_timesplit.json")
                 FIGURE = FIGURE.with_name(FIGURE.stem + "_timesplit.png")
             x = table[feature_names].to_numpy(dtype=np.float64)
@@ -4708,55 +7030,82 @@ def _make_haul_truck():
                     if set(units[train]) & set(units[test]):
                         raise ValueError("A test unit also appears in training")
                     model = factory().fit(x[train], y[train])
-                    a, p = unit_predictions(model.predict_proba(x[test]), model.classes_, y[test], units[test])
+                    a, p = unit_predictions(
+                        model.predict_proba(x[test]), model.classes_, y[test], units[test]
+                    )
                     actual += a
                     predicted += p
                 scores[name] = score(actual, predicted, labels)
             result = {
                 "purpose": "Week 6 professor remark: 4-class sensor model from a CSV feature table",
                 "csv_file": str(CSV_PATH.relative_to(ROOT)).replace("\\", "/"),
-                "rows": int(len(table)), "features": feature_names, "classes": labels,
-                "test": test_description, "main_model": "Random forest",
+                "rows": int(len(table)),
+                "features": feature_names,
+                "classes": labels,
+                "test": test_description,
+                "main_model": "Random forest",
                 "selection_rule": "settings fixed in advance; no model or setting chosen from these test results",
-                "notes": notes, "models": scores,
+                "notes": notes,
+                "models": scores,
             }
             if args.split == "time":
                 result["split"] = "time (secondary)"
                 RESULT.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
                 main_score = scores["Random forest"]
-                plot_matrix(main_score["confusion_matrix"], labels,
-                            f"{MACHINE}: CSV sensor, TIME SPLIT (random forest), accuracy {main_score['accuracy']:.3f}", FIGURE)
+                plot_matrix(
+                    main_score["confusion_matrix"],
+                    labels,
+                    f"{MACHINE}: CSV sensor, TIME SPLIT (random forest), accuracy {main_score['accuracy']:.3f}",
+                    FIGURE,
+                )
                 for name, s in scores.items():
-                    print(f"{name:<26} accuracy {s['accuracy']:.3f}  macro F1 {s['macro_f1']:.3f}  ({s['test_units']} test units, time split)")
+                    print(
+                        f"{name:<26} accuracy {s['accuracy']:.3f}  macro F1 {s['macro_f1']:.3f}  ({s['test_units']} test units, time split)"
+                    )
                 print(f"Saved {RESULT.relative_to(ROOT)} and {FIGURE.relative_to(ROOT)}")
                 return
-            selected, chosen = nested_selection(table, feature_sets, labels, folds(table), INNER_GROUP)
+            selected, chosen = nested_selection(
+                table, feature_sets, labels, folds(table), INNER_GROUP
+            )
             result["validation_selected"] = {
                 "description": "feature set and model chosen per round on validation groups inside the training set only "
-                               "(candidates: " + ", ".join(candidate_models()) + "; feature sets: " + ", ".join(feature_sets) + ")",
-                "feature_sets": feature_sets, "score": selected, "chosen_per_round": chosen}
+                "(candidates: "
+                + ", ".join(candidate_models())
+                + "; feature sets: "
+                + ", ".join(feature_sets)
+                + ")",
+                "feature_sets": feature_sets,
+                "score": selected,
+                "chosen_per_round": chosen,
+            }
             result["main_model"] = "validation-selected"
             RESULT.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
             main_score = selected
-            plot_matrix(main_score["confusion_matrix"], labels,
-                        f"{MACHINE}: CSV sensor model (validation-selected), accuracy {main_score['accuracy']:.3f}", FIGURE)
+            plot_matrix(
+                main_score["confusion_matrix"],
+                labels,
+                f"{MACHINE}: CSV sensor model (validation-selected), accuracy {main_score['accuracy']:.3f}",
+                FIGURE,
+            )
             for name, s in scores.items():
-                print(f"{name:<26} accuracy {s['accuracy']:.3f}  macro F1 {s['macro_f1']:.3f}  ({s['test_units']} test units)")
-            print(f"Validation-selected model: accuracy {selected['accuracy']:.3f}  macro F1 {selected['macro_f1']:.3f}  "
-                  f"(choices: {[c['feature_set'] + ' / ' + c['model'] for c in chosen]})")
-            print(f"Saved {CSV_PATH.relative_to(ROOT)}, {RESULT.relative_to(ROOT)} and {FIGURE.relative_to(ROOT)}")
+                print(
+                    f"{name:<26} accuracy {s['accuracy']:.3f}  macro F1 {s['macro_f1']:.3f}  ({s['test_units']} test units)"
+                )
+            print(
+                f"Validation-selected model: accuracy {selected['accuracy']:.3f}  macro F1 {selected['macro_f1']:.3f}  "
+                f"(choices: {[c['feature_set'] + ' / ' + c['model'] for c in chosen]})"
+            )
+            print(
+                f"Saved {CSV_PATH.relative_to(ROOT)}, {RESULT.relative_to(ROOT)} and {FIGURE.relative_to(ROOT)}"
+            )
 
         if run:
             main()
         return locals()
 
-
-    # ====================================================================================================
-    # cnn: Week 6, CNN with data augmentation on the named images (professor remark)
-    # ====================================================================================================
+    # --- cnn: Week 6, CNN with data augmentation on the named images (professor remark) ---
 
     _augment_event_batch = augment_event_images
-
 
     def cnn(run: bool = True) -> dict:
         """Week 6: a small CNN with data augmentation, trained on the named images, 4 classes.
@@ -4777,8 +7126,12 @@ def _make_haul_truck():
         matplotlib.use("Agg")
         import matplotlib.pyplot as plt
         import numpy as np
-        from sklearn.metrics import (accuracy_score, balanced_accuracy_score, confusion_matrix,
-                                     precision_recall_fscore_support)
+        from sklearn.metrics import (
+            accuracy_score,
+            balanced_accuracy_score,
+            confusion_matrix,
+            precision_recall_fscore_support,
+        )
 
         import random
 
@@ -4799,53 +7152,31 @@ def _make_haul_truck():
 
         plot_matrix = save_confusion_matrix
 
-
         def read_index():
             return read_image_records(IMAGES)
 
         def load(rows):
             return load_model_images(IMAGES, rows, channels=(2, 1))
 
-        class Net(nn.Module):
-            def __init__(self, in_channels, n_classes):
-                super().__init__()
-                def block(a, b):
-                    return nn.Sequential(nn.Conv2d(a, b, 3, padding=1), nn.BatchNorm2d(b), nn.ReLU(), nn.MaxPool2d(2))
-                self.features = nn.Sequential(block(in_channels, 16), block(16, 32), block(32, 64), block(64, 64))
-                self.head = nn.Sequential(nn.AdaptiveAvgPool2d(1), nn.Flatten(), nn.Dropout(0.3), nn.Linear(64, n_classes))
-
-            def forward(self, x):
-                return self.head(self.features(x))
+        Net = make_small_image_cnn
 
         augment = _augment_event_batch
 
         def train(x, y):
-            random.seed(SEED)
-            np.random.seed(SEED)
-            torch.manual_seed(SEED)
-            generator = torch.Generator().manual_seed(SEED)
-            model = Net(x.shape[1], len(LABELS))
-            counts = np.bincount(y, minlength=len(LABELS)).astype(np.float32)
-            weights = torch.tensor(counts.sum() / (len(LABELS) * np.maximum(counts, 1)))
-            loss_fn = nn.CrossEntropyLoss(weight=weights)
-            optimiser = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE, weight_decay=1e-4)
-            xs, ys = torch.tensor(x), torch.tensor(y, dtype=torch.long)
-            for _ in range(EPOCHS):
-                model.train()
-                order = torch.randperm(len(xs), generator=generator)
-                for start in range(0, len(xs), BATCH):
-                    batch = order[start:start + BATCH]
-                    optimiser.zero_grad()
-                    loss = loss_fn(model(augment(xs[batch], generator)), ys[batch])
-                    loss.backward()
-                    optimiser.step()
-            return model
+            return train_small_image_cnn(
+                x,
+                y,
+                network=Net,
+                augment=augment,
+                labels=LABELS,
+                seed=SEED,
+                learning_rate=LEARNING_RATE,
+                epochs=EPOCHS,
+                batch_size=BATCH,
+            )
 
         def probabilities(model, x):
-            model.eval()
-            with torch.no_grad():
-                return np.concatenate([torch.softmax(model(torch.tensor(x[i:i + 256])), dim=1).numpy()
-                                       for i in range(0, len(x), 256)])
+            return image_probabilities(model, x, batch_size=256)
 
         def main():
             parser = argparse.ArgumentParser(description=cnn.__doc__)
@@ -4870,34 +7201,47 @@ def _make_haul_truck():
                 unit_predicted += pr
                 image_actual += list(names[test])
                 image_predicted += [LABELS[i] for i in p.argmax(axis=1)]
-                print(f"fold {number}: trained on {int(train_mask.sum())} images, tested on {int(test.sum())}", flush=True)
+                print(
+                    f"fold {number}: trained on {int(train_mask.sum())} images, tested on {int(test.sum())}",
+                    flush=True,
+                )
             result = {
                 "purpose": "Week 6 professor remark: CNN with data augmentation on named images, 4 classes",
-                "images": int(len(rows)), "classes": LABELS, "test": "train on the 12 recordings at 1000 rpm; test on the 12 separate recordings at 2000 rpm",
-                "settings": {"epochs": EPOCHS, "batch": BATCH, "learning_rate": LEARNING_RATE, "seed": SEED,
-                             "architecture": "4 conv blocks (16, 32, 64, 64 channels) + global average pool + dropout 0.3",
-                             "augmentation": "random horizontal flip, shift up to 8 px, brightness/contrast x0.8-1.2, Gaussian noise 0.05",
-                             "normalisation": "each image standardised on its own"},
+                "images": int(len(rows)),
+                "classes": LABELS,
+                "test": "train on the 12 recordings at 1000 rpm; test on the 12 separate recordings at 2000 rpm",
+                "settings": {
+                    "epochs": EPOCHS,
+                    "batch": BATCH,
+                    "learning_rate": LEARNING_RATE,
+                    "seed": SEED,
+                    "architecture": "4 conv blocks (16, 32, 64, 64 channels) + global average pool + dropout 0.3",
+                    "augmentation": "random horizontal flip, shift up to 8 px, brightness/contrast x0.8-1.2, Gaussian noise 0.05",
+                    "normalisation": "each image standardised on its own",
+                },
                 "selection_rule": "settings fixed in advance; the test set is never used to choose epochs or settings",
                 "recording_level": score(unit_actual, unit_predicted, LABELS),
                 "image_level": score(image_actual, image_predicted, LABELS),
             }
             RESULT.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
             r = result["recording_level"]
-            plot_matrix(r["confusion_matrix"], LABELS,
-                        f"{MACHINE}: CNN on images, accuracy {r['accuracy']:.3f} ({r['test_units']} test units)", FIGURE)
-            print(f"CNN recording-level accuracy {r['accuracy']:.3f}, macro F1 {r['macro_f1']:.3f}; "
-                  f"image-level accuracy {result['image_level']['accuracy']:.3f}")
+            plot_matrix(
+                r["confusion_matrix"],
+                LABELS,
+                f"{MACHINE}: CNN on images, accuracy {r['accuracy']:.3f} ({r['test_units']} test units)",
+                FIGURE,
+            )
+            print(
+                f"CNN recording-level accuracy {r['accuracy']:.3f}, macro F1 {r['macro_f1']:.3f}; "
+                f"image-level accuracy {result['image_level']['accuracy']:.3f}"
+            )
             print(f"Saved {RESULT.relative_to(ROOT)} and {FIGURE.relative_to(ROOT)}")
 
         if run:
             main()
         return locals()
 
-
-    # ====================================================================================================
-    # cnn-pretrained: Week 6, transfer learning with a pretrained ResNet18 on the named images
-    # ====================================================================================================
+    # --- cnn-pretrained: Week 6, transfer learning with a pretrained ResNet18 on the named images ---
 
     def cnn_pretrained(run: bool = True) -> dict:
         """Week 6: transfer learning, an ImageNet-pretrained ResNet18 fine-tuned on the named images (4 classes).
@@ -4918,8 +7262,13 @@ def _make_haul_truck():
         import matplotlib.pyplot as plt
         import numpy as np
         import torch
-        from sklearn.metrics import (accuracy_score, balanced_accuracy_score, confusion_matrix, f1_score,
-                                     precision_recall_fscore_support)
+        from sklearn.metrics import (
+            accuracy_score,
+            balanced_accuracy_score,
+            confusion_matrix,
+            f1_score,
+            precision_recall_fscore_support,
+        )
         from torch import nn
         from torchvision.models import ResNet18_Weights, resnet18
 
@@ -4928,7 +7277,7 @@ def _make_haul_truck():
         RESULT = ROOT / "Results" / "haul_truck" / f"{MACHINE}_cnn_pretrained_4class.json"
         FIGURE = ROOT / "Figures" / "haul_truck" / f"{MACHINE}_cnn_pretrained_4class.png"
         LABELS = ["healthy", "inner", "outer", "ball"]
-        SEGMENTS = 10   # test segments per held-out recording (segment-level score)
+        SEGMENTS = 10  # test segments per held-out recording (segment-level score)
         MAX_EPOCHS, BATCH, LEARNING_RATE, SEED = 15, 32, 3e-4, 42
 
         unit_predictions = predict_recordings
@@ -4938,28 +7287,7 @@ def _make_haul_truck():
         plot_matrix = save_confusion_matrix
 
         def plot_levels(result, title, path):
-            """One panel per scoring level, so the figure shows how many images were really tested."""
-            levels = [("every test image", result["image_level"]), ("per 1/10 recording segment", result.get("segment_level")),
-                      ("per whole recording", result["recording_level"])]
-            levels = [(name, block) for name, block in levels if block]
-            figure, axes = plt.subplots(1, len(levels), figsize=(4.6 * len(levels), 4.4))
-            for axis, (name, block) in zip(np.atleast_1d(axes), levels):
-                array = np.asarray(block["confusion_matrix"])
-                axis.imshow(array, cmap="Blues", vmin=0)
-                axis.set_xticks(range(len(LABELS)), LABELS, rotation=30, fontsize=8)
-                axis.set_yticks(range(len(LABELS)), LABELS, fontsize=8)
-                axis.set_xlabel("Predicted")
-                axis.set_ylabel("Actual")
-                axis.set_title(f"{name}\n{block['test_units']:,} tested, accuracy {block['accuracy']:.3f}", fontsize=9)
-                for i in range(len(LABELS)):
-                    for j in range(len(LABELS)):
-                        axis.text(j, i, f"{array[i, j]:,}", ha="center", va="center", fontsize=8,
-                                  color="white" if array[i, j] > array.max() / 2 else "black")
-            figure.suptitle(title.replace("; ", "\n"), fontsize=10)
-            figure.tight_layout()
-            path.parent.mkdir(parents=True, exist_ok=True)
-            figure.savefig(path, dpi=110)
-            plt.close(figure)
+            save_prediction_levels(result, title, path, LABELS)
 
         augment = _augment_event_batch
 
@@ -4972,46 +7300,42 @@ def _make_haul_truck():
             return model
 
         def fit(x, y, epochs, val=None):
-            random.seed(SEED)
-            np.random.seed(SEED)
-            torch.manual_seed(SEED)
-            generator = torch.Generator().manual_seed(SEED)
-            model = new_model()
-            counts = np.bincount(y, minlength=len(LABELS)).astype(np.float32)
-            loss_fn = nn.CrossEntropyLoss(weight=torch.tensor(counts.sum() / (len(LABELS) * np.maximum(counts, 1))))
-            optimiser = torch.optim.AdamW(model.parameters(), lr=LEARNING_RATE, weight_decay=1e-4)
-            xs, ys = torch.tensor(x), torch.tensor(y, dtype=torch.long)
-            history = []
-            for _ in range(epochs):
-                model.train()
-                order = torch.randperm(len(xs), generator=generator)
-                for start in range(0, len(xs), BATCH):
-                    batch = order[start:start + BATCH]
-                    if len(batch) < 2:
-                        continue
-                    optimiser.zero_grad()
-                    loss_fn(model(augment(xs[batch], generator)), ys[batch]).backward()
-                    optimiser.step()
-                if val is not None:
-                    vx, vnames, vunits = val
-                    a, p = unit_predictions(probabilities(model, vx), np.asarray(LABELS), vnames, vunits)
-                    history.append(f1_score(a, p, labels=LABELS, average="macro", zero_division=0))
-            return model, history
+            return fit_pretrained_image_cnn(
+                x,
+                y,
+                epochs,
+                val,
+                new_model=new_model,
+                augment=augment,
+                labels=LABELS,
+                seed=SEED,
+                learning_rate=LEARNING_RATE,
+                batch_size=BATCH,
+                probabilities=probabilities,
+            )
 
         def probabilities(model, x):
-            model.eval()
-            with torch.no_grad():
-                return np.concatenate([torch.softmax(model(torch.tensor(x[i:i + 128])), dim=1).numpy()
-                                       for i in range(0, len(x), 128)])
+            return image_probabilities(model, x, batch_size=128)
 
         def main():
             parser = argparse.ArgumentParser(description=cnn_pretrained.__doc__)
-            parser.add_argument("--split", choices=("main", "time"), default="main",
-                                help="main (fair test) or time (secondary, easier: first 60%% of each recording's frames "
-                                     "train, last 30%% test, 10%% gap)")
-            parser.add_argument("--all-frames", action="store_true",
-                                help="use Images/haul_truck_allframes/ (whole recordings); results saved as *_allframes")
-            parser.add_argument("--dense-frames", action="store_true", help="use separately exported 125 ms full-duration frames")
+            parser.add_argument(
+                "--split",
+                choices=("main", "time"),
+                default="main",
+                help="main (fair test) or time (secondary, easier: first 60%% of each recording's frames "
+                "train, last 30%% test, 10%% gap)",
+            )
+            parser.add_argument(
+                "--all-frames",
+                action="store_true",
+                help="use Images/haul_truck_allframes/ (whole recordings); results saved as *_allframes",
+            )
+            parser.add_argument(
+                "--dense-frames",
+                action="store_true",
+                help="use separately exported 125 ms full-duration frames",
+            )
             args = parser.parse_args()
             nonlocal RESULT, FIGURE, IMAGES
             if args.all_frames:
@@ -5028,16 +7352,31 @@ def _make_haul_truck():
             test_description = "train on the 12 recordings at 1000 rpm; test on the 12 separate recordings at 2000 rpm"
             if args.split == "time":
                 import re
-                frame = {row["file"]: int(re.search(r"_t(\d+)\.png$", row["file"]).group(1)) for row in rows}
+
+                frame = {
+                    row["file"]: int(re.search(r"_t(\d+)\.png$", row["file"]).group(1))
+                    for row in rows
+                }
                 length = {}
                 for row in rows:
                     length[row["unit"]] = max(length.get(row["unit"], 0), frame[row["file"]] + 1)
                 frames_per = 20 if not args.all_frames else None
-                position = {row["file"]: frame[row["file"]] / (frames_per or length[row["unit"]]) for row in rows}
-                rows = [dict(row, unit=row["unit"] + ("_late" if position[row["file"]] > 0.7 else "_early"))
-                        for row in rows if position[row["file"]] <= 0.6 or position[row["file"]] > 0.7]
-                test_description = ("TIME SPLIT (secondary): first 60% of every recording's frames train, last 30% test, 10% gap; "
-                                    "one prediction per recording; the same recordings appear in training, so this is easier")
+                position = {
+                    row["file"]: frame[row["file"]] / (frames_per or length[row["unit"]])
+                    for row in rows
+                }
+                rows = [
+                    dict(
+                        row,
+                        unit=row["unit"] + ("_late" if position[row["file"]] > 0.7 else "_early"),
+                    )
+                    for row in rows
+                    if position[row["file"]] <= 0.6 or position[row["file"]] > 0.7
+                ]
+                test_description = (
+                    "TIME SPLIT (secondary): first 60% of every recording's frames train, last 30% test, 10% gap; "
+                    "one prediction per recording; the same recordings appear in training, so this is easier"
+                )
                 RESULT = RESULT.with_name(RESULT.stem + "_timesplit.json")
                 FIGURE = FIGURE.with_name(FIGURE.stem + "_timesplit.png")
             x = load(rows)
@@ -5047,18 +7386,31 @@ def _make_haul_truck():
             units = np.asarray([row["unit"] for row in rows])
             groups = np.asarray([row["group"] for row in rows])
             rng = np.random.default_rng(SEED)
-            unit_actual, unit_predicted, image_actual, image_predicted, epochs_chosen = [], [], [], [], []
+            unit_actual, unit_predicted, image_actual, image_predicted, epochs_chosen = (
+                [],
+                [],
+                [],
+                [],
+                [],
+            )
             segment_actual, segment_predicted, per_recording = [], [], {}
-            folds = ([np.char.endswith(units.astype(str), "_late")] if args.split == "time"
-                     else [groups == "2000rpm"])
+            folds = (
+                [np.char.endswith(units.astype(str), "_late")]
+                if args.split == "time"
+                else [groups == "2000rpm"]
+            )
             for number, test in enumerate(folds, 1):
                 train = ~test
                 if set(units[train]) & set(units[test]):
                     raise ValueError("A test recording also appears in training")
-                val_units = [rng.choice(sorted(set(units[train & (names == label)]))) for label in LABELS]
+                val_units = [
+                    rng.choice(sorted(set(units[train & (names == label)]))) for label in LABELS
+                ]
                 val = train & np.isin(units, val_units)
                 fit_part = train & ~val
-                _, history = fit(x[fit_part], y[fit_part], MAX_EPOCHS, (x[val], names[val], units[val]))
+                _, history = fit(
+                    x[fit_part], y[fit_part], MAX_EPOCHS, (x[val], names[val], units[val])
+                )
                 best_epochs = int(np.argmax(history)) + 1
                 model, _ = fit(x[train], y[train], best_epochs)
                 p = probabilities(model, x[test])
@@ -5075,53 +7427,83 @@ def _make_haul_truck():
                     for part in np.array_split(np.arange(len(pu)), min(SEGMENTS, len(pu))):
                         segment_actual.append(true)
                         segment_predicted.append(LABELS[int(pu[part].mean(axis=0).argmax())])
-                    per_recording[str(unit)] = {"class": str(true), "images": int(len(pu)),
-                                                "images_predicted": {l: int((pu.argmax(axis=1) == i).sum())
-                                                                     for i, l in enumerate(LABELS)},
-                                                "recording_prediction": LABELS[int(pu.mean(axis=0).argmax())]}
+                    per_recording[str(unit)] = {
+                        "class": str(true),
+                        "images": int(len(pu)),
+                        "images_predicted": {
+                            l: int((pu.argmax(axis=1) == i).sum()) for i, l in enumerate(LABELS)
+                        },
+                        "recording_prediction": LABELS[int(pu.mean(axis=0).argmax())],
+                    }
                 epochs_chosen.append(best_epochs)
-                print(f"fold {number}: validation chose {best_epochs} epochs; tested on {int(test.sum())} images", flush=True)
+                print(
+                    f"fold {number}: validation chose {best_epochs} epochs; tested on {int(test.sum())} images",
+                    flush=True,
+                )
             result = {
                 "purpose": "Week 6: transfer learning (ImageNet-pretrained ResNet18) on named images, 4 classes",
-                "images": int(len(rows)), "classes": LABELS, "test": test_description,
-                "settings": {"model": "ResNet18, ImageNet weights, all layers fine-tuned", "max_epochs": MAX_EPOCHS,
-                             "batch": BATCH, "learning_rate": LEARNING_RATE, "optimiser": "AdamW", "seed": SEED,
-                             "epochs_chosen_per_round": epochs_chosen,
-                             "epoch_selection": "one training recording per class held out for validation; best validation macro F1",
-                             "augmentation": "random horizontal flip, shift up to 8 px, brightness/contrast x0.8-1.2, Gaussian noise 0.05"},
+                "images": int(len(rows)),
+                "classes": LABELS,
+                "test": test_description,
+                "settings": {
+                    "model": "ResNet18, ImageNet weights, all layers fine-tuned",
+                    "max_epochs": MAX_EPOCHS,
+                    "batch": BATCH,
+                    "learning_rate": LEARNING_RATE,
+                    "optimiser": "AdamW",
+                    "seed": SEED,
+                    "epochs_chosen_per_round": epochs_chosen,
+                    "epoch_selection": "one training recording per class held out for validation; best validation macro F1",
+                    "augmentation": "random horizontal flip, shift up to 8 px, brightness/contrast x0.8-1.2, Gaussian noise 0.05",
+                },
                 "selection_rule": "the test set is never used to choose epochs or settings",
                 "recording_level": score(unit_actual, unit_predicted, LABELS),
                 "image_level": score(image_actual, image_predicted, LABELS),
-                "segment_level": {**score(segment_actual, segment_predicted, LABELS),
-                                  "segments_per_recording": SEGMENTS,
-                                  "note": "each held-out recording split in time order into consecutive parts, one "
-                                          "prediction per part; parts of one recording are related, so the "
-                                          "recording-level score stays the main result"},
+                "segment_level": {
+                    **score(segment_actual, segment_predicted, LABELS),
+                    "segments_per_recording": SEGMENTS,
+                    "note": "each held-out recording split in time order into consecutive parts, one "
+                    "prediction per part; parts of one recording are related, so the "
+                    "recording-level score stays the main result",
+                },
                 "per_recording": per_recording,
             }
             RESULT.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
             s = result["segment_level"]
-            plot_matrix(s["confusion_matrix"], LABELS,
-                        f"{MACHINE}: pretrained ResNet18 per segment, accuracy {s['accuracy']:.3f} "
-                        f"({s['test_units']} test segments)", FIGURE.with_name(FIGURE.stem + "_segments.png"))
-            print(f"Segment-level accuracy {s['accuracy']:.3f} on {s['test_units']} test segments "
-                  f"({SEGMENTS} per held-out recording)")
+            plot_matrix(
+                s["confusion_matrix"],
+                LABELS,
+                f"{MACHINE}: pretrained ResNet18 per segment, accuracy {s['accuracy']:.3f} "
+                f"({s['test_units']} test segments)",
+                FIGURE.with_name(FIGURE.stem + "_segments.png"),
+            )
+            print(
+                f"Segment-level accuracy {s['accuracy']:.3f} on {s['test_units']} test segments "
+                f"({SEGMENTS} per held-out recording)"
+            )
             r = result["recording_level"]
-            plot_levels(result, f"{MACHINE}: pretrained ResNet18 on {result['images']:,} images in total; "
-                                f"{r['test_units']} test recordings" + (" (time split, secondary: later frames of training recordings)"
-                                if "timesplit" in FIGURE.stem else ", each never seen in training"), FIGURE)
-            print(f"Pretrained CNN recording-level accuracy {r['accuracy']:.3f}, macro F1 {r['macro_f1']:.3f}; "
-                  f"image-level accuracy {result['image_level']['accuracy']:.3f}")
+            plot_levels(
+                result,
+                f"{MACHINE}: pretrained ResNet18 on {result['images']:,} images in total; "
+                f"{r['test_units']} test recordings"
+                + (
+                    " (time split, secondary: later frames of training recordings)"
+                    if "timesplit" in FIGURE.stem
+                    else ", each never seen in training"
+                ),
+                FIGURE,
+            )
+            print(
+                f"Pretrained CNN recording-level accuracy {r['accuracy']:.3f}, macro F1 {r['macro_f1']:.3f}; "
+                f"image-level accuracy {result['image_level']['accuracy']:.3f}"
+            )
             print(f"Saved {RESULT.relative_to(ROOT)} and {FIGURE.relative_to(ROOT)}")
 
         if run:
             main()
         return locals()
 
-
-    # ====================================================================================================
-    # train-final / predict: use the trained sensor model on any CSV
-    # ====================================================================================================
+    # --- train-final / predict: use the trained sensor model on any CSV ---
 
     def train_final(run: bool = True) -> dict:
         """Train the sensor model on all of this machine's data and save it (Processed_Data/models/, not in Git).
@@ -5140,29 +7522,50 @@ def _make_haul_truck():
 
         def main():
             parser = argparse.ArgumentParser(description=train_final.__doc__)
-            parser.add_argument("--exclude", nargs="*", default=[], help="recording names to leave out, e.g. O_6_2")
+            parser.add_argument(
+                "--exclude", nargs="*", default=[], help="recording names to leave out, e.g. O_6_2"
+            )
             args = parser.parse_args()
             table, feature_sets, labels, *_ = csv(run=False)["build_table"]()
-            feature_sets = feature_sets if isinstance(feature_sets, dict) else {"base": feature_sets}
+            feature_sets = (
+                feature_sets if isinstance(feature_sets, dict) else {"base": feature_sets}
+            )
             features = feature_sets["base"]
             unknown = set(args.exclude) - set(table["unit"])
             if unknown:
                 raise SystemExit(f"Unknown recording names: {sorted(unknown)}")
             train = ~table["unit"].isin(args.exclude)
-            model = RandomForestClassifier(n_estimators=250, max_features="sqrt", class_weight="balanced_subsample",
-                                           min_samples_leaf=2, random_state=42, n_jobs=-1)
-            model.fit(table.loc[train, features].to_numpy(dtype=np.float64), table.loc[train, "class"])
+            model = RandomForestClassifier(
+                n_estimators=250,
+                max_features="sqrt",
+                class_weight="balanced_subsample",
+                min_samples_leaf=2,
+                random_state=42,
+                n_jobs=-1,
+            )
+            model.fit(
+                table.loc[train, features].to_numpy(dtype=np.float64), table.loc[train, "class"]
+            )
             MODEL_PATH.parent.mkdir(parents=True, exist_ok=True)
-            joblib.dump({"model": model, "features": features, "classes": list(labels), "machine": "haul_truck",
-                         "trained_units": sorted(set(table.loc[train, "unit"])), "excluded_units": sorted(args.exclude)},
-                        MODEL_PATH)
-            print(f"Trained on {int(train.sum())} rows from {table.loc[train, 'unit'].nunique()} recordings "
-                  f"(excluded: {args.exclude or 'none'}); saved {MODEL_PATH.relative_to(ROOT)}")
+            joblib.dump(
+                {
+                    "model": model,
+                    "features": features,
+                    "classes": list(labels),
+                    "machine": "haul_truck",
+                    "trained_units": sorted(set(table.loc[train, "unit"])),
+                    "excluded_units": sorted(args.exclude),
+                },
+                MODEL_PATH,
+            )
+            print(
+                f"Trained on {int(train.sum())} rows from {table.loc[train, 'unit'].nunique()} recordings "
+                f"(excluded: {args.exclude or 'none'}); saved {MODEL_PATH.relative_to(ROOT)}"
+            )
 
         if run:
             main()
         return locals()
-
 
     def predict(run: bool = True) -> dict:
         """Predict the condition from any CSV and, if the true class is known, show the accuracy.
@@ -5185,7 +7588,9 @@ def _make_haul_truck():
 
         def read_any(path):
             table = load_csv(path)
-            if all(_is_number(c) for c in table.columns):   # no header row: plain column(s) of numbers
+            if all(
+                _is_number(c) for c in table.columns
+            ):  # no header row: plain column(s) of numbers
                 table = load_csv(path, header=None)
             return table
 
@@ -5199,12 +7604,15 @@ def _make_haul_truck():
         def raw_features(values, args):
             return experiment(run=False)["vibration_features"](values)
 
-
         def main():
             parser = argparse.ArgumentParser(description=predict.__doc__)
             parser.add_argument("--csv", required=True, help="path to the CSV file")
-            parser.add_argument("--label", help="true class of a raw recording, one of: healthy, inner, outer, ball")
-            parser.add_argument("--column", help="column holding the raw signal (default: first numeric column)")
+            parser.add_argument(
+                "--label", help="true class of a raw recording, one of: healthy, inner, outer, ball"
+            )
+            parser.add_argument(
+                "--column", help="column holding the raw signal (default: first numeric column)"
+            )
 
             args = parser.parse_args()
             if not MODEL_PATH.is_file():
@@ -5217,12 +7625,26 @@ def _make_haul_truck():
             if set(features) <= set(table.columns):
                 mode = "feature table"
                 x = table[features].to_numpy(dtype=np.float64)
-                units = table["unit"].astype(str).to_numpy() if "unit" in table.columns else np.full(len(table), path.stem)
-                truth = table["class"].astype(str).to_numpy() if "class" in table.columns else np.full(len(table), args.label)
+                units = (
+                    table["unit"].astype(str).to_numpy()
+                    if "unit" in table.columns
+                    else np.full(len(table), path.stem)
+                )
+                truth = (
+                    table["class"].astype(str).to_numpy()
+                    if "class" in table.columns
+                    else np.full(len(table), args.label)
+                )
             else:
                 mode = "raw recording"
-                column = args.column if args.column is not None else table.select_dtypes("number").columns[0]
-                values = table[column if column in table.columns else int(column)].to_numpy(dtype=np.float64)
+                column = (
+                    args.column
+                    if args.column is not None
+                    else table.select_dtypes("number").columns[0]
+                )
+                values = table[column if column in table.columns else int(column)].to_numpy(
+                    dtype=np.float64
+                )
                 x = raw_features(values, args)
                 units = np.full(len(x), path.stem)
                 truth = np.full(len(x), args.label)
@@ -5231,34 +7653,46 @@ def _make_haul_truck():
             for unit in dict.fromkeys(units):
                 mask = units == unit
                 mean = probabilities[mask].mean(axis=0)
-                rows.append({"recording": unit, "predicted": model.classes_[int(mean.argmax())],
-                             "confidence": round(float(mean.max()), 3), "true": truth[mask][0], "rows": int(mask.sum())})
+                rows.append(
+                    {
+                        "recording": unit,
+                        "predicted": model.classes_[int(mean.argmax())],
+                        "confidence": round(float(mean.max()), 3),
+                        "true": truth[mask][0],
+                        "rows": int(mask.sum()),
+                    }
+                )
             report = pd.DataFrame(rows)
-            print(f"Model: {saved['machine']} random forest | input: {mode} | {len(report)} recording(s)")
+            print(
+                f"Model: {saved['machine']} random forest | input: {mode} | {len(report)} recording(s)"
+            )
             print(report.to_string(index=False))
             seen = sorted(set(report["recording"]) & set(saved["trained_units"]))
             if seen:
-                print(f"WARNING: {seen} were used to train this model, so their accuracy is optimistic. "
-                      "Use train-final --exclude ... to test fairly.")
+                print(
+                    f"WARNING: {seen} were used to train this model, so their accuracy is optimistic. "
+                    "Use train-final --exclude ... to test fairly."
+                )
             known = report["true"].notna() & (report["true"].astype(str) != "None")
             if known.any():
                 k = report[known]
-                print(f"\nAccuracy: {accuracy_score(k['true'], k['predicted']):.3f} "
-                      f"({int((k['true'] == k['predicted']).sum())}/{len(k)} recordings)")
+                print(
+                    f"\nAccuracy: {accuracy_score(k['true'], k['predicted']):.3f} "
+                    f"({int((k['true'] == k['predicted']).sum())}/{len(k)} recordings)"
+                )
                 labels = saved["classes"]
                 print("Confusion matrix (rows = true, columns = predicted):", labels)
                 print(confusion_matrix(k["true"], k["predicted"], labels=labels))
             else:
-                print("\nNo true class given (use --label or a 'class' column) so accuracy cannot be computed.")
+                print(
+                    "\nNo true class given (use --label or a 'class' column) so accuracy cannot be computed."
+                )
 
         if run:
             main()
         return locals()
 
-
-    # ====================================================================================================
-    # Proposal Week 6: advanced ensemble models (XGBoost / LightGBM comparison table)
-    # ====================================================================================================
+    # --- Proposal Week 6: advanced ensemble models (XGBoost / LightGBM comparison table) ---
 
     def ensembles(run: bool = True) -> dict:
         """Proposal Week 6: compare advanced ensemble models on the same CSV sensor features and held-out tests.
@@ -5279,14 +7713,25 @@ def _make_haul_truck():
         import matplotlib.pyplot as plt
         import numpy as np
         from sklearn.dummy import DummyClassifier
-        from sklearn.ensemble import ExtraTreesClassifier, HistGradientBoostingClassifier, RandomForestClassifier
-        from sklearn.metrics import accuracy_score, balanced_accuracy_score, confusion_matrix, f1_score
+        from sklearn.ensemble import (
+            ExtraTreesClassifier,
+            HistGradientBoostingClassifier,
+            RandomForestClassifier,
+        )
+        from sklearn.metrics import (
+            accuracy_score,
+            balanced_accuracy_score,
+            confusion_matrix,
+            f1_score,
+        )
 
         try:
             from lightgbm import LGBMClassifier
             from xgboost import XGBClassifier
         except ImportError:
-            raise SystemExit("Install the ensemble libraries first:  python -m pip install xgboost lightgbm")
+            raise SystemExit(
+                "Install the ensemble libraries first:  python -m pip install xgboost lightgbm"
+            )
 
         MACHINE = "haul_truck"
         RESULT = ROOT / "Results" / MACHINE / f"{MACHINE}_ensembles.json"
@@ -5294,30 +7739,66 @@ def _make_haul_truck():
         MODELS = {
             "Majority class (control)": lambda: DummyClassifier(strategy="most_frequent"),
             "Random forest": lambda: RandomForestClassifier(
-                n_estimators=250, max_features="sqrt", class_weight="balanced_subsample",
-                min_samples_leaf=2, random_state=42, n_jobs=-1),
+                n_estimators=250,
+                max_features="sqrt",
+                class_weight="balanced_subsample",
+                min_samples_leaf=2,
+                random_state=42,
+                n_jobs=-1,
+            ),
             "Extra trees": lambda: ExtraTreesClassifier(
-                n_estimators=300, max_features="sqrt", class_weight="balanced",
-                min_samples_leaf=2, random_state=42, n_jobs=-1),
+                n_estimators=300,
+                max_features="sqrt",
+                class_weight="balanced",
+                min_samples_leaf=2,
+                random_state=42,
+                n_jobs=-1,
+            ),
             "Gradient boosting (scikit-learn)": lambda: HistGradientBoostingClassifier(
-                max_iter=200, learning_rate=0.05, class_weight="balanced", random_state=42),
+                max_iter=200, learning_rate=0.05, class_weight="balanced", random_state=42
+            ),
             "XGBoost": lambda: XGBClassifier(
-                n_estimators=300, max_depth=4, learning_rate=0.05, subsample=0.8, colsample_bytree=0.8,
-                tree_method="hist", random_state=42, n_jobs=-1, verbosity=0),
+                n_estimators=300,
+                max_depth=4,
+                learning_rate=0.05,
+                subsample=0.8,
+                colsample_bytree=0.8,
+                tree_method="hist",
+                random_state=42,
+                n_jobs=-1,
+                verbosity=0,
+            ),
             "LightGBM": lambda: LGBMClassifier(
-                n_estimators=300, num_leaves=15, learning_rate=0.05, subsample=0.8, subsample_freq=1,
-                colsample_bytree=0.8, class_weight="balanced", random_state=42, n_jobs=-1, verbose=-1),
+                n_estimators=300,
+                num_leaves=15,
+                learning_rate=0.05,
+                subsample=0.8,
+                subsample_freq=1,
+                colsample_bytree=0.8,
+                class_weight="balanced",
+                random_state=42,
+                n_jobs=-1,
+                verbose=-1,
+            ),
         }
 
         def main():
             parser = argparse.ArgumentParser(description=ensembles.__doc__)
-            parser.add_argument("--split", choices=("main", "time"), default="main",
-                                help="main (fair test) or time (secondary: first 60%% of every recording trains, "
-                                     "last 30%% tests, 10%% gap)")
+            parser.add_argument(
+                "--split",
+                choices=("main", "time"),
+                default="main",
+                help="main (fair test) or time (secondary: first 60%% of every recording trains, "
+                "last 30%% tests, 10%% gap)",
+            )
             args = parser.parse_args()
             nonlocal RESULT, FIGURE
-            table, feature_sets, labels, folds, test_description, notes = csv(run=False)["build_table"]()
-            feature_sets = feature_sets if isinstance(feature_sets, dict) else {"base": feature_sets}
+            table, feature_sets, labels, folds, test_description, notes = csv(run=False)[
+                "build_table"
+            ]()
+            feature_sets = (
+                feature_sets if isinstance(feature_sets, dict) else {"base": feature_sets}
+            )
             set_name, features = next(iter(feature_sets.items()))
             if args.split == "time":
                 if "window" not in table.columns:
@@ -5327,19 +7808,26 @@ def _make_haul_truck():
                 late = position.loc[table.index] > 0.7
                 table["unit"] = table["unit"] + np.where(late, "_late", "_early")
                 folds = lambda t: [t["unit"].str.endswith("_late").to_numpy()]
-                test_description = ("TIME SPLIT (secondary): first 60% of every recording trains, last 30% tests, 10% gap; "
-                                    "the same recordings appear in training, so this is easier than the main test")
+                test_description = (
+                    "TIME SPLIT (secondary): first 60% of every recording trains, last 30% tests, 10% gap; "
+                    "the same recordings appear in training, so this is easier than the main test"
+                )
                 RESULT = RESULT.with_name(RESULT.stem + "_timesplit.json")
                 FIGURE = FIGURE.with_name(FIGURE.stem + "_timesplit.png")
             x = table[features].to_numpy(dtype=np.float64)
             code = {label: i for i, label in enumerate(labels)}
             y = table["class"].map(code).to_numpy()
             units = table["unit"].astype(str).to_numpy()
-            result = {"purpose": "Proposal Week 6: advanced ensemble comparison (XGBoost / LightGBM)",
-                      "machine": MACHINE, "features": f"{set_name} ({len(features)} sensor features, same CSV as Week 6)",
-                      "classes": list(labels), "test": test_description,
-                      "selection_rule": "settings fixed in advance; no model or setting chosen from these test results",
-                      "notes": notes, "models": {}}
+            result = {
+                "purpose": "Proposal Week 6: advanced ensemble comparison (XGBoost / LightGBM)",
+                "machine": MACHINE,
+                "features": f"{set_name} ({len(features)} sensor features, same CSV as Week 6)",
+                "classes": list(labels),
+                "test": test_description,
+                "selection_rule": "settings fixed in advance; no model or setting chosen from these test results",
+                "notes": notes,
+                "models": {},
+            }
             for name, make in MODELS.items():
                 actual, predicted, seconds = [], [], 0.0
                 for test in folds(table):
@@ -5359,26 +7847,55 @@ def _make_haul_truck():
                 result["models"][name] = {
                     "test_units": len(actual),
                     "accuracy": round(float(accuracy_score(actual, predicted)), 4),
-                    "balanced_accuracy": round(float(balanced_accuracy_score(actual, predicted)), 4),
-                    "macro_f1": round(float(f1_score(actual, predicted, average="macro", labels=list(range(len(labels))),
-                                                     zero_division=0)), 4),
+                    "balanced_accuracy": round(
+                        float(balanced_accuracy_score(actual, predicted)), 4
+                    ),
+                    "macro_f1": round(
+                        float(
+                            f1_score(
+                                actual,
+                                predicted,
+                                average="macro",
+                                labels=list(range(len(labels))),
+                                zero_division=0,
+                            )
+                        ),
+                        4,
+                    ),
                     "train_seconds": round(seconds, 2),
-                    "confusion_matrix": confusion_matrix(actual, predicted, labels=list(range(len(labels)))).tolist(),
+                    "confusion_matrix": confusion_matrix(
+                        actual, predicted, labels=list(range(len(labels)))
+                    ).tolist(),
                 }
                 block = result["models"][name]
-                print(f"{name:33s} accuracy {block['accuracy']:.3f}  macro F1 {block['macro_f1']:.3f}  "
-                      f"({block['test_units']} recordings, {seconds:.1f} s to train)")
+                print(
+                    f"{name:33s} accuracy {block['accuracy']:.3f}  macro F1 {block['macro_f1']:.3f}  "
+                    f"({block['test_units']} recordings, {seconds:.1f} s to train)"
+                )
             names = list(result["models"])
             figure, axis = plt.subplots(figsize=(8, 3.6))
             positions = np.arange(len(names))
-            axis.bar(positions - 0.2, [result["models"][n]["accuracy"] for n in names], 0.4, label="accuracy")
-            axis.bar(positions + 0.2, [result["models"][n]["macro_f1"] for n in names], 0.4, label="macro F1")
+            axis.bar(
+                positions - 0.2,
+                [result["models"][n]["accuracy"] for n in names],
+                0.4,
+                label="accuracy",
+            )
+            axis.bar(
+                positions + 0.2,
+                [result["models"][n]["macro_f1"] for n in names],
+                0.4,
+                label="macro F1",
+            )
             axis.axhline(0.9, color="grey", ls="--", lw=1)
             axis.set_xticks(positions, [n.replace(" (", "\n(") for n in names], fontsize=7.5)
             axis.set_ylim(0, 1.05)
             axis.legend(fontsize=8)
-            axis.set_title(f"{MACHINE.replace('_', ' ').title()}: ensemble comparison"
-                           + (" - TIME SPLIT" if args.split == "time" else " (main test)"), fontsize=10)
+            axis.set_title(
+                f"{MACHINE.replace('_', ' ').title()}: ensemble comparison"
+                + (" - TIME SPLIT" if args.split == "time" else " (main test)"),
+                fontsize=10,
+            )
             figure.tight_layout()
             FIGURE.parent.mkdir(parents=True, exist_ok=True)
             figure.savefig(FIGURE, dpi=110)
@@ -5391,10 +7908,7 @@ def _make_haul_truck():
             main()
         return locals()
 
-
-    # ====================================================================================================
-    # Week 7: anomaly detection (proposal Week 7: Isolation Forest / One-Class SVM)
-    # ====================================================================================================
+    # --- Week 7: anomaly detection (proposal Week 7: Isolation Forest / One-Class SVM) ---
 
     def anomaly(run: bool = True) -> dict:
         """Week 7: anomaly detection. Learn what HEALTHY looks like, then flag anything unusual as a possible fault.
@@ -5424,24 +7938,32 @@ def _make_haul_truck():
         RESULT = ROOT / "Results" / MACHINE / f"{MACHINE}_anomaly.json"
         FIGURE = ROOT / "Figures" / MACHINE / f"{MACHINE}_anomaly.png"
         DETECTORS = {
-            "Isolation Forest": lambda: make_pipeline(StandardScaler(), IsolationForest(
-                n_estimators=300, max_samples=256, random_state=42, n_jobs=-1)),
-            "One-Class SVM": lambda: make_pipeline(StandardScaler(), OneClassSVM(kernel="rbf", gamma="scale", nu=0.05)),
+            "Isolation Forest": lambda: make_pipeline(
+                StandardScaler(),
+                IsolationForest(n_estimators=300, max_samples=256, random_state=42, n_jobs=-1),
+            ),
+            "One-Class SVM": lambda: make_pipeline(
+                StandardScaler(), OneClassSVM(kernel="rbf", gamma="scale", nu=0.05)
+            ),
         }
-        MAX_FIT_ROWS = 4000   # One-Class SVM gets slow on many rows; a fixed, evenly spaced subset is used
+        MAX_FIT_ROWS = (
+            4000  # One-Class SVM gets slow on many rows; a fixed, evenly spaced subset is used
+        )
 
         def fit(make, x):
             rows = np.linspace(0, len(x) - 1, min(len(x), MAX_FIT_ROWS)).astype(int)
             return make().fit(x[rows])
 
         def recording_scores(model, x, units):
-            window = -model.decision_function(x)   # higher = more unusual
+            window = -model.decision_function(x)  # higher = more unusual
             return {unit: float(window[units == unit].mean()) for unit in dict.fromkeys(units)}
 
         def threshold(make, x, units, healthy_units):
             """Highest score of any healthy training recording when it is left out of fitting (no test data used)."""
             if len(healthy_units) < 2:
-                raise SystemExit("Need at least two healthy training recordings to set the threshold")
+                raise SystemExit(
+                    "Need at least two healthy training recordings to set the threshold"
+                )
             scores = []
             for unit in healthy_units:
                 others = np.isin(units, [u for u in healthy_units if u != unit])
@@ -5451,13 +7973,21 @@ def _make_haul_truck():
 
         def main():
             parser = argparse.ArgumentParser(description=anomaly.__doc__)
-            parser.add_argument("--split", choices=("main", "time"), default="main",
-                                help="main (fair: held-out recordings) or time (secondary: first 60%% of every recording "
-                                     "trains, last 30%% tests, 10%% gap)")
+            parser.add_argument(
+                "--split",
+                choices=("main", "time"),
+                default="main",
+                help="main (fair: held-out recordings) or time (secondary: first 60%% of every recording "
+                "trains, last 30%% tests, 10%% gap)",
+            )
             args = parser.parse_args()
             nonlocal RESULT, FIGURE
-            table, feature_sets, labels, folds, test_description, notes = csv(run=False)["build_table"]()
-            feature_sets = feature_sets if isinstance(feature_sets, dict) else {"base": feature_sets}
+            table, feature_sets, labels, folds, test_description, notes = csv(run=False)[
+                "build_table"
+            ]()
+            feature_sets = (
+                feature_sets if isinstance(feature_sets, dict) else {"base": feature_sets}
+            )
             set_name, features = next(iter(feature_sets.items()))
             if args.split == "time":
                 if "window" not in table.columns:
@@ -5467,8 +7997,10 @@ def _make_haul_truck():
                 late = position.loc[table.index] > 0.7
                 table["unit"] = table["unit"] + np.where(late, "_late", "_early")
                 folds = lambda t: [t["unit"].str.endswith("_late").to_numpy()]
-                test_description = ("TIME SPLIT (secondary): healthy rows from the first 60% of every recording train, "
-                                    "the last 30% of every recording is tested (10% gap); easier than the main test")
+                test_description = (
+                    "TIME SPLIT (secondary): healthy rows from the first 60% of every recording train, "
+                    "the last 30% of every recording is tested (10% gap); easier than the main test"
+                )
                 RESULT = RESULT.with_name(RESULT.stem + "_timesplit.json")
                 FIGURE = FIGURE.with_name(FIGURE.stem + "_timesplit.png")
             x = table[features].to_numpy(dtype=np.float64)
@@ -5477,11 +8009,13 @@ def _make_haul_truck():
             fault_classes = [c for c in labels if c != "healthy"]
             result = {
                 "purpose": "Week 7 (proposal): anomaly detection trained on healthy data only",
-                "machine": MACHINE, "features": f"{set_name} ({len(features)} sensor features, same CSV as Week 6)",
+                "machine": MACHINE,
+                "features": f"{set_name} ({len(features)} sensor features, same CSV as Week 6)",
                 "test": test_description,
                 "threshold_rule": "highest leave-one-recording-out score among the healthy TRAINING recordings; "
-                                  "no test data and no fault labels are used to train or to set it",
-                "notes": notes, "detectors": {},
+                "no test data and no fault labels are used to train or to set it",
+                "notes": notes,
+                "detectors": {},
             }
             figure, axes = plt.subplots(1, len(DETECTORS), figsize=(5.2 * len(DETECTORS), 3.6))
             for axis, (name, make) in zip(np.atleast_1d(axes), DETECTORS.items()):
@@ -5492,15 +8026,26 @@ def _make_haul_truck():
                     model = fit(make, x[np.isin(units, train_healthy)])
                     scores = recording_scores(model, x[test], units[test])
                     for unit, score in scores.items():
-                        rows.append({"unit": unit, "class": y[units == unit][0], "margin": score - cut})
+                        rows.append(
+                            {"unit": unit, "class": y[units == unit][0], "margin": score - cut}
+                        )
                 truth = np.array([r["class"] != "healthy" for r in rows])
                 margin = np.array([r["margin"] for r in rows])
                 alarm = margin > 0
-                per_class = {c: round(float(alarm[[r["class"] == c for r in rows]].mean()), 4)
-                             for c in fault_classes if any(r["class"] == c for r in rows)}
+                per_class = {
+                    c: round(float(alarm[[r["class"] == c for r in rows]].mean()), 4)
+                    for c in fault_classes
+                    if any(r["class"] == c for r in rows)
+                }
                 block = {
-                    "test_recordings": len(rows), "healthy": int((~truth).sum()), "faulty": int(truth.sum()),
-                    "roc_auc": round(float(roc_auc_score(truth, margin)), 4) if 0 < truth.sum() < len(truth) else None,
+                    "test_recordings": len(rows),
+                    "healthy": int((~truth).sum()),
+                    "faulty": int(truth.sum()),
+                    "roc_auc": (
+                        round(float(roc_auc_score(truth, margin)), 4)
+                        if 0 < truth.sum() < len(truth)
+                        else None
+                    ),
                     "fault_detection_rate": round(float(alarm[truth].mean()), 4),
                     "false_alarm_rate": round(float(alarm[~truth].mean()), 4),
                     "accuracy": round(float((alarm == truth).mean()), 4),
@@ -5508,20 +8053,32 @@ def _make_haul_truck():
                     "recordings": [{**r, "margin": round(r["margin"], 4)} for r in rows],
                 }
                 result["detectors"][name] = block
-                print(f"{name:17s} ROC-AUC {block['roc_auc']}  faults detected {block['fault_detection_rate']:.3f}  "
-                      f"false alarms {block['false_alarm_rate']:.3f}  ({len(rows)} test recordings)")
+                print(
+                    f"{name:17s} ROC-AUC {block['roc_auc']}  faults detected {block['fault_detection_rate']:.3f}  "
+                    f"false alarms {block['false_alarm_rate']:.3f}  ({len(rows)} test recordings)"
+                )
                 order = ["healthy", *fault_classes]
                 for k, c in enumerate(order):
                     values = margin[[r["class"] == c for r in rows]]
-                    axis.scatter(np.full(len(values), k) + np.linspace(-0.15, 0.15, len(values)), values, s=18,
-                                 color="tab:green" if c == "healthy" else "tab:red")
+                    axis.scatter(
+                        np.full(len(values), k) + np.linspace(-0.15, 0.15, len(values)),
+                        values,
+                        s=18,
+                        color="tab:green" if c == "healthy" else "tab:red",
+                    )
                 axis.axhline(0, color="black", lw=1, ls="--")
                 axis.set_xticks(range(len(order)), order, rotation=20)
                 axis.set_ylabel("score minus alarm threshold")
-                axis.set_title(f"{name}: AUC {block['roc_auc']}, detect {block['fault_detection_rate']:.2f}, "
-                               f"false alarm {block['false_alarm_rate']:.2f}", fontsize=8.5)
-            figure.suptitle(f"{MACHINE.replace('_', ' ').title()} anomaly detection (above the line = alarm)"
-                            + (" - TIME SPLIT" if args.split == "time" else ""), fontsize=10)
+                axis.set_title(
+                    f"{name}: AUC {block['roc_auc']}, detect {block['fault_detection_rate']:.2f}, "
+                    f"false alarm {block['false_alarm_rate']:.2f}",
+                    fontsize=8.5,
+                )
+            figure.suptitle(
+                f"{MACHINE.replace('_', ' ').title()} anomaly detection (above the line = alarm)"
+                + (" - TIME SPLIT" if args.split == "time" else ""),
+                fontsize=10,
+            )
             figure.tight_layout()
             FIGURE.parent.mkdir(parents=True, exist_ok=True)
             figure.savefig(FIGURE, dpi=110)
@@ -5533,7 +8090,6 @@ def _make_haul_truck():
         if run:
             main()
         return locals()
-
 
     COMMANDS = {
         "ensembles": ensembles,
@@ -5548,28 +8104,26 @@ def _make_haul_truck():
         "cnn": cnn,
         "cnn-pretrained": cnn_pretrained,
     }
-    RUN_ALL = ['experiment']
-
+    RUN_ALL = ["experiment"]
 
     def cli() -> None:
         if len(sys.argv) < 2 or sys.argv[1] not in (*COMMANDS, "all"):
             print(__doc__)
             raise SystemExit(0 if len(sys.argv) < 2 or sys.argv[1] in ("-h", "--help") else 2)
         command, options = sys.argv[1], sys.argv[2:]
-        for name in (RUN_ALL if command == "all" else [command]):
+        for name in RUN_ALL if command == "all" else [command]:
             sys.argv = [f"haul_truck.py {name}", *(options if command != "all" else [])]
             COMMANDS[name]()
 
-
     return SimpleNamespace(**locals())
 
-#endregion
+
+# endregion
 
 
 # BELT_CONVEYOR MODEL IMPLEMENTATION
-#region Belt Conveyor: data, preprocessing, models and evaluation
+# region Belt Conveyor: data, preprocessing, models and evaluation
 def _make_belt_conveyor():
-    __doc__ = "Belt Conveyor: geared drive, CORA T1 temperature vs infrared camera.\n\nThis equipment section contains its model implementation. The combined notebook\nNotebook/Mining_Equipment_Condition_Monitoring.ipynb runs these commands and shows the results.\n\nUsage:\n    python Notebook/notebook_helpers.py belt_conveyor <command> [options]\n    python Notebook/notebook_helpers.py belt_conveyor <command> --help\n\nCommands:\n    intake          download CORA infrared stacks and bounded T1 samples\n    inspect-file    helper: inspect a local CORA publisher file\n    preprocess      helper: CORA sensor/thermal preprocessing smoke test\n    experiment      T1 temperature and infrared models, report and figure\n    baselines       Week 5: compare majority class, logistic regression, decision tree and random forest\n    export-images   Week 6: save the camera images as named files in Images/<machine>/ (local only)\n    csv             Week 6: 4-class sensor model from a CSV feature table\n    cnn             Week 6: CNN with data augmentation on the named images (run export-images first)\n    cnn-pretrained  Week 6: transfer learning, pretrained ResNet18 on the named images\n    intake-vibration  check selectively downloaded CORA vibration files (MD5) and file them\n    train-final     train the sensor model on all data and save it (--exclude to leave recordings out)\n    predict         predict from any CSV (feature table or raw recording) and show accuracy if labels are known\n    ensembles       proposal Week 6: XGBoost / LightGBM vs random forest etc. (--split time for the secondary test)\n    anomaly         Week 7: anomaly detection trained on healthy data only (--split time for the secondary test)\n    fulldata        Week 7: every CORA sensor, window and start-up recording (Models/cora_fulldata.py)\n                    (--part ensembles / anomaly / all: XGBoost-LightGBM comparison, anomaly detection)\n    all             run experiment\n\nRaw data stays in Raw_Data/ and Processed_Data/ (not in Git)."
     """Belt Conveyor: geared drive, CORA T1 temperature vs infrared camera.
 
     This equipment section contains its model implementation. The combined notebook
@@ -5600,11 +8154,10 @@ def _make_belt_conveyor():
 
     Raw data stays in Raw_Data/ and Processed_Data/ (not in Git).
     """
-
+    __doc__ = cleandoc(_make_belt_conveyor.__doc__)
 
     import sys
     from pathlib import Path
-
 
     # ==================================================================================================
     # intake: download CORA infrared stacks and bounded T1 samples
@@ -5621,7 +8174,6 @@ def _make_belt_conveyor():
         All raw/processed data are ignored by Git. No cross-run or frame-level pairing
         is inferred from matching filenames.
         """
-
 
         import argparse
         import hashlib
@@ -5640,7 +8192,6 @@ def _make_belt_conveyor():
         # The CORA server sends an incomplete certificate chain, which Python's own certificate list rejects.
         # Use the computer's certificate store instead; certificates are still fully verified.
         truststore.inject_into_ssl()
-
 
         CAPSTONE = ROOT
         RAW = CAPSTONE / "Raw_Data" / "cora_gear_wear"
@@ -5670,7 +8221,6 @@ def _make_belt_conveyor():
         }
         PUBLISHER_MD5 = {"H_F5_S": "18b4bf748275343a220cca7d4f854d60"}
 
-
         def digest(path: Path, algorithm: str) -> str:
             result = hashlib.new(algorithm)
             with path.open("rb") as source:
@@ -5678,13 +8228,11 @@ def _make_belt_conveyor():
                     result.update(block)
             return result.hexdigest()
 
-
         def request(file_id: int, byte_range: tuple[int, int] | None = None) -> Request:
             headers = {"User-Agent": "PROJ613-capstone/1.0"}
             if byte_range is not None:
                 headers["Range"] = f"bytes={byte_range[0]}-{byte_range[1]}"
             return Request(f"{BASE}/{file_id}?format=original", headers=headers)
-
 
         def download_thermal(run: str, file_id: int) -> dict:
             destination = RAW / f"{run}.mat"
@@ -5692,10 +8240,14 @@ def _make_belt_conveyor():
             if not destination.is_file():
                 for attempt in range(3):
                     try:
-                        with urlopen(request(file_id), timeout=180) as response, temporary.open("wb") as output:
+                        with urlopen(request(file_id), timeout=180) as response, temporary.open(
+                            "wb"
+                        ) as output:
                             content_name = response.headers.get("Content-Disposition", "")
                             if f'filename="{run}.mat"' not in content_name:
-                                raise ValueError(f"Unexpected thermal response for {run}: {content_name}")
+                                raise ValueError(
+                                    f"Unexpected thermal response for {run}: {content_name}"
+                                )
                             for block in iter(lambda: response.read(1024 * 1024), b""):
                                 output.write(block)
                         if temporary.stat().st_size < 1_000_000:
@@ -5720,7 +8272,6 @@ def _make_belt_conveyor():
                 "image_frames": 450,
             }
 
-
         def sensor_length(file_id: int, run: str) -> int:
             with urlopen(request(file_id, (0, 0)), timeout=90) as response:
                 if response.status != 206:
@@ -5733,7 +8284,6 @@ def _make_belt_conveyor():
                     raise ValueError(f"Missing source size for {run}")
                 response.read()
             return int(match.group(1))
-
 
         def sample_sensor(run: str, file_id: int) -> tuple[np.ndarray, dict]:
             total = sensor_length(file_id, run)
@@ -5758,8 +8308,14 @@ def _make_belt_conveyor():
                 if len(chunk) < 5_000 or not np.isfinite(chunk).all():
                     raise ValueError(f"Invalid sensor readings for {run} at byte {start}")
                 values.append(chunk.astype(np.float32))
-                ranges.append({"first_byte": start, "last_byte": end, "readings": len(chunk),
-                               "sha256": hashlib.sha256(block).hexdigest()})
+                ranges.append(
+                    {
+                        "first_byte": start,
+                        "last_byte": end,
+                        "readings": len(chunk),
+                        "sha256": hashlib.sha256(block).hexdigest(),
+                    }
+                )
             # Preserve one fixed six-second reading window at every selected position.
             fixed = np.stack([chunk[:6_000] for chunk in values])
             return fixed, {
@@ -5771,11 +8327,14 @@ def _make_belt_conveyor():
                 "ranges": ranges,
             }
 
-
         def main() -> None:
             parser = argparse.ArgumentParser(description=intake.__doc__)
-            parser.add_argument("--sensor-only", action="store_true", help="Skip full infrared downloads")
-            parser.add_argument("--thermal-only", action="store_true", help="Skip sensor range sampling")
+            parser.add_argument(
+                "--sensor-only", action="store_true", help="Skip full infrared downloads"
+            )
+            parser.add_argument(
+                "--thermal-only", action="store_true", help="Skip sensor range sampling"
+            )
             args = parser.parse_args()
             if args.sensor_only and args.thermal_only:
                 parser.error("Choose at most one of --sensor-only and --thermal-only")
@@ -5785,8 +8344,10 @@ def _make_belt_conveyor():
             existing = json.loads(INTAKE.read_text(encoding="utf-8")) if INTAKE.exists() else {}
             if not args.sensor_only:
                 with ThreadPoolExecutor(max_workers=4) as pool:
-                    futures = {pool.submit(download_thermal, run, ids[0]): run
-                               for run, ids in FILE_IDS.items()}
+                    futures = {
+                        pool.submit(download_thermal, run, ids[0]): run
+                        for run, ids in FILE_IDS.items()
+                    }
                     for completed, future in enumerate(as_completed(futures), 1):
                         run = futures[future]
                         records.setdefault(run, {})["infrared"] = future.result()
@@ -5794,8 +8355,10 @@ def _make_belt_conveyor():
             if not args.thermal_only:
                 sensor_data = {}
                 with ThreadPoolExecutor(max_workers=4) as pool:
-                    futures = {pool.submit(sample_sensor, run, ids[1]): run
-                               for run, ids in FILE_IDS.items()}
+                    futures = {
+                        pool.submit(sample_sensor, run, ids[1]): run
+                        for run, ids in FILE_IDS.items()
+                    }
                     for completed, future in enumerate(as_completed(futures), 1):
                         run = futures[future]
                         values, metadata = future.result()
@@ -5826,7 +8389,6 @@ def _make_belt_conveyor():
             main()
         return locals()
 
-
     # ==================================================================================================
     # inspect-file: helper: inspect a local CORA publisher file
     # (formerly Preprocessing/cora_manifest.py)
@@ -5845,13 +8407,11 @@ def _make_belt_conveyor():
         modified, or committed.
         """
 
-
         import argparse
         from collections import defaultdict
         from pathlib import Path
 
         import numpy as np
-
 
         FAULT_NAMES = {
             "H": "Healthy",
@@ -5866,13 +8426,27 @@ def _make_belt_conveyor():
         }
         FREQUENCIES = {"F5", "F15", "F50", "F60"}
         SENSOR_CHANNELS = {
-            "C1", "C2", "C3", "VX", "VY", "VZ", "T1", "T2", "T3",
-            "T4", "T5", "T6", "RPM", "AT", "TIMECU", "TIMEVI",
-            "TIMETEMP", "TIMERPM",
+            "C1",
+            "C2",
+            "C3",
+            "VX",
+            "VY",
+            "VZ",
+            "T1",
+            "T2",
+            "T3",
+            "T4",
+            "T5",
+            "T6",
+            "RPM",
+            "AT",
+            "TIMECU",
+            "TIMEVI",
+            "TIMETEMP",
+            "TIMERPM",
         }
         MEASUREMENT_SUFFIXES = {".csv", ".tab"}
         THERMAL_SUFFIXES = {".mat", ".jpg", ".jpeg"}
-
 
         def parse_file(path: Path) -> dict[str, str] | None:
             """Extract the published fault, frequency, regime, and modality tokens."""
@@ -5904,18 +8478,15 @@ def _make_belt_conveyor():
                 "filename": path.name,
             }
 
-
         def listed_paths(source: Path) -> list[Path]:
             """Read filenames from a folder or the official small text file guide."""
             if source.is_dir():
                 return [path for path in source.rglob("*") if path.is_file()]
             if source.is_file() and source.suffix.lower() == ".txt":
                 with source.open(encoding="utf-8-sig") as guide:
-                    names = [line.split(";", 1)[0].split(",", 1)[0].strip()
-                             for line in guide]
+                    names = [line.split(";", 1)[0].split(",", 1)[0].strip() for line in guide]
                 return [Path(name) for name in names if name]
             raise FileNotFoundError(f"Expected a CORA data folder or file guide: {source}")
-
 
         def load_thermal_stack(path: Path) -> list[np.ndarray]:
             """Load the MATLAB-v5 ``imagenes_celda`` three-channel frame collection."""
@@ -5938,19 +8509,22 @@ def _make_belt_conveyor():
                 raise ValueError(f"Unexpected thermal RGB frame structure in {path.name}")
             return frames
 
-
         def audit(source: Path, frequency: str = "F15", regime: str = "S") -> list[dict[str, str]]:
             """Print a condition-level inventory; never infer sample-level alignment."""
-            records = [parsed for path in listed_paths(source)
-                       if (parsed := parse_file(path)) is not None]
+            records = [
+                parsed for path in listed_paths(source) if (parsed := parse_file(path)) is not None
+            ]
             groups: dict[str, list[dict[str, str]]] = defaultdict(list)
             for record in records:
                 if record["frequency"] == frequency and record["regime"] == regime:
                     groups[record["fault"]].append(record)
 
             print(f"Recognized CORA files: {len(records)}")
-            run_note = ("one published run per class/speed" if regime == "S"
-                        else "transient measurements; thermal images were not recorded")
+            run_note = (
+                "one published run per class/speed"
+                if regime == "S"
+                else "transient measurements; thermal images were not recorded"
+            )
             print(f"Inventory: {frequency} / {regime} ({run_note})")
             print("Class | sensor channels | thermal stacks | JPG examples | status")
             print("------|-----------------|----------------|--------------|-------")
@@ -5962,16 +8536,22 @@ def _make_belt_conveyor():
                 status = "condition-level pair" if channels and thermal else "incomplete"
                 print(f"{fault:5} | {len(channels):15} | {thermal:14} | {examples:12} | {status}")
 
-            print("\nA shared experiment key links modalities by condition, not by individual sample.")
+            print(
+                "\nA shared experiment key links modalities by condition, not by individual sample."
+            )
             print("Do not randomly split windows/images from one run into train and test.")
-            print("Verify measurement time vectors and thermal timestamps before sample-level fusion.")
+            print(
+                "Verify measurement time vectors and thermal timestamps before sample-level fusion."
+            )
             return records
-
 
         def main() -> None:
             parser = argparse.ArgumentParser(description=inspect_file.__doc__)
-            parser.add_argument("source", type=Path,
-                                help="Local/cloud-mounted CORA folder or official file guide .txt")
+            parser.add_argument(
+                "source",
+                type=Path,
+                help="Local/cloud-mounted CORA folder or official file guide .txt",
+            )
             parser.add_argument("--frequency", choices=sorted(FREQUENCIES), default="F15")
             parser.add_argument("--regime", choices=("S", "T"), default="S")
             args = parser.parse_args()
@@ -5980,7 +8560,6 @@ def _make_belt_conveyor():
         if run:
             main()
         return locals()
-
 
     # ==================================================================================================
     # preprocess: helper: CORA sensor/thermal preprocessing smoke test
@@ -5997,7 +8576,6 @@ def _make_belt_conveyor():
         matches a sensor-window index.
         """
 
-
         import argparse
         from pathlib import Path
 
@@ -6008,7 +8586,6 @@ def _make_belt_conveyor():
         _manifest = inspect_file(run=False)
         load_thermal_stack, parse_file = _manifest["load_thermal_stack"], _manifest["parse_file"]
 
-
         SAMPLE_RATES_HZ = {
             **{name: 4000 for name in ("C1", "C2", "C3")},
             **{name: 3000 for name in ("VX", "VY", "VZ")},
@@ -6016,9 +8593,11 @@ def _make_belt_conveyor():
             "RPM": 1 / 30,
         }
 
-
         def sensor_window_features(
-            path: Path, *, window_seconds: int = 6, max_windows: int | None = None,
+            path: Path,
+            *,
+            window_seconds: int = 6,
+            max_windows: int | None = None,
         ) -> pd.DataFrame:
             """Stream one sensor channel into non-overlapping, fixed-duration features.
 
@@ -6027,7 +8606,9 @@ def _make_belt_conveyor():
             """
             record = parse_file(path)
             if record is None or record["modality"] != "sensor" or path.suffix.lower() != ".csv":
-                raise ValueError("Use an original CORA sensor .csv file, not an ingested .tab file.")
+                raise ValueError(
+                    "Use an original CORA sensor .csv file, not an ingested .tab file."
+                )
             channel = record["channel"]
             if channel not in SAMPLE_RATES_HZ:
                 raise ValueError(f"No verified sample rate for channel {channel}.")
@@ -6052,30 +8633,33 @@ def _make_belt_conveyor():
                 mean = float(values.mean())
                 centered = values - mean
                 standard_deviation = float(values.std())
-                rms = float(np.sqrt(np.mean(values ** 2)))
+                rms = float(np.sqrt(np.mean(values**2)))
                 peak = float(np.max(np.abs(values)))
                 spectrum = np.abs(np.fft.rfft(centered)) ** 2
                 if len(spectrum) > 1:
                     dominant_bin = int(np.argmax(spectrum[1:]) + 1)
-                    dominant_hz = float(np.fft.rfftfreq(len(values), d=1 / sample_rate)[dominant_bin])
+                    dominant_hz = float(
+                        np.fft.rfftfreq(len(values), d=1 / sample_rate)[dominant_bin]
+                    )
                     spectral_energy = float(spectrum[1:].sum() / len(values) ** 2)
                 else:
                     dominant_hz = float("nan")
                     spectral_energy = 0.0
-                rows.append({
-                    "experiment": record["experiment"],
-                    "channel": channel,
-                    "window_index": index,
-                    "mean": mean,
-                    "std": standard_deviation,
-                    "rms": rms,
-                    "peak_to_peak": float(np.ptp(values)),
-                    "crest_factor": peak / rms if rms else 0.0,
-                    "dominant_hz": dominant_hz,
-                    "spectral_energy": spectral_energy,
-                })
+                rows.append(
+                    {
+                        "experiment": record["experiment"],
+                        "channel": channel,
+                        "window_index": index,
+                        "mean": mean,
+                        "std": standard_deviation,
+                        "rms": rms,
+                        "peak_to_peak": float(np.ptp(values)),
+                        "crest_factor": peak / rms if rms else 0.0,
+                        "dominant_hz": dominant_hz,
+                        "spectral_energy": spectral_energy,
+                    }
+                )
             return pd.DataFrame(rows)
-
 
         def thermal_frame_features(path: Path, *, max_frames: int | None = None) -> pd.DataFrame:
             """Extract simple OpenCV image descriptors from one stationary .mat stack.
@@ -6098,16 +8682,17 @@ def _make_belt_conveyor():
                 resized = cv2.resize(frame, (224, 224), interpolation=cv2.INTER_AREA)
                 gray = cv2.cvtColor(resized, cv2.COLOR_RGB2GRAY)
                 edges = cv2.Canny(gray, 80, 160)
-                rows.append({
-                    "experiment": record["experiment"],
-                    "frame_index": index,
-                    "gray_mean": float(gray.mean()),
-                    "gray_std": float(gray.std()),
-                    "gray_p95": float(np.percentile(gray, 95)),
-                    "edge_fraction": float(np.mean(edges > 0)),
-                })
+                rows.append(
+                    {
+                        "experiment": record["experiment"],
+                        "frame_index": index,
+                        "gray_mean": float(gray.mean()),
+                        "gray_std": float(gray.std()),
+                        "gray_p95": float(np.percentile(gray, 95)),
+                        "edge_fraction": float(np.mean(edges > 0)),
+                    }
+                )
             return pd.DataFrame(rows)
-
 
         def main() -> None:
             parser = argparse.ArgumentParser(description=preprocess.__doc__)
@@ -6121,7 +8706,8 @@ def _make_belt_conveyor():
                 parser.error("Provide --sensor and/or --thermal.")
             if args.sensor:
                 features = sensor_window_features(
-                    args.sensor, window_seconds=args.window_seconds,
+                    args.sensor,
+                    window_seconds=args.window_seconds,
                     max_windows=args.max_windows,
                 )
                 print("Sensor window features (not paired to thermal frames):")
@@ -6134,7 +8720,6 @@ def _make_belt_conveyor():
         if run:
             main()
         return locals()
-
 
     # ==================================================================================================
     # experiment: T1 temperature and infrared models, report and figure
@@ -6149,7 +8734,6 @@ def _make_belt_conveyor():
         condition runs at each speed. Windows/frames are never split across folds.
         This is a laboratory geared-drive analogue, not mining-conveyor validation.
         """
-
 
         import json
         from pathlib import Path
@@ -6167,19 +8751,19 @@ def _make_belt_conveyor():
         from sklearn.pipeline import make_pipeline
         from sklearn.preprocessing import StandardScaler
 
-
         CAPSTONE = ROOT
         RAW = CAPSTONE / "Raw_Data" / "cora_gear_wear"
         PROCESSED = CAPSTONE / "Processed_Data" / "cora_gear_wear"
         INTAKE = CAPSTONE / "Results" / "belt_conveyor" / "belt_conveyor_cora_intake.json"
         RESULT = CAPSTONE / "Results" / "belt_conveyor" / "belt_conveyor_cora.json"
-        REPORT = CAPSTONE / "Results" / "belt_conveyor" / "belt_conveyor_sensor_visual_comparison.md"
+        REPORT = (
+            CAPSTONE / "Results" / "belt_conveyor" / "belt_conveyor_sensor_visual_comparison.md"
+        )
         FIGURE = CAPSTONE / "Figures" / "belt_conveyor" / "belt_conveyor_cora_confusions.png"
         CLASSES = ("healthy", "gear_worn")
         CONDITIONS = ("H", "W25", "W50", "W75")
         SPEEDS = ("F5", "F15", "F50", "F60")
         RUNS = tuple(f"{condition}_{speed}_S" for condition in CONDITIONS for speed in SPEEDS)
-
 
         def sensor_features(values: np.ndarray) -> list[float]:
             if values.shape != (8, 6_000) or not np.isfinite(values).all():
@@ -6190,11 +8774,15 @@ def _make_belt_conveyor():
             high = np.percentile(values, 90, axis=1)
             trend = float(np.polyfit(np.arange(8), means, 1)[0])
             return [
-                float(means.mean()), float(means.std()), float(np.median(means)),
-                float(means.min()), float(means.max()), trend,
-                float(within_std.mean()), float(np.mean(high - low)),
+                float(means.mean()),
+                float(means.std()),
+                float(np.median(means)),
+                float(means.min()),
+                float(means.max()),
+                trend,
+                float(within_std.mean()),
+                float(np.mean(high - low)),
             ]
-
 
         def infrared_features(path: Path) -> list[float]:
             import cv2
@@ -6209,19 +8797,22 @@ def _make_belt_conveyor():
                 gray = cv2.cvtColor(cv2.resize(frame, (128, 128)), cv2.COLOR_RGB2GRAY)
                 center = gray[32:96, 32:96].astype(np.float32)
                 full = gray.astype(np.float32)
-                rows.append([
-                    float(full.mean()), float(full.std()),
-                    float(np.percentile(full, 90)), float(np.percentile(full, 99)),
-                    float(np.mean(full >= 220)),
-                    float(center.mean() - full.mean()),
-                    float(center.std()),
-                    float(np.mean(np.abs(np.diff(full, axis=1)))),
-                ])
+                rows.append(
+                    [
+                        float(full.mean()),
+                        float(full.std()),
+                        float(np.percentile(full, 90)),
+                        float(np.percentile(full, 99)),
+                        float(np.mean(full >= 220)),
+                        float(center.mean() - full.mean()),
+                        float(center.std()),
+                        float(np.mean(np.abs(np.diff(full, axis=1)))),
+                    ]
+                )
             rows_array = np.asarray(rows)
             if not np.isfinite(rows_array).all():
                 raise ValueError(f"Non-finite infrared descriptor in {path.name}")
             return np.concatenate([rows_array.mean(axis=0), rows_array.std(axis=0)]).tolist()
-
 
         def metrics(y_true: np.ndarray, y_pred: np.ndarray) -> dict:
             precision, recall, f1, support = precision_recall_fscore_support(
@@ -6238,15 +8829,21 @@ def _make_belt_conveyor():
                 "macro_f1": float(np.mean(f1)),
                 "correct_runs": correct,
                 "test_runs": int(len(y_true)),
-                "exploratory_accuracy_interval_95_percent": [float(interval.low), float(interval.high)],
+                "exploratory_accuracy_interval_95_percent": [
+                    float(interval.low),
+                    float(interval.high),
+                ],
                 "confusion_matrix": matrix.tolist(),
                 "per_class": {
-                    label: {"precision": float(precision[i]), "recall": float(recall[i]),
-                            "f1": float(f1[i]), "support": int(support[i])}
+                    label: {
+                        "precision": float(precision[i]),
+                        "recall": float(recall[i]),
+                        "f1": float(f1[i]),
+                        "support": int(support[i]),
+                    }
                     for i, label in enumerate(CLASSES)
                 },
             }
-
 
         def evaluate(x: np.ndarray, y: np.ndarray, speeds: np.ndarray) -> dict:
             model_predictions = np.full(len(y), -1, dtype=int)
@@ -6259,35 +8856,46 @@ def _make_belt_conveyor():
                     raise ValueError(f"Invalid whole-speed fold: {speed}")
                 model = make_pipeline(
                     StandardScaler(),
-                    LogisticRegression(C=1.0, class_weight="balanced", solver="liblinear",
-                                       max_iter=1000, random_state=42),
+                    LogisticRegression(
+                        C=1.0,
+                        class_weight="balanced",
+                        solver="liblinear",
+                        max_iter=1000,
+                        random_state=42,
+                    ),
                 )
                 model.fit(x[train], y[train])
                 model_predictions[test] = model.predict(x[test])
                 dummy = DummyClassifier(strategy="most_frequent")
                 dummy.fit(x[train], y[train])
                 dummy_predictions[test] = dummy.predict(x[test])
-                fold_rows.append({
-                    "held_out_speed": speed,
-                    "train_runs": int(train.sum()),
-                    "test_runs": int(test.sum()),
-                    "actual": y[test].tolist(),
-                    "predicted": model_predictions[test].tolist(),
-                    "accuracy": float(accuracy_score(y[test], model_predictions[test])),
-                })
+                fold_rows.append(
+                    {
+                        "held_out_speed": speed,
+                        "train_runs": int(train.sum()),
+                        "test_runs": int(test.sum()),
+                        "actual": y[test].tolist(),
+                        "predicted": model_predictions[test].tolist(),
+                        "accuracy": float(accuracy_score(y[test], model_predictions[test])),
+                    }
+                )
             if np.any(model_predictions < 0) or np.any(dummy_predictions < 0):
                 raise ValueError("Some runs lack an out-of-fold prediction")
-            return {"model": metrics(y, model_predictions),
-                    "most_frequent_control": metrics(y, dummy_predictions),
-                    "folds": fold_rows,
-                    "predictions": {run: int(prediction)
-                                    for run, prediction in zip(RUNS, model_predictions)}}
-
+            return {
+                "model": metrics(y, model_predictions),
+                "most_frequent_control": metrics(y, dummy_predictions),
+                "folds": fold_rows,
+                "predictions": {
+                    run: int(prediction) for run, prediction in zip(RUNS, model_predictions)
+                },
+            }
 
         def draw_figures(sensor: dict, visual: dict) -> None:
             fig, axes = plt.subplots(1, 2, figsize=(9, 4.3))
             for axis, record, title in zip(
-                axes, (sensor, visual), ("T1 sensor (held-out speed)", "Infrared images (held-out speed)")
+                axes,
+                (sensor, visual),
+                ("T1 sensor (held-out speed)", "Infrared images (held-out speed)"),
             ):
                 matrix = np.asarray(record["model"]["confusion_matrix"])
                 axis.imshow(matrix, cmap="Blues", vmin=0)
@@ -6305,12 +8913,12 @@ def _make_belt_conveyor():
             fig.savefig(FIGURE, dpi=170)
             plt.close(fig)
 
-
         def metric_row(label: str, record: dict) -> str:
-            return (f"| {label} | {record['accuracy']:.3f} | {record['balanced_accuracy']:.3f} | "
-                    f"{record['macro_precision']:.3f} | {record['macro_recall']:.3f} | "
-                    f"{record['macro_f1']:.3f} |")
-
+            return (
+                f"| {label} | {record['accuracy']:.3f} | {record['balanced_accuracy']:.3f} | "
+                f"{record['macro_precision']:.3f} | {record['macro_recall']:.3f} | "
+                f"{record['macro_f1']:.3f} |"
+            )
 
         def render_report(result: dict) -> None:
             sensor = result["sensor"]
@@ -6346,62 +8954,78 @@ def _make_belt_conveyor():
             for sensor_fold, visual_fold in zip(sensor["folds"], visual["folds"]):
                 if sensor_fold["held_out_speed"] != visual_fold["held_out_speed"]:
                     raise ValueError("Modality fold mismatch")
-                lines.append(f"| {sensor_fold['held_out_speed']} | {sensor_fold['accuracy']:.3f} | {visual_fold['accuracy']:.3f} | {sensor_fold['test_runs']} |")
-            lines.extend([
-                "",
-                "## Per-class and per-condition performance",
-                "",
-                "| Modality | Actual class | Precision | Recall | F1 | Runs |",
-                "|---|---|---:|---:|---:|---:|",
-            ])
+                lines.append(
+                    f"| {sensor_fold['held_out_speed']} | {sensor_fold['accuracy']:.3f} | {visual_fold['accuracy']:.3f} | {sensor_fold['test_runs']} |"
+                )
+            lines.extend(
+                [
+                    "",
+                    "## Per-class and per-condition performance",
+                    "",
+                    "| Modality | Actual class | Precision | Recall | F1 | Runs |",
+                    "|---|---|---:|---:|---:|---:|",
+                ]
+            )
             for name, record in (("T1 sensor", sensor["model"]), ("Infrared", visual["model"])):
                 for label in CLASSES:
                     item = record["per_class"][label]
-                    lines.append(f"| {name} | {label} | {item['precision']:.3f} | {item['recall']:.3f} | {item['f1']:.3f} | {item['support']} |")
-            lines.extend(["", "| Original CORA state | Runs | Sensor correctly classified | Infrared correctly classified |",
-                          "|---|---:|---:|---:|"])
+                    lines.append(
+                        f"| {name} | {label} | {item['precision']:.3f} | {item['recall']:.3f} | {item['f1']:.3f} | {item['support']} |"
+                    )
+            lines.extend(
+                [
+                    "",
+                    "| Original CORA state | Runs | Sensor correctly classified | Infrared correctly classified |",
+                    "|---|---:|---:|---:|",
+                ]
+            )
             for state in CONDITIONS:
                 selected = [run for run in RUNS if run.startswith(state + "_")]
                 actual = 0 if state == "H" else 1
                 sensor_correct = sum(sensor["predictions"][run] == actual for run in selected)
                 visual_correct = sum(visual["predictions"][run] == actual for run in selected)
                 lines.append(f"| {state} | 4 | {sensor_correct}/4 | {visual_correct}/4 |")
-            lines.extend([
-                "",
-                "## Run-level confusion matrices",
-                "",
-                "Rows are actual and columns predicted, in the order **healthy, gear-worn**.",
-                "",
-                "| Modality / actual | Predicted healthy | Predicted gear-worn |",
-                "|---|---:|---:|",
-            ])
-            for name, record in (("Sensor healthy", sensor["model"]),
-                                 ("Sensor worn", sensor["model"]),
-                                 ("Infrared healthy", visual["model"]),
-                                 ("Infrared worn", visual["model"])):
+            lines.extend(
+                [
+                    "",
+                    "## Run-level confusion matrices",
+                    "",
+                    "Rows are actual and columns predicted, in the order **healthy, gear-worn**.",
+                    "",
+                    "| Modality / actual | Predicted healthy | Predicted gear-worn |",
+                    "|---|---:|---:|",
+                ]
+            )
+            for name, record in (
+                ("Sensor healthy", sensor["model"]),
+                ("Sensor worn", sensor["model"]),
+                ("Infrared healthy", visual["model"]),
+                ("Infrared worn", visual["model"]),
+            ):
                 row = 0 if name.endswith("healthy") else 1
                 values = record["confusion_matrix"][row]
                 lines.append(f"| {name} | {values[0]} | {values[1]} |")
-            lines.extend([
-                "",
-                f"![Separate run-level confusion matrices](../../Figures/belt_conveyor/{FIGURE.name})",
-                "",
-                "## Data and reproducibility",
-                "",
-                "- [CORA version 2.1](https://doi.org/10.34810/DATA2500), CC BY 4.0. The [intake record](belt_conveyor_cora_intake.json) lists exact publisher file IDs, local SHA-256 checksums, source sizes and selected sensor byte ranges. All 16 MAT stacks passed filename/structure checks; H_F5_S also matched the publisher's MD5. The other 15 local SHA-256 values establish future local integrity but were not compared with publisher checksums. All source MAT stacks and sampled values remain in Git-ignored `Raw_Data/` and `Processed_Data/`.",
-                "- **Sensor branch:** T1 is a source temperature channel sampled at 1 kHz. For each run we request eight deterministic, equally spaced 256-KiB ranges from the original CSV and retain the first 6,000 complete readings of each range. This is about 4.3% of source bytes and is **not full-signal modelling**. Eight predeclared time/variation features summarize each run.",
-                "- **Visual branch:** all 450 published infrared frames per run are converted with OpenCV to grayscale intensity/spatial descriptors and summarized to one run-level vector. Pixel levels are not calibrated degrees Celsius. Publisher MATLAB files are used rather than equipment-identification photographs.",
-                "- **No artificial pairing:** the two modalities share an experiment ID and fault condition, but their individual samples are not joined. Both branches have the same held-out speed/experiment units, making the run-level comparison more directly aligned than the earlier Pump cross-rig comparison.",
-                "",
-                "## Limitations and professor-requirement decision",
-                "",
-                "Only four speed settings and **one run per wear state/speed** are available. All 16 runs come from one laboratory rig; there is no unseen gearbox, mine, conveyor, load regime, or dated repair outcome. Reusing this CORA evidence for excavator, dozer, loader, drill, or grader later will **not** create additional independent equipment validations. Scores can compare how these fixed pipelines behave on the same held-out experiments, but are too small to establish sensor/infrared superiority or deployment performance.",
-                "",
-                "**Yes for completing the requested experimental comparison, conditional on the professor accepting a geared-drive laboratory reducer as a mechanically similar conveyor component.** Both real modalities address the same present gear-wear target using whole-run held-out-speed tests, and all requested metrics are reported. **No for an effective or validated predictive-maintenance model:** both accuracies are below the simple majority-class control, infrared healthy-class recall is 0.250, and there is no mining-conveyor test, sample-level fusion, or future-repair outcome. These weak results must be shown to the professor rather than described as a successful detector.",
-                "",
-            ])
+            lines.extend(
+                [
+                    "",
+                    f"![Separate run-level confusion matrices](../../Figures/belt_conveyor/{FIGURE.name})",
+                    "",
+                    "## Data and reproducibility",
+                    "",
+                    "- [CORA version 2.1](https://doi.org/10.34810/DATA2500), CC BY 4.0. The [intake record](belt_conveyor_cora_intake.json) lists exact publisher file IDs, local SHA-256 checksums, source sizes and selected sensor byte ranges. All 16 MAT stacks passed filename/structure checks; H_F5_S also matched the publisher's MD5. The other 15 local SHA-256 values establish future local integrity but were not compared with publisher checksums. All source MAT stacks and sampled values remain in Git-ignored `Raw_Data/` and `Processed_Data/`.",
+                    "- **Sensor branch:** T1 is a source temperature channel sampled at 1 kHz. For each run we request eight deterministic, equally spaced 256-KiB ranges from the original CSV and retain the first 6,000 complete readings of each range. This is about 4.3% of source bytes and is **not full-signal modelling**. Eight predeclared time/variation features summarize each run.",
+                    "- **Visual branch:** all 450 published infrared frames per run are converted with OpenCV to grayscale intensity/spatial descriptors and summarized to one run-level vector. Pixel levels are not calibrated degrees Celsius. Publisher MATLAB files are used rather than equipment-identification photographs.",
+                    "- **No artificial pairing:** the two modalities share an experiment ID and fault condition, but their individual samples are not joined. Both branches have the same held-out speed/experiment units, making the run-level comparison more directly aligned than the earlier Pump cross-rig comparison.",
+                    "",
+                    "## Limitations and professor-requirement decision",
+                    "",
+                    "Only four speed settings and **one run per wear state/speed** are available. All 16 runs come from one laboratory rig; there is no unseen gearbox, mine, conveyor, load regime, or dated repair outcome. Reusing this CORA evidence for excavator, dozer, loader, drill, or grader later will **not** create additional independent equipment validations. Scores can compare how these fixed pipelines behave on the same held-out experiments, but are too small to establish sensor/infrared superiority or deployment performance.",
+                    "",
+                    "**Yes for completing the requested experimental comparison, conditional on the professor accepting a geared-drive laboratory reducer as a mechanically similar conveyor component.** Both real modalities address the same present gear-wear target using whole-run held-out-speed tests, and all requested metrics are reported. **No for an effective or validated predictive-maintenance model:** both accuracies are below the simple majority-class control, infrared healthy-class recall is 0.250, and there is no mining-conveyor test, sample-level fusion, or future-repair outcome. These weak results must be shown to the professor rather than described as a successful detector.",
+                    "",
+                ]
+            )
             REPORT.write_text("\n".join(lines), encoding="utf-8")
-
 
         def main() -> None:
             intake = json.loads(INTAKE.read_text(encoding="utf-8"))
@@ -6450,10 +9074,7 @@ def _make_belt_conveyor():
             main()
         return locals()
 
-
-    # ====================================================================================================
-    # baselines: Week 5 baseline model comparison (majority class, logistic regression, decision tree, random forest)
-    # ====================================================================================================
+    # --- baselines: Week 5 baseline model comparison (majority class, logistic regression, decision tree, random forest) ---
 
     def baselines(run: bool = True) -> dict:
         """Week 5: compare baseline model families on the same held-out tests as the main experiment.
@@ -6472,8 +9093,12 @@ def _make_belt_conveyor():
         from sklearn.dummy import DummyClassifier
         from sklearn.ensemble import RandomForestClassifier
         from sklearn.linear_model import LogisticRegression
-        from sklearn.metrics import (accuracy_score, balanced_accuracy_score, confusion_matrix,
-                                     precision_recall_fscore_support)
+        from sklearn.metrics import (
+            accuracy_score,
+            balanced_accuracy_score,
+            confusion_matrix,
+            precision_recall_fscore_support,
+        )
         from sklearn.pipeline import make_pipeline
         from sklearn.preprocessing import StandardScaler
         from sklearn.tree import DecisionTreeClassifier
@@ -6482,12 +9107,27 @@ def _make_belt_conveyor():
         FIGURE = ROOT / "Figures" / "belt_conveyor" / "belt_conveyor_baselines.png"
         MODELS = {
             "Majority class (control)": lambda: DummyClassifier(strategy="most_frequent"),
-            "Logistic regression": lambda: make_pipeline(StandardScaler(), LogisticRegression(
-                C=1.0, class_weight="balanced", solver="liblinear", max_iter=1000, random_state=42)),
-            "Decision tree": lambda: DecisionTreeClassifier(class_weight="balanced", min_samples_leaf=2, random_state=42),
+            "Logistic regression": lambda: make_pipeline(
+                StandardScaler(),
+                LogisticRegression(
+                    C=1.0,
+                    class_weight="balanced",
+                    solver="liblinear",
+                    max_iter=1000,
+                    random_state=42,
+                ),
+            ),
+            "Decision tree": lambda: DecisionTreeClassifier(
+                class_weight="balanced", min_samples_leaf=2, random_state=42
+            ),
             "Random forest": lambda: RandomForestClassifier(
-                n_estimators=250, max_features="sqrt", class_weight="balanced_subsample",
-                min_samples_leaf=2, random_state=42, n_jobs=-1),
+                n_estimators=250,
+                max_features="sqrt",
+                class_weight="balanced_subsample",
+                min_samples_leaf=2,
+                random_state=42,
+                n_jobs=-1,
+            ),
         }
         SETTINGS = {
             "Majority class (control)": "always predicts the most common training class",
@@ -6504,7 +9144,9 @@ def _make_belt_conveyor():
                 if len(set(y[rows])) != 1:
                     raise ValueError(f"Mixed labels within {unit}")
                 actual.append(y[rows][0])
-                predicted.append(model.classes_[int(np.argmax(model.predict_proba(x[rows]).mean(axis=0)))])
+                predicted.append(
+                    model.classes_[int(np.argmax(model.predict_proba(x[rows]).mean(axis=0)))]
+                )
             return actual, predicted
 
         def evaluate(x, y, units, folds, classes):
@@ -6521,15 +9163,20 @@ def _make_belt_conveyor():
                     actual += list(a)
                     predicted += list(p)
                 precision, recall, f1, _ = precision_recall_fscore_support(
-                    actual, predicted, labels=classes, zero_division=0)
+                    actual, predicted, labels=classes, zero_division=0
+                )
                 scores[name] = {
                     "test_units": len(actual),
                     "accuracy": round(float(accuracy_score(actual, predicted)), 4),
-                    "balanced_accuracy": round(float(balanced_accuracy_score(actual, predicted)), 4),
+                    "balanced_accuracy": round(
+                        float(balanced_accuracy_score(actual, predicted)), 4
+                    ),
                     "macro_precision": round(float(precision.mean()), 4),
                     "macro_recall": round(float(recall.mean()), 4),
                     "macro_f1": round(float(f1.mean()), 4),
-                    "confusion_matrix": confusion_matrix(actual, predicted, labels=classes).tolist(),
+                    "confusion_matrix": confusion_matrix(
+                        actual, predicted, labels=classes
+                    ).tolist(),
                 }
             return scores
 
@@ -6539,7 +9186,12 @@ def _make_belt_conveyor():
             figure, axis = plt.subplots(figsize=(2.2 + 2.8 * len(branches), 4.0))
             for i, name in enumerate(names):
                 values = [result["branches"][b]["models"][name]["macro_f1"] for b in branches]
-                bars = axis.bar(np.arange(len(branches)) + (i - (len(names) - 1) / 2) * width, values, width, label=name)
+                bars = axis.bar(
+                    np.arange(len(branches)) + (i - (len(names) - 1) / 2) * width,
+                    values,
+                    width,
+                    label=name,
+                )
                 axis.bar_label(bars, fmt="%.2f", fontsize=7)
             axis.set_xticks(range(len(branches)), branches)
             axis.set_ylim(0, 1.15)
@@ -6563,11 +9215,19 @@ def _make_belt_conveyor():
             units = np.asarray(runs)
             folds = [speeds == s for s in e["SPEEDS"]]
             classes = list(e["CLASSES"])
-            test = "four rounds, each holding out one whole speed (4 runs); 16 run-level predictions"
-            branches["Sensor: T1 temperature"] = {"test": test, "classes": classes,
-                                                  "models": evaluate(sensor_x, y, units, folds, classes)}
-            branches["Camera: infrared"] = {"test": test, "classes": classes,
-                                            "models": evaluate(camera_x, y, units, folds, classes)}
+            test = (
+                "four rounds, each holding out one whole speed (4 runs); 16 run-level predictions"
+            )
+            branches["Sensor: T1 temperature"] = {
+                "test": test,
+                "classes": classes,
+                "models": evaluate(sensor_x, y, units, folds, classes),
+            }
+            branches["Camera: infrared"] = {
+                "test": test,
+                "classes": classes,
+                "models": evaluate(camera_x, y, units, folds, classes),
+            }
             result = {
                 "title": "Belt Conveyor: baseline models on held-out speeds",
                 "purpose": "Week 5 baseline model comparison on the same held-out tests as the main experiment",
@@ -6580,17 +9240,16 @@ def _make_belt_conveyor():
             plot(result)
             for branch, block in branches.items():
                 for name, score in block["models"].items():
-                    print(f"{branch:<24} {name:<26} accuracy {score['accuracy']:.3f}  macro F1 {score['macro_f1']:.3f}")
+                    print(
+                        f"{branch:<24} {name:<26} accuracy {score['accuracy']:.3f}  macro F1 {score['macro_f1']:.3f}"
+                    )
             print(f"Saved {RESULT.relative_to(ROOT)} and {FIGURE.relative_to(ROOT)}")
 
         if run:
             main()
         return locals()
 
-
-    # ====================================================================================================
-    # export-images: Week 6, save the camera images as named files (professor remark)
-    # ====================================================================================================
+    # --- export-images: Week 6, save the camera images as named files (professor remark) ---
 
     def export_images(run: bool = True) -> dict:
         """Week 6: save this machine's camera images as named PNG files for the CNN.
@@ -6617,29 +9276,15 @@ def _make_belt_conveyor():
         FRAMES = SECONDS * 1_000_000 // BIN_US
 
         def event_frames(stream):
-            """First 5 s of an event recording as 20 images of 250 ms; channel 0 = brighter, 1 = darker events."""
-            while True:
-                first = stream.read(1)
-                if first != b"%":
-                    break
-                stream.readline()
-            stream.read(1)
-            counts = np.zeros((FRAMES, 2, HEIGHT, WIDTH), dtype=np.uint32)
-            end = SECONDS * 1_000_000
-            while True:
-                chunk = stream.read(8 * 500_000)
-                if not chunk:
-                    break
-                ev = np.frombuffer(chunk, dtype=EVENT)
-                keep = ev["t"] < end
-                t, xy = ev["t"][keep], ev["xy"][keep]
-                x, y, polarity = xy & 0x3FFF, (xy >> 14) & 0x3FFF, (xy >> 28) & 1
-                index = ((((t // BIN_US) * 2 + (1 - polarity)) * HEIGHT + (y * HEIGHT // 480)) * WIDTH
-                         + (x * WIDTH // 640)).astype(np.int64)
-                counts += np.bincount(index, minlength=counts.size).reshape(counts.shape).astype(np.uint32)
-                if len(ev) and ev["t"][-1] >= end:
-                    break
-            return counts
+            return bin_event_stream(
+                stream,
+                frames=FRAMES,
+                seconds=SECONDS,
+                height=HEIGHT,
+                width=WIDTH,
+                event_dtype=EVENT,
+                bin_microseconds=BIN_US,
+            )
 
         def event_png(frame):
             """Brighter events in red, darker events in green, log-scaled to 0-255."""
@@ -6651,7 +9296,15 @@ def _make_belt_conveyor():
             folder = OUT / label
             folder.mkdir(parents=True, exist_ok=True)
             cv2.imwrite(str(folder / name), image)
-            rows.append({"file": f"{label}/{name}", "machine": MACHINE, "class": label, "unit": unit, "group": group})
+            rows.append(
+                {
+                    "file": f"{label}/{name}",
+                    "machine": MACHINE,
+                    "class": label,
+                    "unit": unit,
+                    "group": group,
+                }
+            )
 
         def export():
             rows = []
@@ -6659,21 +9312,34 @@ def _make_belt_conveyor():
             for condition, label in labels.items():
                 for speed in ("F5", "F15", "F50", "F60"):
                     unit = f"{condition}_{speed}_S"
-                    frames = loadmat(ROOT / "Raw_Data" / "cora_gear_wear" / f"{unit}.mat",
-                                     variable_names=["imagenes_celda"])["imagenes_celda"]
+                    frames = loadmat(
+                        ROOT / "Raw_Data" / "cora_gear_wear" / f"{unit}.mat",
+                        variable_names=["imagenes_celda"],
+                    )["imagenes_celda"]
                     for k, frame in enumerate(frames.flat):
                         if k % STEP:
                             continue  # every 3rd frame: 150 images per run
-                        gray = cv2.cvtColor(cv2.resize(np.asarray(frame), (WIDTH, HEIGHT)), cv2.COLOR_RGB2GRAY)
-                        write(rows, label, unit, speed, f"{MACHINE}_{label}_{speed}_f{k:03d}.png", gray)
+                        gray = cv2.cvtColor(
+                            cv2.resize(np.asarray(frame), (WIDTH, HEIGHT)), cv2.COLOR_RGB2GRAY
+                        )
+                        write(
+                            rows,
+                            label,
+                            unit,
+                            speed,
+                            f"{MACHINE}_{label}_{speed}_f{k:03d}.png",
+                            gray,
+                        )
                     print(f"{unit}: done", flush=True)
             return rows
 
-
         def main():
             parser = argparse.ArgumentParser(description=export_images.__doc__)
-            parser.add_argument("--all-frames", action="store_true",
-                                help="save all 450 frames per run to Images/<machine>_allframes/ (Week 7 full-data run)")
+            parser.add_argument(
+                "--all-frames",
+                action="store_true",
+                help="save all 450 frames per run to Images/<machine>_allframes/ (Week 7 full-data run)",
+            )
             args = parser.parse_args()
             nonlocal OUT, STEP
             if args.all_frames:
@@ -6682,7 +9348,9 @@ def _make_belt_conveyor():
                 shutil.rmtree(OUT)
             rows = export()
             with (OUT / "index.csv").open("w", newline="", encoding="utf-8") as handle:
-                writer = csv_module.DictWriter(handle, fieldnames=["file", "machine", "class", "unit", "group"])
+                writer = csv_module.DictWriter(
+                    handle, fieldnames=["file", "machine", "class", "unit", "group"]
+                )
                 writer.writeheader()
                 writer.writerows(rows)
             counts = {}
@@ -6694,10 +9362,7 @@ def _make_belt_conveyor():
             main()
         return locals()
 
-
-    # ====================================================================================================
-    # csv: Week 6, 4-class sensor model from a CSV feature table (professor remark: "csv accuracy 90 plus")
-    # ====================================================================================================
+    # --- csv: Week 6, 4-class sensor model from a CSV feature table (professor remark: "csv accuracy 90 plus") ---
 
     def csv(run: bool = True) -> dict:
         """Week 6: write the sensor features to a CSV table and train 4-class models on it.
@@ -6716,8 +9381,12 @@ def _make_belt_conveyor():
         matplotlib.use("Agg")
         import matplotlib.pyplot as plt
         import numpy as np
-        from sklearn.metrics import (accuracy_score, balanced_accuracy_score, confusion_matrix,
-                                     precision_recall_fscore_support)
+        from sklearn.metrics import (
+            accuracy_score,
+            balanced_accuracy_score,
+            confusion_matrix,
+            precision_recall_fscore_support,
+        )
 
         import pandas as pd
         from sklearn.dummy import DummyClassifier
@@ -6732,11 +9401,20 @@ def _make_belt_conveyor():
         FIGURE = ROOT / "Figures" / "belt_conveyor" / f"{MACHINE}_csv_4class.png"
         MODELS = {
             "Majority class (control)": lambda: DummyClassifier(strategy="most_frequent"),
-            "Logistic regression": lambda: make_pipeline(StandardScaler(), LogisticRegression(
-                C=1.0, class_weight="balanced", solver="lbfgs", max_iter=5000, random_state=42)),
+            "Logistic regression": lambda: make_pipeline(
+                StandardScaler(),
+                LogisticRegression(
+                    C=1.0, class_weight="balanced", solver="lbfgs", max_iter=5000, random_state=42
+                ),
+            ),
             "Random forest": lambda: RandomForestClassifier(
-                n_estimators=250, max_features="sqrt", class_weight="balanced_subsample",
-                min_samples_leaf=2, random_state=42, n_jobs=-1),
+                n_estimators=250,
+                max_features="sqrt",
+                class_weight="balanced_subsample",
+                min_samples_leaf=2,
+                random_state=42,
+                n_jobs=-1,
+            ),
         }
 
         unit_predictions = predict_recordings
@@ -6745,52 +9423,30 @@ def _make_belt_conveyor():
 
         plot_matrix = save_confusion_matrix
 
-
-        VIB_ORDERS = ((0.5, 1.5), (1.5, 2.5), (2.5, 3.5), (3.5, 5.5), (5.5, 8.5), (8.5, 12.5), (12.5, 20.5))
-        VIB_NAMES = ["log_rms", "kurtosis", "skewness", "crest_factor", "peak_order", "log_ratio_2x_1x",
-                     *(f"order_power_{lo}_{hi}" for lo, hi in VIB_ORDERS)]
+        VIB_ORDERS = (
+            (0.5, 1.5),
+            (1.5, 2.5),
+            (2.5, 3.5),
+            (3.5, 5.5),
+            (5.5, 8.5),
+            (8.5, 12.5),
+            (12.5, 20.5),
+        )
+        VIB_NAMES = [
+            "log_rms",
+            "kurtosis",
+            "skewness",
+            "crest_factor",
+            "peak_order",
+            "log_ratio_2x_1x",
+            *(f"order_power_{lo}_{hi}" for lo, hi in VIB_ORDERS),
+        ]
 
         def vibration_rows(run_name, label, speed):
-            """CORA Vx vibration (3 kHz) in 1 s windows (every 10th window), measured in shaft orders.
-
-            Orders = frequency / speed setting, so 1x, 2x and higher multiples line up across speeds:
-            unbalance shows at 1x, misalignment at 2x, bearing and gear damage at higher orders and spikes.
-            """
-            cache = ROOT / "Processed_Data" / "cora_vibration" / f"{run_name}_Vx_features.csv"
-            if cache.is_file():
-                return load_csv(cache)
-            source = ROOT / "Raw_Data" / "cora_vibration" / f"{run_name}_Vx.csv"
-            if not source.is_file():
-                raise SystemExit(f"Missing {source.relative_to(ROOT)}: download it and run the intake command")
-            values = load_cora_sensor(source.name)
-            frame = vibration_frame(values, speed)
-            frame.insert(0, "window", np.arange(len(frame)))
-            frame.insert(0, "class", label)
-            frame.insert(0, "speed", speed)
-            frame.insert(0, "unit", run_name)
-            cache.parent.mkdir(parents=True, exist_ok=True)
-            frame.to_csv(cache, index=False)
-            return frame
+            return load_cora_feature_rows(run_name, label, speed, vibration_frame)
 
         def vibration_frame(values, speed):
-            """Order-domain vibration features for a raw 3 kHz Vx signal at speed setting F5/F15/F50/F60."""
-            rate, shaft = 3000, float(speed[1:])
-            n = len(values) // rate
-            windows = values[: n * rate].reshape(n, rate)[::10]
-            centered = windows - windows.mean(axis=1, keepdims=True)
-            std = np.maximum(centered.std(axis=1), 1e-12)
-            freq = np.fft.rfftfreq(rate, d=1 / rate)
-            power = np.abs(np.fft.rfft(centered * np.hanning(rate), axis=1)) ** 2
-            order = freq / shaft
-            usable = (order >= 0.5) & (order < 20.5)
-            share = power[:, usable] / np.maximum(power[:, usable].sum(axis=1, keepdims=True), 1e-12)
-            o = order[usable]
-            bands = [share[:, (o >= lo) & (o < hi)].sum(axis=1) for lo, hi in VIB_ORDERS]
-            frame = pd.DataFrame(np.column_stack([
-                np.log(std), (centered ** 4).mean(axis=1) / std ** 4, (centered ** 3).mean(axis=1) / std ** 3,
-                np.abs(centered).max(axis=1) / std, o[np.argmax(share, axis=1)],
-                np.log((bands[1] + 1e-9) / (bands[0] + 1e-9)), *bands]), columns=VIB_NAMES)
-            return frame
+            return extract_cora_vibration(values, speed, VIB_ORDERS, VIB_NAMES)
 
         def build_table():
             e = experiment(run=False)
@@ -6806,80 +9462,43 @@ def _make_belt_conveyor():
                 frames.append(frame)
             table = pd.concat(frames, ignore_index=True)
             folds = lambda t: [(t["speed"] == s).to_numpy() for s in e["SPEEDS"]]
-            return (table, {"vibration": VIB_NAMES,
-                            "vibration+temperature": VIB_NAMES + ["t1_mean", "t1_std", "t1_slope"]},
-                    ["healthy", "wear25", "wear50", "wear75"], folds,
-                    "four rounds, each holding out one whole speed (4 runs, one per wear level); 16 run-level predictions",
-                    ["CORA Vx vibration (3 kHz, 1 s windows, every 10th window) in shaft orders, optionally with run-level T1 temperature",
-                     "only one run per wear level and speed",
-                     "per-speed normalisation is excluded because its group statistics would include held-out-speed samples"])
+            return (
+                table,
+                {
+                    "vibration": VIB_NAMES,
+                    "vibration+temperature": VIB_NAMES + ["t1_mean", "t1_std", "t1_slope"],
+                },
+                ["healthy", "wear25", "wear50", "wear75"],
+                folds,
+                "four rounds, each holding out one whole speed (4 runs, one per wear level); 16 run-level predictions",
+                [
+                    "CORA Vx vibration (3 kHz, 1 s windows, every 10th window) in shaft orders, optionally with run-level T1 temperature",
+                    "only one run per wear level and speed",
+                    "per-speed normalisation is excluded because its group statistics would include held-out-speed samples",
+                ],
+            )
+
         INNER_GROUP = "speed"
 
-        def candidate_models():
-            from sklearn.ensemble import ExtraTreesClassifier, HistGradientBoostingClassifier
-            from sklearn.svm import SVC
-            return {
-                "Random forest": lambda: RandomForestClassifier(
-                    n_estimators=250, max_features="sqrt", class_weight="balanced_subsample",
-                    min_samples_leaf=2, random_state=42, n_jobs=-1),
-                "Extra trees": lambda: ExtraTreesClassifier(
-                    n_estimators=300, max_features="sqrt", class_weight="balanced",
-                    min_samples_leaf=2, random_state=42, n_jobs=-1),
-                "Gradient boosting": lambda: HistGradientBoostingClassifier(
-                    max_iter=200, learning_rate=0.05, class_weight="balanced", random_state=42),
-                "SVM (RBF)": lambda: make_pipeline(StandardScaler(), SVC(
-                    C=10.0, gamma="scale", class_weight="balanced", probability=True, random_state=42)),
-                "Logistic regression": lambda: make_pipeline(StandardScaler(), LogisticRegression(
-                    C=1.0, class_weight="balanced", solver="lbfgs", max_iter=5000, random_state=42)),
-            }
+        candidate_models = sensor_model_candidates
 
-        def nested_selection(table, feature_sets, labels, outer_folds, inner_group):
-            """Pick a feature set and model on validation data inside each training set, then test once.
-
-            Inner validation holds out whole groups (recordings, bearings or speeds) of the training set
-            only; the outer test units are never used for the choice.
-            """
-            from sklearn.metrics import f1_score
-            from sklearn.model_selection import GroupKFold
-
-            y = table["class"].to_numpy()
-            units = table["unit"].to_numpy()
-            groups = table[inner_group].to_numpy()
-            models = candidate_models()
-            actual, predicted, chosen = [], [], []
-            for test in outer_folds:
-                train_idx = np.flatnonzero(~test)
-                n_splits = min(4, len(set(groups[train_idx])))
-                inner = list(GroupKFold(n_splits=n_splits).split(train_idx, groups=groups[train_idx]))
-                best, best_score = None, -1.0
-                for set_name, names in feature_sets.items():
-                    x = table[names].to_numpy(dtype=np.float64)
-                    for model_name, factory in models.items():
-                        f1s = []
-                        for fit_part, val_part in inner:
-                            fit_rows, val_rows = train_idx[fit_part], train_idx[val_part]
-                            model = factory().fit(x[fit_rows], y[fit_rows])
-                            a, p = unit_predictions(model.predict_proba(x[val_rows]), model.classes_, y[val_rows], units[val_rows])
-                            f1s.append(f1_score(a, p, labels=labels, average="macro", zero_division=0))
-                        if float(np.mean(f1s)) > best_score:
-                            best, best_score = (set_name, model_name), float(np.mean(f1s))
-                x = table[feature_sets[best[0]]].to_numpy(dtype=np.float64)
-                model = models[best[1]]().fit(x[train_idx], y[train_idx])
-                a, p = unit_predictions(model.predict_proba(x[test]), model.classes_, y[test], units[test])
-                actual += a
-                predicted += p
-                chosen.append({"feature_set": best[0], "model": best[1], "validation_macro_f1": round(best_score, 4)})
-            return score(actual, predicted, labels), chosen
+        nested_selection = select_sensor_model
 
         def main():
             parser = argparse.ArgumentParser(description=csv.__doc__)
-            parser.add_argument("--split", choices=("main", "time"), default="main",
-                                help="main (fair test, as described in the result) or time (secondary, easier): train on "
-                                     "the first 60%% of every recording, test on the last 30%% (10%% gap)")
+            parser.add_argument(
+                "--split",
+                choices=("main", "time"),
+                default="main",
+                help="main (fair test, as described in the result) or time (secondary, easier): train on "
+                "the first 60%% of every recording, test on the last 30%% (10%% gap)",
+            )
             args = parser.parse_args()
             nonlocal RESULT, FIGURE
             table, feature_names, labels, folds, test_description, notes = build_table()
-            feature_sets = feature_names if isinstance(feature_names, dict) else {"base": feature_names}
+            feature_sets = (
+                feature_names if isinstance(feature_names, dict) else {"base": feature_names}
+            )
             feature_names = next(iter(feature_sets.values()))
             CSV_PATH.parent.mkdir(parents=True, exist_ok=True)
             table.to_csv(CSV_PATH, index=False)
@@ -6891,9 +9510,11 @@ def _make_belt_conveyor():
                 late = position.loc[table.index] > 0.7
                 table["unit"] = table["unit"] + np.where(late, "_late", "_early")
                 folds = lambda t: [t["unit"].str.endswith("_late").to_numpy()]
-                test_description = ("TIME SPLIT (secondary): first 60% of every recording trains, last 30% tests, 10% gap; "
-                                    "one prediction per recording; the same recordings appear in training, so this is easier "
-                                    "than the main test")
+                test_description = (
+                    "TIME SPLIT (secondary): first 60% of every recording trains, last 30% tests, 10% gap; "
+                    "one prediction per recording; the same recordings appear in training, so this is easier "
+                    "than the main test"
+                )
                 RESULT = RESULT.with_name(RESULT.stem + "_timesplit.json")
                 FIGURE = FIGURE.with_name(FIGURE.stem + "_timesplit.png")
             x = table[feature_names].to_numpy(dtype=np.float64)
@@ -6907,52 +9528,80 @@ def _make_belt_conveyor():
                     if set(units[train]) & set(units[test]):
                         raise ValueError("A test unit also appears in training")
                     model = factory().fit(x[train], y[train])
-                    a, p = unit_predictions(model.predict_proba(x[test]), model.classes_, y[test], units[test])
+                    a, p = unit_predictions(
+                        model.predict_proba(x[test]), model.classes_, y[test], units[test]
+                    )
                     actual += a
                     predicted += p
                 scores[name] = score(actual, predicted, labels)
             result = {
                 "purpose": "Week 6 professor remark: 4-class sensor model from a CSV feature table",
                 "csv_file": str(CSV_PATH.relative_to(ROOT)).replace("\\", "/"),
-                "rows": int(len(table)), "features": feature_names, "classes": labels,
-                "test": test_description, "main_model": "Random forest",
+                "rows": int(len(table)),
+                "features": feature_names,
+                "classes": labels,
+                "test": test_description,
+                "main_model": "Random forest",
                 "selection_rule": "settings fixed in advance; no model or setting chosen from these test results",
-                "notes": notes, "models": scores,
+                "notes": notes,
+                "models": scores,
             }
             if args.split == "time":
                 result["split"] = "time (secondary)"
                 RESULT.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
                 main_score = scores["Random forest"]
-                plot_matrix(main_score["confusion_matrix"], labels,
-                            f"{MACHINE}: CSV sensor, TIME SPLIT (random forest), accuracy {main_score['accuracy']:.3f}", FIGURE)
+                plot_matrix(
+                    main_score["confusion_matrix"],
+                    labels,
+                    f"{MACHINE}: CSV sensor, TIME SPLIT (random forest), accuracy {main_score['accuracy']:.3f}",
+                    FIGURE,
+                )
                 for name, s in scores.items():
-                    print(f"{name:<26} accuracy {s['accuracy']:.3f}  macro F1 {s['macro_f1']:.3f}  ({s['test_units']} test units, time split)")
+                    print(
+                        f"{name:<26} accuracy {s['accuracy']:.3f}  macro F1 {s['macro_f1']:.3f}  ({s['test_units']} test units, time split)"
+                    )
                 print(f"Saved {RESULT.relative_to(ROOT)} and {FIGURE.relative_to(ROOT)}")
                 return
-            selected, chosen = nested_selection(table, feature_sets, labels, folds(table), INNER_GROUP)
+            selected, chosen = nested_selection(
+                table, feature_sets, labels, folds(table), INNER_GROUP
+            )
             result["validation_selected"] = {
                 "description": "feature set and model chosen per round on validation groups inside the training set only "
-                               "(candidates: " + ", ".join(candidate_models()) + "; feature sets: " + ", ".join(feature_sets) + ")",
-                "feature_sets": feature_sets, "score": selected, "chosen_per_round": chosen}
+                "(candidates: "
+                + ", ".join(candidate_models())
+                + "; feature sets: "
+                + ", ".join(feature_sets)
+                + ")",
+                "feature_sets": feature_sets,
+                "score": selected,
+                "chosen_per_round": chosen,
+            }
             result["main_model"] = "validation-selected"
             RESULT.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
             main_score = selected
-            plot_matrix(main_score["confusion_matrix"], labels,
-                        f"{MACHINE}: CSV sensor model (validation-selected), accuracy {main_score['accuracy']:.3f}", FIGURE)
+            plot_matrix(
+                main_score["confusion_matrix"],
+                labels,
+                f"{MACHINE}: CSV sensor model (validation-selected), accuracy {main_score['accuracy']:.3f}",
+                FIGURE,
+            )
             for name, s in scores.items():
-                print(f"{name:<26} accuracy {s['accuracy']:.3f}  macro F1 {s['macro_f1']:.3f}  ({s['test_units']} test units)")
-            print(f"Validation-selected model: accuracy {selected['accuracy']:.3f}  macro F1 {selected['macro_f1']:.3f}  "
-                  f"(choices: {[c['feature_set'] + ' / ' + c['model'] for c in chosen]})")
-            print(f"Saved {CSV_PATH.relative_to(ROOT)}, {RESULT.relative_to(ROOT)} and {FIGURE.relative_to(ROOT)}")
+                print(
+                    f"{name:<26} accuracy {s['accuracy']:.3f}  macro F1 {s['macro_f1']:.3f}  ({s['test_units']} test units)"
+                )
+            print(
+                f"Validation-selected model: accuracy {selected['accuracy']:.3f}  macro F1 {selected['macro_f1']:.3f}  "
+                f"(choices: {[c['feature_set'] + ' / ' + c['model'] for c in chosen]})"
+            )
+            print(
+                f"Saved {CSV_PATH.relative_to(ROOT)}, {RESULT.relative_to(ROOT)} and {FIGURE.relative_to(ROOT)}"
+            )
 
         if run:
             main()
         return locals()
 
-
-    # ====================================================================================================
-    # cnn: Week 6, CNN with data augmentation on the named images (professor remark)
-    # ====================================================================================================
+    # --- cnn: Week 6, CNN with data augmentation on the named images (professor remark) ---
 
     def cnn(run: bool = True) -> dict:
         """Week 6: a small CNN with data augmentation, trained on the named images, 4 classes.
@@ -6973,8 +9622,12 @@ def _make_belt_conveyor():
         matplotlib.use("Agg")
         import matplotlib.pyplot as plt
         import numpy as np
-        from sklearn.metrics import (accuracy_score, balanced_accuracy_score, confusion_matrix,
-                                     precision_recall_fscore_support)
+        from sklearn.metrics import (
+            accuracy_score,
+            balanced_accuracy_score,
+            confusion_matrix,
+            precision_recall_fscore_support,
+        )
 
         import random
 
@@ -6995,63 +9648,31 @@ def _make_belt_conveyor():
 
         plot_matrix = save_confusion_matrix
 
-
         def read_index():
             return read_image_records(IMAGES)
 
         def load(rows):
             return load_model_images(IMAGES, rows, channels=(0,))
 
-        class Net(nn.Module):
-            def __init__(self, in_channels, n_classes):
-                super().__init__()
-                def block(a, b):
-                    return nn.Sequential(nn.Conv2d(a, b, 3, padding=1), nn.BatchNorm2d(b), nn.ReLU(), nn.MaxPool2d(2))
-                self.features = nn.Sequential(block(in_channels, 16), block(16, 32), block(32, 64), block(64, 64))
-                self.head = nn.Sequential(nn.AdaptiveAvgPool2d(1), nn.Flatten(), nn.Dropout(0.3), nn.Linear(64, n_classes))
+        Net = make_small_image_cnn
 
-            def forward(self, x):
-                return self.head(self.features(x))
-
-        def augment(batch, generator):
-            n = batch.shape[0]
-            flip = torch.rand(n, generator=generator) < 0.5
-            batch = torch.where(flip[:, None, None, None], batch.flip(-1), batch)
-            shifted = []
-            for image in batch:
-                dy, dx = (int(v) for v in torch.randint(-8, 9, (2,), generator=generator))
-                shifted.append(torch.roll(image, shifts=(dy, dx), dims=(-2, -1)))
-            batch = torch.stack(shifted)
-            scale = 0.8 + 0.4 * torch.rand(n, 1, 1, 1, generator=generator)
-            return batch * scale + 0.05 * torch.randn(batch.shape, generator=generator)
+        augment = augment_event_images
 
         def train(x, y):
-            random.seed(SEED)
-            np.random.seed(SEED)
-            torch.manual_seed(SEED)
-            generator = torch.Generator().manual_seed(SEED)
-            model = Net(x.shape[1], len(LABELS))
-            counts = np.bincount(y, minlength=len(LABELS)).astype(np.float32)
-            weights = torch.tensor(counts.sum() / (len(LABELS) * np.maximum(counts, 1)))
-            loss_fn = nn.CrossEntropyLoss(weight=weights)
-            optimiser = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE, weight_decay=1e-4)
-            xs, ys = torch.tensor(x), torch.tensor(y, dtype=torch.long)
-            for _ in range(EPOCHS):
-                model.train()
-                order = torch.randperm(len(xs), generator=generator)
-                for start in range(0, len(xs), BATCH):
-                    batch = order[start:start + BATCH]
-                    optimiser.zero_grad()
-                    loss = loss_fn(model(augment(xs[batch], generator)), ys[batch])
-                    loss.backward()
-                    optimiser.step()
-            return model
+            return train_small_image_cnn(
+                x,
+                y,
+                network=Net,
+                augment=augment,
+                labels=LABELS,
+                seed=SEED,
+                learning_rate=LEARNING_RATE,
+                epochs=EPOCHS,
+                batch_size=BATCH,
+            )
 
         def probabilities(model, x):
-            model.eval()
-            with torch.no_grad():
-                return np.concatenate([torch.softmax(model(torch.tensor(x[i:i + 256])), dim=1).numpy()
-                                       for i in range(0, len(x), 256)])
+            return image_probabilities(model, x, batch_size=256)
 
         def main():
             parser = argparse.ArgumentParser(description=cnn.__doc__)
@@ -7076,34 +9697,47 @@ def _make_belt_conveyor():
                 unit_predicted += pr
                 image_actual += list(names[test])
                 image_predicted += [LABELS[i] for i in p.argmax(axis=1)]
-                print(f"fold {number}: trained on {int(train_mask.sum())} images, tested on {int(test.sum())}", flush=True)
+                print(
+                    f"fold {number}: trained on {int(train_mask.sum())} images, tested on {int(test.sum())}",
+                    flush=True,
+                )
             result = {
                 "purpose": "Week 6 professor remark: CNN with data augmentation on named images, 4 classes",
-                "images": int(len(rows)), "classes": LABELS, "test": "four rounds, each holding out one whole speed (4 runs, one per wear level); 16 run-level predictions",
-                "settings": {"epochs": EPOCHS, "batch": BATCH, "learning_rate": LEARNING_RATE, "seed": SEED,
-                             "architecture": "4 conv blocks (16, 32, 64, 64 channels) + global average pool + dropout 0.3",
-                             "augmentation": "random horizontal flip, shift up to 8 px, brightness/contrast x0.8-1.2, Gaussian noise 0.05",
-                             "normalisation": "each image standardised on its own"},
+                "images": int(len(rows)),
+                "classes": LABELS,
+                "test": "four rounds, each holding out one whole speed (4 runs, one per wear level); 16 run-level predictions",
+                "settings": {
+                    "epochs": EPOCHS,
+                    "batch": BATCH,
+                    "learning_rate": LEARNING_RATE,
+                    "seed": SEED,
+                    "architecture": "4 conv blocks (16, 32, 64, 64 channels) + global average pool + dropout 0.3",
+                    "augmentation": "random horizontal flip, shift up to 8 px, brightness/contrast x0.8-1.2, Gaussian noise 0.05",
+                    "normalisation": "each image standardised on its own",
+                },
                 "selection_rule": "settings fixed in advance; the test set is never used to choose epochs or settings",
                 "recording_level": score(unit_actual, unit_predicted, LABELS),
                 "image_level": score(image_actual, image_predicted, LABELS),
             }
             RESULT.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
             r = result["recording_level"]
-            plot_matrix(r["confusion_matrix"], LABELS,
-                        f"{MACHINE}: CNN on images, accuracy {r['accuracy']:.3f} ({r['test_units']} test units)", FIGURE)
-            print(f"CNN recording-level accuracy {r['accuracy']:.3f}, macro F1 {r['macro_f1']:.3f}; "
-                  f"image-level accuracy {result['image_level']['accuracy']:.3f}")
+            plot_matrix(
+                r["confusion_matrix"],
+                LABELS,
+                f"{MACHINE}: CNN on images, accuracy {r['accuracy']:.3f} ({r['test_units']} test units)",
+                FIGURE,
+            )
+            print(
+                f"CNN recording-level accuracy {r['accuracy']:.3f}, macro F1 {r['macro_f1']:.3f}; "
+                f"image-level accuracy {result['image_level']['accuracy']:.3f}"
+            )
             print(f"Saved {RESULT.relative_to(ROOT)} and {FIGURE.relative_to(ROOT)}")
 
         if run:
             main()
         return locals()
 
-
-    # ====================================================================================================
-    # cnn-pretrained: Week 6, transfer learning with a pretrained ResNet18 on the named images
-    # ====================================================================================================
+    # --- cnn-pretrained: Week 6, transfer learning with a pretrained ResNet18 on the named images ---
 
     def cnn_pretrained(run: bool = True) -> dict:
         """Week 6: transfer learning, an ImageNet-pretrained ResNet18 fine-tuned on the named images (4 classes).
@@ -7124,8 +9758,13 @@ def _make_belt_conveyor():
         import matplotlib.pyplot as plt
         import numpy as np
         import torch
-        from sklearn.metrics import (accuracy_score, balanced_accuracy_score, confusion_matrix, f1_score,
-                                     precision_recall_fscore_support)
+        from sklearn.metrics import (
+            accuracy_score,
+            balanced_accuracy_score,
+            confusion_matrix,
+            f1_score,
+            precision_recall_fscore_support,
+        )
         from torch import nn
         from torchvision.models import ResNet18_Weights, resnet18
 
@@ -7134,7 +9773,7 @@ def _make_belt_conveyor():
         RESULT = ROOT / "Results" / "belt_conveyor" / f"{MACHINE}_cnn_pretrained_4class.json"
         FIGURE = ROOT / "Figures" / "belt_conveyor" / f"{MACHINE}_cnn_pretrained_4class.png"
         LABELS = ["healthy", "wear25", "wear50", "wear75"]
-        SEGMENTS = 10   # test segments per held-out recording (segment-level score)
+        SEGMENTS = 10  # test segments per held-out recording (segment-level score)
         MAX_EPOCHS, BATCH, LEARNING_RATE, SEED = 15, 32, 3e-4, 42
 
         unit_predictions = predict_recordings
@@ -7144,28 +9783,7 @@ def _make_belt_conveyor():
         plot_matrix = save_confusion_matrix
 
         def plot_levels(result, title, path):
-            """One panel per scoring level, so the figure shows how many images were really tested."""
-            levels = [("every test image", result["image_level"]), ("per 1/10 recording segment", result.get("segment_level")),
-                      ("per whole recording", result["recording_level"])]
-            levels = [(name, block) for name, block in levels if block]
-            figure, axes = plt.subplots(1, len(levels), figsize=(4.6 * len(levels), 4.4))
-            for axis, (name, block) in zip(np.atleast_1d(axes), levels):
-                array = np.asarray(block["confusion_matrix"])
-                axis.imshow(array, cmap="Blues", vmin=0)
-                axis.set_xticks(range(len(LABELS)), LABELS, rotation=30, fontsize=8)
-                axis.set_yticks(range(len(LABELS)), LABELS, fontsize=8)
-                axis.set_xlabel("Predicted")
-                axis.set_ylabel("Actual")
-                axis.set_title(f"{name}\n{block['test_units']:,} tested, accuracy {block['accuracy']:.3f}", fontsize=9)
-                for i in range(len(LABELS)):
-                    for j in range(len(LABELS)):
-                        axis.text(j, i, f"{array[i, j]:,}", ha="center", va="center", fontsize=8,
-                                  color="white" if array[i, j] > array.max() / 2 else "black")
-            figure.suptitle(title.replace("; ", "\n"), fontsize=10)
-            figure.tight_layout()
-            path.parent.mkdir(parents=True, exist_ok=True)
-            figure.savefig(path, dpi=110)
-            plt.close(figure)
+            save_prediction_levels(result, title, path, LABELS)
 
         _small = cnn(run=False)
         read_index, augment = _small["read_index"], _small["augment"]
@@ -7179,45 +9797,37 @@ def _make_belt_conveyor():
             return model
 
         def fit(x, y, epochs, val=None):
-            random.seed(SEED)
-            np.random.seed(SEED)
-            torch.manual_seed(SEED)
-            generator = torch.Generator().manual_seed(SEED)
-            model = new_model()
-            counts = np.bincount(y, minlength=len(LABELS)).astype(np.float32)
-            loss_fn = nn.CrossEntropyLoss(weight=torch.tensor(counts.sum() / (len(LABELS) * np.maximum(counts, 1))))
-            optimiser = torch.optim.AdamW(model.parameters(), lr=LEARNING_RATE, weight_decay=1e-4)
-            xs, ys = torch.tensor(x), torch.tensor(y, dtype=torch.long)
-            history = []
-            for _ in range(epochs):
-                model.train()
-                order = torch.randperm(len(xs), generator=generator)
-                for start in range(0, len(xs), BATCH):
-                    batch = order[start:start + BATCH]
-                    if len(batch) < 2:
-                        continue
-                    optimiser.zero_grad()
-                    loss_fn(model(augment(xs[batch], generator)), ys[batch]).backward()
-                    optimiser.step()
-                if val is not None:
-                    vx, vnames, vunits = val
-                    a, p = unit_predictions(probabilities(model, vx), np.asarray(LABELS), vnames, vunits)
-                    history.append(f1_score(a, p, labels=LABELS, average="macro", zero_division=0))
-            return model, history
+            return fit_pretrained_image_cnn(
+                x,
+                y,
+                epochs,
+                val,
+                new_model=new_model,
+                augment=augment,
+                labels=LABELS,
+                seed=SEED,
+                learning_rate=LEARNING_RATE,
+                batch_size=BATCH,
+                probabilities=probabilities,
+            )
 
         def probabilities(model, x):
-            model.eval()
-            with torch.no_grad():
-                return np.concatenate([torch.softmax(model(torch.tensor(x[i:i + 128])), dim=1).numpy()
-                                       for i in range(0, len(x), 128)])
+            return image_probabilities(model, x, batch_size=128)
 
         def main():
             parser = argparse.ArgumentParser(description=cnn_pretrained.__doc__)
-            parser.add_argument("--split", choices=("main", "time"), default="main",
-                                help="main (fair test) or time (secondary, easier: first 60%% of each recording's frames "
-                                     "train, last 30%% test, 10%% gap)")
-            parser.add_argument("--all-frames", action="store_true",
-                                help="use Images/<machine>_allframes/ (all 450 frames per run); results saved as *_allframes")
+            parser.add_argument(
+                "--split",
+                choices=("main", "time"),
+                default="main",
+                help="main (fair test) or time (secondary, easier: first 60%% of each recording's frames "
+                "train, last 30%% test, 10%% gap)",
+            )
+            parser.add_argument(
+                "--all-frames",
+                action="store_true",
+                help="use Images/<machine>_allframes/ (all 450 frames per run); results saved as *_allframes",
+            )
             args = parser.parse_args()
             nonlocal RESULT, FIGURE, IMAGES
             if args.all_frames:
@@ -7228,11 +9838,23 @@ def _make_belt_conveyor():
             test_description = "four rounds, each holding out one whole speed (4 runs, one per wear level); 16 run-level predictions"
             if args.split == "time":
                 import re
-                position = {row["file"]: int(re.search(r"_f(\d{3})\.png$", row["file"]).group(1)) / 450 for row in rows}
-                rows = [dict(row, unit=row["unit"] + ("_late" if position[row["file"]] > 0.7 else "_early"))
-                        for row in rows if position[row["file"]] <= 0.6 or position[row["file"]] > 0.7]
-                test_description = ("TIME SPLIT (secondary): first 60% of every recording's frames train, last 30% test, 10% gap; "
-                                    "one prediction per recording; the same recordings appear in training, so this is easier")
+
+                position = {
+                    row["file"]: int(re.search(r"_f(\d{3})\.png$", row["file"]).group(1)) / 450
+                    for row in rows
+                }
+                rows = [
+                    dict(
+                        row,
+                        unit=row["unit"] + ("_late" if position[row["file"]] > 0.7 else "_early"),
+                    )
+                    for row in rows
+                    if position[row["file"]] <= 0.6 or position[row["file"]] > 0.7
+                ]
+                test_description = (
+                    "TIME SPLIT (secondary): first 60% of every recording's frames train, last 30% test, 10% gap; "
+                    "one prediction per recording; the same recordings appear in training, so this is easier"
+                )
                 RESULT = RESULT.with_name(RESULT.stem + "_timesplit.json")
                 FIGURE = FIGURE.with_name(FIGURE.stem + "_timesplit.png")
             x = load(rows)
@@ -7242,18 +9864,31 @@ def _make_belt_conveyor():
             units = np.asarray([row["unit"] for row in rows])
             groups = np.asarray([row["group"] for row in rows])
             rng = np.random.default_rng(SEED)
-            unit_actual, unit_predicted, image_actual, image_predicted, epochs_chosen = [], [], [], [], []
+            unit_actual, unit_predicted, image_actual, image_predicted, epochs_chosen = (
+                [],
+                [],
+                [],
+                [],
+                [],
+            )
             segment_actual, segment_predicted, per_recording = [], [], {}
-            folds = ([np.char.endswith(units.astype(str), "_late")] if args.split == "time"
-                     else [groups == s for s in ("F5", "F15", "F50", "F60")])
+            folds = (
+                [np.char.endswith(units.astype(str), "_late")]
+                if args.split == "time"
+                else [groups == s for s in ("F5", "F15", "F50", "F60")]
+            )
             for number, test in enumerate(folds, 1):
                 train = ~test
                 if set(units[train]) & set(units[test]):
                     raise ValueError("A test recording also appears in training")
-                val_units = [rng.choice(sorted(set(units[train & (names == label)]))) for label in LABELS]
+                val_units = [
+                    rng.choice(sorted(set(units[train & (names == label)]))) for label in LABELS
+                ]
                 val = train & np.isin(units, val_units)
                 fit_part = train & ~val
-                _, history = fit(x[fit_part], y[fit_part], MAX_EPOCHS, (x[val], names[val], units[val]))
+                _, history = fit(
+                    x[fit_part], y[fit_part], MAX_EPOCHS, (x[val], names[val], units[val])
+                )
                 best_epochs = int(np.argmax(history)) + 1
                 model, _ = fit(x[train], y[train], best_epochs)
                 p = probabilities(model, x[test])
@@ -7270,53 +9905,83 @@ def _make_belt_conveyor():
                     for part in np.array_split(np.arange(len(pu)), min(SEGMENTS, len(pu))):
                         segment_actual.append(true)
                         segment_predicted.append(LABELS[int(pu[part].mean(axis=0).argmax())])
-                    per_recording[str(unit)] = {"class": str(true), "images": int(len(pu)),
-                                                "images_predicted": {l: int((pu.argmax(axis=1) == i).sum())
-                                                                     for i, l in enumerate(LABELS)},
-                                                "recording_prediction": LABELS[int(pu.mean(axis=0).argmax())]}
+                    per_recording[str(unit)] = {
+                        "class": str(true),
+                        "images": int(len(pu)),
+                        "images_predicted": {
+                            l: int((pu.argmax(axis=1) == i).sum()) for i, l in enumerate(LABELS)
+                        },
+                        "recording_prediction": LABELS[int(pu.mean(axis=0).argmax())],
+                    }
                 epochs_chosen.append(best_epochs)
-                print(f"fold {number}: validation chose {best_epochs} epochs; tested on {int(test.sum())} images", flush=True)
+                print(
+                    f"fold {number}: validation chose {best_epochs} epochs; tested on {int(test.sum())} images",
+                    flush=True,
+                )
             result = {
                 "purpose": "Week 6: transfer learning (ImageNet-pretrained ResNet18) on named images, 4 classes",
-                "images": int(len(rows)), "classes": LABELS, "test": test_description,
-                "settings": {"model": "ResNet18, ImageNet weights, all layers fine-tuned", "max_epochs": MAX_EPOCHS,
-                             "batch": BATCH, "learning_rate": LEARNING_RATE, "optimiser": "AdamW", "seed": SEED,
-                             "epochs_chosen_per_round": epochs_chosen,
-                             "epoch_selection": "one training recording per class held out for validation; best validation macro F1",
-                             "augmentation": "random horizontal flip, shift up to 8 px, brightness/contrast x0.8-1.2, Gaussian noise 0.05"},
+                "images": int(len(rows)),
+                "classes": LABELS,
+                "test": test_description,
+                "settings": {
+                    "model": "ResNet18, ImageNet weights, all layers fine-tuned",
+                    "max_epochs": MAX_EPOCHS,
+                    "batch": BATCH,
+                    "learning_rate": LEARNING_RATE,
+                    "optimiser": "AdamW",
+                    "seed": SEED,
+                    "epochs_chosen_per_round": epochs_chosen,
+                    "epoch_selection": "one training recording per class held out for validation; best validation macro F1",
+                    "augmentation": "random horizontal flip, shift up to 8 px, brightness/contrast x0.8-1.2, Gaussian noise 0.05",
+                },
                 "selection_rule": "the test set is never used to choose epochs or settings",
                 "recording_level": score(unit_actual, unit_predicted, LABELS),
                 "image_level": score(image_actual, image_predicted, LABELS),
-                "segment_level": {**score(segment_actual, segment_predicted, LABELS),
-                                  "segments_per_recording": SEGMENTS,
-                                  "note": "each held-out recording split in time order into consecutive parts, one "
-                                          "prediction per part; parts of one recording are related, so the "
-                                          "recording-level score stays the main result"},
+                "segment_level": {
+                    **score(segment_actual, segment_predicted, LABELS),
+                    "segments_per_recording": SEGMENTS,
+                    "note": "each held-out recording split in time order into consecutive parts, one "
+                    "prediction per part; parts of one recording are related, so the "
+                    "recording-level score stays the main result",
+                },
                 "per_recording": per_recording,
             }
             RESULT.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
             s = result["segment_level"]
-            plot_matrix(s["confusion_matrix"], LABELS,
-                        f"{MACHINE}: pretrained ResNet18 per segment, accuracy {s['accuracy']:.3f} "
-                        f"({s['test_units']} test segments)", FIGURE.with_name(FIGURE.stem + "_segments.png"))
-            print(f"Segment-level accuracy {s['accuracy']:.3f} on {s['test_units']} test segments "
-                  f"({SEGMENTS} per held-out recording)")
+            plot_matrix(
+                s["confusion_matrix"],
+                LABELS,
+                f"{MACHINE}: pretrained ResNet18 per segment, accuracy {s['accuracy']:.3f} "
+                f"({s['test_units']} test segments)",
+                FIGURE.with_name(FIGURE.stem + "_segments.png"),
+            )
+            print(
+                f"Segment-level accuracy {s['accuracy']:.3f} on {s['test_units']} test segments "
+                f"({SEGMENTS} per held-out recording)"
+            )
             r = result["recording_level"]
-            plot_levels(result, f"{MACHINE}: pretrained ResNet18 on {result['images']:,} images in total; "
-                                f"{r['test_units']} test recordings" + (" (time split, secondary: later frames of training recordings)"
-                                if "timesplit" in FIGURE.stem else ", each never seen in training"), FIGURE)
-            print(f"Pretrained CNN recording-level accuracy {r['accuracy']:.3f}, macro F1 {r['macro_f1']:.3f}; "
-                  f"image-level accuracy {result['image_level']['accuracy']:.3f}")
+            plot_levels(
+                result,
+                f"{MACHINE}: pretrained ResNet18 on {result['images']:,} images in total; "
+                f"{r['test_units']} test recordings"
+                + (
+                    " (time split, secondary: later frames of training recordings)"
+                    if "timesplit" in FIGURE.stem
+                    else ", each never seen in training"
+                ),
+                FIGURE,
+            )
+            print(
+                f"Pretrained CNN recording-level accuracy {r['accuracy']:.3f}, macro F1 {r['macro_f1']:.3f}; "
+                f"image-level accuracy {result['image_level']['accuracy']:.3f}"
+            )
             print(f"Saved {RESULT.relative_to(ROOT)} and {FIGURE.relative_to(ROOT)}")
 
         if run:
             main()
         return locals()
 
-
-    # ====================================================================================================
-    # intake-vibration: check and file selectively downloaded CORA files
-    # ====================================================================================================
+    # --- intake-vibration: check and file selectively downloaded CORA files ---
 
     def intake_vibration(run: bool = True) -> dict:
         """Check downloaded CORA files against the repository's MD5 and move them into Raw_Data/.
@@ -7360,8 +10025,12 @@ def _make_belt_conveyor():
 
         def main():
             parser = argparse.ArgumentParser(description=intake_vibration.__doc__)
-            parser.add_argument("--from", dest="source", default=str(Path.home() / "Downloads"),
-                                help="folder holding the browser downloads")
+            parser.add_argument(
+                "--from",
+                dest="source",
+                default=str(Path.home() / "Downloads"),
+                help="folder holding the browser downloads",
+            )
             args = parser.parse_args()
             source = Path(args.source)
             records, missing = [], []
@@ -7372,27 +10041,46 @@ def _make_belt_conveyor():
                     missing.append(name)
                     continue
                 if candidate.stat().st_size != size or md5(candidate) != expected:
-                    raise SystemExit(f"{candidate}: size or MD5 does not match the repository; download it again")
+                    raise SystemExit(
+                        f"{candidate}: size or MD5 does not match the repository; download it again"
+                    )
                 if candidate != destination:
                     destination.parent.mkdir(parents=True, exist_ok=True)
                     shutil.move(str(candidate), destination)
-                records.append({"file": name, "folder": f"Raw_Data/{folder}", "size_bytes": size, "md5": expected,
-                                "status": "verified against publisher MD5"})
+                records.append(
+                    {
+                        "file": name,
+                        "folder": f"Raw_Data/{folder}",
+                        "size_bytes": size,
+                        "md5": expected,
+                        "status": "verified against publisher MD5",
+                    }
+                )
                 print(f"verified {name}", flush=True)
-            MANIFEST.write_text(json.dumps({
-                "source": "https://doi.org/10.34810/DATA2500", "license": "CC BY 4.0",
-                "note": "selectively downloaded from CORA; every file checked against the publisher MD5",
-                "files": records, "missing": missing}, indent=2) + "\n", encoding="utf-8")
-            print(f"{len(records)} files verified; {len(missing)} still missing" + (f": {missing}" if missing else ""))
+            MANIFEST.write_text(
+                json.dumps(
+                    {
+                        "source": "https://doi.org/10.34810/DATA2500",
+                        "license": "CC BY 4.0",
+                        "note": "selectively downloaded from CORA; every file checked against the publisher MD5",
+                        "files": records,
+                        "missing": missing,
+                    },
+                    indent=2,
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            print(
+                f"{len(records)} files verified; {len(missing)} still missing"
+                + (f": {missing}" if missing else "")
+            )
 
         if run:
             main()
         return locals()
 
-
-    # ====================================================================================================
-    # train-final / predict: use the trained sensor model on any CSV
-    # ====================================================================================================
+    # --- train-final / predict: use the trained sensor model on any CSV ---
 
     def train_final(run: bool = True) -> dict:
         """Train the sensor model on all of this machine's data and save it (Processed_Data/models/, not in Git).
@@ -7411,29 +10099,53 @@ def _make_belt_conveyor():
 
         def main():
             parser = argparse.ArgumentParser(description=train_final.__doc__)
-            parser.add_argument("--exclude", nargs="*", default=[], help="recording names to leave out, e.g. W50_F15_S")
+            parser.add_argument(
+                "--exclude",
+                nargs="*",
+                default=[],
+                help="recording names to leave out, e.g. W50_F15_S",
+            )
             args = parser.parse_args()
             table, feature_sets, labels, *_ = csv(run=False)["build_table"]()
-            feature_sets = feature_sets if isinstance(feature_sets, dict) else {"base": feature_sets}
+            feature_sets = (
+                feature_sets if isinstance(feature_sets, dict) else {"base": feature_sets}
+            )
             features = feature_sets["vibration"]
             unknown = set(args.exclude) - set(table["unit"])
             if unknown:
                 raise SystemExit(f"Unknown recording names: {sorted(unknown)}")
             train = ~table["unit"].isin(args.exclude)
-            model = RandomForestClassifier(n_estimators=250, max_features="sqrt", class_weight="balanced_subsample",
-                                           min_samples_leaf=2, random_state=42, n_jobs=-1)
-            model.fit(table.loc[train, features].to_numpy(dtype=np.float64), table.loc[train, "class"])
+            model = RandomForestClassifier(
+                n_estimators=250,
+                max_features="sqrt",
+                class_weight="balanced_subsample",
+                min_samples_leaf=2,
+                random_state=42,
+                n_jobs=-1,
+            )
+            model.fit(
+                table.loc[train, features].to_numpy(dtype=np.float64), table.loc[train, "class"]
+            )
             MODEL_PATH.parent.mkdir(parents=True, exist_ok=True)
-            joblib.dump({"model": model, "features": features, "classes": list(labels), "machine": "belt_conveyor",
-                         "trained_units": sorted(set(table.loc[train, "unit"])), "excluded_units": sorted(args.exclude)},
-                        MODEL_PATH)
-            print(f"Trained on {int(train.sum())} rows from {table.loc[train, 'unit'].nunique()} recordings "
-                  f"(excluded: {args.exclude or 'none'}); saved {MODEL_PATH.relative_to(ROOT)}")
+            joblib.dump(
+                {
+                    "model": model,
+                    "features": features,
+                    "classes": list(labels),
+                    "machine": "belt_conveyor",
+                    "trained_units": sorted(set(table.loc[train, "unit"])),
+                    "excluded_units": sorted(args.exclude),
+                },
+                MODEL_PATH,
+            )
+            print(
+                f"Trained on {int(train.sum())} rows from {table.loc[train, 'unit'].nunique()} recordings "
+                f"(excluded: {args.exclude or 'none'}); saved {MODEL_PATH.relative_to(ROOT)}"
+            )
 
         if run:
             main()
         return locals()
-
 
     def predict(run: bool = True) -> dict:
         """Predict the condition from any CSV and, if the true class is known, show the accuracy.
@@ -7456,7 +10168,9 @@ def _make_belt_conveyor():
 
         def read_any(path):
             table = load_csv(path)
-            if all(_is_number(c) for c in table.columns):   # no header row: plain column(s) of numbers
+            if all(
+                _is_number(c) for c in table.columns
+            ):  # no header row: plain column(s) of numbers
                 table = load_csv(path, header=None)
             return table
 
@@ -7471,15 +10185,25 @@ def _make_belt_conveyor():
             if not args.speed:
                 raise SystemExit("Raw recordings need --speed (F5, F15, F50 or F60)")
             ns = csv(run=False)
-            return ns["vibration_frame"](values, args.speed)[ns["VIB_NAMES"]].to_numpy(dtype=np.float64)
-
+            return ns["vibration_frame"](values, args.speed)[ns["VIB_NAMES"]].to_numpy(
+                dtype=np.float64
+            )
 
         def main():
             parser = argparse.ArgumentParser(description=predict.__doc__)
             parser.add_argument("--csv", required=True, help="path to the CSV file")
-            parser.add_argument("--label", help="true class of a raw recording, one of: healthy, wear25, wear50, wear75")
-            parser.add_argument("--column", help="column holding the raw signal (default: first numeric column)")
-            parser.add_argument("--speed", choices=("F5", "F15", "F50", "F60"), help="speed setting of a raw recording")
+            parser.add_argument(
+                "--label",
+                help="true class of a raw recording, one of: healthy, wear25, wear50, wear75",
+            )
+            parser.add_argument(
+                "--column", help="column holding the raw signal (default: first numeric column)"
+            )
+            parser.add_argument(
+                "--speed",
+                choices=("F5", "F15", "F50", "F60"),
+                help="speed setting of a raw recording",
+            )
             args = parser.parse_args()
             if not MODEL_PATH.is_file():
                 print("No saved model yet: training it now (train-final).")
@@ -7491,12 +10215,26 @@ def _make_belt_conveyor():
             if set(features) <= set(table.columns):
                 mode = "feature table"
                 x = table[features].to_numpy(dtype=np.float64)
-                units = table["unit"].astype(str).to_numpy() if "unit" in table.columns else np.full(len(table), path.stem)
-                truth = table["class"].astype(str).to_numpy() if "class" in table.columns else np.full(len(table), args.label)
+                units = (
+                    table["unit"].astype(str).to_numpy()
+                    if "unit" in table.columns
+                    else np.full(len(table), path.stem)
+                )
+                truth = (
+                    table["class"].astype(str).to_numpy()
+                    if "class" in table.columns
+                    else np.full(len(table), args.label)
+                )
             else:
                 mode = "raw recording"
-                column = args.column if args.column is not None else table.select_dtypes("number").columns[0]
-                values = table[column if column in table.columns else int(column)].to_numpy(dtype=np.float64)
+                column = (
+                    args.column
+                    if args.column is not None
+                    else table.select_dtypes("number").columns[0]
+                )
+                values = table[column if column in table.columns else int(column)].to_numpy(
+                    dtype=np.float64
+                )
                 x = raw_features(values, args)
                 units = np.full(len(x), path.stem)
                 truth = np.full(len(x), args.label)
@@ -7505,34 +10243,46 @@ def _make_belt_conveyor():
             for unit in dict.fromkeys(units):
                 mask = units == unit
                 mean = probabilities[mask].mean(axis=0)
-                rows.append({"recording": unit, "predicted": model.classes_[int(mean.argmax())],
-                             "confidence": round(float(mean.max()), 3), "true": truth[mask][0], "rows": int(mask.sum())})
+                rows.append(
+                    {
+                        "recording": unit,
+                        "predicted": model.classes_[int(mean.argmax())],
+                        "confidence": round(float(mean.max()), 3),
+                        "true": truth[mask][0],
+                        "rows": int(mask.sum()),
+                    }
+                )
             report = pd.DataFrame(rows)
-            print(f"Model: {saved['machine']} random forest | input: {mode} | {len(report)} recording(s)")
+            print(
+                f"Model: {saved['machine']} random forest | input: {mode} | {len(report)} recording(s)"
+            )
             print(report.to_string(index=False))
             seen = sorted(set(report["recording"]) & set(saved["trained_units"]))
             if seen:
-                print(f"WARNING: {seen} were used to train this model, so their accuracy is optimistic. "
-                      "Use train-final --exclude ... to test fairly.")
+                print(
+                    f"WARNING: {seen} were used to train this model, so their accuracy is optimistic. "
+                    "Use train-final --exclude ... to test fairly."
+                )
             known = report["true"].notna() & (report["true"].astype(str) != "None")
             if known.any():
                 k = report[known]
-                print(f"\nAccuracy: {accuracy_score(k['true'], k['predicted']):.3f} "
-                      f"({int((k['true'] == k['predicted']).sum())}/{len(k)} recordings)")
+                print(
+                    f"\nAccuracy: {accuracy_score(k['true'], k['predicted']):.3f} "
+                    f"({int((k['true'] == k['predicted']).sum())}/{len(k)} recordings)"
+                )
                 labels = saved["classes"]
                 print("Confusion matrix (rows = true, columns = predicted):", labels)
                 print(confusion_matrix(k["true"], k["predicted"], labels=labels))
             else:
-                print("\nNo true class given (use --label or a 'class' column) so accuracy cannot be computed.")
+                print(
+                    "\nNo true class given (use --label or a 'class' column) so accuracy cannot be computed."
+                )
 
         if run:
             main()
         return locals()
 
-
-    # ====================================================================================================
-    # Proposal Week 6: advanced ensemble models (XGBoost / LightGBM comparison table)
-    # ====================================================================================================
+    # --- Proposal Week 6: advanced ensemble models (XGBoost / LightGBM comparison table) ---
 
     def ensembles(run: bool = True) -> dict:
         """Proposal Week 6: compare advanced ensemble models on the same CSV sensor features and held-out tests.
@@ -7553,14 +10303,25 @@ def _make_belt_conveyor():
         import matplotlib.pyplot as plt
         import numpy as np
         from sklearn.dummy import DummyClassifier
-        from sklearn.ensemble import ExtraTreesClassifier, HistGradientBoostingClassifier, RandomForestClassifier
-        from sklearn.metrics import accuracy_score, balanced_accuracy_score, confusion_matrix, f1_score
+        from sklearn.ensemble import (
+            ExtraTreesClassifier,
+            HistGradientBoostingClassifier,
+            RandomForestClassifier,
+        )
+        from sklearn.metrics import (
+            accuracy_score,
+            balanced_accuracy_score,
+            confusion_matrix,
+            f1_score,
+        )
 
         try:
             from lightgbm import LGBMClassifier
             from xgboost import XGBClassifier
         except ImportError:
-            raise SystemExit("Install the ensemble libraries first:  python -m pip install xgboost lightgbm")
+            raise SystemExit(
+                "Install the ensemble libraries first:  python -m pip install xgboost lightgbm"
+            )
 
         MACHINE = "belt_conveyor"
         RESULT = ROOT / "Results" / MACHINE / f"{MACHINE}_ensembles.json"
@@ -7568,30 +10329,66 @@ def _make_belt_conveyor():
         MODELS = {
             "Majority class (control)": lambda: DummyClassifier(strategy="most_frequent"),
             "Random forest": lambda: RandomForestClassifier(
-                n_estimators=250, max_features="sqrt", class_weight="balanced_subsample",
-                min_samples_leaf=2, random_state=42, n_jobs=-1),
+                n_estimators=250,
+                max_features="sqrt",
+                class_weight="balanced_subsample",
+                min_samples_leaf=2,
+                random_state=42,
+                n_jobs=-1,
+            ),
             "Extra trees": lambda: ExtraTreesClassifier(
-                n_estimators=300, max_features="sqrt", class_weight="balanced",
-                min_samples_leaf=2, random_state=42, n_jobs=-1),
+                n_estimators=300,
+                max_features="sqrt",
+                class_weight="balanced",
+                min_samples_leaf=2,
+                random_state=42,
+                n_jobs=-1,
+            ),
             "Gradient boosting (scikit-learn)": lambda: HistGradientBoostingClassifier(
-                max_iter=200, learning_rate=0.05, class_weight="balanced", random_state=42),
+                max_iter=200, learning_rate=0.05, class_weight="balanced", random_state=42
+            ),
             "XGBoost": lambda: XGBClassifier(
-                n_estimators=300, max_depth=4, learning_rate=0.05, subsample=0.8, colsample_bytree=0.8,
-                tree_method="hist", random_state=42, n_jobs=-1, verbosity=0),
+                n_estimators=300,
+                max_depth=4,
+                learning_rate=0.05,
+                subsample=0.8,
+                colsample_bytree=0.8,
+                tree_method="hist",
+                random_state=42,
+                n_jobs=-1,
+                verbosity=0,
+            ),
             "LightGBM": lambda: LGBMClassifier(
-                n_estimators=300, num_leaves=15, learning_rate=0.05, subsample=0.8, subsample_freq=1,
-                colsample_bytree=0.8, class_weight="balanced", random_state=42, n_jobs=-1, verbose=-1),
+                n_estimators=300,
+                num_leaves=15,
+                learning_rate=0.05,
+                subsample=0.8,
+                subsample_freq=1,
+                colsample_bytree=0.8,
+                class_weight="balanced",
+                random_state=42,
+                n_jobs=-1,
+                verbose=-1,
+            ),
         }
 
         def main():
             parser = argparse.ArgumentParser(description=ensembles.__doc__)
-            parser.add_argument("--split", choices=("main", "time"), default="main",
-                                help="main (fair test) or time (secondary: first 60%% of every recording trains, "
-                                     "last 30%% tests, 10%% gap)")
+            parser.add_argument(
+                "--split",
+                choices=("main", "time"),
+                default="main",
+                help="main (fair test) or time (secondary: first 60%% of every recording trains, "
+                "last 30%% tests, 10%% gap)",
+            )
             args = parser.parse_args()
             nonlocal RESULT, FIGURE
-            table, feature_sets, labels, folds, test_description, notes = csv(run=False)["build_table"]()
-            feature_sets = feature_sets if isinstance(feature_sets, dict) else {"base": feature_sets}
+            table, feature_sets, labels, folds, test_description, notes = csv(run=False)[
+                "build_table"
+            ]()
+            feature_sets = (
+                feature_sets if isinstance(feature_sets, dict) else {"base": feature_sets}
+            )
             set_name, features = next(iter(feature_sets.items()))
             if args.split == "time":
                 if "window" not in table.columns:
@@ -7601,19 +10398,26 @@ def _make_belt_conveyor():
                 late = position.loc[table.index] > 0.7
                 table["unit"] = table["unit"] + np.where(late, "_late", "_early")
                 folds = lambda t: [t["unit"].str.endswith("_late").to_numpy()]
-                test_description = ("TIME SPLIT (secondary): first 60% of every recording trains, last 30% tests, 10% gap; "
-                                    "the same recordings appear in training, so this is easier than the main test")
+                test_description = (
+                    "TIME SPLIT (secondary): first 60% of every recording trains, last 30% tests, 10% gap; "
+                    "the same recordings appear in training, so this is easier than the main test"
+                )
                 RESULT = RESULT.with_name(RESULT.stem + "_timesplit.json")
                 FIGURE = FIGURE.with_name(FIGURE.stem + "_timesplit.png")
             x = table[features].to_numpy(dtype=np.float64)
             code = {label: i for i, label in enumerate(labels)}
             y = table["class"].map(code).to_numpy()
             units = table["unit"].astype(str).to_numpy()
-            result = {"purpose": "Proposal Week 6: advanced ensemble comparison (XGBoost / LightGBM)",
-                      "machine": MACHINE, "features": f"{set_name} ({len(features)} sensor features, same CSV as Week 6)",
-                      "classes": list(labels), "test": test_description,
-                      "selection_rule": "settings fixed in advance; no model or setting chosen from these test results",
-                      "notes": notes, "models": {}}
+            result = {
+                "purpose": "Proposal Week 6: advanced ensemble comparison (XGBoost / LightGBM)",
+                "machine": MACHINE,
+                "features": f"{set_name} ({len(features)} sensor features, same CSV as Week 6)",
+                "classes": list(labels),
+                "test": test_description,
+                "selection_rule": "settings fixed in advance; no model or setting chosen from these test results",
+                "notes": notes,
+                "models": {},
+            }
             for name, make in MODELS.items():
                 actual, predicted, seconds = [], [], 0.0
                 for test in folds(table):
@@ -7633,26 +10437,55 @@ def _make_belt_conveyor():
                 result["models"][name] = {
                     "test_units": len(actual),
                     "accuracy": round(float(accuracy_score(actual, predicted)), 4),
-                    "balanced_accuracy": round(float(balanced_accuracy_score(actual, predicted)), 4),
-                    "macro_f1": round(float(f1_score(actual, predicted, average="macro", labels=list(range(len(labels))),
-                                                     zero_division=0)), 4),
+                    "balanced_accuracy": round(
+                        float(balanced_accuracy_score(actual, predicted)), 4
+                    ),
+                    "macro_f1": round(
+                        float(
+                            f1_score(
+                                actual,
+                                predicted,
+                                average="macro",
+                                labels=list(range(len(labels))),
+                                zero_division=0,
+                            )
+                        ),
+                        4,
+                    ),
                     "train_seconds": round(seconds, 2),
-                    "confusion_matrix": confusion_matrix(actual, predicted, labels=list(range(len(labels)))).tolist(),
+                    "confusion_matrix": confusion_matrix(
+                        actual, predicted, labels=list(range(len(labels)))
+                    ).tolist(),
                 }
                 block = result["models"][name]
-                print(f"{name:33s} accuracy {block['accuracy']:.3f}  macro F1 {block['macro_f1']:.3f}  "
-                      f"({block['test_units']} recordings, {seconds:.1f} s to train)")
+                print(
+                    f"{name:33s} accuracy {block['accuracy']:.3f}  macro F1 {block['macro_f1']:.3f}  "
+                    f"({block['test_units']} recordings, {seconds:.1f} s to train)"
+                )
             names = list(result["models"])
             figure, axis = plt.subplots(figsize=(8, 3.6))
             positions = np.arange(len(names))
-            axis.bar(positions - 0.2, [result["models"][n]["accuracy"] for n in names], 0.4, label="accuracy")
-            axis.bar(positions + 0.2, [result["models"][n]["macro_f1"] for n in names], 0.4, label="macro F1")
+            axis.bar(
+                positions - 0.2,
+                [result["models"][n]["accuracy"] for n in names],
+                0.4,
+                label="accuracy",
+            )
+            axis.bar(
+                positions + 0.2,
+                [result["models"][n]["macro_f1"] for n in names],
+                0.4,
+                label="macro F1",
+            )
             axis.axhline(0.9, color="grey", ls="--", lw=1)
             axis.set_xticks(positions, [n.replace(" (", "\n(") for n in names], fontsize=7.5)
             axis.set_ylim(0, 1.05)
             axis.legend(fontsize=8)
-            axis.set_title(f"{MACHINE.replace('_', ' ').title()}: ensemble comparison"
-                           + (" - TIME SPLIT" if args.split == "time" else " (main test)"), fontsize=10)
+            axis.set_title(
+                f"{MACHINE.replace('_', ' ').title()}: ensemble comparison"
+                + (" - TIME SPLIT" if args.split == "time" else " (main test)"),
+                fontsize=10,
+            )
             figure.tight_layout()
             FIGURE.parent.mkdir(parents=True, exist_ok=True)
             figure.savefig(FIGURE, dpi=110)
@@ -7665,10 +10498,7 @@ def _make_belt_conveyor():
             main()
         return locals()
 
-
-    # ====================================================================================================
-    # Week 7: anomaly detection (proposal Week 7: Isolation Forest / One-Class SVM)
-    # ====================================================================================================
+    # --- Week 7: anomaly detection (proposal Week 7: Isolation Forest / One-Class SVM) ---
 
     def anomaly(run: bool = True) -> dict:
         """Week 7: anomaly detection. Learn what HEALTHY looks like, then flag anything unusual as a possible fault.
@@ -7698,24 +10528,32 @@ def _make_belt_conveyor():
         RESULT = ROOT / "Results" / MACHINE / f"{MACHINE}_anomaly.json"
         FIGURE = ROOT / "Figures" / MACHINE / f"{MACHINE}_anomaly.png"
         DETECTORS = {
-            "Isolation Forest": lambda: make_pipeline(StandardScaler(), IsolationForest(
-                n_estimators=300, max_samples=256, random_state=42, n_jobs=-1)),
-            "One-Class SVM": lambda: make_pipeline(StandardScaler(), OneClassSVM(kernel="rbf", gamma="scale", nu=0.05)),
+            "Isolation Forest": lambda: make_pipeline(
+                StandardScaler(),
+                IsolationForest(n_estimators=300, max_samples=256, random_state=42, n_jobs=-1),
+            ),
+            "One-Class SVM": lambda: make_pipeline(
+                StandardScaler(), OneClassSVM(kernel="rbf", gamma="scale", nu=0.05)
+            ),
         }
-        MAX_FIT_ROWS = 4000   # One-Class SVM gets slow on many rows; a fixed, evenly spaced subset is used
+        MAX_FIT_ROWS = (
+            4000  # One-Class SVM gets slow on many rows; a fixed, evenly spaced subset is used
+        )
 
         def fit(make, x):
             rows = np.linspace(0, len(x) - 1, min(len(x), MAX_FIT_ROWS)).astype(int)
             return make().fit(x[rows])
 
         def recording_scores(model, x, units):
-            window = -model.decision_function(x)   # higher = more unusual
+            window = -model.decision_function(x)  # higher = more unusual
             return {unit: float(window[units == unit].mean()) for unit in dict.fromkeys(units)}
 
         def threshold(make, x, units, healthy_units):
             """Highest score of any healthy training recording when it is left out of fitting (no test data used)."""
             if len(healthy_units) < 2:
-                raise SystemExit("Need at least two healthy training recordings to set the threshold")
+                raise SystemExit(
+                    "Need at least two healthy training recordings to set the threshold"
+                )
             scores = []
             for unit in healthy_units:
                 others = np.isin(units, [u for u in healthy_units if u != unit])
@@ -7725,13 +10563,21 @@ def _make_belt_conveyor():
 
         def main():
             parser = argparse.ArgumentParser(description=anomaly.__doc__)
-            parser.add_argument("--split", choices=("main", "time"), default="main",
-                                help="main (fair: held-out recordings) or time (secondary: first 60%% of every recording "
-                                     "trains, last 30%% tests, 10%% gap)")
+            parser.add_argument(
+                "--split",
+                choices=("main", "time"),
+                default="main",
+                help="main (fair: held-out recordings) or time (secondary: first 60%% of every recording "
+                "trains, last 30%% tests, 10%% gap)",
+            )
             args = parser.parse_args()
             nonlocal RESULT, FIGURE
-            table, feature_sets, labels, folds, test_description, notes = csv(run=False)["build_table"]()
-            feature_sets = feature_sets if isinstance(feature_sets, dict) else {"base": feature_sets}
+            table, feature_sets, labels, folds, test_description, notes = csv(run=False)[
+                "build_table"
+            ]()
+            feature_sets = (
+                feature_sets if isinstance(feature_sets, dict) else {"base": feature_sets}
+            )
             set_name, features = next(iter(feature_sets.items()))
             if args.split == "time":
                 if "window" not in table.columns:
@@ -7741,8 +10587,10 @@ def _make_belt_conveyor():
                 late = position.loc[table.index] > 0.7
                 table["unit"] = table["unit"] + np.where(late, "_late", "_early")
                 folds = lambda t: [t["unit"].str.endswith("_late").to_numpy()]
-                test_description = ("TIME SPLIT (secondary): healthy rows from the first 60% of every recording train, "
-                                    "the last 30% of every recording is tested (10% gap); easier than the main test")
+                test_description = (
+                    "TIME SPLIT (secondary): healthy rows from the first 60% of every recording train, "
+                    "the last 30% of every recording is tested (10% gap); easier than the main test"
+                )
                 RESULT = RESULT.with_name(RESULT.stem + "_timesplit.json")
                 FIGURE = FIGURE.with_name(FIGURE.stem + "_timesplit.png")
             x = table[features].to_numpy(dtype=np.float64)
@@ -7751,11 +10599,13 @@ def _make_belt_conveyor():
             fault_classes = [c for c in labels if c != "healthy"]
             result = {
                 "purpose": "Week 7 (proposal): anomaly detection trained on healthy data only",
-                "machine": MACHINE, "features": f"{set_name} ({len(features)} sensor features, same CSV as Week 6)",
+                "machine": MACHINE,
+                "features": f"{set_name} ({len(features)} sensor features, same CSV as Week 6)",
                 "test": test_description,
                 "threshold_rule": "highest leave-one-recording-out score among the healthy TRAINING recordings; "
-                                  "no test data and no fault labels are used to train or to set it",
-                "notes": notes, "detectors": {},
+                "no test data and no fault labels are used to train or to set it",
+                "notes": notes,
+                "detectors": {},
             }
             figure, axes = plt.subplots(1, len(DETECTORS), figsize=(5.2 * len(DETECTORS), 3.6))
             for axis, (name, make) in zip(np.atleast_1d(axes), DETECTORS.items()):
@@ -7766,15 +10616,26 @@ def _make_belt_conveyor():
                     model = fit(make, x[np.isin(units, train_healthy)])
                     scores = recording_scores(model, x[test], units[test])
                     for unit, score in scores.items():
-                        rows.append({"unit": unit, "class": y[units == unit][0], "margin": score - cut})
+                        rows.append(
+                            {"unit": unit, "class": y[units == unit][0], "margin": score - cut}
+                        )
                 truth = np.array([r["class"] != "healthy" for r in rows])
                 margin = np.array([r["margin"] for r in rows])
                 alarm = margin > 0
-                per_class = {c: round(float(alarm[[r["class"] == c for r in rows]].mean()), 4)
-                             for c in fault_classes if any(r["class"] == c for r in rows)}
+                per_class = {
+                    c: round(float(alarm[[r["class"] == c for r in rows]].mean()), 4)
+                    for c in fault_classes
+                    if any(r["class"] == c for r in rows)
+                }
                 block = {
-                    "test_recordings": len(rows), "healthy": int((~truth).sum()), "faulty": int(truth.sum()),
-                    "roc_auc": round(float(roc_auc_score(truth, margin)), 4) if 0 < truth.sum() < len(truth) else None,
+                    "test_recordings": len(rows),
+                    "healthy": int((~truth).sum()),
+                    "faulty": int(truth.sum()),
+                    "roc_auc": (
+                        round(float(roc_auc_score(truth, margin)), 4)
+                        if 0 < truth.sum() < len(truth)
+                        else None
+                    ),
                     "fault_detection_rate": round(float(alarm[truth].mean()), 4),
                     "false_alarm_rate": round(float(alarm[~truth].mean()), 4),
                     "accuracy": round(float((alarm == truth).mean()), 4),
@@ -7782,20 +10643,32 @@ def _make_belt_conveyor():
                     "recordings": [{**r, "margin": round(r["margin"], 4)} for r in rows],
                 }
                 result["detectors"][name] = block
-                print(f"{name:17s} ROC-AUC {block['roc_auc']}  faults detected {block['fault_detection_rate']:.3f}  "
-                      f"false alarms {block['false_alarm_rate']:.3f}  ({len(rows)} test recordings)")
+                print(
+                    f"{name:17s} ROC-AUC {block['roc_auc']}  faults detected {block['fault_detection_rate']:.3f}  "
+                    f"false alarms {block['false_alarm_rate']:.3f}  ({len(rows)} test recordings)"
+                )
                 order = ["healthy", *fault_classes]
                 for k, c in enumerate(order):
                     values = margin[[r["class"] == c for r in rows]]
-                    axis.scatter(np.full(len(values), k) + np.linspace(-0.15, 0.15, len(values)), values, s=18,
-                                 color="tab:green" if c == "healthy" else "tab:red")
+                    axis.scatter(
+                        np.full(len(values), k) + np.linspace(-0.15, 0.15, len(values)),
+                        values,
+                        s=18,
+                        color="tab:green" if c == "healthy" else "tab:red",
+                    )
                 axis.axhline(0, color="black", lw=1, ls="--")
                 axis.set_xticks(range(len(order)), order, rotation=20)
                 axis.set_ylabel("score minus alarm threshold")
-                axis.set_title(f"{name}: AUC {block['roc_auc']}, detect {block['fault_detection_rate']:.2f}, "
-                               f"false alarm {block['false_alarm_rate']:.2f}", fontsize=8.5)
-            figure.suptitle(f"{MACHINE.replace('_', ' ').title()} anomaly detection (above the line = alarm)"
-                            + (" - TIME SPLIT" if args.split == "time" else ""), fontsize=10)
+                axis.set_title(
+                    f"{name}: AUC {block['roc_auc']}, detect {block['fault_detection_rate']:.2f}, "
+                    f"false alarm {block['false_alarm_rate']:.2f}",
+                    fontsize=8.5,
+                )
+            figure.suptitle(
+                f"{MACHINE.replace('_', ' ').title()} anomaly detection (above the line = alarm)"
+                + (" - TIME SPLIT" if args.split == "time" else ""),
+                fontsize=10,
+            )
             figure.tight_layout()
             FIGURE.parent.mkdir(parents=True, exist_ok=True)
             figure.savefig(FIGURE, dpi=110)
@@ -7808,32 +10681,35 @@ def _make_belt_conveyor():
             main()
         return locals()
 
-
-    # ====================================================================================================
-    # Week 7: full-data sensor experiment (every CORA sensor, window and recording)
-    # ====================================================================================================
+    # --- Week 7: full-data sensor experiment (every CORA sensor, window and recording) ---
 
     def fulldata(run: bool = True) -> dict:
         """Week 7: every CORA sensor (vibration X/Y/Z, current C1-C3, temperatures T1-T6), every 1 s window, and the
-        five start-up test repeats per condition and speed. See Models/cora_fulldata.py. Saves *_fulldata.json."""
+        five start-up test repeats per condition and speed. See Models/cora_fulldata.py. Saves *_fulldata.json.
+        """
         import argparse
         import importlib.util
 
         def main():
             parser = argparse.ArgumentParser(description=fulldata.__doc__)
-            parser.add_argument("--part", choices=("classify", "ensembles", "anomaly", "all"), default="classify",
-                                help="classify (default), ensembles (XGBoost/LightGBM comparison), anomaly, or all")
+            parser.add_argument(
+                "--part",
+                choices=("classify", "ensembles", "anomaly", "all"),
+                default="classify",
+                help="classify (default), ensembles (XGBoost/LightGBM comparison), anomaly, or all",
+            )
             part = parser.parse_args().part
             engine = get_model("cora_fulldata")
             conditions = {"H": "healthy", "W25": "wear25", "W50": "wear50", "W75": "wear75"}
             for name in ("classify", "ensembles", "anomaly"):
                 if part in (name, "all"):
-                    (engine.run if name == "classify" else getattr(engine, name))("belt_conveyor", conditions)
+                    (engine.run if name == "classify" else getattr(engine, name))(
+                        "belt_conveyor", conditions
+                    )
 
         if run:
             main()
         return locals()
-
 
     COMMANDS = {
         "fulldata": fulldata,
@@ -7852,28 +10728,26 @@ def _make_belt_conveyor():
         "cnn-pretrained": cnn_pretrained,
         "intake-vibration": intake_vibration,
     }
-    RUN_ALL = ['experiment']
-
+    RUN_ALL = ["experiment"]
 
     def cli() -> None:
         if len(sys.argv) < 2 or sys.argv[1] not in (*COMMANDS, "all"):
             print(__doc__)
             raise SystemExit(0 if len(sys.argv) < 2 or sys.argv[1] in ("-h", "--help") else 2)
         command, options = sys.argv[1], sys.argv[2:]
-        for name in (RUN_ALL if command == "all" else [command]):
+        for name in RUN_ALL if command == "all" else [command]:
             sys.argv = [f"belt_conveyor.py {name}", *(options if command != "all" else [])]
             COMMANDS[name]()
 
-
     return SimpleNamespace(**locals())
 
-#endregion
+
+# endregion
 
 
 # EXCAVATOR MODEL IMPLEMENTATION
-#region Excavator: data, preprocessing, models and evaluation
+# region Excavator: data, preprocessing, models and evaluation
 def _make_excavator():
-    __doc__ = "Excavator (machine 4): swing-drive motor and gearbox, CORA vibration vs infrared camera.\n\n4 classes from the CORA motor/gearbox rig: healthy, bearing defect, unbalance, misalignment. This is a\ndifferent task from the Belt Conveyor (gear wear) on the same laboratory rig. All of this machine's code\nis in this file; the combined notebook\nNotebook/Mining_Equipment_Condition_Monitoring.ipynb runs these commands and shows the results.\n\nUsage:\n    python Notebook/notebook_helpers.py excavator <command> [options]\n    python Notebook/notebook_helpers.py excavator <command> --help\n\nCommands:\n    intake          check selectively downloaded CORA files (MD5) and move them into Raw_Data/\n    csv             4-class vibration model from a CSV feature table (validation-selected model)\n    export-images   save the infrared images as named files in Images/excavator/ (local only)\n    cnn             CNN with data augmentation on the named images\n    cnn-pretrained  transfer learning, pretrained ResNet18 on the named images\n    train-final     train the sensor model on all data and save it (--exclude to leave recordings out)\n    predict         predict from any CSV (feature table or raw recording) and show accuracy if labels are known\n    ensembles       proposal Week 6: XGBoost / LightGBM vs random forest etc. (--split time for the secondary test)\n    anomaly         Week 7: anomaly detection trained on healthy data only (--split time for the secondary test)\n    fulldata        Week 7: every CORA sensor, window and start-up recording (Models/cora_fulldata.py)\n                    (--part ensembles / anomaly / all: XGBoost-LightGBM comparison, anomaly detection)\n    thermal-motor   Week 8: separate thermal-image data (Kulkarni motor, healthy vs corroded bearing),\n                    leave one load out\n    all             run csv, then export-images, then cnn-pretrained\n\nRaw data stays in Raw_Data/ and Processed_Data/ (not in Git)."
     """Excavator (machine 4): swing-drive motor and gearbox, CORA vibration vs infrared camera.
 
     4 classes from the CORA motor/gearbox rig: healthy, bearing defect, unbalance, misalignment. This is a
@@ -7886,6 +10760,10 @@ def _make_excavator():
         python Notebook/notebook_helpers.py excavator <command> --help
 
     Commands:
+        binary-cnn      binary CNN fine-tuning, nested whole-speed-held-out test
+        binary-speed-reference  binary sensor model with training-only healthy reference
+        binary-recording  complete-recording binary diagnosis and background control
+        binary          exploratory Healthy vs Faulty experiment, whole speeds held out
         intake          check selectively downloaded CORA files (MD5) and move them into Raw_Data/
         csv             4-class vibration model from a CSV feature table (validation-selected model)
         export-images   save the infrared images as named files in Images/excavator/ (local only)
@@ -7903,15 +10781,12 @@ def _make_excavator():
 
     Raw data stays in Raw_Data/ and Processed_Data/ (not in Git).
     """
-
+    __doc__ = cleandoc(_make_excavator.__doc__)
 
     import sys
     from pathlib import Path
 
-
-    # ====================================================================================================
-    # intake: check and file selectively downloaded CORA files
-    # ====================================================================================================
+    # --- intake: check and file selectively downloaded CORA files ---
 
     def intake(run: bool = True) -> dict:
         """Check downloaded CORA files against the repository's MD5 and move them into Raw_Data/.
@@ -7967,8 +10842,12 @@ def _make_excavator():
 
         def main():
             parser = argparse.ArgumentParser(description=intake.__doc__)
-            parser.add_argument("--from", dest="source", default=str(Path.home() / "Downloads"),
-                                help="folder holding the browser downloads")
+            parser.add_argument(
+                "--from",
+                dest="source",
+                default=str(Path.home() / "Downloads"),
+                help="folder holding the browser downloads",
+            )
             args = parser.parse_args()
             source = Path(args.source)
             records, missing = [], []
@@ -7979,27 +10858,46 @@ def _make_excavator():
                     missing.append(name)
                     continue
                 if candidate.stat().st_size != size or md5(candidate) != expected:
-                    raise SystemExit(f"{candidate}: size or MD5 does not match the repository; download it again")
+                    raise SystemExit(
+                        f"{candidate}: size or MD5 does not match the repository; download it again"
+                    )
                 if candidate != destination:
                     destination.parent.mkdir(parents=True, exist_ok=True)
                     shutil.move(str(candidate), destination)
-                records.append({"file": name, "folder": f"Raw_Data/{folder}", "size_bytes": size, "md5": expected,
-                                "status": "verified against publisher MD5"})
+                records.append(
+                    {
+                        "file": name,
+                        "folder": f"Raw_Data/{folder}",
+                        "size_bytes": size,
+                        "md5": expected,
+                        "status": "verified against publisher MD5",
+                    }
+                )
                 print(f"verified {name}", flush=True)
-            MANIFEST.write_text(json.dumps({
-                "source": "https://doi.org/10.34810/DATA2500", "license": "CC BY 4.0",
-                "note": "selectively downloaded from CORA; every file checked against the publisher MD5",
-                "files": records, "missing": missing}, indent=2) + "\n", encoding="utf-8")
-            print(f"{len(records)} files verified; {len(missing)} still missing" + (f": {missing}" if missing else ""))
+            MANIFEST.write_text(
+                json.dumps(
+                    {
+                        "source": "https://doi.org/10.34810/DATA2500",
+                        "license": "CC BY 4.0",
+                        "note": "selectively downloaded from CORA; every file checked against the publisher MD5",
+                        "files": records,
+                        "missing": missing,
+                    },
+                    indent=2,
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            print(
+                f"{len(records)} files verified; {len(missing)} still missing"
+                + (f": {missing}" if missing else "")
+            )
 
         if run:
             main()
         return locals()
 
-
-    # ====================================================================================================
-    # export-images: Week 6, save the camera images as named files (professor remark)
-    # ====================================================================================================
+    # --- export-images: Week 6, save the camera images as named files (professor remark) ---
 
     def export_images(run: bool = True) -> dict:
         """Week 6: save this machine's camera images as named PNG files for the CNN.
@@ -8026,29 +10924,15 @@ def _make_excavator():
         FRAMES = SECONDS * 1_000_000 // BIN_US
 
         def event_frames(stream):
-            """First 5 s of an event recording as 20 images of 250 ms; channel 0 = brighter, 1 = darker events."""
-            while True:
-                first = stream.read(1)
-                if first != b"%":
-                    break
-                stream.readline()
-            stream.read(1)
-            counts = np.zeros((FRAMES, 2, HEIGHT, WIDTH), dtype=np.uint32)
-            end = SECONDS * 1_000_000
-            while True:
-                chunk = stream.read(8 * 500_000)
-                if not chunk:
-                    break
-                ev = np.frombuffer(chunk, dtype=EVENT)
-                keep = ev["t"] < end
-                t, xy = ev["t"][keep], ev["xy"][keep]
-                x, y, polarity = xy & 0x3FFF, (xy >> 14) & 0x3FFF, (xy >> 28) & 1
-                index = ((((t // BIN_US) * 2 + (1 - polarity)) * HEIGHT + (y * HEIGHT // 480)) * WIDTH
-                         + (x * WIDTH // 640)).astype(np.int64)
-                counts += np.bincount(index, minlength=counts.size).reshape(counts.shape).astype(np.uint32)
-                if len(ev) and ev["t"][-1] >= end:
-                    break
-            return counts
+            return bin_event_stream(
+                stream,
+                frames=FRAMES,
+                seconds=SECONDS,
+                height=HEIGHT,
+                width=WIDTH,
+                event_dtype=EVENT,
+                bin_microseconds=BIN_US,
+            )
 
         def event_png(frame):
             """Brighter events in red, darker events in green, log-scaled to 0-255."""
@@ -8060,8 +10944,15 @@ def _make_excavator():
             folder = OUT / label
             folder.mkdir(parents=True, exist_ok=True)
             cv2.imwrite(str(folder / name), image)
-            rows.append({"file": f"{label}/{name}", "machine": MACHINE, "class": label, "unit": unit, "group": group})
-
+            rows.append(
+                {
+                    "file": f"{label}/{name}",
+                    "machine": MACHINE,
+                    "class": label,
+                    "unit": unit,
+                    "group": group,
+                }
+            )
 
         def export():
             rows = []
@@ -8070,20 +10961,34 @@ def _make_excavator():
                 folder = "cora_gear_wear" if condition == "H" else "cora_drive_faults"
                 for speed in ("F5", "F15", "F50", "F60"):
                     unit = f"{condition}_{speed}_S"
-                    frames = loadmat(ROOT / "Raw_Data" / folder / f"{unit}.mat",
-                                     variable_names=["imagenes_celda"])["imagenes_celda"]
+                    frames = loadmat(
+                        ROOT / "Raw_Data" / folder / f"{unit}.mat",
+                        variable_names=["imagenes_celda"],
+                    )["imagenes_celda"]
                     for k, frame in enumerate(frames.flat):
                         if k % STEP:
                             continue  # every 3rd frame: 150 images per run
-                        gray = cv2.cvtColor(cv2.resize(np.asarray(frame), (WIDTH, HEIGHT)), cv2.COLOR_RGB2GRAY)
-                        write(rows, label, unit, speed, f"{MACHINE}_{label}_{speed}_f{k:03d}.png", gray)
+                        gray = cv2.cvtColor(
+                            cv2.resize(np.asarray(frame), (WIDTH, HEIGHT)), cv2.COLOR_RGB2GRAY
+                        )
+                        write(
+                            rows,
+                            label,
+                            unit,
+                            speed,
+                            f"{MACHINE}_{label}_{speed}_f{k:03d}.png",
+                            gray,
+                        )
                     print(f"{unit}: done", flush=True)
             return rows
 
         def main():
             parser = argparse.ArgumentParser(description=export_images.__doc__)
-            parser.add_argument("--all-frames", action="store_true",
-                                help="save all 450 frames per run to Images/<machine>_allframes/ (Week 7 full-data run)")
+            parser.add_argument(
+                "--all-frames",
+                action="store_true",
+                help="save all 450 frames per run to Images/<machine>_allframes/ (Week 7 full-data run)",
+            )
             args = parser.parse_args()
             nonlocal OUT, STEP
             if args.all_frames:
@@ -8092,7 +10997,9 @@ def _make_excavator():
                 shutil.rmtree(OUT)
             rows = export()
             with (OUT / "index.csv").open("w", newline="", encoding="utf-8") as handle:
-                writer = csv_module.DictWriter(handle, fieldnames=["file", "machine", "class", "unit", "group"])
+                writer = csv_module.DictWriter(
+                    handle, fieldnames=["file", "machine", "class", "unit", "group"]
+                )
                 writer.writeheader()
                 writer.writerows(rows)
             counts = {}
@@ -8104,10 +11011,7 @@ def _make_excavator():
             main()
         return locals()
 
-
-    # ====================================================================================================
-    # csv: Week 6, 4-class sensor model from a CSV feature table (professor remark: "csv accuracy 90 plus")
-    # ====================================================================================================
+    # --- csv: Week 6, 4-class sensor model from a CSV feature table (professor remark: "csv accuracy 90 plus") ---
 
     def csv(run: bool = True) -> dict:
         """Week 6: write the sensor features to a CSV table and train 4-class models on it.
@@ -8126,8 +11030,12 @@ def _make_excavator():
         matplotlib.use("Agg")
         import matplotlib.pyplot as plt
         import numpy as np
-        from sklearn.metrics import (accuracy_score, balanced_accuracy_score, confusion_matrix,
-                                     precision_recall_fscore_support)
+        from sklearn.metrics import (
+            accuracy_score,
+            balanced_accuracy_score,
+            confusion_matrix,
+            precision_recall_fscore_support,
+        )
 
         import pandas as pd
         from sklearn.dummy import DummyClassifier
@@ -8142,11 +11050,20 @@ def _make_excavator():
         FIGURE = ROOT / "Figures" / "excavator" / f"{MACHINE}_csv_4class.png"
         MODELS = {
             "Majority class (control)": lambda: DummyClassifier(strategy="most_frequent"),
-            "Logistic regression": lambda: make_pipeline(StandardScaler(), LogisticRegression(
-                C=1.0, class_weight="balanced", solver="lbfgs", max_iter=5000, random_state=42)),
+            "Logistic regression": lambda: make_pipeline(
+                StandardScaler(),
+                LogisticRegression(
+                    C=1.0, class_weight="balanced", solver="lbfgs", max_iter=5000, random_state=42
+                ),
+            ),
             "Random forest": lambda: RandomForestClassifier(
-                n_estimators=250, max_features="sqrt", class_weight="balanced_subsample",
-                min_samples_leaf=2, random_state=42, n_jobs=-1),
+                n_estimators=250,
+                max_features="sqrt",
+                class_weight="balanced_subsample",
+                min_samples_leaf=2,
+                random_state=42,
+                n_jobs=-1,
+            ),
         }
 
         unit_predictions = predict_recordings
@@ -8155,52 +11072,30 @@ def _make_excavator():
 
         plot_matrix = save_confusion_matrix
 
-
-        VIB_ORDERS = ((0.5, 1.5), (1.5, 2.5), (2.5, 3.5), (3.5, 5.5), (5.5, 8.5), (8.5, 12.5), (12.5, 20.5))
-        VIB_NAMES = ["log_rms", "kurtosis", "skewness", "crest_factor", "peak_order", "log_ratio_2x_1x",
-                     *(f"order_power_{lo}_{hi}" for lo, hi in VIB_ORDERS)]
+        VIB_ORDERS = (
+            (0.5, 1.5),
+            (1.5, 2.5),
+            (2.5, 3.5),
+            (3.5, 5.5),
+            (5.5, 8.5),
+            (8.5, 12.5),
+            (12.5, 20.5),
+        )
+        VIB_NAMES = [
+            "log_rms",
+            "kurtosis",
+            "skewness",
+            "crest_factor",
+            "peak_order",
+            "log_ratio_2x_1x",
+            *(f"order_power_{lo}_{hi}" for lo, hi in VIB_ORDERS),
+        ]
 
         def vibration_rows(run_name, label, speed):
-            """CORA Vx vibration (3 kHz) in 1 s windows (every 10th window), measured in shaft orders.
-
-            Orders = frequency / speed setting, so 1x, 2x and higher multiples line up across speeds:
-            unbalance shows at 1x, misalignment at 2x, bearing and gear damage at higher orders and spikes.
-            """
-            cache = ROOT / "Processed_Data" / "cora_vibration" / f"{run_name}_Vx_features.csv"
-            if cache.is_file():
-                return load_csv(cache)
-            source = ROOT / "Raw_Data" / "cora_vibration" / f"{run_name}_Vx.csv"
-            if not source.is_file():
-                raise SystemExit(f"Missing {source.relative_to(ROOT)}: download it and run the intake command")
-            values = load_cora_sensor(source.name)
-            frame = vibration_frame(values, speed)
-            frame.insert(0, "window", np.arange(len(frame)))
-            frame.insert(0, "class", label)
-            frame.insert(0, "speed", speed)
-            frame.insert(0, "unit", run_name)
-            cache.parent.mkdir(parents=True, exist_ok=True)
-            frame.to_csv(cache, index=False)
-            return frame
+            return load_cora_feature_rows(run_name, label, speed, vibration_frame)
 
         def vibration_frame(values, speed):
-            """Order-domain vibration features for a raw 3 kHz Vx signal at speed setting F5/F15/F50/F60."""
-            rate, shaft = 3000, float(speed[1:])
-            n = len(values) // rate
-            windows = values[: n * rate].reshape(n, rate)[::10]
-            centered = windows - windows.mean(axis=1, keepdims=True)
-            std = np.maximum(centered.std(axis=1), 1e-12)
-            freq = np.fft.rfftfreq(rate, d=1 / rate)
-            power = np.abs(np.fft.rfft(centered * np.hanning(rate), axis=1)) ** 2
-            order = freq / shaft
-            usable = (order >= 0.5) & (order < 20.5)
-            share = power[:, usable] / np.maximum(power[:, usable].sum(axis=1, keepdims=True), 1e-12)
-            o = order[usable]
-            bands = [share[:, (o >= lo) & (o < hi)].sum(axis=1) for lo, hi in VIB_ORDERS]
-            frame = pd.DataFrame(np.column_stack([
-                np.log(std), (centered ** 4).mean(axis=1) / std ** 4, (centered ** 3).mean(axis=1) / std ** 3,
-                np.abs(centered).max(axis=1) / std, o[np.argmax(share, axis=1)],
-                np.log((bands[1] + 1e-9) / (bands[0] + 1e-9)), *bands]), columns=VIB_NAMES)
-            return frame
+            return extract_cora_vibration(values, speed, VIB_ORDERS, VIB_NAMES)
 
         def per_speed_normalised(table, names):
             """Rescale each feature within each speed using all recordings at that speed together (no labels used).
@@ -8212,90 +11107,56 @@ def _make_excavator():
             for name in names:
                 column = f"{name}_per_speed"
                 grouped = table.groupby("speed")[name]
-                table[column] = (table[name] - grouped.transform("mean")) / grouped.transform("std").replace(0, 1)
+                table[column] = (table[name] - grouped.transform("mean")) / grouped.transform(
+                    "std"
+                ).replace(0, 1)
                 out.append(column)
             return out
 
         def build_table():
             labels = {"H": "healthy", "BD": "bearing", "U": "unbalance", "M": "misalignment"}
-            frames = [vibration_rows(f"{c}_{s}_S", label, s)
-                      for c, label in labels.items() for s in ("F5", "F15", "F50", "F60")]
+            frames = [
+                vibration_rows(f"{c}_{s}_S", label, s)
+                for c, label in labels.items()
+                for s in ("F5", "F15", "F50", "F60")
+            ]
             table = pd.concat(frames, ignore_index=True)
             folds = lambda t: [(t["speed"] == s).to_numpy() for s in ("F5", "F15", "F50", "F60")]
             normalised = per_speed_normalised(table, VIB_NAMES)
-            return (table, {"vibration": VIB_NAMES, "vibration (per-speed normalised)": normalised},
-                    ["healthy", "bearing", "unbalance", "misalignment"], folds,
-                    "four rounds, each holding out one whole speed (4 runs, one per class); 16 run-level predictions",
-                    ["CORA motor/gearbox rig, Vx vibration at 3 kHz; one row per 1 s window, every 10th window of each run",
-                     "features in shaft orders (frequency / speed setting) so they line up across the held-out speed"])
+            return (
+                table,
+                {"vibration": VIB_NAMES, "vibration (per-speed normalised)": normalised},
+                ["healthy", "bearing", "unbalance", "misalignment"],
+                folds,
+                "four rounds, each holding out one whole speed (4 runs, one per class); 16 run-level predictions",
+                [
+                    "CORA motor/gearbox rig, Vx vibration at 3 kHz; one row per 1 s window, every 10th window of each run",
+                    "features in shaft orders (frequency / speed setting) so they line up across the held-out speed",
+                ],
+            )
+
         INNER_GROUP = "speed"
 
-        def candidate_models():
-            from sklearn.ensemble import ExtraTreesClassifier, HistGradientBoostingClassifier
-            from sklearn.svm import SVC
-            return {
-                "Random forest": lambda: RandomForestClassifier(
-                    n_estimators=250, max_features="sqrt", class_weight="balanced_subsample",
-                    min_samples_leaf=2, random_state=42, n_jobs=-1),
-                "Extra trees": lambda: ExtraTreesClassifier(
-                    n_estimators=300, max_features="sqrt", class_weight="balanced",
-                    min_samples_leaf=2, random_state=42, n_jobs=-1),
-                "Gradient boosting": lambda: HistGradientBoostingClassifier(
-                    max_iter=200, learning_rate=0.05, class_weight="balanced", random_state=42),
-                "SVM (RBF)": lambda: make_pipeline(StandardScaler(), SVC(
-                    C=10.0, gamma="scale", class_weight="balanced", probability=True, random_state=42)),
-                "Logistic regression": lambda: make_pipeline(StandardScaler(), LogisticRegression(
-                    C=1.0, class_weight="balanced", solver="lbfgs", max_iter=5000, random_state=42)),
-            }
+        candidate_models = sensor_model_candidates
 
-        def nested_selection(table, feature_sets, labels, outer_folds, inner_group):
-            """Pick a feature set and model on validation data inside each training set, then test once.
-
-            Inner validation holds out whole groups (recordings, bearings or speeds) of the training set
-            only; the outer test units are never used for the choice.
-            """
-            from sklearn.metrics import f1_score
-            from sklearn.model_selection import GroupKFold
-
-            y = table["class"].to_numpy()
-            units = table["unit"].to_numpy()
-            groups = table[inner_group].to_numpy()
-            models = candidate_models()
-            actual, predicted, chosen = [], [], []
-            for test in outer_folds:
-                train_idx = np.flatnonzero(~test)
-                n_splits = min(4, len(set(groups[train_idx])))
-                inner = list(GroupKFold(n_splits=n_splits).split(train_idx, groups=groups[train_idx]))
-                best, best_score = None, -1.0
-                for set_name, names in feature_sets.items():
-                    x = table[names].to_numpy(dtype=np.float64)
-                    for model_name, factory in models.items():
-                        f1s = []
-                        for fit_part, val_part in inner:
-                            fit_rows, val_rows = train_idx[fit_part], train_idx[val_part]
-                            model = factory().fit(x[fit_rows], y[fit_rows])
-                            a, p = unit_predictions(model.predict_proba(x[val_rows]), model.classes_, y[val_rows], units[val_rows])
-                            f1s.append(f1_score(a, p, labels=labels, average="macro", zero_division=0))
-                        if float(np.mean(f1s)) > best_score:
-                            best, best_score = (set_name, model_name), float(np.mean(f1s))
-                x = table[feature_sets[best[0]]].to_numpy(dtype=np.float64)
-                model = models[best[1]]().fit(x[train_idx], y[train_idx])
-                a, p = unit_predictions(model.predict_proba(x[test]), model.classes_, y[test], units[test])
-                actual += a
-                predicted += p
-                chosen.append({"feature_set": best[0], "model": best[1], "validation_macro_f1": round(best_score, 4)})
-            return score(actual, predicted, labels), chosen
+        nested_selection = select_sensor_model
 
         def main():
             parser = argparse.ArgumentParser(description=csv.__doc__)
-            parser.add_argument("--split", choices=("speed", "time"), default="speed",
-                                help="speed (main, fair test): hold out each whole speed. time (secondary): train on the "
-                                     "first 60%% of every run, test on the last 30%% (10%% gap); the machine has been seen "
-                                     "before, and each fault comes from one recording, so this is an easier test")
+            parser.add_argument(
+                "--split",
+                choices=("speed", "time"),
+                default="speed",
+                help="speed (main, fair test): hold out each whole speed. time (secondary): train on the "
+                "first 60%% of every run, test on the last 30%% (10%% gap); the machine has been seen "
+                "before, and each fault comes from one recording, so this is an easier test",
+            )
             args = parser.parse_args()
             nonlocal RESULT, FIGURE
             table, feature_names, labels, folds, test_description, notes = build_table()
-            feature_sets = feature_names if isinstance(feature_names, dict) else {"base": feature_names}
+            feature_sets = (
+                feature_names if isinstance(feature_names, dict) else {"base": feature_names}
+            )
             feature_names = next(iter(feature_sets.values()))
             CSV_PATH.parent.mkdir(parents=True, exist_ok=True)
             table.to_csv(CSV_PATH, index=False)
@@ -8305,9 +11166,11 @@ def _make_excavator():
                 late = position.loc[table.index] > 0.7
                 table["unit"] = table["unit"] + np.where(late, "_late", "_early")
                 folds = lambda t: [t["unit"].str.endswith("_late").to_numpy()]
-                test_description = ("TIME SPLIT (secondary): first 60% of every run trains, last 30% tests, 10% gap; "
-                                    "16 run-level predictions; the same recordings appear in training, so this is easier "
-                                    "than the main unseen-speed test")
+                test_description = (
+                    "TIME SPLIT (secondary): first 60% of every run trains, last 30% tests, 10% gap; "
+                    "16 run-level predictions; the same recordings appear in training, so this is easier "
+                    "than the main unseen-speed test"
+                )
                 RESULT = RESULT.with_name(RESULT.stem + "_timesplit.json")
                 FIGURE = FIGURE.with_name(FIGURE.stem + "_timesplit.png")
             x = table[feature_names].to_numpy(dtype=np.float64)
@@ -8321,52 +11184,80 @@ def _make_excavator():
                     if set(units[train]) & set(units[test]):
                         raise ValueError("A test unit also appears in training")
                     model = factory().fit(x[train], y[train])
-                    a, p = unit_predictions(model.predict_proba(x[test]), model.classes_, y[test], units[test])
+                    a, p = unit_predictions(
+                        model.predict_proba(x[test]), model.classes_, y[test], units[test]
+                    )
                     actual += a
                     predicted += p
                 scores[name] = score(actual, predicted, labels)
             result = {
                 "purpose": "Week 6 professor remark: 4-class sensor model from a CSV feature table",
                 "csv_file": str(CSV_PATH.relative_to(ROOT)).replace("\\", "/"),
-                "rows": int(len(table)), "features": feature_names, "classes": labels,
-                "test": test_description, "main_model": "Random forest",
+                "rows": int(len(table)),
+                "features": feature_names,
+                "classes": labels,
+                "test": test_description,
+                "main_model": "Random forest",
                 "selection_rule": "settings fixed in advance; no model or setting chosen from these test results",
-                "notes": notes, "models": scores,
+                "notes": notes,
+                "models": scores,
             }
             if args.split == "time":
                 result["split"] = "time (secondary)"
                 RESULT.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
                 main_score = scores["Random forest"]
-                plot_matrix(main_score["confusion_matrix"], labels,
-                            f"{MACHINE}: CSV sensor, TIME SPLIT (random forest), accuracy {main_score['accuracy']:.3f}", FIGURE)
+                plot_matrix(
+                    main_score["confusion_matrix"],
+                    labels,
+                    f"{MACHINE}: CSV sensor, TIME SPLIT (random forest), accuracy {main_score['accuracy']:.3f}",
+                    FIGURE,
+                )
                 for name, s in scores.items():
-                    print(f"{name:<26} accuracy {s['accuracy']:.3f}  macro F1 {s['macro_f1']:.3f}  ({s['test_units']} test units, time split)")
+                    print(
+                        f"{name:<26} accuracy {s['accuracy']:.3f}  macro F1 {s['macro_f1']:.3f}  ({s['test_units']} test units, time split)"
+                    )
                 print(f"Saved {RESULT.relative_to(ROOT)} and {FIGURE.relative_to(ROOT)}")
                 return
-            selected, chosen = nested_selection(table, feature_sets, labels, folds(table), INNER_GROUP)
+            selected, chosen = nested_selection(
+                table, feature_sets, labels, folds(table), INNER_GROUP
+            )
             result["validation_selected"] = {
                 "description": "feature set and model chosen per round on validation groups inside the training set only "
-                               "(candidates: " + ", ".join(candidate_models()) + "; feature sets: " + ", ".join(feature_sets) + ")",
-                "feature_sets": feature_sets, "score": selected, "chosen_per_round": chosen}
+                "(candidates: "
+                + ", ".join(candidate_models())
+                + "; feature sets: "
+                + ", ".join(feature_sets)
+                + ")",
+                "feature_sets": feature_sets,
+                "score": selected,
+                "chosen_per_round": chosen,
+            }
             result["main_model"] = "validation-selected"
             RESULT.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
             main_score = selected
-            plot_matrix(main_score["confusion_matrix"], labels,
-                        f"{MACHINE}: CSV sensor model (validation-selected), accuracy {main_score['accuracy']:.3f}", FIGURE)
+            plot_matrix(
+                main_score["confusion_matrix"],
+                labels,
+                f"{MACHINE}: CSV sensor model (validation-selected), accuracy {main_score['accuracy']:.3f}",
+                FIGURE,
+            )
             for name, s in scores.items():
-                print(f"{name:<26} accuracy {s['accuracy']:.3f}  macro F1 {s['macro_f1']:.3f}  ({s['test_units']} test units)")
-            print(f"Validation-selected model: accuracy {selected['accuracy']:.3f}  macro F1 {selected['macro_f1']:.3f}  "
-                  f"(choices: {[c['feature_set'] + ' / ' + c['model'] for c in chosen]})")
-            print(f"Saved {CSV_PATH.relative_to(ROOT)}, {RESULT.relative_to(ROOT)} and {FIGURE.relative_to(ROOT)}")
+                print(
+                    f"{name:<26} accuracy {s['accuracy']:.3f}  macro F1 {s['macro_f1']:.3f}  ({s['test_units']} test units)"
+                )
+            print(
+                f"Validation-selected model: accuracy {selected['accuracy']:.3f}  macro F1 {selected['macro_f1']:.3f}  "
+                f"(choices: {[c['feature_set'] + ' / ' + c['model'] for c in chosen]})"
+            )
+            print(
+                f"Saved {CSV_PATH.relative_to(ROOT)}, {RESULT.relative_to(ROOT)} and {FIGURE.relative_to(ROOT)}"
+            )
 
         if run:
             main()
         return locals()
 
-
-    # ====================================================================================================
-    # cnn: Week 6, CNN with data augmentation on the named images (professor remark)
-    # ====================================================================================================
+    # --- cnn: Week 6, CNN with data augmentation on the named images (professor remark) ---
 
     def cnn(run: bool = True) -> dict:
         """Week 6: a small CNN with data augmentation, trained on the named images, 4 classes.
@@ -8387,8 +11278,12 @@ def _make_excavator():
         matplotlib.use("Agg")
         import matplotlib.pyplot as plt
         import numpy as np
-        from sklearn.metrics import (accuracy_score, balanced_accuracy_score, confusion_matrix,
-                                     precision_recall_fscore_support)
+        from sklearn.metrics import (
+            accuracy_score,
+            balanced_accuracy_score,
+            confusion_matrix,
+            precision_recall_fscore_support,
+        )
 
         import random
 
@@ -8409,63 +11304,31 @@ def _make_excavator():
 
         plot_matrix = save_confusion_matrix
 
-
         def read_index():
             return read_image_records(IMAGES)
 
         def load(rows):
             return load_model_images(IMAGES, rows, channels=(0,))
 
-        class Net(nn.Module):
-            def __init__(self, in_channels, n_classes):
-                super().__init__()
-                def block(a, b):
-                    return nn.Sequential(nn.Conv2d(a, b, 3, padding=1), nn.BatchNorm2d(b), nn.ReLU(), nn.MaxPool2d(2))
-                self.features = nn.Sequential(block(in_channels, 16), block(16, 32), block(32, 64), block(64, 64))
-                self.head = nn.Sequential(nn.AdaptiveAvgPool2d(1), nn.Flatten(), nn.Dropout(0.3), nn.Linear(64, n_classes))
+        Net = make_small_image_cnn
 
-            def forward(self, x):
-                return self.head(self.features(x))
-
-        def augment(batch, generator):
-            n = batch.shape[0]
-            flip = torch.rand(n, generator=generator) < 0.5
-            batch = torch.where(flip[:, None, None, None], batch.flip(-1), batch)
-            shifted = []
-            for image in batch:
-                dy, dx = (int(v) for v in torch.randint(-8, 9, (2,), generator=generator))
-                shifted.append(torch.roll(image, shifts=(dy, dx), dims=(-2, -1)))
-            batch = torch.stack(shifted)
-            scale = 0.8 + 0.4 * torch.rand(n, 1, 1, 1, generator=generator)
-            return batch * scale + 0.05 * torch.randn(batch.shape, generator=generator)
+        augment = augment_event_images
 
         def train(x, y):
-            random.seed(SEED)
-            np.random.seed(SEED)
-            torch.manual_seed(SEED)
-            generator = torch.Generator().manual_seed(SEED)
-            model = Net(x.shape[1], len(LABELS))
-            counts = np.bincount(y, minlength=len(LABELS)).astype(np.float32)
-            weights = torch.tensor(counts.sum() / (len(LABELS) * np.maximum(counts, 1)))
-            loss_fn = nn.CrossEntropyLoss(weight=weights)
-            optimiser = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE, weight_decay=1e-4)
-            xs, ys = torch.tensor(x), torch.tensor(y, dtype=torch.long)
-            for _ in range(EPOCHS):
-                model.train()
-                order = torch.randperm(len(xs), generator=generator)
-                for start in range(0, len(xs), BATCH):
-                    batch = order[start:start + BATCH]
-                    optimiser.zero_grad()
-                    loss = loss_fn(model(augment(xs[batch], generator)), ys[batch])
-                    loss.backward()
-                    optimiser.step()
-            return model
+            return train_small_image_cnn(
+                x,
+                y,
+                network=Net,
+                augment=augment,
+                labels=LABELS,
+                seed=SEED,
+                learning_rate=LEARNING_RATE,
+                epochs=EPOCHS,
+                batch_size=BATCH,
+            )
 
         def probabilities(model, x):
-            model.eval()
-            with torch.no_grad():
-                return np.concatenate([torch.softmax(model(torch.tensor(x[i:i + 256])), dim=1).numpy()
-                                       for i in range(0, len(x), 256)])
+            return image_probabilities(model, x, batch_size=256)
 
         def main():
             parser = argparse.ArgumentParser(description=cnn.__doc__)
@@ -8490,34 +11353,47 @@ def _make_excavator():
                 unit_predicted += pr
                 image_actual += list(names[test])
                 image_predicted += [LABELS[i] for i in p.argmax(axis=1)]
-                print(f"fold {number}: trained on {int(train_mask.sum())} images, tested on {int(test.sum())}", flush=True)
+                print(
+                    f"fold {number}: trained on {int(train_mask.sum())} images, tested on {int(test.sum())}",
+                    flush=True,
+                )
             result = {
                 "purpose": "Week 6 professor remark: CNN with data augmentation on named images, 4 classes",
-                "images": int(len(rows)), "classes": LABELS, "test": "four rounds, each holding out one whole speed (4 runs, one per class); 16 run-level predictions",
-                "settings": {"epochs": EPOCHS, "batch": BATCH, "learning_rate": LEARNING_RATE, "seed": SEED,
-                             "architecture": "4 conv blocks (16, 32, 64, 64 channels) + global average pool + dropout 0.3",
-                             "augmentation": "random horizontal flip, shift up to 8 px, brightness/contrast x0.8-1.2, Gaussian noise 0.05",
-                             "normalisation": "each image standardised on its own"},
+                "images": int(len(rows)),
+                "classes": LABELS,
+                "test": "four rounds, each holding out one whole speed (4 runs, one per class); 16 run-level predictions",
+                "settings": {
+                    "epochs": EPOCHS,
+                    "batch": BATCH,
+                    "learning_rate": LEARNING_RATE,
+                    "seed": SEED,
+                    "architecture": "4 conv blocks (16, 32, 64, 64 channels) + global average pool + dropout 0.3",
+                    "augmentation": "random horizontal flip, shift up to 8 px, brightness/contrast x0.8-1.2, Gaussian noise 0.05",
+                    "normalisation": "each image standardised on its own",
+                },
                 "selection_rule": "settings fixed in advance; the test set is never used to choose epochs or settings",
                 "recording_level": score(unit_actual, unit_predicted, LABELS),
                 "image_level": score(image_actual, image_predicted, LABELS),
             }
             RESULT.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
             r = result["recording_level"]
-            plot_matrix(r["confusion_matrix"], LABELS,
-                        f"{MACHINE}: CNN on images, accuracy {r['accuracy']:.3f} ({r['test_units']} test units)", FIGURE)
-            print(f"CNN recording-level accuracy {r['accuracy']:.3f}, macro F1 {r['macro_f1']:.3f}; "
-                  f"image-level accuracy {result['image_level']['accuracy']:.3f}")
+            plot_matrix(
+                r["confusion_matrix"],
+                LABELS,
+                f"{MACHINE}: CNN on images, accuracy {r['accuracy']:.3f} ({r['test_units']} test units)",
+                FIGURE,
+            )
+            print(
+                f"CNN recording-level accuracy {r['accuracy']:.3f}, macro F1 {r['macro_f1']:.3f}; "
+                f"image-level accuracy {result['image_level']['accuracy']:.3f}"
+            )
             print(f"Saved {RESULT.relative_to(ROOT)} and {FIGURE.relative_to(ROOT)}")
 
         if run:
             main()
         return locals()
 
-
-    # ====================================================================================================
-    # cnn-pretrained: Week 6, transfer learning with a pretrained ResNet18 on the named images
-    # ====================================================================================================
+    # --- cnn-pretrained: Week 6, transfer learning with a pretrained ResNet18 on the named images ---
 
     def cnn_pretrained(run: bool = True) -> dict:
         """Week 6: transfer learning, an ImageNet-pretrained ResNet18 fine-tuned on the named images (4 classes).
@@ -8538,8 +11414,13 @@ def _make_excavator():
         import matplotlib.pyplot as plt
         import numpy as np
         import torch
-        from sklearn.metrics import (accuracy_score, balanced_accuracy_score, confusion_matrix, f1_score,
-                                     precision_recall_fscore_support)
+        from sklearn.metrics import (
+            accuracy_score,
+            balanced_accuracy_score,
+            confusion_matrix,
+            f1_score,
+            precision_recall_fscore_support,
+        )
         from torch import nn
         from torchvision.models import ResNet18_Weights, resnet18
 
@@ -8548,7 +11429,7 @@ def _make_excavator():
         RESULT = ROOT / "Results" / "excavator" / f"{MACHINE}_cnn_pretrained_4class.json"
         FIGURE = ROOT / "Figures" / "excavator" / f"{MACHINE}_cnn_pretrained_4class.png"
         LABELS = ["healthy", "bearing", "unbalance", "misalignment"]
-        SEGMENTS = 10   # test segments per held-out recording (segment-level score)
+        SEGMENTS = 10  # test segments per held-out recording (segment-level score)
         MAX_EPOCHS, BATCH, LEARNING_RATE, SEED = 15, 32, 3e-4, 42
 
         unit_predictions = predict_recordings
@@ -8558,28 +11439,7 @@ def _make_excavator():
         plot_matrix = save_confusion_matrix
 
         def plot_levels(result, title, path):
-            """One panel per scoring level, so the figure shows how many images were really tested."""
-            levels = [("every test image", result["image_level"]), ("per 1/10 recording segment", result.get("segment_level")),
-                      ("per whole recording", result["recording_level"])]
-            levels = [(name, block) for name, block in levels if block]
-            figure, axes = plt.subplots(1, len(levels), figsize=(4.6 * len(levels), 4.4))
-            for axis, (name, block) in zip(np.atleast_1d(axes), levels):
-                array = np.asarray(block["confusion_matrix"])
-                axis.imshow(array, cmap="Blues", vmin=0)
-                axis.set_xticks(range(len(LABELS)), LABELS, rotation=30, fontsize=8)
-                axis.set_yticks(range(len(LABELS)), LABELS, fontsize=8)
-                axis.set_xlabel("Predicted")
-                axis.set_ylabel("Actual")
-                axis.set_title(f"{name}\n{block['test_units']:,} tested, accuracy {block['accuracy']:.3f}", fontsize=9)
-                for i in range(len(LABELS)):
-                    for j in range(len(LABELS)):
-                        axis.text(j, i, f"{array[i, j]:,}", ha="center", va="center", fontsize=8,
-                                  color="white" if array[i, j] > array.max() / 2 else "black")
-            figure.suptitle(title.replace("; ", "\n"), fontsize=10)
-            figure.tight_layout()
-            path.parent.mkdir(parents=True, exist_ok=True)
-            figure.savefig(path, dpi=110)
-            plt.close(figure)
+            save_prediction_levels(result, title, path, LABELS)
 
         _small = cnn(run=False)
         read_index, augment = _small["read_index"], _small["augment"]
@@ -8593,45 +11453,37 @@ def _make_excavator():
             return model
 
         def fit(x, y, epochs, val=None):
-            random.seed(SEED)
-            np.random.seed(SEED)
-            torch.manual_seed(SEED)
-            generator = torch.Generator().manual_seed(SEED)
-            model = new_model()
-            counts = np.bincount(y, minlength=len(LABELS)).astype(np.float32)
-            loss_fn = nn.CrossEntropyLoss(weight=torch.tensor(counts.sum() / (len(LABELS) * np.maximum(counts, 1))))
-            optimiser = torch.optim.AdamW(model.parameters(), lr=LEARNING_RATE, weight_decay=1e-4)
-            xs, ys = torch.tensor(x), torch.tensor(y, dtype=torch.long)
-            history = []
-            for _ in range(epochs):
-                model.train()
-                order = torch.randperm(len(xs), generator=generator)
-                for start in range(0, len(xs), BATCH):
-                    batch = order[start:start + BATCH]
-                    if len(batch) < 2:
-                        continue
-                    optimiser.zero_grad()
-                    loss_fn(model(augment(xs[batch], generator)), ys[batch]).backward()
-                    optimiser.step()
-                if val is not None:
-                    vx, vnames, vunits = val
-                    a, p = unit_predictions(probabilities(model, vx), np.asarray(LABELS), vnames, vunits)
-                    history.append(f1_score(a, p, labels=LABELS, average="macro", zero_division=0))
-            return model, history
+            return fit_pretrained_image_cnn(
+                x,
+                y,
+                epochs,
+                val,
+                new_model=new_model,
+                augment=augment,
+                labels=LABELS,
+                seed=SEED,
+                learning_rate=LEARNING_RATE,
+                batch_size=BATCH,
+                probabilities=probabilities,
+            )
 
         def probabilities(model, x):
-            model.eval()
-            with torch.no_grad():
-                return np.concatenate([torch.softmax(model(torch.tensor(x[i:i + 128])), dim=1).numpy()
-                                       for i in range(0, len(x), 128)])
+            return image_probabilities(model, x, batch_size=128)
 
         def main():
             parser = argparse.ArgumentParser(description=cnn_pretrained.__doc__)
-            parser.add_argument("--split", choices=("speed", "time"), default="speed",
-                                help="speed (main, fair test) or time (secondary: first 60%% of each run's frames train, "
-                                     "last 30%% test, 10%% gap; easier, the same recordings appear in training)")
-            parser.add_argument("--all-frames", action="store_true",
-                                help="use Images/<machine>_allframes/ (all 450 frames per run); results saved as *_allframes")
+            parser.add_argument(
+                "--split",
+                choices=("speed", "time"),
+                default="speed",
+                help="speed (main, fair test) or time (secondary: first 60%% of each run's frames train, "
+                "last 30%% test, 10%% gap; easier, the same recordings appear in training)",
+            )
+            parser.add_argument(
+                "--all-frames",
+                action="store_true",
+                help="use Images/<machine>_allframes/ (all 450 frames per run); results saved as *_allframes",
+            )
             args = parser.parse_args()
             nonlocal RESULT, FIGURE, IMAGES
             if args.all_frames:
@@ -8642,11 +11494,23 @@ def _make_excavator():
             test_description = "four rounds, each holding out one whole speed (4 runs, one per class); 16 run-level predictions"
             if args.split == "time":
                 import re
-                position = {row["file"]: int(re.search(r"_f(\d{3})\.png$", row["file"]).group(1)) / 450 for row in rows}
-                rows = [dict(row, unit=row["unit"] + ("_late" if position[row["file"]] > 0.7 else "_early"))
-                        for row in rows if position[row["file"]] <= 0.6 or position[row["file"]] > 0.7]
-                test_description = ("TIME SPLIT (secondary): first 60% of every run's frames train, last 30% test, 10% gap; "
-                                    "16 run-level predictions; the same recordings appear in training, so this is easier")
+
+                position = {
+                    row["file"]: int(re.search(r"_f(\d{3})\.png$", row["file"]).group(1)) / 450
+                    for row in rows
+                }
+                rows = [
+                    dict(
+                        row,
+                        unit=row["unit"] + ("_late" if position[row["file"]] > 0.7 else "_early"),
+                    )
+                    for row in rows
+                    if position[row["file"]] <= 0.6 or position[row["file"]] > 0.7
+                ]
+                test_description = (
+                    "TIME SPLIT (secondary): first 60% of every run's frames train, last 30% test, 10% gap; "
+                    "16 run-level predictions; the same recordings appear in training, so this is easier"
+                )
                 RESULT = RESULT.with_name(RESULT.stem + "_timesplit.json")
                 FIGURE = FIGURE.with_name(FIGURE.stem + "_timesplit.png")
             x = load(rows)
@@ -8656,18 +11520,31 @@ def _make_excavator():
             units = np.asarray([row["unit"] for row in rows])
             groups = np.asarray([row["group"] for row in rows])
             rng = np.random.default_rng(SEED)
-            unit_actual, unit_predicted, image_actual, image_predicted, epochs_chosen = [], [], [], [], []
+            unit_actual, unit_predicted, image_actual, image_predicted, epochs_chosen = (
+                [],
+                [],
+                [],
+                [],
+                [],
+            )
             segment_actual, segment_predicted, per_recording = [], [], {}
-            folds = ([np.char.endswith(units.astype(str), "_late")] if args.split == "time"
-                     else [groups == s for s in ("F5", "F15", "F50", "F60")])
+            folds = (
+                [np.char.endswith(units.astype(str), "_late")]
+                if args.split == "time"
+                else [groups == s for s in ("F5", "F15", "F50", "F60")]
+            )
             for number, test in enumerate(folds, 1):
                 train = ~test
                 if set(units[train]) & set(units[test]):
                     raise ValueError("A test recording also appears in training")
-                val_units = [rng.choice(sorted(set(units[train & (names == label)]))) for label in LABELS]
+                val_units = [
+                    rng.choice(sorted(set(units[train & (names == label)]))) for label in LABELS
+                ]
                 val = train & np.isin(units, val_units)
                 fit_part = train & ~val
-                _, history = fit(x[fit_part], y[fit_part], MAX_EPOCHS, (x[val], names[val], units[val]))
+                _, history = fit(
+                    x[fit_part], y[fit_part], MAX_EPOCHS, (x[val], names[val], units[val])
+                )
                 best_epochs = int(np.argmax(history)) + 1
                 model, _ = fit(x[train], y[train], best_epochs)
                 p = probabilities(model, x[test])
@@ -8684,53 +11561,83 @@ def _make_excavator():
                     for part in np.array_split(np.arange(len(pu)), min(SEGMENTS, len(pu))):
                         segment_actual.append(true)
                         segment_predicted.append(LABELS[int(pu[part].mean(axis=0).argmax())])
-                    per_recording[str(unit)] = {"class": str(true), "images": int(len(pu)),
-                                                "images_predicted": {l: int((pu.argmax(axis=1) == i).sum())
-                                                                     for i, l in enumerate(LABELS)},
-                                                "recording_prediction": LABELS[int(pu.mean(axis=0).argmax())]}
+                    per_recording[str(unit)] = {
+                        "class": str(true),
+                        "images": int(len(pu)),
+                        "images_predicted": {
+                            l: int((pu.argmax(axis=1) == i).sum()) for i, l in enumerate(LABELS)
+                        },
+                        "recording_prediction": LABELS[int(pu.mean(axis=0).argmax())],
+                    }
                 epochs_chosen.append(best_epochs)
-                print(f"fold {number}: validation chose {best_epochs} epochs; tested on {int(test.sum())} images", flush=True)
+                print(
+                    f"fold {number}: validation chose {best_epochs} epochs; tested on {int(test.sum())} images",
+                    flush=True,
+                )
             result = {
                 "purpose": "Week 6: transfer learning (ImageNet-pretrained ResNet18) on named images, 4 classes",
-                "images": int(len(rows)), "classes": LABELS, "test": test_description,
-                "settings": {"model": "ResNet18, ImageNet weights, all layers fine-tuned", "max_epochs": MAX_EPOCHS,
-                             "batch": BATCH, "learning_rate": LEARNING_RATE, "optimiser": "AdamW", "seed": SEED,
-                             "epochs_chosen_per_round": epochs_chosen,
-                             "epoch_selection": "one training recording per class held out for validation; best validation macro F1",
-                             "augmentation": "random horizontal flip, shift up to 8 px, brightness/contrast x0.8-1.2, Gaussian noise 0.05"},
+                "images": int(len(rows)),
+                "classes": LABELS,
+                "test": test_description,
+                "settings": {
+                    "model": "ResNet18, ImageNet weights, all layers fine-tuned",
+                    "max_epochs": MAX_EPOCHS,
+                    "batch": BATCH,
+                    "learning_rate": LEARNING_RATE,
+                    "optimiser": "AdamW",
+                    "seed": SEED,
+                    "epochs_chosen_per_round": epochs_chosen,
+                    "epoch_selection": "one training recording per class held out for validation; best validation macro F1",
+                    "augmentation": "random horizontal flip, shift up to 8 px, brightness/contrast x0.8-1.2, Gaussian noise 0.05",
+                },
                 "selection_rule": "the test set is never used to choose epochs or settings",
                 "recording_level": score(unit_actual, unit_predicted, LABELS),
                 "image_level": score(image_actual, image_predicted, LABELS),
-                "segment_level": {**score(segment_actual, segment_predicted, LABELS),
-                                  "segments_per_recording": SEGMENTS,
-                                  "note": "each held-out recording split in time order into consecutive parts, one "
-                                          "prediction per part; parts of one recording are related, so the "
-                                          "recording-level score stays the main result"},
+                "segment_level": {
+                    **score(segment_actual, segment_predicted, LABELS),
+                    "segments_per_recording": SEGMENTS,
+                    "note": "each held-out recording split in time order into consecutive parts, one "
+                    "prediction per part; parts of one recording are related, so the "
+                    "recording-level score stays the main result",
+                },
                 "per_recording": per_recording,
             }
             RESULT.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
             s = result["segment_level"]
-            plot_matrix(s["confusion_matrix"], LABELS,
-                        f"{MACHINE}: pretrained ResNet18 per segment, accuracy {s['accuracy']:.3f} "
-                        f"({s['test_units']} test segments)", FIGURE.with_name(FIGURE.stem + "_segments.png"))
-            print(f"Segment-level accuracy {s['accuracy']:.3f} on {s['test_units']} test segments "
-                  f"({SEGMENTS} per held-out recording)")
+            plot_matrix(
+                s["confusion_matrix"],
+                LABELS,
+                f"{MACHINE}: pretrained ResNet18 per segment, accuracy {s['accuracy']:.3f} "
+                f"({s['test_units']} test segments)",
+                FIGURE.with_name(FIGURE.stem + "_segments.png"),
+            )
+            print(
+                f"Segment-level accuracy {s['accuracy']:.3f} on {s['test_units']} test segments "
+                f"({SEGMENTS} per held-out recording)"
+            )
             r = result["recording_level"]
-            plot_levels(result, f"{MACHINE}: pretrained ResNet18 on {result['images']:,} images in total; "
-                                f"{r['test_units']} test recordings" + (" (time split, secondary: later frames of training recordings)"
-                                if "timesplit" in FIGURE.stem else ", each never seen in training"), FIGURE)
-            print(f"Pretrained CNN recording-level accuracy {r['accuracy']:.3f}, macro F1 {r['macro_f1']:.3f}; "
-                  f"image-level accuracy {result['image_level']['accuracy']:.3f}")
+            plot_levels(
+                result,
+                f"{MACHINE}: pretrained ResNet18 on {result['images']:,} images in total; "
+                f"{r['test_units']} test recordings"
+                + (
+                    " (time split, secondary: later frames of training recordings)"
+                    if "timesplit" in FIGURE.stem
+                    else ", each never seen in training"
+                ),
+                FIGURE,
+            )
+            print(
+                f"Pretrained CNN recording-level accuracy {r['accuracy']:.3f}, macro F1 {r['macro_f1']:.3f}; "
+                f"image-level accuracy {result['image_level']['accuracy']:.3f}"
+            )
             print(f"Saved {RESULT.relative_to(ROOT)} and {FIGURE.relative_to(ROOT)}")
 
         if run:
             main()
         return locals()
 
-
-    # ====================================================================================================
-    # train-final / predict: use the trained sensor model on any CSV
-    # ====================================================================================================
+    # --- train-final / predict: use the trained sensor model on any CSV ---
 
     def train_final(run: bool = True) -> dict:
         """Train the sensor model on all of this machine's data and save it (Processed_Data/models/, not in Git).
@@ -8749,29 +11656,53 @@ def _make_excavator():
 
         def main():
             parser = argparse.ArgumentParser(description=train_final.__doc__)
-            parser.add_argument("--exclude", nargs="*", default=[], help="recording names to leave out, e.g. U_F15_S")
+            parser.add_argument(
+                "--exclude",
+                nargs="*",
+                default=[],
+                help="recording names to leave out, e.g. U_F15_S",
+            )
             args = parser.parse_args()
             table, feature_sets, labels, *_ = csv(run=False)["build_table"]()
-            feature_sets = feature_sets if isinstance(feature_sets, dict) else {"base": feature_sets}
+            feature_sets = (
+                feature_sets if isinstance(feature_sets, dict) else {"base": feature_sets}
+            )
             features = feature_sets["vibration"]
             unknown = set(args.exclude) - set(table["unit"])
             if unknown:
                 raise SystemExit(f"Unknown recording names: {sorted(unknown)}")
             train = ~table["unit"].isin(args.exclude)
-            model = RandomForestClassifier(n_estimators=250, max_features="sqrt", class_weight="balanced_subsample",
-                                           min_samples_leaf=2, random_state=42, n_jobs=-1)
-            model.fit(table.loc[train, features].to_numpy(dtype=np.float64), table.loc[train, "class"])
+            model = RandomForestClassifier(
+                n_estimators=250,
+                max_features="sqrt",
+                class_weight="balanced_subsample",
+                min_samples_leaf=2,
+                random_state=42,
+                n_jobs=-1,
+            )
+            model.fit(
+                table.loc[train, features].to_numpy(dtype=np.float64), table.loc[train, "class"]
+            )
             MODEL_PATH.parent.mkdir(parents=True, exist_ok=True)
-            joblib.dump({"model": model, "features": features, "classes": list(labels), "machine": "excavator",
-                         "trained_units": sorted(set(table.loc[train, "unit"])), "excluded_units": sorted(args.exclude)},
-                        MODEL_PATH)
-            print(f"Trained on {int(train.sum())} rows from {table.loc[train, 'unit'].nunique()} recordings "
-                  f"(excluded: {args.exclude or 'none'}); saved {MODEL_PATH.relative_to(ROOT)}")
+            joblib.dump(
+                {
+                    "model": model,
+                    "features": features,
+                    "classes": list(labels),
+                    "machine": "excavator",
+                    "trained_units": sorted(set(table.loc[train, "unit"])),
+                    "excluded_units": sorted(args.exclude),
+                },
+                MODEL_PATH,
+            )
+            print(
+                f"Trained on {int(train.sum())} rows from {table.loc[train, 'unit'].nunique()} recordings "
+                f"(excluded: {args.exclude or 'none'}); saved {MODEL_PATH.relative_to(ROOT)}"
+            )
 
         if run:
             main()
         return locals()
-
 
     def predict(run: bool = True) -> dict:
         """Predict the condition from any CSV and, if the true class is known, show the accuracy.
@@ -8794,7 +11725,9 @@ def _make_excavator():
 
         def read_any(path):
             table = load_csv(path)
-            if all(_is_number(c) for c in table.columns):   # no header row: plain column(s) of numbers
+            if all(
+                _is_number(c) for c in table.columns
+            ):  # no header row: plain column(s) of numbers
                 table = load_csv(path, header=None)
             return table
 
@@ -8809,15 +11742,25 @@ def _make_excavator():
             if not args.speed:
                 raise SystemExit("Raw recordings need --speed (F5, F15, F50 or F60)")
             ns = csv(run=False)
-            return ns["vibration_frame"](values, args.speed)[ns["VIB_NAMES"]].to_numpy(dtype=np.float64)
-
+            return ns["vibration_frame"](values, args.speed)[ns["VIB_NAMES"]].to_numpy(
+                dtype=np.float64
+            )
 
         def main():
             parser = argparse.ArgumentParser(description=predict.__doc__)
             parser.add_argument("--csv", required=True, help="path to the CSV file")
-            parser.add_argument("--label", help="true class of a raw recording, one of: healthy, bearing, unbalance, misalignment")
-            parser.add_argument("--column", help="column holding the raw signal (default: first numeric column)")
-            parser.add_argument("--speed", choices=("F5", "F15", "F50", "F60"), help="speed setting of a raw recording")
+            parser.add_argument(
+                "--label",
+                help="true class of a raw recording, one of: healthy, bearing, unbalance, misalignment",
+            )
+            parser.add_argument(
+                "--column", help="column holding the raw signal (default: first numeric column)"
+            )
+            parser.add_argument(
+                "--speed",
+                choices=("F5", "F15", "F50", "F60"),
+                help="speed setting of a raw recording",
+            )
             args = parser.parse_args()
             if not MODEL_PATH.is_file():
                 print("No saved model yet: training it now (train-final).")
@@ -8829,12 +11772,26 @@ def _make_excavator():
             if set(features) <= set(table.columns):
                 mode = "feature table"
                 x = table[features].to_numpy(dtype=np.float64)
-                units = table["unit"].astype(str).to_numpy() if "unit" in table.columns else np.full(len(table), path.stem)
-                truth = table["class"].astype(str).to_numpy() if "class" in table.columns else np.full(len(table), args.label)
+                units = (
+                    table["unit"].astype(str).to_numpy()
+                    if "unit" in table.columns
+                    else np.full(len(table), path.stem)
+                )
+                truth = (
+                    table["class"].astype(str).to_numpy()
+                    if "class" in table.columns
+                    else np.full(len(table), args.label)
+                )
             else:
                 mode = "raw recording"
-                column = args.column if args.column is not None else table.select_dtypes("number").columns[0]
-                values = table[column if column in table.columns else int(column)].to_numpy(dtype=np.float64)
+                column = (
+                    args.column
+                    if args.column is not None
+                    else table.select_dtypes("number").columns[0]
+                )
+                values = table[column if column in table.columns else int(column)].to_numpy(
+                    dtype=np.float64
+                )
                 x = raw_features(values, args)
                 units = np.full(len(x), path.stem)
                 truth = np.full(len(x), args.label)
@@ -8843,34 +11800,46 @@ def _make_excavator():
             for unit in dict.fromkeys(units):
                 mask = units == unit
                 mean = probabilities[mask].mean(axis=0)
-                rows.append({"recording": unit, "predicted": model.classes_[int(mean.argmax())],
-                             "confidence": round(float(mean.max()), 3), "true": truth[mask][0], "rows": int(mask.sum())})
+                rows.append(
+                    {
+                        "recording": unit,
+                        "predicted": model.classes_[int(mean.argmax())],
+                        "confidence": round(float(mean.max()), 3),
+                        "true": truth[mask][0],
+                        "rows": int(mask.sum()),
+                    }
+                )
             report = pd.DataFrame(rows)
-            print(f"Model: {saved['machine']} random forest | input: {mode} | {len(report)} recording(s)")
+            print(
+                f"Model: {saved['machine']} random forest | input: {mode} | {len(report)} recording(s)"
+            )
             print(report.to_string(index=False))
             seen = sorted(set(report["recording"]) & set(saved["trained_units"]))
             if seen:
-                print(f"WARNING: {seen} were used to train this model, so their accuracy is optimistic. "
-                      "Use train-final --exclude ... to test fairly.")
+                print(
+                    f"WARNING: {seen} were used to train this model, so their accuracy is optimistic. "
+                    "Use train-final --exclude ... to test fairly."
+                )
             known = report["true"].notna() & (report["true"].astype(str) != "None")
             if known.any():
                 k = report[known]
-                print(f"\nAccuracy: {accuracy_score(k['true'], k['predicted']):.3f} "
-                      f"({int((k['true'] == k['predicted']).sum())}/{len(k)} recordings)")
+                print(
+                    f"\nAccuracy: {accuracy_score(k['true'], k['predicted']):.3f} "
+                    f"({int((k['true'] == k['predicted']).sum())}/{len(k)} recordings)"
+                )
                 labels = saved["classes"]
                 print("Confusion matrix (rows = true, columns = predicted):", labels)
                 print(confusion_matrix(k["true"], k["predicted"], labels=labels))
             else:
-                print("\nNo true class given (use --label or a 'class' column) so accuracy cannot be computed.")
+                print(
+                    "\nNo true class given (use --label or a 'class' column) so accuracy cannot be computed."
+                )
 
         if run:
             main()
         return locals()
 
-
-    # ====================================================================================================
-    # Proposal Week 6: advanced ensemble models (XGBoost / LightGBM comparison table)
-    # ====================================================================================================
+    # --- Proposal Week 6: advanced ensemble models (XGBoost / LightGBM comparison table) ---
 
     def ensembles(run: bool = True) -> dict:
         """Proposal Week 6: compare advanced ensemble models on the same CSV sensor features and held-out tests.
@@ -8891,14 +11860,25 @@ def _make_excavator():
         import matplotlib.pyplot as plt
         import numpy as np
         from sklearn.dummy import DummyClassifier
-        from sklearn.ensemble import ExtraTreesClassifier, HistGradientBoostingClassifier, RandomForestClassifier
-        from sklearn.metrics import accuracy_score, balanced_accuracy_score, confusion_matrix, f1_score
+        from sklearn.ensemble import (
+            ExtraTreesClassifier,
+            HistGradientBoostingClassifier,
+            RandomForestClassifier,
+        )
+        from sklearn.metrics import (
+            accuracy_score,
+            balanced_accuracy_score,
+            confusion_matrix,
+            f1_score,
+        )
 
         try:
             from lightgbm import LGBMClassifier
             from xgboost import XGBClassifier
         except ImportError:
-            raise SystemExit("Install the ensemble libraries first:  python -m pip install xgboost lightgbm")
+            raise SystemExit(
+                "Install the ensemble libraries first:  python -m pip install xgboost lightgbm"
+            )
 
         MACHINE = "excavator"
         RESULT = ROOT / "Results" / MACHINE / f"{MACHINE}_ensembles.json"
@@ -8906,30 +11886,66 @@ def _make_excavator():
         MODELS = {
             "Majority class (control)": lambda: DummyClassifier(strategy="most_frequent"),
             "Random forest": lambda: RandomForestClassifier(
-                n_estimators=250, max_features="sqrt", class_weight="balanced_subsample",
-                min_samples_leaf=2, random_state=42, n_jobs=-1),
+                n_estimators=250,
+                max_features="sqrt",
+                class_weight="balanced_subsample",
+                min_samples_leaf=2,
+                random_state=42,
+                n_jobs=-1,
+            ),
             "Extra trees": lambda: ExtraTreesClassifier(
-                n_estimators=300, max_features="sqrt", class_weight="balanced",
-                min_samples_leaf=2, random_state=42, n_jobs=-1),
+                n_estimators=300,
+                max_features="sqrt",
+                class_weight="balanced",
+                min_samples_leaf=2,
+                random_state=42,
+                n_jobs=-1,
+            ),
             "Gradient boosting (scikit-learn)": lambda: HistGradientBoostingClassifier(
-                max_iter=200, learning_rate=0.05, class_weight="balanced", random_state=42),
+                max_iter=200, learning_rate=0.05, class_weight="balanced", random_state=42
+            ),
             "XGBoost": lambda: XGBClassifier(
-                n_estimators=300, max_depth=4, learning_rate=0.05, subsample=0.8, colsample_bytree=0.8,
-                tree_method="hist", random_state=42, n_jobs=-1, verbosity=0),
+                n_estimators=300,
+                max_depth=4,
+                learning_rate=0.05,
+                subsample=0.8,
+                colsample_bytree=0.8,
+                tree_method="hist",
+                random_state=42,
+                n_jobs=-1,
+                verbosity=0,
+            ),
             "LightGBM": lambda: LGBMClassifier(
-                n_estimators=300, num_leaves=15, learning_rate=0.05, subsample=0.8, subsample_freq=1,
-                colsample_bytree=0.8, class_weight="balanced", random_state=42, n_jobs=-1, verbose=-1),
+                n_estimators=300,
+                num_leaves=15,
+                learning_rate=0.05,
+                subsample=0.8,
+                subsample_freq=1,
+                colsample_bytree=0.8,
+                class_weight="balanced",
+                random_state=42,
+                n_jobs=-1,
+                verbose=-1,
+            ),
         }
 
         def main():
             parser = argparse.ArgumentParser(description=ensembles.__doc__)
-            parser.add_argument("--split", choices=("main", "time"), default="main",
-                                help="main (fair test) or time (secondary: first 60%% of every recording trains, "
-                                     "last 30%% tests, 10%% gap)")
+            parser.add_argument(
+                "--split",
+                choices=("main", "time"),
+                default="main",
+                help="main (fair test) or time (secondary: first 60%% of every recording trains, "
+                "last 30%% tests, 10%% gap)",
+            )
             args = parser.parse_args()
             nonlocal RESULT, FIGURE
-            table, feature_sets, labels, folds, test_description, notes = csv(run=False)["build_table"]()
-            feature_sets = feature_sets if isinstance(feature_sets, dict) else {"base": feature_sets}
+            table, feature_sets, labels, folds, test_description, notes = csv(run=False)[
+                "build_table"
+            ]()
+            feature_sets = (
+                feature_sets if isinstance(feature_sets, dict) else {"base": feature_sets}
+            )
             set_name, features = next(iter(feature_sets.items()))
             if args.split == "time":
                 if "window" not in table.columns:
@@ -8939,19 +11955,26 @@ def _make_excavator():
                 late = position.loc[table.index] > 0.7
                 table["unit"] = table["unit"] + np.where(late, "_late", "_early")
                 folds = lambda t: [t["unit"].str.endswith("_late").to_numpy()]
-                test_description = ("TIME SPLIT (secondary): first 60% of every recording trains, last 30% tests, 10% gap; "
-                                    "the same recordings appear in training, so this is easier than the main test")
+                test_description = (
+                    "TIME SPLIT (secondary): first 60% of every recording trains, last 30% tests, 10% gap; "
+                    "the same recordings appear in training, so this is easier than the main test"
+                )
                 RESULT = RESULT.with_name(RESULT.stem + "_timesplit.json")
                 FIGURE = FIGURE.with_name(FIGURE.stem + "_timesplit.png")
             x = table[features].to_numpy(dtype=np.float64)
             code = {label: i for i, label in enumerate(labels)}
             y = table["class"].map(code).to_numpy()
             units = table["unit"].astype(str).to_numpy()
-            result = {"purpose": "Proposal Week 6: advanced ensemble comparison (XGBoost / LightGBM)",
-                      "machine": MACHINE, "features": f"{set_name} ({len(features)} sensor features, same CSV as Week 6)",
-                      "classes": list(labels), "test": test_description,
-                      "selection_rule": "settings fixed in advance; no model or setting chosen from these test results",
-                      "notes": notes, "models": {}}
+            result = {
+                "purpose": "Proposal Week 6: advanced ensemble comparison (XGBoost / LightGBM)",
+                "machine": MACHINE,
+                "features": f"{set_name} ({len(features)} sensor features, same CSV as Week 6)",
+                "classes": list(labels),
+                "test": test_description,
+                "selection_rule": "settings fixed in advance; no model or setting chosen from these test results",
+                "notes": notes,
+                "models": {},
+            }
             for name, make in MODELS.items():
                 actual, predicted, seconds = [], [], 0.0
                 for test in folds(table):
@@ -8971,26 +11994,55 @@ def _make_excavator():
                 result["models"][name] = {
                     "test_units": len(actual),
                     "accuracy": round(float(accuracy_score(actual, predicted)), 4),
-                    "balanced_accuracy": round(float(balanced_accuracy_score(actual, predicted)), 4),
-                    "macro_f1": round(float(f1_score(actual, predicted, average="macro", labels=list(range(len(labels))),
-                                                     zero_division=0)), 4),
+                    "balanced_accuracy": round(
+                        float(balanced_accuracy_score(actual, predicted)), 4
+                    ),
+                    "macro_f1": round(
+                        float(
+                            f1_score(
+                                actual,
+                                predicted,
+                                average="macro",
+                                labels=list(range(len(labels))),
+                                zero_division=0,
+                            )
+                        ),
+                        4,
+                    ),
                     "train_seconds": round(seconds, 2),
-                    "confusion_matrix": confusion_matrix(actual, predicted, labels=list(range(len(labels)))).tolist(),
+                    "confusion_matrix": confusion_matrix(
+                        actual, predicted, labels=list(range(len(labels)))
+                    ).tolist(),
                 }
                 block = result["models"][name]
-                print(f"{name:33s} accuracy {block['accuracy']:.3f}  macro F1 {block['macro_f1']:.3f}  "
-                      f"({block['test_units']} recordings, {seconds:.1f} s to train)")
+                print(
+                    f"{name:33s} accuracy {block['accuracy']:.3f}  macro F1 {block['macro_f1']:.3f}  "
+                    f"({block['test_units']} recordings, {seconds:.1f} s to train)"
+                )
             names = list(result["models"])
             figure, axis = plt.subplots(figsize=(8, 3.6))
             positions = np.arange(len(names))
-            axis.bar(positions - 0.2, [result["models"][n]["accuracy"] for n in names], 0.4, label="accuracy")
-            axis.bar(positions + 0.2, [result["models"][n]["macro_f1"] for n in names], 0.4, label="macro F1")
+            axis.bar(
+                positions - 0.2,
+                [result["models"][n]["accuracy"] for n in names],
+                0.4,
+                label="accuracy",
+            )
+            axis.bar(
+                positions + 0.2,
+                [result["models"][n]["macro_f1"] for n in names],
+                0.4,
+                label="macro F1",
+            )
             axis.axhline(0.9, color="grey", ls="--", lw=1)
             axis.set_xticks(positions, [n.replace(" (", "\n(") for n in names], fontsize=7.5)
             axis.set_ylim(0, 1.05)
             axis.legend(fontsize=8)
-            axis.set_title(f"{MACHINE.replace('_', ' ').title()}: ensemble comparison"
-                           + (" - TIME SPLIT" if args.split == "time" else " (main test)"), fontsize=10)
+            axis.set_title(
+                f"{MACHINE.replace('_', ' ').title()}: ensemble comparison"
+                + (" - TIME SPLIT" if args.split == "time" else " (main test)"),
+                fontsize=10,
+            )
             figure.tight_layout()
             FIGURE.parent.mkdir(parents=True, exist_ok=True)
             figure.savefig(FIGURE, dpi=110)
@@ -9003,10 +12055,7 @@ def _make_excavator():
             main()
         return locals()
 
-
-    # ====================================================================================================
-    # Week 7: anomaly detection (proposal Week 7: Isolation Forest / One-Class SVM)
-    # ====================================================================================================
+    # --- Week 7: anomaly detection (proposal Week 7: Isolation Forest / One-Class SVM) ---
 
     def anomaly(run: bool = True) -> dict:
         """Week 7: anomaly detection. Learn what HEALTHY looks like, then flag anything unusual as a possible fault.
@@ -9036,24 +12085,32 @@ def _make_excavator():
         RESULT = ROOT / "Results" / MACHINE / f"{MACHINE}_anomaly.json"
         FIGURE = ROOT / "Figures" / MACHINE / f"{MACHINE}_anomaly.png"
         DETECTORS = {
-            "Isolation Forest": lambda: make_pipeline(StandardScaler(), IsolationForest(
-                n_estimators=300, max_samples=256, random_state=42, n_jobs=-1)),
-            "One-Class SVM": lambda: make_pipeline(StandardScaler(), OneClassSVM(kernel="rbf", gamma="scale", nu=0.05)),
+            "Isolation Forest": lambda: make_pipeline(
+                StandardScaler(),
+                IsolationForest(n_estimators=300, max_samples=256, random_state=42, n_jobs=-1),
+            ),
+            "One-Class SVM": lambda: make_pipeline(
+                StandardScaler(), OneClassSVM(kernel="rbf", gamma="scale", nu=0.05)
+            ),
         }
-        MAX_FIT_ROWS = 4000   # One-Class SVM gets slow on many rows; a fixed, evenly spaced subset is used
+        MAX_FIT_ROWS = (
+            4000  # One-Class SVM gets slow on many rows; a fixed, evenly spaced subset is used
+        )
 
         def fit(make, x):
             rows = np.linspace(0, len(x) - 1, min(len(x), MAX_FIT_ROWS)).astype(int)
             return make().fit(x[rows])
 
         def recording_scores(model, x, units):
-            window = -model.decision_function(x)   # higher = more unusual
+            window = -model.decision_function(x)  # higher = more unusual
             return {unit: float(window[units == unit].mean()) for unit in dict.fromkeys(units)}
 
         def threshold(make, x, units, healthy_units):
             """Highest score of any healthy training recording when it is left out of fitting (no test data used)."""
             if len(healthy_units) < 2:
-                raise SystemExit("Need at least two healthy training recordings to set the threshold")
+                raise SystemExit(
+                    "Need at least two healthy training recordings to set the threshold"
+                )
             scores = []
             for unit in healthy_units:
                 others = np.isin(units, [u for u in healthy_units if u != unit])
@@ -9063,13 +12120,21 @@ def _make_excavator():
 
         def main():
             parser = argparse.ArgumentParser(description=anomaly.__doc__)
-            parser.add_argument("--split", choices=("main", "time"), default="main",
-                                help="main (fair: held-out recordings) or time (secondary: first 60%% of every recording "
-                                     "trains, last 30%% tests, 10%% gap)")
+            parser.add_argument(
+                "--split",
+                choices=("main", "time"),
+                default="main",
+                help="main (fair: held-out recordings) or time (secondary: first 60%% of every recording "
+                "trains, last 30%% tests, 10%% gap)",
+            )
             args = parser.parse_args()
             nonlocal RESULT, FIGURE
-            table, feature_sets, labels, folds, test_description, notes = csv(run=False)["build_table"]()
-            feature_sets = feature_sets if isinstance(feature_sets, dict) else {"base": feature_sets}
+            table, feature_sets, labels, folds, test_description, notes = csv(run=False)[
+                "build_table"
+            ]()
+            feature_sets = (
+                feature_sets if isinstance(feature_sets, dict) else {"base": feature_sets}
+            )
             set_name, features = next(iter(feature_sets.items()))
             if args.split == "time":
                 if "window" not in table.columns:
@@ -9079,8 +12144,10 @@ def _make_excavator():
                 late = position.loc[table.index] > 0.7
                 table["unit"] = table["unit"] + np.where(late, "_late", "_early")
                 folds = lambda t: [t["unit"].str.endswith("_late").to_numpy()]
-                test_description = ("TIME SPLIT (secondary): healthy rows from the first 60% of every recording train, "
-                                    "the last 30% of every recording is tested (10% gap); easier than the main test")
+                test_description = (
+                    "TIME SPLIT (secondary): healthy rows from the first 60% of every recording train, "
+                    "the last 30% of every recording is tested (10% gap); easier than the main test"
+                )
                 RESULT = RESULT.with_name(RESULT.stem + "_timesplit.json")
                 FIGURE = FIGURE.with_name(FIGURE.stem + "_timesplit.png")
             x = table[features].to_numpy(dtype=np.float64)
@@ -9089,11 +12156,13 @@ def _make_excavator():
             fault_classes = [c for c in labels if c != "healthy"]
             result = {
                 "purpose": "Week 7 (proposal): anomaly detection trained on healthy data only",
-                "machine": MACHINE, "features": f"{set_name} ({len(features)} sensor features, same CSV as Week 6)",
+                "machine": MACHINE,
+                "features": f"{set_name} ({len(features)} sensor features, same CSV as Week 6)",
                 "test": test_description,
                 "threshold_rule": "highest leave-one-recording-out score among the healthy TRAINING recordings; "
-                                  "no test data and no fault labels are used to train or to set it",
-                "notes": notes, "detectors": {},
+                "no test data and no fault labels are used to train or to set it",
+                "notes": notes,
+                "detectors": {},
             }
             figure, axes = plt.subplots(1, len(DETECTORS), figsize=(5.2 * len(DETECTORS), 3.6))
             for axis, (name, make) in zip(np.atleast_1d(axes), DETECTORS.items()):
@@ -9104,15 +12173,26 @@ def _make_excavator():
                     model = fit(make, x[np.isin(units, train_healthy)])
                     scores = recording_scores(model, x[test], units[test])
                     for unit, score in scores.items():
-                        rows.append({"unit": unit, "class": y[units == unit][0], "margin": score - cut})
+                        rows.append(
+                            {"unit": unit, "class": y[units == unit][0], "margin": score - cut}
+                        )
                 truth = np.array([r["class"] != "healthy" for r in rows])
                 margin = np.array([r["margin"] for r in rows])
                 alarm = margin > 0
-                per_class = {c: round(float(alarm[[r["class"] == c for r in rows]].mean()), 4)
-                             for c in fault_classes if any(r["class"] == c for r in rows)}
+                per_class = {
+                    c: round(float(alarm[[r["class"] == c for r in rows]].mean()), 4)
+                    for c in fault_classes
+                    if any(r["class"] == c for r in rows)
+                }
                 block = {
-                    "test_recordings": len(rows), "healthy": int((~truth).sum()), "faulty": int(truth.sum()),
-                    "roc_auc": round(float(roc_auc_score(truth, margin)), 4) if 0 < truth.sum() < len(truth) else None,
+                    "test_recordings": len(rows),
+                    "healthy": int((~truth).sum()),
+                    "faulty": int(truth.sum()),
+                    "roc_auc": (
+                        round(float(roc_auc_score(truth, margin)), 4)
+                        if 0 < truth.sum() < len(truth)
+                        else None
+                    ),
                     "fault_detection_rate": round(float(alarm[truth].mean()), 4),
                     "false_alarm_rate": round(float(alarm[~truth].mean()), 4),
                     "accuracy": round(float((alarm == truth).mean()), 4),
@@ -9120,20 +12200,32 @@ def _make_excavator():
                     "recordings": [{**r, "margin": round(r["margin"], 4)} for r in rows],
                 }
                 result["detectors"][name] = block
-                print(f"{name:17s} ROC-AUC {block['roc_auc']}  faults detected {block['fault_detection_rate']:.3f}  "
-                      f"false alarms {block['false_alarm_rate']:.3f}  ({len(rows)} test recordings)")
+                print(
+                    f"{name:17s} ROC-AUC {block['roc_auc']}  faults detected {block['fault_detection_rate']:.3f}  "
+                    f"false alarms {block['false_alarm_rate']:.3f}  ({len(rows)} test recordings)"
+                )
                 order = ["healthy", *fault_classes]
                 for k, c in enumerate(order):
                     values = margin[[r["class"] == c for r in rows]]
-                    axis.scatter(np.full(len(values), k) + np.linspace(-0.15, 0.15, len(values)), values, s=18,
-                                 color="tab:green" if c == "healthy" else "tab:red")
+                    axis.scatter(
+                        np.full(len(values), k) + np.linspace(-0.15, 0.15, len(values)),
+                        values,
+                        s=18,
+                        color="tab:green" if c == "healthy" else "tab:red",
+                    )
                 axis.axhline(0, color="black", lw=1, ls="--")
                 axis.set_xticks(range(len(order)), order, rotation=20)
                 axis.set_ylabel("score minus alarm threshold")
-                axis.set_title(f"{name}: AUC {block['roc_auc']}, detect {block['fault_detection_rate']:.2f}, "
-                               f"false alarm {block['false_alarm_rate']:.2f}", fontsize=8.5)
-            figure.suptitle(f"{MACHINE.replace('_', ' ').title()} anomaly detection (above the line = alarm)"
-                            + (" - TIME SPLIT" if args.split == "time" else ""), fontsize=10)
+                axis.set_title(
+                    f"{name}: AUC {block['roc_auc']}, detect {block['fault_detection_rate']:.2f}, "
+                    f"false alarm {block['false_alarm_rate']:.2f}",
+                    fontsize=8.5,
+                )
+            figure.suptitle(
+                f"{MACHINE.replace('_', ' ').title()} anomaly detection (above the line = alarm)"
+                + (" - TIME SPLIT" if args.split == "time" else ""),
+                fontsize=10,
+            )
             figure.tight_layout()
             FIGURE.parent.mkdir(parents=True, exist_ok=True)
             figure.savefig(FIGURE, dpi=110)
@@ -9146,32 +12238,35 @@ def _make_excavator():
             main()
         return locals()
 
-
-    # ====================================================================================================
-    # Week 7: full-data sensor experiment (every CORA sensor, window and recording)
-    # ====================================================================================================
+    # --- Week 7: full-data sensor experiment (every CORA sensor, window and recording) ---
 
     def fulldata(run: bool = True) -> dict:
         """Week 7: every CORA sensor (vibration X/Y/Z, current C1-C3, temperatures T1-T6), every 1 s window, and the
-        five start-up test repeats per condition and speed. See Models/cora_fulldata.py. Saves *_fulldata.json."""
+        five start-up test repeats per condition and speed. See Models/cora_fulldata.py. Saves *_fulldata.json.
+        """
         import argparse
         import importlib.util
 
         def main():
             parser = argparse.ArgumentParser(description=fulldata.__doc__)
-            parser.add_argument("--part", choices=("classify", "ensembles", "anomaly", "all"), default="classify",
-                                help="classify (default), ensembles (XGBoost/LightGBM comparison), anomaly, or all")
+            parser.add_argument(
+                "--part",
+                choices=("classify", "ensembles", "anomaly", "all"),
+                default="classify",
+                help="classify (default), ensembles (XGBoost/LightGBM comparison), anomaly, or all",
+            )
             part = parser.parse_args().part
             engine = get_model("cora_fulldata")
             conditions = {"H": "healthy", "BD": "bearing", "U": "unbalance", "M": "misalignment"}
             for name in ("classify", "ensembles", "anomaly"):
                 if part in (name, "all"):
-                    (engine.run if name == "classify" else getattr(engine, name))("excavator", conditions)
+                    (engine.run if name == "classify" else getattr(engine, name))(
+                        "excavator", conditions
+                    )
 
         if run:
             main()
         return locals()
-
 
     def thermal_motor(run: bool = True) -> dict:
         """Week 8: separate image data for the Excavator. Induction-motor thermal images (Kulkarni et al.,
@@ -9192,15 +12287,22 @@ def _make_excavator():
         import numpy as np
         import torch
         from sklearn.linear_model import LogisticRegression
-        from sklearn.metrics import accuracy_score, balanced_accuracy_score, confusion_matrix, f1_score
+        from sklearn.metrics import (
+            accuracy_score,
+            balanced_accuracy_score,
+            confusion_matrix,
+            f1_score,
+        )
         from torch import nn
         from torchvision.models import ResNet18_Weights, resnet18
 
-        SOURCE = ROOT / "Raw_Data" / "kulkarni_motor_thermal" / "ext" / "Induction Motor-Thermal Images"
+        SOURCE = (
+            ROOT / "Raw_Data" / "kulkarni_motor_thermal" / "ext" / "Induction Motor-Thermal Images"
+        )
         RESULT = ROOT / "Results" / "excavator" / "excavator_thermal_motor_2class.json"
         FIGURE = ROOT / "Figures" / "excavator" / "excavator_thermal_motor_2class.png"
         LABELS = ["healthy", "bearing"]
-        FOLDERS = {"H": "healthy", "C": "bearing"}           # H = healthy, C = corroded bearing
+        FOLDERS = {"H": "healthy", "C": "bearing"}  # H = healthy, C = corroded bearing
         LOADS = {"NL": "no load", "ML": "medium load", "FL": "full load"}
         SIZE, MASK_TOP, SEGMENTS = 224, 0.15, 10
         MAX_EPOCHS, BATCH, LEARNING_RATE, SEED = 8, 32, 3e-4, 613
@@ -9211,9 +12313,13 @@ def _make_excavator():
                 label, load_code = FOLDERS[folder.name[0]], folder.name[1:]
                 for path in sorted(folder.glob("*.jpg")):
                     image = cv2.cvtColor(load_image(str(path)), cv2.COLOR_BGR2RGB)
-                    image[: int(MASK_TOP * image.shape[0])] = 0        # hide the temperature reading and logo
+                    image[: int(MASK_TOP * image.shape[0])] = (
+                        0  # hide the temperature reading and logo
+                    )
                     x.append(cv2.resize(image, (SIZE, SIZE), interpolation=cv2.INTER_AREA))
-                    y.append(LABELS.index(label)), load.append(load_code), session.append(folder.name)
+                    y.append(LABELS.index(label)), load.append(load_code), session.append(
+                        folder.name
+                    )
             return np.stack(x), np.array(y), np.array(load), np.array(session)
 
         def to_tensor(images):
@@ -9229,7 +12335,10 @@ def _make_excavator():
 
         def new_model():
             model = resnet18(weights=ResNet18_Weights.IMAGENET1K_V1)
-            for name, parameter in model.named_parameters():      # fine-tune only the last block (CPU friendly)
+            for (
+                name,
+                parameter,
+            ) in model.named_parameters():  # fine-tune only the last block (CPU friendly)
                 parameter.requires_grad = name.startswith(("layer4", "fc"))
             model.fc = nn.Linear(model.fc.in_features, len(LABELS))
             return model
@@ -9237,21 +12346,25 @@ def _make_excavator():
         def predict(model, x):
             model.eval()
             with torch.no_grad():
-                return torch.cat([model(x[i:i + 64]).softmax(1) for i in range(0, len(x), 64)]).numpy()
+                return torch.cat(
+                    [model(x[i : i + 64]).softmax(1) for i in range(0, len(x), 64)]
+                ).numpy()
 
         def train(x, y, epochs, x_check=None, y_check=None):
             """Train for `epochs`; when check data is given, return the check accuracy after every epoch."""
             torch.manual_seed(SEED)
             generator = torch.Generator().manual_seed(SEED)
             model = new_model()
-            optimiser = torch.optim.AdamW([p for p in model.parameters() if p.requires_grad], lr=LEARNING_RATE)
+            optimiser = torch.optim.AdamW(
+                [p for p in model.parameters() if p.requires_grad], lr=LEARNING_RATE
+            )
             loss_fn = nn.CrossEntropyLoss()
             yt, history = torch.from_numpy(y).long(), []
             for _ in range(epochs):
                 model.train()
                 order = torch.randperm(len(x), generator=generator)
                 for start in range(0, len(x), BATCH):
-                    rows = order[start:start + BATCH]
+                    rows = order[start : start + BATCH]
                     optimiser.zero_grad()
                     loss_fn(model(augment(x[rows], generator)), yt[rows]).backward()
                     optimiser.step()
@@ -9260,17 +12373,26 @@ def _make_excavator():
             return model, history
 
         def score(actual, predicted):
-            return {"test_units": int(len(actual)),
-                    "accuracy": round(float(accuracy_score(actual, predicted)), 4),
-                    "balanced_accuracy": round(float(balanced_accuracy_score(actual, predicted)), 4),
-                    "macro_f1": round(float(f1_score(actual, predicted, average="macro", zero_division=0)), 4),
-                    "confusion_matrix": confusion_matrix(actual, predicted, labels=range(len(LABELS))).tolist()}
+            return {
+                "test_units": int(len(actual)),
+                "accuracy": round(float(accuracy_score(actual, predicted)), 4),
+                "balanced_accuracy": round(float(balanced_accuracy_score(actual, predicted)), 4),
+                "macro_f1": round(
+                    float(f1_score(actual, predicted, average="macro", zero_division=0)), 4
+                ),
+                "confusion_matrix": confusion_matrix(
+                    actual, predicted, labels=range(len(LABELS))
+                ).tolist(),
+            }
 
         def plot(result, path):
-            levels = [("every test image", result["image_level"]), ("per 1/10 session segment", result["segment_level"]),
-                      ("per whole session", result["session_level"]),
-                      ("control: brightness only", result["brightness_control_image_level"]),
-                      ("control: border only, motor hidden", result["border_only_control_image_level"])]
+            levels = [
+                ("every test image", result["image_level"]),
+                ("per 1/10 session segment", result["segment_level"]),
+                ("per whole session", result["session_level"]),
+                ("control: brightness only", result["brightness_control_image_level"]),
+                ("control: border only, motor hidden", result["border_only_control_image_level"]),
+            ]
             figure, axes = plt.subplots(1, len(levels), figsize=(3.4 * len(levels), 3.8))
             for axis, (name, block) in zip(axes, levels):
                 array = np.asarray(block["confusion_matrix"])
@@ -9279,13 +12401,26 @@ def _make_excavator():
                 axis.set_yticks(range(len(LABELS)), LABELS)
                 axis.set_xlabel("Predicted")
                 axis.set_ylabel("Actual")
-                axis.set_title(f"{name}\n{block['test_units']:,} tested, accuracy {block['accuracy']:.3f}", fontsize=9)
+                axis.set_title(
+                    f"{name}\n{block['test_units']:,} tested, accuracy {block['accuracy']:.3f}",
+                    fontsize=9,
+                )
                 for i in range(len(LABELS)):
                     for j in range(len(LABELS)):
-                        axis.text(j, i, f"{array[i, j]:,}", ha="center", va="center", fontsize=9,
-                                  color="white" if array[i, j] > array.max() / 2 else "black")
-            figure.suptitle(f"Excavator bearing, separate thermal-image data (Kulkarni): {result['images']} images, "
-                            f"6 sessions; each load held out in turn", fontsize=10)
+                        axis.text(
+                            j,
+                            i,
+                            f"{array[i, j]:,}",
+                            ha="center",
+                            va="center",
+                            fontsize=9,
+                            color="white" if array[i, j] > array.max() / 2 else "black",
+                        )
+            figure.suptitle(
+                f"Excavator bearing, separate thermal-image data (Kulkarni): {result['images']} images, "
+                f"6 sessions; each load held out in turn",
+                fontsize=10,
+            )
             figure.tight_layout()
             path.parent.mkdir(parents=True, exist_ok=True)
             figure.savefig(path, dpi=110)
@@ -9293,17 +12428,26 @@ def _make_excavator():
 
         def main():
             if not SOURCE.is_dir():
-                raise SystemExit(f"Missing {SOURCE}: download Mendeley Data pymtdhfzbj v2 and extract it there")
+                raise SystemExit(
+                    f"Missing {SOURCE}: download Mendeley Data pymtdhfzbj v2 and extract it there"
+                )
             random.seed(SEED), np.random.seed(SEED), torch.manual_seed(SEED)
             images, y, load, session = load_images()
             x = to_tensor(images)
             brightness = images.reshape(len(images), -1).mean(axis=1, keepdims=True)
             # second control: tiny grey images with the motor area hidden, so only framing and background remain
             border = images.mean(axis=3).copy()
-            border[:, int(0.25 * SIZE):int(0.85 * SIZE), int(0.2 * SIZE):int(0.8 * SIZE)] = 0
-            border = np.stack([cv2.resize(b, (16, 12), interpolation=cv2.INTER_AREA).ravel() for b in border]) / 255
-            print(f"{len(y)} images, {len(set(session))} sessions: "
-                  + ", ".join(f"{s} {int((session == s).sum())}" for s in sorted(set(session))))
+            border[:, int(0.25 * SIZE) : int(0.85 * SIZE), int(0.2 * SIZE) : int(0.8 * SIZE)] = 0
+            border = (
+                np.stack(
+                    [cv2.resize(b, (16, 12), interpolation=cv2.INTER_AREA).ravel() for b in border]
+                )
+                / 255
+            )
+            print(
+                f"{len(y)} images, {len(set(session))} sessions: "
+                + ", ".join(f"{s} {int((session == s).sum())}" for s in sorted(set(session)))
+            )
             image_actual, image_predicted, control_predicted, border_predicted = [], [], [], []
             segment_actual, segment_predicted, session_actual, session_predicted = [], [], [], []
             per_session, folds = {}, []
@@ -9313,68 +12457,144 @@ def _make_excavator():
                 curves = []
                 for check_load in sorted(set(load[train_rows])):
                     inner_train, inner_check = train_rows & (load != check_load), load == check_load
-                    curves.append(train(x[inner_train], y[inner_train], MAX_EPOCHS, x[inner_check], y[inner_check])[1])
+                    curves.append(
+                        train(
+                            x[inner_train],
+                            y[inner_train],
+                            MAX_EPOCHS,
+                            x[inner_check],
+                            y[inner_check],
+                        )[1]
+                    )
                 epochs = int(np.argmax(np.mean(curves, axis=0))) + 1
                 model, _ = train(x[train_rows], y[train_rows], epochs)
                 p = predict(model, x[test_rows])
-                control = LogisticRegression().fit(brightness[train_rows], y[train_rows]).predict(brightness[test_rows])
+                control = (
+                    LogisticRegression()
+                    .fit(brightness[train_rows], y[train_rows])
+                    .predict(brightness[test_rows])
+                )
                 image_actual += list(y[test_rows])
                 image_predicted += list(p.argmax(1))
                 control_predicted += list(control)
-                border_control = LogisticRegression(max_iter=3000).fit(border[train_rows], y[train_rows]).predict(border[test_rows])
+                border_control = (
+                    LogisticRegression(max_iter=3000)
+                    .fit(border[train_rows], y[train_rows])
+                    .predict(border[test_rows])
+                )
                 border_predicted += list(border_control)
                 for s in sorted(set(session[test_rows])):
                     rows = session[test_rows] == s
                     ps, true = p[rows], int(y[test_rows][rows][0])
                     for part in np.array_split(np.arange(len(ps)), SEGMENTS):
-                        segment_actual.append(true), segment_predicted.append(int(ps[part].mean(0).argmax()))
+                        segment_actual.append(true), segment_predicted.append(
+                            int(ps[part].mean(0).argmax())
+                        )
                     session_actual.append(true), session_predicted.append(int(ps.mean(0).argmax()))
-                    per_session[s] = {"class": LABELS[true], "images": int(len(ps)),
-                                      "images_predicted": {l: int((ps.argmax(1) == i).sum()) for i, l in enumerate(LABELS)},
-                                      "session_prediction": LABELS[session_predicted[-1]]}
-                folds.append({"test_load": LOADS[test_load], "epochs_chosen": epochs, "test_images": int(test_rows.sum()),
-                              "image_accuracy": round(float(accuracy_score(y[test_rows], p.argmax(1))), 4),
-                              "brightness_control_accuracy": round(float(accuracy_score(y[test_rows], control)), 4),
-                              "border_only_control_accuracy": round(float(accuracy_score(y[test_rows], border_control)), 4)})
-                print(f"held-out {LOADS[test_load]:11s}: {epochs} epochs; image accuracy {folds[-1]['image_accuracy']:.3f}"
-                      f" (brightness control {folds[-1]['brightness_control_accuracy']:.3f}, "
-                      f"border-only control {folds[-1]['border_only_control_accuracy']:.3f})", flush=True)
+                    per_session[s] = {
+                        "class": LABELS[true],
+                        "images": int(len(ps)),
+                        "images_predicted": {
+                            l: int((ps.argmax(1) == i).sum()) for i, l in enumerate(LABELS)
+                        },
+                        "session_prediction": LABELS[session_predicted[-1]],
+                    }
+                folds.append(
+                    {
+                        "test_load": LOADS[test_load],
+                        "epochs_chosen": epochs,
+                        "test_images": int(test_rows.sum()),
+                        "image_accuracy": round(
+                            float(accuracy_score(y[test_rows], p.argmax(1))), 4
+                        ),
+                        "brightness_control_accuracy": round(
+                            float(accuracy_score(y[test_rows], control)), 4
+                        ),
+                        "border_only_control_accuracy": round(
+                            float(accuracy_score(y[test_rows], border_control)), 4
+                        ),
+                    }
+                )
+                print(
+                    f"held-out {LOADS[test_load]:11s}: {epochs} epochs; image accuracy {folds[-1]['image_accuracy']:.3f}"
+                    f" (brightness control {folds[-1]['brightness_control_accuracy']:.3f}, "
+                    f"border-only control {folds[-1]['border_only_control_accuracy']:.3f})",
+                    flush=True,
+                )
             result = {
                 "purpose": "separate image data for the Excavator bearing task (not CORA)",
                 "source": "Kulkarni et al., Induction Motor-Thermal Images, Mendeley Data pymtdhfzbj v2, CC BY 4.0",
-                "images": int(len(y)), "classes": LABELS,
+                "images": int(len(y)),
+                "classes": LABELS,
                 "test": "leave one load out (no / medium / full load), 3 rounds; epochs chosen on the training loads only",
                 "preprocessing": f"top {int(MASK_TOP * 100)}% of every image masked (temperature reading and logo), "
-                                 f"resized to {SIZE}x{SIZE}; ImageNet ResNet18 with only layer4 and the head trained",
-                "settings": {"max_epochs": MAX_EPOCHS, "batch": BATCH, "learning_rate": LEARNING_RATE, "seed": SEED},
+                f"resized to {SIZE}x{SIZE}; ImageNet ResNet18 with only layer4 and the head trained",
+                "settings": {
+                    "max_epochs": MAX_EPOCHS,
+                    "batch": BATCH,
+                    "learning_rate": LEARNING_RATE,
+                    "seed": SEED,
+                },
                 "folds": folds,
                 "image_level": score(image_actual, image_predicted),
-                "segment_level": {**score(segment_actual, segment_predicted), "segments_per_session": SEGMENTS},
+                "segment_level": {
+                    **score(segment_actual, segment_predicted),
+                    "segments_per_session": SEGMENTS,
+                },
                 "session_level": score(session_actual, session_predicted),
                 "brightness_control_image_level": score(image_actual, control_predicted),
                 "border_only_control_image_level": score(image_actual, border_predicted),
                 "per_session": per_session,
                 "caveat": "only 6 sessions (one per class and load) from one motor; images within a session are "
-                          "consecutive and related, and only 2 classes match the Excavator's 4. The healthy and "
-                          "corroded sessions were filmed with different framing: a model that sees only the image "
-                          "border (motor hidden) also scores well, so a high CNN score does not prove it detects "
-                          "bearing corrosion",
+                "consecutive and related, and only 2 classes match the Excavator's 4. The healthy and "
+                "corroded sessions were filmed with different framing: a model that sees only the image "
+                "border (motor hidden) also scores well, so a high CNN score does not prove it detects "
+                "bearing corrosion",
             }
             RESULT.parent.mkdir(parents=True, exist_ok=True)
             RESULT.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
             plot(result, FIGURE)
-            print(f"Image accuracy {result['image_level']['accuracy']:.3f} on {len(y)} images; session accuracy "
-                  f"{result['session_level']['accuracy']:.3f} on 6 sessions; brightness control "
-                  f"{result['brightness_control_image_level']['accuracy']:.3f}; border-only control "
-                  f"{result['border_only_control_image_level']['accuracy']:.3f}")
+            print(
+                f"Image accuracy {result['image_level']['accuracy']:.3f} on {len(y)} images; session accuracy "
+                f"{result['session_level']['accuracy']:.3f} on 6 sessions; brightness control "
+                f"{result['brightness_control_image_level']['accuracy']:.3f}; border-only control "
+                f"{result['border_only_control_image_level']['accuracy']:.3f}"
+            )
             print(f"Saved {RESULT.relative_to(ROOT)} and {FIGURE.relative_to(ROOT)}")
 
         if run:
             main()
         return locals()
 
+    def binary():
+        import argparse
+
+        argparse.ArgumentParser(description=run_excavator_binary.__doc__).parse_args()
+        return run_excavator_binary()
+
+    def binary_recording():
+        import argparse
+
+        argparse.ArgumentParser(description=run_excavator_recording_followup.__doc__).parse_args()
+        return run_excavator_recording_followup()
+
+    def binary_cnn():
+        import argparse
+
+        argparse.ArgumentParser(description=run_excavator_binary_cnn.__doc__).parse_args()
+        return run_excavator_binary_cnn()
+
+    def binary_speed_reference():
+        import argparse
+
+        argparse.ArgumentParser(description=run_excavator_speed_reference.__doc__).parse_args()
+        return run_excavator_speed_reference()
 
     COMMANDS = {
+        "binary-cnn": binary_cnn,
+        "binary-speed-reference": binary_speed_reference,
+        "binary-recording": binary_recording,
+        "binary": binary,
         "thermal-motor": thermal_motor,
         "fulldata": fulldata,
         "ensembles": ensembles,
@@ -9387,28 +12607,26 @@ def _make_excavator():
         "cnn": cnn,
         "cnn-pretrained": cnn_pretrained,
     }
-    RUN_ALL = ['csv', 'export-images', 'cnn-pretrained']
-
+    RUN_ALL = ["csv", "export-images", "cnn-pretrained"]
 
     def cli() -> None:
         if len(sys.argv) < 2 or sys.argv[1] not in (*COMMANDS, "all"):
             print(__doc__)
             raise SystemExit(0 if len(sys.argv) < 2 or sys.argv[1] in ("-h", "--help") else 2)
         command, options = sys.argv[1], sys.argv[2:]
-        for name in (RUN_ALL if command == "all" else [command]):
+        for name in RUN_ALL if command == "all" else [command]:
             sys.argv = [f"excavator.py {name}", *(options if command != "all" else [])]
             COMMANDS[name]()
 
-
     return SimpleNamespace(**locals())
 
-#endregion
+
+# endregion
 
 
 # DOZER MODEL IMPLEMENTATION
-#region Dozer: data, preprocessing, models and evaluation
+# region Dozer: data, preprocessing, models and evaluation
 def _make_dozer():
-    __doc__ = "Dozer (machine 5): track final-drive gear wear, CORA vibration/temperature vs infrared camera.\n\nThis equipment section contains its model implementation. The combined notebook\nNotebook/Mining_Equipment_Condition_Monitoring.ipynb runs these commands and shows the results.\n\nIMPORTANT: there is no public dozer dataset with matching sensor and camera data. As planned in the\ndataset manifest, the Dozer final drive uses the SAME 16 CORA gear-wear runs as the Belt Conveyor\n(not new data), with the same 4 classes: healthy, wear25, wear50, wear75. Its scores are\ntherefore expected to match the Belt Conveyor's; it maps that rig to the dozer track final drive.\nThe data loading is shared with Models/belt_conveyor.py.\n\nUsage:\n    python Notebook/notebook_helpers.py dozer <command> [options]\n    python Notebook/notebook_helpers.py dozer <command> --help\n\nCommands:\n    csv             4-class sensor model from a CSV feature table (--split time for the secondary test)\n    export-images   save the infrared images as named files in Images/dozer/<class>/ (local only)\n    cnn             small CNN with data augmentation on the named images (run export-images first)\n    cnn-pretrained  pretrained ResNet18 on the named images (--split time for the secondary test)\n    ensembles       XGBoost / LightGBM vs random forest etc. (--split time for the secondary test)\n    anomaly         anomaly detection trained on healthy data only (--split time for the secondary test)\n    train-final     train the sensor model on all data and save it (--exclude to leave recordings out)\n    predict         predict from any CSV (feature table or raw recording) and show accuracy if labels are known\n    fulldata        Week 7: every CORA sensor, window and start-up recording (Models/cora_fulldata.py)\n                    (--part ensembles / anomaly / all: XGBoost-LightGBM comparison, anomaly detection)\n    all             run csv, ensembles and anomaly\n\nRaw data stays in Raw_Data/ and Processed_Data/ (not in Git)."
     """Dozer (machine 5): track final-drive gear wear, CORA vibration/temperature vs infrared camera.
 
     This equipment section contains its model implementation. The combined notebook
@@ -9439,16 +12657,14 @@ def _make_dozer():
 
     Raw data stays in Raw_Data/ and Processed_Data/ (not in Git).
     """
-
+    __doc__ = cleandoc(_make_dozer.__doc__)
 
     import importlib.util
     import sys
     from pathlib import Path
 
-
     # The Dozer reuses the Belt Conveyor's CORA data loading (same rig, same runs).
     BELT = get_model("belt_conveyor")
-
 
     def export_images(run: bool = True) -> dict:
         """Week 6: save this machine's camera images as named PNG files for the CNN.
@@ -9474,29 +12690,15 @@ def _make_dozer():
         FRAMES = SECONDS * 1_000_000 // BIN_US
 
         def event_frames(stream):
-            """First 5 s of an event recording as 20 images of 250 ms; channel 0 = brighter, 1 = darker events."""
-            while True:
-                first = stream.read(1)
-                if first != b"%":
-                    break
-                stream.readline()
-            stream.read(1)
-            counts = np.zeros((FRAMES, 2, HEIGHT, WIDTH), dtype=np.uint32)
-            end = SECONDS * 1_000_000
-            while True:
-                chunk = stream.read(8 * 500_000)
-                if not chunk:
-                    break
-                ev = np.frombuffer(chunk, dtype=EVENT)
-                keep = ev["t"] < end
-                t, xy = ev["t"][keep], ev["xy"][keep]
-                x, y, polarity = xy & 0x3FFF, (xy >> 14) & 0x3FFF, (xy >> 28) & 1
-                index = ((((t // BIN_US) * 2 + (1 - polarity)) * HEIGHT + (y * HEIGHT // 480)) * WIDTH
-                         + (x * WIDTH // 640)).astype(np.int64)
-                counts += np.bincount(index, minlength=counts.size).reshape(counts.shape).astype(np.uint32)
-                if len(ev) and ev["t"][-1] >= end:
-                    break
-            return counts
+            return bin_event_stream(
+                stream,
+                frames=FRAMES,
+                seconds=SECONDS,
+                height=HEIGHT,
+                width=WIDTH,
+                event_dtype=EVENT,
+                bin_microseconds=BIN_US,
+            )
 
         def event_png(frame):
             """Brighter events in red, darker events in green, log-scaled to 0-255."""
@@ -9508,7 +12710,15 @@ def _make_dozer():
             folder = OUT / label
             folder.mkdir(parents=True, exist_ok=True)
             cv2.imwrite(str(folder / name), image)
-            rows.append({"file": f"{label}/{name}", "machine": MACHINE, "class": label, "unit": unit, "group": group})
+            rows.append(
+                {
+                    "file": f"{label}/{name}",
+                    "machine": MACHINE,
+                    "class": label,
+                    "unit": unit,
+                    "group": group,
+                }
+            )
 
         def export():
             rows = []
@@ -9516,16 +12726,26 @@ def _make_dozer():
             for condition, label in labels.items():
                 for speed in ("F5", "F15", "F50", "F60"):
                     unit = f"{condition}_{speed}_S"
-                    frames = loadmat(ROOT / "Raw_Data" / "cora_gear_wear" / f"{unit}.mat",
-                                     variable_names=["imagenes_celda"])["imagenes_celda"]
+                    frames = loadmat(
+                        ROOT / "Raw_Data" / "cora_gear_wear" / f"{unit}.mat",
+                        variable_names=["imagenes_celda"],
+                    )["imagenes_celda"]
                     for k, frame in enumerate(frames.flat):
                         if k % 3:
                             continue  # every 3rd frame: 150 images per run
-                        gray = cv2.cvtColor(cv2.resize(np.asarray(frame), (WIDTH, HEIGHT)), cv2.COLOR_RGB2GRAY)
-                        write(rows, label, unit, speed, f"{MACHINE}_{label}_{speed}_f{k:03d}.png", gray)
+                        gray = cv2.cvtColor(
+                            cv2.resize(np.asarray(frame), (WIDTH, HEIGHT)), cv2.COLOR_RGB2GRAY
+                        )
+                        write(
+                            rows,
+                            label,
+                            unit,
+                            speed,
+                            f"{MACHINE}_{label}_{speed}_f{k:03d}.png",
+                            gray,
+                        )
                     print(f"{unit}: done", flush=True)
             return rows
-
 
         def main():
             parser = argparse.ArgumentParser(description=export_images.__doc__)
@@ -9534,7 +12754,9 @@ def _make_dozer():
                 shutil.rmtree(OUT)
             rows = export()
             with (OUT / "index.csv").open("w", newline="", encoding="utf-8") as handle:
-                writer = csv_module.DictWriter(handle, fieldnames=["file", "machine", "class", "unit", "group"])
+                writer = csv_module.DictWriter(
+                    handle, fieldnames=["file", "machine", "class", "unit", "group"]
+                )
                 writer.writeheader()
                 writer.writerows(rows)
             counts = {}
@@ -9545,7 +12767,6 @@ def _make_dozer():
         if run:
             main()
         return locals()
-
 
     def csv(run: bool = True) -> dict:
         """Week 6: write the sensor features to a CSV table and train 4-class models on it.
@@ -9564,8 +12785,12 @@ def _make_dozer():
         matplotlib.use("Agg")
         import matplotlib.pyplot as plt
         import numpy as np
-        from sklearn.metrics import (accuracy_score, balanced_accuracy_score, confusion_matrix,
-                                     precision_recall_fscore_support)
+        from sklearn.metrics import (
+            accuracy_score,
+            balanced_accuracy_score,
+            confusion_matrix,
+            precision_recall_fscore_support,
+        )
 
         import pandas as pd
         from sklearn.dummy import DummyClassifier
@@ -9580,11 +12805,20 @@ def _make_dozer():
         FIGURE = ROOT / "Figures" / "dozer" / f"{MACHINE}_csv_4class.png"
         MODELS = {
             "Majority class (control)": lambda: DummyClassifier(strategy="most_frequent"),
-            "Logistic regression": lambda: make_pipeline(StandardScaler(), LogisticRegression(
-                C=1.0, class_weight="balanced", solver="lbfgs", max_iter=5000, random_state=42)),
+            "Logistic regression": lambda: make_pipeline(
+                StandardScaler(),
+                LogisticRegression(
+                    C=1.0, class_weight="balanced", solver="lbfgs", max_iter=5000, random_state=42
+                ),
+            ),
             "Random forest": lambda: RandomForestClassifier(
-                n_estimators=250, max_features="sqrt", class_weight="balanced_subsample",
-                min_samples_leaf=2, random_state=42, n_jobs=-1),
+                n_estimators=250,
+                max_features="sqrt",
+                class_weight="balanced_subsample",
+                min_samples_leaf=2,
+                random_state=42,
+                n_jobs=-1,
+            ),
         }
 
         unit_predictions = predict_recordings
@@ -9593,128 +12827,68 @@ def _make_dozer():
 
         plot_matrix = save_confusion_matrix
 
-
-        VIB_ORDERS = ((0.5, 1.5), (1.5, 2.5), (2.5, 3.5), (3.5, 5.5), (5.5, 8.5), (8.5, 12.5), (12.5, 20.5))
-        VIB_NAMES = ["log_rms", "kurtosis", "skewness", "crest_factor", "peak_order", "log_ratio_2x_1x",
-                     *(f"order_power_{lo}_{hi}" for lo, hi in VIB_ORDERS)]
+        VIB_ORDERS = (
+            (0.5, 1.5),
+            (1.5, 2.5),
+            (2.5, 3.5),
+            (3.5, 5.5),
+            (5.5, 8.5),
+            (8.5, 12.5),
+            (12.5, 20.5),
+        )
+        VIB_NAMES = [
+            "log_rms",
+            "kurtosis",
+            "skewness",
+            "crest_factor",
+            "peak_order",
+            "log_ratio_2x_1x",
+            *(f"order_power_{lo}_{hi}" for lo, hi in VIB_ORDERS),
+        ]
 
         def vibration_rows(run_name, label, speed):
-            """CORA Vx vibration (3 kHz) in 1 s windows (every 10th window), measured in shaft orders.
-
-            Orders = frequency / speed setting, so 1x, 2x and higher multiples line up across speeds:
-            unbalance shows at 1x, misalignment at 2x, bearing and gear damage at higher orders and spikes.
-            """
-            cache = ROOT / "Processed_Data" / "cora_vibration" / f"{run_name}_Vx_features.csv"
-            if cache.is_file():
-                return load_csv(cache)
-            source = ROOT / "Raw_Data" / "cora_vibration" / f"{run_name}_Vx.csv"
-            if not source.is_file():
-                raise SystemExit(f"Missing {source.relative_to(ROOT)}: download it and run the intake command")
-            values = load_cora_sensor(source.name)
-            frame = vibration_frame(values, speed)
-            frame.insert(0, "window", np.arange(len(frame)))
-            frame.insert(0, "class", label)
-            frame.insert(0, "speed", speed)
-            frame.insert(0, "unit", run_name)
-            cache.parent.mkdir(parents=True, exist_ok=True)
-            frame.to_csv(cache, index=False)
-            return frame
+            return load_cora_feature_rows(run_name, label, speed, vibration_frame)
 
         def vibration_frame(values, speed):
-            """Order-domain vibration features for a raw 3 kHz Vx signal at speed setting F5/F15/F50/F60."""
-            rate, shaft = 3000, float(speed[1:])
-            n = len(values) // rate
-            windows = values[: n * rate].reshape(n, rate)[::10]
-            centered = windows - windows.mean(axis=1, keepdims=True)
-            std = np.maximum(centered.std(axis=1), 1e-12)
-            freq = np.fft.rfftfreq(rate, d=1 / rate)
-            power = np.abs(np.fft.rfft(centered * np.hanning(rate), axis=1)) ** 2
-            order = freq / shaft
-            usable = (order >= 0.5) & (order < 20.5)
-            share = power[:, usable] / np.maximum(power[:, usable].sum(axis=1, keepdims=True), 1e-12)
-            o = order[usable]
-            bands = [share[:, (o >= lo) & (o < hi)].sum(axis=1) for lo, hi in VIB_ORDERS]
-            frame = pd.DataFrame(np.column_stack([
-                np.log(std), (centered ** 4).mean(axis=1) / std ** 4, (centered ** 3).mean(axis=1) / std ** 3,
-                np.abs(centered).max(axis=1) / std, o[np.argmax(share, axis=1)],
-                np.log((bands[1] + 1e-9) / (bands[0] + 1e-9)), *bands]), columns=VIB_NAMES)
-            return frame
+            return extract_cora_vibration(values, speed, VIB_ORDERS, VIB_NAMES)
 
         def build_table():
             """Same CORA runs, features and 4 wear classes as the Belt Conveyor (no public dozer dataset exists)."""
             table, feature_sets, labels, folds, _, _ = BELT.csv(run=False)["build_table"]()
-            return (table, feature_sets, labels, folds,
-                    "four rounds, each holding out one whole speed (4 runs, one per wear level); 16 run-level predictions",
-                    ["CORA motor/gearbox rig, the SAME 16 runs, features and 4 wear classes as the Belt Conveyor (not new "
-                     "data), so the scores are expected to equal the Belt Conveyor's; mapped to the Dozer track final drive",
-                     "per-speed normalisation is excluded because its group statistics would include held-out-speed samples"])
+            return (
+                table,
+                feature_sets,
+                labels,
+                folds,
+                "four rounds, each holding out one whole speed (4 runs, one per wear level); 16 run-level predictions",
+                [
+                    "CORA motor/gearbox rig, the SAME 16 runs, features and 4 wear classes as the Belt Conveyor (not new "
+                    "data), so the scores are expected to equal the Belt Conveyor's; mapped to the Dozer track final drive",
+                    "per-speed normalisation is excluded because its group statistics would include held-out-speed samples",
+                ],
+            )
+
         INNER_GROUP = "speed"
 
-        def candidate_models():
-            from sklearn.ensemble import ExtraTreesClassifier, HistGradientBoostingClassifier
-            from sklearn.svm import SVC
-            return {
-                "Random forest": lambda: RandomForestClassifier(
-                    n_estimators=250, max_features="sqrt", class_weight="balanced_subsample",
-                    min_samples_leaf=2, random_state=42, n_jobs=-1),
-                "Extra trees": lambda: ExtraTreesClassifier(
-                    n_estimators=300, max_features="sqrt", class_weight="balanced",
-                    min_samples_leaf=2, random_state=42, n_jobs=-1),
-                "Gradient boosting": lambda: HistGradientBoostingClassifier(
-                    max_iter=200, learning_rate=0.05, class_weight="balanced", random_state=42),
-                "SVM (RBF)": lambda: make_pipeline(StandardScaler(), SVC(
-                    C=10.0, gamma="scale", class_weight="balanced", probability=True, random_state=42)),
-                "Logistic regression": lambda: make_pipeline(StandardScaler(), LogisticRegression(
-                    C=1.0, class_weight="balanced", solver="lbfgs", max_iter=5000, random_state=42)),
-            }
+        candidate_models = sensor_model_candidates
 
-        def nested_selection(table, feature_sets, labels, outer_folds, inner_group):
-            """Pick a feature set and model on validation data inside each training set, then test once.
-
-            Inner validation holds out whole groups (recordings, bearings or speeds) of the training set
-            only; the outer test units are never used for the choice.
-            """
-            from sklearn.metrics import f1_score
-            from sklearn.model_selection import GroupKFold
-
-            y = table["class"].to_numpy()
-            units = table["unit"].to_numpy()
-            groups = table[inner_group].to_numpy()
-            models = candidate_models()
-            actual, predicted, chosen = [], [], []
-            for test in outer_folds:
-                train_idx = np.flatnonzero(~test)
-                n_splits = min(4, len(set(groups[train_idx])))
-                inner = list(GroupKFold(n_splits=n_splits).split(train_idx, groups=groups[train_idx]))
-                best, best_score = None, -1.0
-                for set_name, names in feature_sets.items():
-                    x = table[names].to_numpy(dtype=np.float64)
-                    for model_name, factory in models.items():
-                        f1s = []
-                        for fit_part, val_part in inner:
-                            fit_rows, val_rows = train_idx[fit_part], train_idx[val_part]
-                            model = factory().fit(x[fit_rows], y[fit_rows])
-                            a, p = unit_predictions(model.predict_proba(x[val_rows]), model.classes_, y[val_rows], units[val_rows])
-                            f1s.append(f1_score(a, p, labels=labels, average="macro", zero_division=0))
-                        if float(np.mean(f1s)) > best_score:
-                            best, best_score = (set_name, model_name), float(np.mean(f1s))
-                x = table[feature_sets[best[0]]].to_numpy(dtype=np.float64)
-                model = models[best[1]]().fit(x[train_idx], y[train_idx])
-                a, p = unit_predictions(model.predict_proba(x[test]), model.classes_, y[test], units[test])
-                actual += a
-                predicted += p
-                chosen.append({"feature_set": best[0], "model": best[1], "validation_macro_f1": round(best_score, 4)})
-            return score(actual, predicted, labels), chosen
+        nested_selection = select_sensor_model
 
         def main():
             parser = argparse.ArgumentParser(description=csv.__doc__)
-            parser.add_argument("--split", choices=("main", "time"), default="main",
-                                help="main (fair test, as described in the result) or time (secondary, easier): train on "
-                                     "the first 60%% of every recording, test on the last 30%% (10%% gap)")
+            parser.add_argument(
+                "--split",
+                choices=("main", "time"),
+                default="main",
+                help="main (fair test, as described in the result) or time (secondary, easier): train on "
+                "the first 60%% of every recording, test on the last 30%% (10%% gap)",
+            )
             args = parser.parse_args()
             nonlocal RESULT, FIGURE
             table, feature_names, labels, folds, test_description, notes = build_table()
-            feature_sets = feature_names if isinstance(feature_names, dict) else {"base": feature_names}
+            feature_sets = (
+                feature_names if isinstance(feature_names, dict) else {"base": feature_names}
+            )
             feature_names = next(iter(feature_sets.values()))
             CSV_PATH.parent.mkdir(parents=True, exist_ok=True)
             table.to_csv(CSV_PATH, index=False)
@@ -9726,9 +12900,11 @@ def _make_dozer():
                 late = position.loc[table.index] > 0.7
                 table["unit"] = table["unit"] + np.where(late, "_late", "_early")
                 folds = lambda t: [t["unit"].str.endswith("_late").to_numpy()]
-                test_description = ("TIME SPLIT (secondary): first 60% of every recording trains, last 30% tests, 10% gap; "
-                                    "one prediction per recording; the same recordings appear in training, so this is easier "
-                                    "than the main test")
+                test_description = (
+                    "TIME SPLIT (secondary): first 60% of every recording trains, last 30% tests, 10% gap; "
+                    "one prediction per recording; the same recordings appear in training, so this is easier "
+                    "than the main test"
+                )
                 RESULT = RESULT.with_name(RESULT.stem + "_timesplit.json")
                 FIGURE = FIGURE.with_name(FIGURE.stem + "_timesplit.png")
             x = table[feature_names].to_numpy(dtype=np.float64)
@@ -9742,48 +12918,78 @@ def _make_dozer():
                     if set(units[train]) & set(units[test]):
                         raise ValueError("A test unit also appears in training")
                     model = factory().fit(x[train], y[train])
-                    a, p = unit_predictions(model.predict_proba(x[test]), model.classes_, y[test], units[test])
+                    a, p = unit_predictions(
+                        model.predict_proba(x[test]), model.classes_, y[test], units[test]
+                    )
                     actual += a
                     predicted += p
                 scores[name] = score(actual, predicted, labels)
             result = {
                 "purpose": "Week 6 professor remark: 4-class sensor model from a CSV feature table",
                 "csv_file": str(CSV_PATH.relative_to(ROOT)).replace("\\", "/"),
-                "rows": int(len(table)), "features": feature_names, "classes": labels,
-                "test": test_description, "main_model": "Random forest",
+                "rows": int(len(table)),
+                "features": feature_names,
+                "classes": labels,
+                "test": test_description,
+                "main_model": "Random forest",
                 "selection_rule": "settings fixed in advance; no model or setting chosen from these test results",
-                "notes": notes, "models": scores,
+                "notes": notes,
+                "models": scores,
             }
             if args.split == "time":
                 result["split"] = "time (secondary)"
                 RESULT.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
                 main_score = scores["Random forest"]
-                plot_matrix(main_score["confusion_matrix"], labels,
-                            f"{MACHINE}: CSV sensor, TIME SPLIT (random forest), accuracy {main_score['accuracy']:.3f}", FIGURE)
+                plot_matrix(
+                    main_score["confusion_matrix"],
+                    labels,
+                    f"{MACHINE}: CSV sensor, TIME SPLIT (random forest), accuracy {main_score['accuracy']:.3f}",
+                    FIGURE,
+                )
                 for name, s in scores.items():
-                    print(f"{name:<26} accuracy {s['accuracy']:.3f}  macro F1 {s['macro_f1']:.3f}  ({s['test_units']} test units, time split)")
+                    print(
+                        f"{name:<26} accuracy {s['accuracy']:.3f}  macro F1 {s['macro_f1']:.3f}  ({s['test_units']} test units, time split)"
+                    )
                 print(f"Saved {RESULT.relative_to(ROOT)} and {FIGURE.relative_to(ROOT)}")
                 return
-            selected, chosen = nested_selection(table, feature_sets, labels, folds(table), INNER_GROUP)
+            selected, chosen = nested_selection(
+                table, feature_sets, labels, folds(table), INNER_GROUP
+            )
             result["validation_selected"] = {
                 "description": "feature set and model chosen per round on validation groups inside the training set only "
-                               "(candidates: " + ", ".join(candidate_models()) + "; feature sets: " + ", ".join(feature_sets) + ")",
-                "feature_sets": feature_sets, "score": selected, "chosen_per_round": chosen}
+                "(candidates: "
+                + ", ".join(candidate_models())
+                + "; feature sets: "
+                + ", ".join(feature_sets)
+                + ")",
+                "feature_sets": feature_sets,
+                "score": selected,
+                "chosen_per_round": chosen,
+            }
             result["main_model"] = "validation-selected"
             RESULT.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
             main_score = selected
-            plot_matrix(main_score["confusion_matrix"], labels,
-                        f"{MACHINE}: CSV sensor model (validation-selected), accuracy {main_score['accuracy']:.3f}", FIGURE)
+            plot_matrix(
+                main_score["confusion_matrix"],
+                labels,
+                f"{MACHINE}: CSV sensor model (validation-selected), accuracy {main_score['accuracy']:.3f}",
+                FIGURE,
+            )
             for name, s in scores.items():
-                print(f"{name:<26} accuracy {s['accuracy']:.3f}  macro F1 {s['macro_f1']:.3f}  ({s['test_units']} test units)")
-            print(f"Validation-selected model: accuracy {selected['accuracy']:.3f}  macro F1 {selected['macro_f1']:.3f}  "
-                  f"(choices: {[c['feature_set'] + ' / ' + c['model'] for c in chosen]})")
-            print(f"Saved {CSV_PATH.relative_to(ROOT)}, {RESULT.relative_to(ROOT)} and {FIGURE.relative_to(ROOT)}")
+                print(
+                    f"{name:<26} accuracy {s['accuracy']:.3f}  macro F1 {s['macro_f1']:.3f}  ({s['test_units']} test units)"
+                )
+            print(
+                f"Validation-selected model: accuracy {selected['accuracy']:.3f}  macro F1 {selected['macro_f1']:.3f}  "
+                f"(choices: {[c['feature_set'] + ' / ' + c['model'] for c in chosen]})"
+            )
+            print(
+                f"Saved {CSV_PATH.relative_to(ROOT)}, {RESULT.relative_to(ROOT)} and {FIGURE.relative_to(ROOT)}"
+            )
 
         if run:
             main()
         return locals()
-
 
     def cnn(run: bool = True) -> dict:
         """Week 6: a small CNN with data augmentation, trained on the named images, 4 classes.
@@ -9804,8 +13010,12 @@ def _make_dozer():
         matplotlib.use("Agg")
         import matplotlib.pyplot as plt
         import numpy as np
-        from sklearn.metrics import (accuracy_score, balanced_accuracy_score, confusion_matrix,
-                                     precision_recall_fscore_support)
+        from sklearn.metrics import (
+            accuracy_score,
+            balanced_accuracy_score,
+            confusion_matrix,
+            precision_recall_fscore_support,
+        )
 
         import random
 
@@ -9826,63 +13036,31 @@ def _make_dozer():
 
         plot_matrix = save_confusion_matrix
 
-
         def read_index():
             return read_image_records(IMAGES)
 
         def load(rows):
             return load_model_images(IMAGES, rows, channels=(0,))
 
-        class Net(nn.Module):
-            def __init__(self, in_channels, n_classes):
-                super().__init__()
-                def block(a, b):
-                    return nn.Sequential(nn.Conv2d(a, b, 3, padding=1), nn.BatchNorm2d(b), nn.ReLU(), nn.MaxPool2d(2))
-                self.features = nn.Sequential(block(in_channels, 16), block(16, 32), block(32, 64), block(64, 64))
-                self.head = nn.Sequential(nn.AdaptiveAvgPool2d(1), nn.Flatten(), nn.Dropout(0.3), nn.Linear(64, n_classes))
+        Net = make_small_image_cnn
 
-            def forward(self, x):
-                return self.head(self.features(x))
-
-        def augment(batch, generator):
-            n = batch.shape[0]
-            flip = torch.rand(n, generator=generator) < 0.5
-            batch = torch.where(flip[:, None, None, None], batch.flip(-1), batch)
-            shifted = []
-            for image in batch:
-                dy, dx = (int(v) for v in torch.randint(-8, 9, (2,), generator=generator))
-                shifted.append(torch.roll(image, shifts=(dy, dx), dims=(-2, -1)))
-            batch = torch.stack(shifted)
-            scale = 0.8 + 0.4 * torch.rand(n, 1, 1, 1, generator=generator)
-            return batch * scale + 0.05 * torch.randn(batch.shape, generator=generator)
+        augment = augment_event_images
 
         def train(x, y):
-            random.seed(SEED)
-            np.random.seed(SEED)
-            torch.manual_seed(SEED)
-            generator = torch.Generator().manual_seed(SEED)
-            model = Net(x.shape[1], len(LABELS))
-            counts = np.bincount(y, minlength=len(LABELS)).astype(np.float32)
-            weights = torch.tensor(counts.sum() / (len(LABELS) * np.maximum(counts, 1)))
-            loss_fn = nn.CrossEntropyLoss(weight=weights)
-            optimiser = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE, weight_decay=1e-4)
-            xs, ys = torch.tensor(x), torch.tensor(y, dtype=torch.long)
-            for _ in range(EPOCHS):
-                model.train()
-                order = torch.randperm(len(xs), generator=generator)
-                for start in range(0, len(xs), BATCH):
-                    batch = order[start:start + BATCH]
-                    optimiser.zero_grad()
-                    loss = loss_fn(model(augment(xs[batch], generator)), ys[batch])
-                    loss.backward()
-                    optimiser.step()
-            return model
+            return train_small_image_cnn(
+                x,
+                y,
+                network=Net,
+                augment=augment,
+                labels=LABELS,
+                seed=SEED,
+                learning_rate=LEARNING_RATE,
+                epochs=EPOCHS,
+                batch_size=BATCH,
+            )
 
         def probabilities(model, x):
-            model.eval()
-            with torch.no_grad():
-                return np.concatenate([torch.softmax(model(torch.tensor(x[i:i + 256])), dim=1).numpy()
-                                       for i in range(0, len(x), 256)])
+            return image_probabilities(model, x, batch_size=256)
 
         def main():
             parser = argparse.ArgumentParser(description=cnn.__doc__)
@@ -9907,30 +13085,45 @@ def _make_dozer():
                 unit_predicted += pr
                 image_actual += list(names[test])
                 image_predicted += [LABELS[i] for i in p.argmax(axis=1)]
-                print(f"fold {number}: trained on {int(train_mask.sum())} images, tested on {int(test.sum())}", flush=True)
+                print(
+                    f"fold {number}: trained on {int(train_mask.sum())} images, tested on {int(test.sum())}",
+                    flush=True,
+                )
             result = {
                 "purpose": "Week 6 professor remark: CNN with data augmentation on named images, 4 classes",
-                "images": int(len(rows)), "classes": LABELS, "test": "four rounds, each holding out one whole speed (4 runs, one per wear level); 16 run-level predictions",
-                "settings": {"epochs": EPOCHS, "batch": BATCH, "learning_rate": LEARNING_RATE, "seed": SEED,
-                             "architecture": "4 conv blocks (16, 32, 64, 64 channels) + global average pool + dropout 0.3",
-                             "augmentation": "random horizontal flip, shift up to 8 px, brightness/contrast x0.8-1.2, Gaussian noise 0.05",
-                             "normalisation": "each image standardised on its own"},
+                "images": int(len(rows)),
+                "classes": LABELS,
+                "test": "four rounds, each holding out one whole speed (4 runs, one per wear level); 16 run-level predictions",
+                "settings": {
+                    "epochs": EPOCHS,
+                    "batch": BATCH,
+                    "learning_rate": LEARNING_RATE,
+                    "seed": SEED,
+                    "architecture": "4 conv blocks (16, 32, 64, 64 channels) + global average pool + dropout 0.3",
+                    "augmentation": "random horizontal flip, shift up to 8 px, brightness/contrast x0.8-1.2, Gaussian noise 0.05",
+                    "normalisation": "each image standardised on its own",
+                },
                 "selection_rule": "settings fixed in advance; the test set is never used to choose epochs or settings",
                 "recording_level": score(unit_actual, unit_predicted, LABELS),
                 "image_level": score(image_actual, image_predicted, LABELS),
             }
             RESULT.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
             r = result["recording_level"]
-            plot_matrix(r["confusion_matrix"], LABELS,
-                        f"{MACHINE}: CNN on images, accuracy {r['accuracy']:.3f} ({r['test_units']} test units)", FIGURE)
-            print(f"CNN recording-level accuracy {r['accuracy']:.3f}, macro F1 {r['macro_f1']:.3f}; "
-                  f"image-level accuracy {result['image_level']['accuracy']:.3f}")
+            plot_matrix(
+                r["confusion_matrix"],
+                LABELS,
+                f"{MACHINE}: CNN on images, accuracy {r['accuracy']:.3f} ({r['test_units']} test units)",
+                FIGURE,
+            )
+            print(
+                f"CNN recording-level accuracy {r['accuracy']:.3f}, macro F1 {r['macro_f1']:.3f}; "
+                f"image-level accuracy {result['image_level']['accuracy']:.3f}"
+            )
             print(f"Saved {RESULT.relative_to(ROOT)} and {FIGURE.relative_to(ROOT)}")
 
         if run:
             main()
         return locals()
-
 
     def cnn_pretrained(run: bool = True) -> dict:
         """Week 6: transfer learning, an ImageNet-pretrained ResNet18 fine-tuned on the named images (4 classes).
@@ -9951,8 +13144,13 @@ def _make_dozer():
         import matplotlib.pyplot as plt
         import numpy as np
         import torch
-        from sklearn.metrics import (accuracy_score, balanced_accuracy_score, confusion_matrix, f1_score,
-                                     precision_recall_fscore_support)
+        from sklearn.metrics import (
+            accuracy_score,
+            balanced_accuracy_score,
+            confusion_matrix,
+            f1_score,
+            precision_recall_fscore_support,
+        )
         from torch import nn
         from torchvision.models import ResNet18_Weights, resnet18
 
@@ -9961,7 +13159,7 @@ def _make_dozer():
         RESULT = ROOT / "Results" / "dozer" / f"{MACHINE}_cnn_pretrained_4class.json"
         FIGURE = ROOT / "Figures" / "dozer" / f"{MACHINE}_cnn_pretrained_4class.png"
         LABELS = ["healthy", "wear25", "wear50", "wear75"]
-        SEGMENTS = 10   # test segments per held-out recording (segment-level score)
+        SEGMENTS = 10  # test segments per held-out recording (segment-level score)
         MAX_EPOCHS, BATCH, LEARNING_RATE, SEED = 15, 32, 3e-4, 42
 
         unit_predictions = predict_recordings
@@ -9971,28 +13169,7 @@ def _make_dozer():
         plot_matrix = save_confusion_matrix
 
         def plot_levels(result, title, path):
-            """One panel per scoring level, so the figure shows how many images were really tested."""
-            levels = [("every test image", result["image_level"]), ("per 1/10 recording segment", result.get("segment_level")),
-                      ("per whole recording", result["recording_level"])]
-            levels = [(name, block) for name, block in levels if block]
-            figure, axes = plt.subplots(1, len(levels), figsize=(4.6 * len(levels), 4.4))
-            for axis, (name, block) in zip(np.atleast_1d(axes), levels):
-                array = np.asarray(block["confusion_matrix"])
-                axis.imshow(array, cmap="Blues", vmin=0)
-                axis.set_xticks(range(len(LABELS)), LABELS, rotation=30, fontsize=8)
-                axis.set_yticks(range(len(LABELS)), LABELS, fontsize=8)
-                axis.set_xlabel("Predicted")
-                axis.set_ylabel("Actual")
-                axis.set_title(f"{name}\n{block['test_units']:,} tested, accuracy {block['accuracy']:.3f}", fontsize=9)
-                for i in range(len(LABELS)):
-                    for j in range(len(LABELS)):
-                        axis.text(j, i, f"{array[i, j]:,}", ha="center", va="center", fontsize=8,
-                                  color="white" if array[i, j] > array.max() / 2 else "black")
-            figure.suptitle(title.replace("; ", "\n"), fontsize=10)
-            figure.tight_layout()
-            path.parent.mkdir(parents=True, exist_ok=True)
-            figure.savefig(path, dpi=110)
-            plt.close(figure)
+            save_prediction_levels(result, title, path, LABELS)
 
         _small = cnn(run=False)
         read_index, augment = _small["read_index"], _small["augment"]
@@ -10006,54 +13183,55 @@ def _make_dozer():
             return model
 
         def fit(x, y, epochs, val=None):
-            random.seed(SEED)
-            np.random.seed(SEED)
-            torch.manual_seed(SEED)
-            generator = torch.Generator().manual_seed(SEED)
-            model = new_model()
-            counts = np.bincount(y, minlength=len(LABELS)).astype(np.float32)
-            loss_fn = nn.CrossEntropyLoss(weight=torch.tensor(counts.sum() / (len(LABELS) * np.maximum(counts, 1))))
-            optimiser = torch.optim.AdamW(model.parameters(), lr=LEARNING_RATE, weight_decay=1e-4)
-            xs, ys = torch.tensor(x), torch.tensor(y, dtype=torch.long)
-            history = []
-            for _ in range(epochs):
-                model.train()
-                order = torch.randperm(len(xs), generator=generator)
-                for start in range(0, len(xs), BATCH):
-                    batch = order[start:start + BATCH]
-                    if len(batch) < 2:
-                        continue
-                    optimiser.zero_grad()
-                    loss_fn(model(augment(xs[batch], generator)), ys[batch]).backward()
-                    optimiser.step()
-                if val is not None:
-                    vx, vnames, vunits = val
-                    a, p = unit_predictions(probabilities(model, vx), np.asarray(LABELS), vnames, vunits)
-                    history.append(f1_score(a, p, labels=LABELS, average="macro", zero_division=0))
-            return model, history
+            return fit_pretrained_image_cnn(
+                x,
+                y,
+                epochs,
+                val,
+                new_model=new_model,
+                augment=augment,
+                labels=LABELS,
+                seed=SEED,
+                learning_rate=LEARNING_RATE,
+                batch_size=BATCH,
+                probabilities=probabilities,
+            )
 
         def probabilities(model, x):
-            model.eval()
-            with torch.no_grad():
-                return np.concatenate([torch.softmax(model(torch.tensor(x[i:i + 128])), dim=1).numpy()
-                                       for i in range(0, len(x), 128)])
+            return image_probabilities(model, x, batch_size=128)
 
         def main():
             parser = argparse.ArgumentParser(description=cnn_pretrained.__doc__)
-            parser.add_argument("--split", choices=("main", "time"), default="main",
-                                help="main (fair test) or time (secondary, easier: first 60%% of each recording's frames "
-                                     "train, last 30%% test, 10%% gap)")
+            parser.add_argument(
+                "--split",
+                choices=("main", "time"),
+                default="main",
+                help="main (fair test) or time (secondary, easier: first 60%% of each recording's frames "
+                "train, last 30%% test, 10%% gap)",
+            )
             args = parser.parse_args()
             nonlocal RESULT, FIGURE
             rows = read_index()
             test_description = "four rounds, each holding out one whole speed (4 runs, one per wear level); 16 run-level predictions"
             if args.split == "time":
                 import re
-                position = {row["file"]: int(re.search(r"_f(\d{3})\.png$", row["file"]).group(1)) / 450 for row in rows}
-                rows = [dict(row, unit=row["unit"] + ("_late" if position[row["file"]] > 0.7 else "_early"))
-                        for row in rows if position[row["file"]] <= 0.6 or position[row["file"]] > 0.7]
-                test_description = ("TIME SPLIT (secondary): first 60% of every recording's frames train, last 30% test, 10% gap; "
-                                    "one prediction per recording; the same recordings appear in training, so this is easier")
+
+                position = {
+                    row["file"]: int(re.search(r"_f(\d{3})\.png$", row["file"]).group(1)) / 450
+                    for row in rows
+                }
+                rows = [
+                    dict(
+                        row,
+                        unit=row["unit"] + ("_late" if position[row["file"]] > 0.7 else "_early"),
+                    )
+                    for row in rows
+                    if position[row["file"]] <= 0.6 or position[row["file"]] > 0.7
+                ]
+                test_description = (
+                    "TIME SPLIT (secondary): first 60% of every recording's frames train, last 30% test, 10% gap; "
+                    "one prediction per recording; the same recordings appear in training, so this is easier"
+                )
                 RESULT = RESULT.with_name(RESULT.stem + "_timesplit.json")
                 FIGURE = FIGURE.with_name(FIGURE.stem + "_timesplit.png")
             x = load(rows)
@@ -10063,18 +13241,31 @@ def _make_dozer():
             units = np.asarray([row["unit"] for row in rows])
             groups = np.asarray([row["group"] for row in rows])
             rng = np.random.default_rng(SEED)
-            unit_actual, unit_predicted, image_actual, image_predicted, epochs_chosen = [], [], [], [], []
+            unit_actual, unit_predicted, image_actual, image_predicted, epochs_chosen = (
+                [],
+                [],
+                [],
+                [],
+                [],
+            )
             segment_actual, segment_predicted, per_recording = [], [], {}
-            folds = ([np.char.endswith(units.astype(str), "_late")] if args.split == "time"
-                     else [groups == s for s in ("F5", "F15", "F50", "F60")])
+            folds = (
+                [np.char.endswith(units.astype(str), "_late")]
+                if args.split == "time"
+                else [groups == s for s in ("F5", "F15", "F50", "F60")]
+            )
             for number, test in enumerate(folds, 1):
                 train = ~test
                 if set(units[train]) & set(units[test]):
                     raise ValueError("A test recording also appears in training")
-                val_units = [rng.choice(sorted(set(units[train & (names == label)]))) for label in LABELS]
+                val_units = [
+                    rng.choice(sorted(set(units[train & (names == label)]))) for label in LABELS
+                ]
                 val = train & np.isin(units, val_units)
                 fit_part = train & ~val
-                _, history = fit(x[fit_part], y[fit_part], MAX_EPOCHS, (x[val], names[val], units[val]))
+                _, history = fit(
+                    x[fit_part], y[fit_part], MAX_EPOCHS, (x[val], names[val], units[val])
+                )
                 best_epochs = int(np.argmax(history)) + 1
                 model, _ = fit(x[train], y[train], best_epochs)
                 p = probabilities(model, x[test])
@@ -10091,49 +13282,81 @@ def _make_dozer():
                     for part in np.array_split(np.arange(len(pu)), min(SEGMENTS, len(pu))):
                         segment_actual.append(true)
                         segment_predicted.append(LABELS[int(pu[part].mean(axis=0).argmax())])
-                    per_recording[str(unit)] = {"class": str(true), "images": int(len(pu)),
-                                                "images_predicted": {l: int((pu.argmax(axis=1) == i).sum())
-                                                                     for i, l in enumerate(LABELS)},
-                                                "recording_prediction": LABELS[int(pu.mean(axis=0).argmax())]}
+                    per_recording[str(unit)] = {
+                        "class": str(true),
+                        "images": int(len(pu)),
+                        "images_predicted": {
+                            l: int((pu.argmax(axis=1) == i).sum()) for i, l in enumerate(LABELS)
+                        },
+                        "recording_prediction": LABELS[int(pu.mean(axis=0).argmax())],
+                    }
                 epochs_chosen.append(best_epochs)
-                print(f"fold {number}: validation chose {best_epochs} epochs; tested on {int(test.sum())} images", flush=True)
+                print(
+                    f"fold {number}: validation chose {best_epochs} epochs; tested on {int(test.sum())} images",
+                    flush=True,
+                )
             result = {
                 "purpose": "Week 6: transfer learning (ImageNet-pretrained ResNet18) on named images, 4 classes",
-                "images": int(len(rows)), "classes": LABELS, "test": test_description,
-                "settings": {"model": "ResNet18, ImageNet weights, all layers fine-tuned", "max_epochs": MAX_EPOCHS,
-                             "batch": BATCH, "learning_rate": LEARNING_RATE, "optimiser": "AdamW", "seed": SEED,
-                             "epochs_chosen_per_round": epochs_chosen,
-                             "epoch_selection": "one training recording per class held out for validation; best validation macro F1",
-                             "augmentation": "random horizontal flip, shift up to 8 px, brightness/contrast x0.8-1.2, Gaussian noise 0.05"},
+                "images": int(len(rows)),
+                "classes": LABELS,
+                "test": test_description,
+                "settings": {
+                    "model": "ResNet18, ImageNet weights, all layers fine-tuned",
+                    "max_epochs": MAX_EPOCHS,
+                    "batch": BATCH,
+                    "learning_rate": LEARNING_RATE,
+                    "optimiser": "AdamW",
+                    "seed": SEED,
+                    "epochs_chosen_per_round": epochs_chosen,
+                    "epoch_selection": "one training recording per class held out for validation; best validation macro F1",
+                    "augmentation": "random horizontal flip, shift up to 8 px, brightness/contrast x0.8-1.2, Gaussian noise 0.05",
+                },
                 "selection_rule": "the test set is never used to choose epochs or settings",
                 "recording_level": score(unit_actual, unit_predicted, LABELS),
                 "image_level": score(image_actual, image_predicted, LABELS),
-                "segment_level": {**score(segment_actual, segment_predicted, LABELS),
-                                  "segments_per_recording": SEGMENTS,
-                                  "note": "each held-out recording split in time order into consecutive parts, one "
-                                          "prediction per part; parts of one recording are related, so the "
-                                          "recording-level score stays the main result"},
+                "segment_level": {
+                    **score(segment_actual, segment_predicted, LABELS),
+                    "segments_per_recording": SEGMENTS,
+                    "note": "each held-out recording split in time order into consecutive parts, one "
+                    "prediction per part; parts of one recording are related, so the "
+                    "recording-level score stays the main result",
+                },
                 "per_recording": per_recording,
             }
             RESULT.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
             s = result["segment_level"]
-            plot_matrix(s["confusion_matrix"], LABELS,
-                        f"{MACHINE}: pretrained ResNet18 per segment, accuracy {s['accuracy']:.3f} "
-                        f"({s['test_units']} test segments)", FIGURE.with_name(FIGURE.stem + "_segments.png"))
-            print(f"Segment-level accuracy {s['accuracy']:.3f} on {s['test_units']} test segments "
-                  f"({SEGMENTS} per held-out recording)")
+            plot_matrix(
+                s["confusion_matrix"],
+                LABELS,
+                f"{MACHINE}: pretrained ResNet18 per segment, accuracy {s['accuracy']:.3f} "
+                f"({s['test_units']} test segments)",
+                FIGURE.with_name(FIGURE.stem + "_segments.png"),
+            )
+            print(
+                f"Segment-level accuracy {s['accuracy']:.3f} on {s['test_units']} test segments "
+                f"({SEGMENTS} per held-out recording)"
+            )
             r = result["recording_level"]
-            plot_levels(result, f"{MACHINE}: pretrained ResNet18 on {result['images']:,} images in total; "
-                                f"{r['test_units']} test recordings" + (" (time split, secondary: later frames of training recordings)"
-                                if "timesplit" in FIGURE.stem else ", each never seen in training"), FIGURE)
-            print(f"Pretrained CNN recording-level accuracy {r['accuracy']:.3f}, macro F1 {r['macro_f1']:.3f}; "
-                  f"image-level accuracy {result['image_level']['accuracy']:.3f}")
+            plot_levels(
+                result,
+                f"{MACHINE}: pretrained ResNet18 on {result['images']:,} images in total; "
+                f"{r['test_units']} test recordings"
+                + (
+                    " (time split, secondary: later frames of training recordings)"
+                    if "timesplit" in FIGURE.stem
+                    else ", each never seen in training"
+                ),
+                FIGURE,
+            )
+            print(
+                f"Pretrained CNN recording-level accuracy {r['accuracy']:.3f}, macro F1 {r['macro_f1']:.3f}; "
+                f"image-level accuracy {result['image_level']['accuracy']:.3f}"
+            )
             print(f"Saved {RESULT.relative_to(ROOT)} and {FIGURE.relative_to(ROOT)}")
 
         if run:
             main()
         return locals()
-
 
     def train_final(run: bool = True) -> dict:
         """Train the sensor model on all of this machine's data and save it (Processed_Data/models/, not in Git).
@@ -10152,29 +13375,53 @@ def _make_dozer():
 
         def main():
             parser = argparse.ArgumentParser(description=train_final.__doc__)
-            parser.add_argument("--exclude", nargs="*", default=[], help="recording names to leave out, e.g. W50_F15_S")
+            parser.add_argument(
+                "--exclude",
+                nargs="*",
+                default=[],
+                help="recording names to leave out, e.g. W50_F15_S",
+            )
             args = parser.parse_args()
             table, feature_sets, labels, *_ = csv(run=False)["build_table"]()
-            feature_sets = feature_sets if isinstance(feature_sets, dict) else {"base": feature_sets}
+            feature_sets = (
+                feature_sets if isinstance(feature_sets, dict) else {"base": feature_sets}
+            )
             features = feature_sets["vibration"]
             unknown = set(args.exclude) - set(table["unit"])
             if unknown:
                 raise SystemExit(f"Unknown recording names: {sorted(unknown)}")
             train = ~table["unit"].isin(args.exclude)
-            model = RandomForestClassifier(n_estimators=250, max_features="sqrt", class_weight="balanced_subsample",
-                                           min_samples_leaf=2, random_state=42, n_jobs=-1)
-            model.fit(table.loc[train, features].to_numpy(dtype=np.float64), table.loc[train, "class"])
+            model = RandomForestClassifier(
+                n_estimators=250,
+                max_features="sqrt",
+                class_weight="balanced_subsample",
+                min_samples_leaf=2,
+                random_state=42,
+                n_jobs=-1,
+            )
+            model.fit(
+                table.loc[train, features].to_numpy(dtype=np.float64), table.loc[train, "class"]
+            )
             MODEL_PATH.parent.mkdir(parents=True, exist_ok=True)
-            joblib.dump({"model": model, "features": features, "classes": list(labels), "machine": "dozer",
-                         "trained_units": sorted(set(table.loc[train, "unit"])), "excluded_units": sorted(args.exclude)},
-                        MODEL_PATH)
-            print(f"Trained on {int(train.sum())} rows from {table.loc[train, 'unit'].nunique()} recordings "
-                  f"(excluded: {args.exclude or 'none'}); saved {MODEL_PATH.relative_to(ROOT)}")
+            joblib.dump(
+                {
+                    "model": model,
+                    "features": features,
+                    "classes": list(labels),
+                    "machine": "dozer",
+                    "trained_units": sorted(set(table.loc[train, "unit"])),
+                    "excluded_units": sorted(args.exclude),
+                },
+                MODEL_PATH,
+            )
+            print(
+                f"Trained on {int(train.sum())} rows from {table.loc[train, 'unit'].nunique()} recordings "
+                f"(excluded: {args.exclude or 'none'}); saved {MODEL_PATH.relative_to(ROOT)}"
+            )
 
         if run:
             main()
         return locals()
-
 
     def predict(run: bool = True) -> dict:
         """Predict the condition from any CSV and, if the true class is known, show the accuracy.
@@ -10197,7 +13444,9 @@ def _make_dozer():
 
         def read_any(path):
             table = load_csv(path)
-            if all(_is_number(c) for c in table.columns):   # no header row: plain column(s) of numbers
+            if all(
+                _is_number(c) for c in table.columns
+            ):  # no header row: plain column(s) of numbers
                 table = load_csv(path, header=None)
             return table
 
@@ -10212,15 +13461,25 @@ def _make_dozer():
             if not args.speed:
                 raise SystemExit("Raw recordings need --speed (F5, F15, F50 or F60)")
             ns = csv(run=False)
-            return ns["vibration_frame"](values, args.speed)[ns["VIB_NAMES"]].to_numpy(dtype=np.float64)
-
+            return ns["vibration_frame"](values, args.speed)[ns["VIB_NAMES"]].to_numpy(
+                dtype=np.float64
+            )
 
         def main():
             parser = argparse.ArgumentParser(description=predict.__doc__)
             parser.add_argument("--csv", required=True, help="path to the CSV file")
-            parser.add_argument("--label", help="true class of a raw recording, one of: healthy, wear25, wear50, wear75")
-            parser.add_argument("--column", help="column holding the raw signal (default: first numeric column)")
-            parser.add_argument("--speed", choices=("F5", "F15", "F50", "F60"), help="speed setting of a raw recording")
+            parser.add_argument(
+                "--label",
+                help="true class of a raw recording, one of: healthy, wear25, wear50, wear75",
+            )
+            parser.add_argument(
+                "--column", help="column holding the raw signal (default: first numeric column)"
+            )
+            parser.add_argument(
+                "--speed",
+                choices=("F5", "F15", "F50", "F60"),
+                help="speed setting of a raw recording",
+            )
             args = parser.parse_args()
             if not MODEL_PATH.is_file():
                 print("No saved model yet: training it now (train-final).")
@@ -10232,12 +13491,26 @@ def _make_dozer():
             if set(features) <= set(table.columns):
                 mode = "feature table"
                 x = table[features].to_numpy(dtype=np.float64)
-                units = table["unit"].astype(str).to_numpy() if "unit" in table.columns else np.full(len(table), path.stem)
-                truth = table["class"].astype(str).to_numpy() if "class" in table.columns else np.full(len(table), args.label)
+                units = (
+                    table["unit"].astype(str).to_numpy()
+                    if "unit" in table.columns
+                    else np.full(len(table), path.stem)
+                )
+                truth = (
+                    table["class"].astype(str).to_numpy()
+                    if "class" in table.columns
+                    else np.full(len(table), args.label)
+                )
             else:
                 mode = "raw recording"
-                column = args.column if args.column is not None else table.select_dtypes("number").columns[0]
-                values = table[column if column in table.columns else int(column)].to_numpy(dtype=np.float64)
+                column = (
+                    args.column
+                    if args.column is not None
+                    else table.select_dtypes("number").columns[0]
+                )
+                values = table[column if column in table.columns else int(column)].to_numpy(
+                    dtype=np.float64
+                )
                 x = raw_features(values, args)
                 units = np.full(len(x), path.stem)
                 truth = np.full(len(x), args.label)
@@ -10246,30 +13519,44 @@ def _make_dozer():
             for unit in dict.fromkeys(units):
                 mask = units == unit
                 mean = probabilities[mask].mean(axis=0)
-                rows.append({"recording": unit, "predicted": model.classes_[int(mean.argmax())],
-                             "confidence": round(float(mean.max()), 3), "true": truth[mask][0], "rows": int(mask.sum())})
+                rows.append(
+                    {
+                        "recording": unit,
+                        "predicted": model.classes_[int(mean.argmax())],
+                        "confidence": round(float(mean.max()), 3),
+                        "true": truth[mask][0],
+                        "rows": int(mask.sum()),
+                    }
+                )
             report = pd.DataFrame(rows)
-            print(f"Model: {saved['machine']} random forest | input: {mode} | {len(report)} recording(s)")
+            print(
+                f"Model: {saved['machine']} random forest | input: {mode} | {len(report)} recording(s)"
+            )
             print(report.to_string(index=False))
             seen = sorted(set(report["recording"]) & set(saved["trained_units"]))
             if seen:
-                print(f"WARNING: {seen} were used to train this model, so their accuracy is optimistic. "
-                      "Use train-final --exclude ... to test fairly.")
+                print(
+                    f"WARNING: {seen} were used to train this model, so their accuracy is optimistic. "
+                    "Use train-final --exclude ... to test fairly."
+                )
             known = report["true"].notna() & (report["true"].astype(str) != "None")
             if known.any():
                 k = report[known]
-                print(f"\nAccuracy: {accuracy_score(k['true'], k['predicted']):.3f} "
-                      f"({int((k['true'] == k['predicted']).sum())}/{len(k)} recordings)")
+                print(
+                    f"\nAccuracy: {accuracy_score(k['true'], k['predicted']):.3f} "
+                    f"({int((k['true'] == k['predicted']).sum())}/{len(k)} recordings)"
+                )
                 labels = saved["classes"]
                 print("Confusion matrix (rows = true, columns = predicted):", labels)
                 print(confusion_matrix(k["true"], k["predicted"], labels=labels))
             else:
-                print("\nNo true class given (use --label or a 'class' column) so accuracy cannot be computed.")
+                print(
+                    "\nNo true class given (use --label or a 'class' column) so accuracy cannot be computed."
+                )
 
         if run:
             main()
         return locals()
-
 
     def ensembles(run: bool = True) -> dict:
         """Proposal Week 6: compare advanced ensemble models on the same CSV sensor features and held-out tests.
@@ -10290,14 +13577,25 @@ def _make_dozer():
         import matplotlib.pyplot as plt
         import numpy as np
         from sklearn.dummy import DummyClassifier
-        from sklearn.ensemble import ExtraTreesClassifier, HistGradientBoostingClassifier, RandomForestClassifier
-        from sklearn.metrics import accuracy_score, balanced_accuracy_score, confusion_matrix, f1_score
+        from sklearn.ensemble import (
+            ExtraTreesClassifier,
+            HistGradientBoostingClassifier,
+            RandomForestClassifier,
+        )
+        from sklearn.metrics import (
+            accuracy_score,
+            balanced_accuracy_score,
+            confusion_matrix,
+            f1_score,
+        )
 
         try:
             from lightgbm import LGBMClassifier
             from xgboost import XGBClassifier
         except ImportError:
-            raise SystemExit("Install the ensemble libraries first:  python -m pip install xgboost lightgbm")
+            raise SystemExit(
+                "Install the ensemble libraries first:  python -m pip install xgboost lightgbm"
+            )
 
         MACHINE = "dozer"
         RESULT = ROOT / "Results" / MACHINE / f"{MACHINE}_ensembles.json"
@@ -10305,30 +13603,66 @@ def _make_dozer():
         MODELS = {
             "Majority class (control)": lambda: DummyClassifier(strategy="most_frequent"),
             "Random forest": lambda: RandomForestClassifier(
-                n_estimators=250, max_features="sqrt", class_weight="balanced_subsample",
-                min_samples_leaf=2, random_state=42, n_jobs=-1),
+                n_estimators=250,
+                max_features="sqrt",
+                class_weight="balanced_subsample",
+                min_samples_leaf=2,
+                random_state=42,
+                n_jobs=-1,
+            ),
             "Extra trees": lambda: ExtraTreesClassifier(
-                n_estimators=300, max_features="sqrt", class_weight="balanced",
-                min_samples_leaf=2, random_state=42, n_jobs=-1),
+                n_estimators=300,
+                max_features="sqrt",
+                class_weight="balanced",
+                min_samples_leaf=2,
+                random_state=42,
+                n_jobs=-1,
+            ),
             "Gradient boosting (scikit-learn)": lambda: HistGradientBoostingClassifier(
-                max_iter=200, learning_rate=0.05, class_weight="balanced", random_state=42),
+                max_iter=200, learning_rate=0.05, class_weight="balanced", random_state=42
+            ),
             "XGBoost": lambda: XGBClassifier(
-                n_estimators=300, max_depth=4, learning_rate=0.05, subsample=0.8, colsample_bytree=0.8,
-                tree_method="hist", random_state=42, n_jobs=-1, verbosity=0),
+                n_estimators=300,
+                max_depth=4,
+                learning_rate=0.05,
+                subsample=0.8,
+                colsample_bytree=0.8,
+                tree_method="hist",
+                random_state=42,
+                n_jobs=-1,
+                verbosity=0,
+            ),
             "LightGBM": lambda: LGBMClassifier(
-                n_estimators=300, num_leaves=15, learning_rate=0.05, subsample=0.8, subsample_freq=1,
-                colsample_bytree=0.8, class_weight="balanced", random_state=42, n_jobs=-1, verbose=-1),
+                n_estimators=300,
+                num_leaves=15,
+                learning_rate=0.05,
+                subsample=0.8,
+                subsample_freq=1,
+                colsample_bytree=0.8,
+                class_weight="balanced",
+                random_state=42,
+                n_jobs=-1,
+                verbose=-1,
+            ),
         }
 
         def main():
             parser = argparse.ArgumentParser(description=ensembles.__doc__)
-            parser.add_argument("--split", choices=("main", "time"), default="main",
-                                help="main (fair test) or time (secondary: first 60%% of every recording trains, "
-                                     "last 30%% tests, 10%% gap)")
+            parser.add_argument(
+                "--split",
+                choices=("main", "time"),
+                default="main",
+                help="main (fair test) or time (secondary: first 60%% of every recording trains, "
+                "last 30%% tests, 10%% gap)",
+            )
             args = parser.parse_args()
             nonlocal RESULT, FIGURE
-            table, feature_sets, labels, folds, test_description, notes = csv(run=False)["build_table"]()
-            feature_sets = feature_sets if isinstance(feature_sets, dict) else {"base": feature_sets}
+            table, feature_sets, labels, folds, test_description, notes = csv(run=False)[
+                "build_table"
+            ]()
+            feature_sets = (
+                feature_sets if isinstance(feature_sets, dict) else {"base": feature_sets}
+            )
             set_name, features = next(iter(feature_sets.items()))
             if args.split == "time":
                 if "window" not in table.columns:
@@ -10338,19 +13672,26 @@ def _make_dozer():
                 late = position.loc[table.index] > 0.7
                 table["unit"] = table["unit"] + np.where(late, "_late", "_early")
                 folds = lambda t: [t["unit"].str.endswith("_late").to_numpy()]
-                test_description = ("TIME SPLIT (secondary): first 60% of every recording trains, last 30% tests, 10% gap; "
-                                    "the same recordings appear in training, so this is easier than the main test")
+                test_description = (
+                    "TIME SPLIT (secondary): first 60% of every recording trains, last 30% tests, 10% gap; "
+                    "the same recordings appear in training, so this is easier than the main test"
+                )
                 RESULT = RESULT.with_name(RESULT.stem + "_timesplit.json")
                 FIGURE = FIGURE.with_name(FIGURE.stem + "_timesplit.png")
             x = table[features].to_numpy(dtype=np.float64)
             code = {label: i for i, label in enumerate(labels)}
             y = table["class"].map(code).to_numpy()
             units = table["unit"].astype(str).to_numpy()
-            result = {"purpose": "Proposal Week 6: advanced ensemble comparison (XGBoost / LightGBM)",
-                      "machine": MACHINE, "features": f"{set_name} ({len(features)} sensor features, same CSV as Week 6)",
-                      "classes": list(labels), "test": test_description,
-                      "selection_rule": "settings fixed in advance; no model or setting chosen from these test results",
-                      "notes": notes, "models": {}}
+            result = {
+                "purpose": "Proposal Week 6: advanced ensemble comparison (XGBoost / LightGBM)",
+                "machine": MACHINE,
+                "features": f"{set_name} ({len(features)} sensor features, same CSV as Week 6)",
+                "classes": list(labels),
+                "test": test_description,
+                "selection_rule": "settings fixed in advance; no model or setting chosen from these test results",
+                "notes": notes,
+                "models": {},
+            }
             for name, make in MODELS.items():
                 actual, predicted, seconds = [], [], 0.0
                 for test in folds(table):
@@ -10370,26 +13711,55 @@ def _make_dozer():
                 result["models"][name] = {
                     "test_units": len(actual),
                     "accuracy": round(float(accuracy_score(actual, predicted)), 4),
-                    "balanced_accuracy": round(float(balanced_accuracy_score(actual, predicted)), 4),
-                    "macro_f1": round(float(f1_score(actual, predicted, average="macro", labels=list(range(len(labels))),
-                                                     zero_division=0)), 4),
+                    "balanced_accuracy": round(
+                        float(balanced_accuracy_score(actual, predicted)), 4
+                    ),
+                    "macro_f1": round(
+                        float(
+                            f1_score(
+                                actual,
+                                predicted,
+                                average="macro",
+                                labels=list(range(len(labels))),
+                                zero_division=0,
+                            )
+                        ),
+                        4,
+                    ),
                     "train_seconds": round(seconds, 2),
-                    "confusion_matrix": confusion_matrix(actual, predicted, labels=list(range(len(labels)))).tolist(),
+                    "confusion_matrix": confusion_matrix(
+                        actual, predicted, labels=list(range(len(labels)))
+                    ).tolist(),
                 }
                 block = result["models"][name]
-                print(f"{name:33s} accuracy {block['accuracy']:.3f}  macro F1 {block['macro_f1']:.3f}  "
-                      f"({block['test_units']} recordings, {seconds:.1f} s to train)")
+                print(
+                    f"{name:33s} accuracy {block['accuracy']:.3f}  macro F1 {block['macro_f1']:.3f}  "
+                    f"({block['test_units']} recordings, {seconds:.1f} s to train)"
+                )
             names = list(result["models"])
             figure, axis = plt.subplots(figsize=(8, 3.6))
             positions = np.arange(len(names))
-            axis.bar(positions - 0.2, [result["models"][n]["accuracy"] for n in names], 0.4, label="accuracy")
-            axis.bar(positions + 0.2, [result["models"][n]["macro_f1"] for n in names], 0.4, label="macro F1")
+            axis.bar(
+                positions - 0.2,
+                [result["models"][n]["accuracy"] for n in names],
+                0.4,
+                label="accuracy",
+            )
+            axis.bar(
+                positions + 0.2,
+                [result["models"][n]["macro_f1"] for n in names],
+                0.4,
+                label="macro F1",
+            )
             axis.axhline(0.9, color="grey", ls="--", lw=1)
             axis.set_xticks(positions, [n.replace(" (", "\n(") for n in names], fontsize=7.5)
             axis.set_ylim(0, 1.05)
             axis.legend(fontsize=8)
-            axis.set_title(f"{MACHINE.replace('_', ' ').title()}: ensemble comparison"
-                           + (" - TIME SPLIT" if args.split == "time" else " (main test)"), fontsize=10)
+            axis.set_title(
+                f"{MACHINE.replace('_', ' ').title()}: ensemble comparison"
+                + (" - TIME SPLIT" if args.split == "time" else " (main test)"),
+                fontsize=10,
+            )
             figure.tight_layout()
             FIGURE.parent.mkdir(parents=True, exist_ok=True)
             figure.savefig(FIGURE, dpi=110)
@@ -10401,7 +13771,6 @@ def _make_dozer():
         if run:
             main()
         return locals()
-
 
     def anomaly(run: bool = True) -> dict:
         """Week 7: anomaly detection. Learn what HEALTHY looks like, then flag anything unusual as a possible fault.
@@ -10431,24 +13800,32 @@ def _make_dozer():
         RESULT = ROOT / "Results" / MACHINE / f"{MACHINE}_anomaly.json"
         FIGURE = ROOT / "Figures" / MACHINE / f"{MACHINE}_anomaly.png"
         DETECTORS = {
-            "Isolation Forest": lambda: make_pipeline(StandardScaler(), IsolationForest(
-                n_estimators=300, max_samples=256, random_state=42, n_jobs=-1)),
-            "One-Class SVM": lambda: make_pipeline(StandardScaler(), OneClassSVM(kernel="rbf", gamma="scale", nu=0.05)),
+            "Isolation Forest": lambda: make_pipeline(
+                StandardScaler(),
+                IsolationForest(n_estimators=300, max_samples=256, random_state=42, n_jobs=-1),
+            ),
+            "One-Class SVM": lambda: make_pipeline(
+                StandardScaler(), OneClassSVM(kernel="rbf", gamma="scale", nu=0.05)
+            ),
         }
-        MAX_FIT_ROWS = 4000   # One-Class SVM gets slow on many rows; a fixed, evenly spaced subset is used
+        MAX_FIT_ROWS = (
+            4000  # One-Class SVM gets slow on many rows; a fixed, evenly spaced subset is used
+        )
 
         def fit(make, x):
             rows = np.linspace(0, len(x) - 1, min(len(x), MAX_FIT_ROWS)).astype(int)
             return make().fit(x[rows])
 
         def recording_scores(model, x, units):
-            window = -model.decision_function(x)   # higher = more unusual
+            window = -model.decision_function(x)  # higher = more unusual
             return {unit: float(window[units == unit].mean()) for unit in dict.fromkeys(units)}
 
         def threshold(make, x, units, healthy_units):
             """Highest score of any healthy training recording when it is left out of fitting (no test data used)."""
             if len(healthy_units) < 2:
-                raise SystemExit("Need at least two healthy training recordings to set the threshold")
+                raise SystemExit(
+                    "Need at least two healthy training recordings to set the threshold"
+                )
             scores = []
             for unit in healthy_units:
                 others = np.isin(units, [u for u in healthy_units if u != unit])
@@ -10458,13 +13835,21 @@ def _make_dozer():
 
         def main():
             parser = argparse.ArgumentParser(description=anomaly.__doc__)
-            parser.add_argument("--split", choices=("main", "time"), default="main",
-                                help="main (fair: held-out recordings) or time (secondary: first 60%% of every recording "
-                                     "trains, last 30%% tests, 10%% gap)")
+            parser.add_argument(
+                "--split",
+                choices=("main", "time"),
+                default="main",
+                help="main (fair: held-out recordings) or time (secondary: first 60%% of every recording "
+                "trains, last 30%% tests, 10%% gap)",
+            )
             args = parser.parse_args()
             nonlocal RESULT, FIGURE
-            table, feature_sets, labels, folds, test_description, notes = csv(run=False)["build_table"]()
-            feature_sets = feature_sets if isinstance(feature_sets, dict) else {"base": feature_sets}
+            table, feature_sets, labels, folds, test_description, notes = csv(run=False)[
+                "build_table"
+            ]()
+            feature_sets = (
+                feature_sets if isinstance(feature_sets, dict) else {"base": feature_sets}
+            )
             set_name, features = next(iter(feature_sets.items()))
             if args.split == "time":
                 if "window" not in table.columns:
@@ -10474,8 +13859,10 @@ def _make_dozer():
                 late = position.loc[table.index] > 0.7
                 table["unit"] = table["unit"] + np.where(late, "_late", "_early")
                 folds = lambda t: [t["unit"].str.endswith("_late").to_numpy()]
-                test_description = ("TIME SPLIT (secondary): healthy rows from the first 60% of every recording train, "
-                                    "the last 30% of every recording is tested (10% gap); easier than the main test")
+                test_description = (
+                    "TIME SPLIT (secondary): healthy rows from the first 60% of every recording train, "
+                    "the last 30% of every recording is tested (10% gap); easier than the main test"
+                )
                 RESULT = RESULT.with_name(RESULT.stem + "_timesplit.json")
                 FIGURE = FIGURE.with_name(FIGURE.stem + "_timesplit.png")
             x = table[features].to_numpy(dtype=np.float64)
@@ -10484,11 +13871,13 @@ def _make_dozer():
             fault_classes = [c for c in labels if c != "healthy"]
             result = {
                 "purpose": "Week 7 (proposal): anomaly detection trained on healthy data only",
-                "machine": MACHINE, "features": f"{set_name} ({len(features)} sensor features, same CSV as Week 6)",
+                "machine": MACHINE,
+                "features": f"{set_name} ({len(features)} sensor features, same CSV as Week 6)",
                 "test": test_description,
                 "threshold_rule": "highest leave-one-recording-out score among the healthy TRAINING recordings; "
-                                  "no test data and no fault labels are used to train or to set it",
-                "notes": notes, "detectors": {},
+                "no test data and no fault labels are used to train or to set it",
+                "notes": notes,
+                "detectors": {},
             }
             figure, axes = plt.subplots(1, len(DETECTORS), figsize=(5.2 * len(DETECTORS), 3.6))
             for axis, (name, make) in zip(np.atleast_1d(axes), DETECTORS.items()):
@@ -10499,15 +13888,26 @@ def _make_dozer():
                     model = fit(make, x[np.isin(units, train_healthy)])
                     scores = recording_scores(model, x[test], units[test])
                     for unit, score in scores.items():
-                        rows.append({"unit": unit, "class": y[units == unit][0], "margin": score - cut})
+                        rows.append(
+                            {"unit": unit, "class": y[units == unit][0], "margin": score - cut}
+                        )
                 truth = np.array([r["class"] != "healthy" for r in rows])
                 margin = np.array([r["margin"] for r in rows])
                 alarm = margin > 0
-                per_class = {c: round(float(alarm[[r["class"] == c for r in rows]].mean()), 4)
-                             for c in fault_classes if any(r["class"] == c for r in rows)}
+                per_class = {
+                    c: round(float(alarm[[r["class"] == c for r in rows]].mean()), 4)
+                    for c in fault_classes
+                    if any(r["class"] == c for r in rows)
+                }
                 block = {
-                    "test_recordings": len(rows), "healthy": int((~truth).sum()), "faulty": int(truth.sum()),
-                    "roc_auc": round(float(roc_auc_score(truth, margin)), 4) if 0 < truth.sum() < len(truth) else None,
+                    "test_recordings": len(rows),
+                    "healthy": int((~truth).sum()),
+                    "faulty": int(truth.sum()),
+                    "roc_auc": (
+                        round(float(roc_auc_score(truth, margin)), 4)
+                        if 0 < truth.sum() < len(truth)
+                        else None
+                    ),
                     "fault_detection_rate": round(float(alarm[truth].mean()), 4),
                     "false_alarm_rate": round(float(alarm[~truth].mean()), 4),
                     "accuracy": round(float((alarm == truth).mean()), 4),
@@ -10515,20 +13915,32 @@ def _make_dozer():
                     "recordings": [{**r, "margin": round(r["margin"], 4)} for r in rows],
                 }
                 result["detectors"][name] = block
-                print(f"{name:17s} ROC-AUC {block['roc_auc']}  faults detected {block['fault_detection_rate']:.3f}  "
-                      f"false alarms {block['false_alarm_rate']:.3f}  ({len(rows)} test recordings)")
+                print(
+                    f"{name:17s} ROC-AUC {block['roc_auc']}  faults detected {block['fault_detection_rate']:.3f}  "
+                    f"false alarms {block['false_alarm_rate']:.3f}  ({len(rows)} test recordings)"
+                )
                 order = ["healthy", *fault_classes]
                 for k, c in enumerate(order):
                     values = margin[[r["class"] == c for r in rows]]
-                    axis.scatter(np.full(len(values), k) + np.linspace(-0.15, 0.15, len(values)), values, s=18,
-                                 color="tab:green" if c == "healthy" else "tab:red")
+                    axis.scatter(
+                        np.full(len(values), k) + np.linspace(-0.15, 0.15, len(values)),
+                        values,
+                        s=18,
+                        color="tab:green" if c == "healthy" else "tab:red",
+                    )
                 axis.axhline(0, color="black", lw=1, ls="--")
                 axis.set_xticks(range(len(order)), order, rotation=20)
                 axis.set_ylabel("score minus alarm threshold")
-                axis.set_title(f"{name}: AUC {block['roc_auc']}, detect {block['fault_detection_rate']:.2f}, "
-                               f"false alarm {block['false_alarm_rate']:.2f}", fontsize=8.5)
-            figure.suptitle(f"{MACHINE.replace('_', ' ').title()} anomaly detection (above the line = alarm)"
-                            + (" - TIME SPLIT" if args.split == "time" else ""), fontsize=10)
+                axis.set_title(
+                    f"{name}: AUC {block['roc_auc']}, detect {block['fault_detection_rate']:.2f}, "
+                    f"false alarm {block['false_alarm_rate']:.2f}",
+                    fontsize=8.5,
+                )
+            figure.suptitle(
+                f"{MACHINE.replace('_', ' ').title()} anomaly detection (above the line = alarm)"
+                + (" - TIME SPLIT" if args.split == "time" else ""),
+                fontsize=10,
+            )
             figure.tight_layout()
             FIGURE.parent.mkdir(parents=True, exist_ok=True)
             figure.savefig(FIGURE, dpi=110)
@@ -10541,32 +13953,35 @@ def _make_dozer():
             main()
         return locals()
 
-
-    # ====================================================================================================
-    # Week 7: full-data sensor experiment (every CORA sensor, window and recording)
-    # ====================================================================================================
+    # --- Week 7: full-data sensor experiment (every CORA sensor, window and recording) ---
 
     def fulldata(run: bool = True) -> dict:
         """Week 7: every CORA sensor (vibration X/Y/Z, current C1-C3, temperatures T1-T6), every 1 s window, and the
-        five start-up test repeats per condition and speed. See Models/cora_fulldata.py. Saves *_fulldata.json."""
+        five start-up test repeats per condition and speed. See Models/cora_fulldata.py. Saves *_fulldata.json.
+        """
         import argparse
         import importlib.util
 
         def main():
             parser = argparse.ArgumentParser(description=fulldata.__doc__)
-            parser.add_argument("--part", choices=("classify", "ensembles", "anomaly", "all"), default="classify",
-                                help="classify (default), ensembles (XGBoost/LightGBM comparison), anomaly, or all")
+            parser.add_argument(
+                "--part",
+                choices=("classify", "ensembles", "anomaly", "all"),
+                default="classify",
+                help="classify (default), ensembles (XGBoost/LightGBM comparison), anomaly, or all",
+            )
             part = parser.parse_args().part
             engine = get_model("cora_fulldata")
             conditions = {"H": "healthy", "W25": "wear25", "W50": "wear50", "W75": "wear75"}
             for name in ("classify", "ensembles", "anomaly"):
                 if part in (name, "all"):
-                    (engine.run if name == "classify" else getattr(engine, name))("dozer", conditions)
+                    (engine.run if name == "classify" else getattr(engine, name))(
+                        "dozer", conditions
+                    )
 
         if run:
             main()
         return locals()
-
 
     COMMANDS = {
         "fulldata": fulldata,
@@ -10581,26 +13996,24 @@ def _make_dozer():
     }
     RUN_ALL = ["csv", "ensembles", "anomaly"]
 
-
     def cli() -> None:
         if len(sys.argv) < 2 or sys.argv[1] not in (*COMMANDS, "all"):
             print(__doc__)
             raise SystemExit(0 if len(sys.argv) < 2 or sys.argv[1] in ("-h", "--help") else 2)
         command, options = sys.argv[1], sys.argv[2:]
-        for name in (RUN_ALL if command == "all" else [command]):
+        for name in RUN_ALL if command == "all" else [command]:
             sys.argv = [f"dozer.py {name}", *(options if command != "all" else [])]
             COMMANDS[name]()
 
-
     return SimpleNamespace(**locals())
 
-#endregion
+
+# endregion
 
 
 # WHEEL_LOADER MODEL IMPLEMENTATION
-#region Wheel Loader: data, preprocessing, models and evaluation
+# region Wheel Loader: data, preprocessing, models and evaluation
 def _make_wheel_loader():
-    __doc__ = "Wheel Loader (machine 6): electric drive motor, CORA vibration vs infrared camera.\n\n4 classes from the CORA motor/gearbox rig: healthy, bearing defect, half-broken rotor bar and broken rotor\nbar. The two rotor-bar faults are CORA conditions no other machine in this project uses (new fault data);\nhealthy and bearing-defect runs are shared with the Excavator. Large wheel loaders can use electric drive,\nso the induction motor stands in for the loader's drive motor. Lab data, not a wheel loader.\n\nUsage:\n    python Notebook/notebook_helpers.py wheel_loader <command> [options]\n    python Notebook/notebook_helpers.py wheel_loader <command> --help\n\nCommands:\n    intake          check selectively downloaded CORA files (MD5) and move them into Raw_Data/\n    csv             4-class vibration model from a CSV feature table (validation-selected model)\n    export-images   save the infrared images as named files in Images/wheel_loader/ (local only)\n    cnn             CNN with data augmentation on the named images\n    cnn-pretrained  transfer learning, pretrained ResNet18 on the named images\n    train-final     train the sensor model on all data and save it (--exclude to leave recordings out)\n    predict         predict from any CSV (feature table or raw recording) and show accuracy if labels are known\n    ensembles       XGBoost / LightGBM vs random forest etc. (--split time for the secondary test)\n    anomaly         anomaly detection trained on healthy data only (--split time for the secondary test)\n    fulldata        Week 7: every CORA sensor, window and start-up recording (Models/cora_fulldata.py)\n                    (--part ensembles / anomaly / all: XGBoost-LightGBM comparison, anomaly detection)\n    all             run csv, then export-images, then cnn-pretrained\n\nPreprocessing uses training data only (no per-speed normalisation across held-out runs).\nRaw data stays in Raw_Data/ and Processed_Data/ (not in Git)."
     """Wheel Loader (machine 6): electric drive motor, CORA vibration vs infrared camera.
 
     4 classes from the CORA motor/gearbox rig: healthy, bearing defect, half-broken rotor bar and broken rotor
@@ -10629,15 +14042,12 @@ def _make_wheel_loader():
     Preprocessing uses training data only (no per-speed normalisation across held-out runs).
     Raw data stays in Raw_Data/ and Processed_Data/ (not in Git).
     """
-
+    __doc__ = cleandoc(_make_wheel_loader.__doc__)
 
     import sys
     from pathlib import Path
 
-
-    # ====================================================================================================
-    # intake: check and file selectively downloaded CORA files
-    # ====================================================================================================
+    # --- intake: check and file selectively downloaded CORA files ---
 
     def intake(run: bool = True) -> dict:
         """Check downloaded CORA files against the repository's MD5 and move them into Raw_Data/.
@@ -10693,8 +14103,12 @@ def _make_wheel_loader():
 
         def main():
             parser = argparse.ArgumentParser(description=intake.__doc__)
-            parser.add_argument("--from", dest="source", default=str(Path.home() / "Downloads"),
-                                help="folder holding the browser downloads")
+            parser.add_argument(
+                "--from",
+                dest="source",
+                default=str(Path.home() / "Downloads"),
+                help="folder holding the browser downloads",
+            )
             args = parser.parse_args()
             source = Path(args.source)
             records, missing = [], []
@@ -10705,27 +14119,46 @@ def _make_wheel_loader():
                     missing.append(name)
                     continue
                 if candidate.stat().st_size != size or md5(candidate) != expected:
-                    raise SystemExit(f"{candidate}: size or MD5 does not match the repository; download it again")
+                    raise SystemExit(
+                        f"{candidate}: size or MD5 does not match the repository; download it again"
+                    )
                 if candidate != destination:
                     destination.parent.mkdir(parents=True, exist_ok=True)
                     shutil.move(str(candidate), destination)
-                records.append({"file": name, "folder": f"Raw_Data/{folder}", "size_bytes": size, "md5": expected,
-                                "status": "verified against publisher MD5"})
+                records.append(
+                    {
+                        "file": name,
+                        "folder": f"Raw_Data/{folder}",
+                        "size_bytes": size,
+                        "md5": expected,
+                        "status": "verified against publisher MD5",
+                    }
+                )
                 print(f"verified {name}", flush=True)
-            MANIFEST.write_text(json.dumps({
-                "source": "https://doi.org/10.34810/DATA2500", "license": "CC BY 4.0",
-                "note": "selectively downloaded from CORA; every file checked against the publisher MD5",
-                "files": records, "missing": missing}, indent=2) + "\n", encoding="utf-8")
-            print(f"{len(records)} files verified; {len(missing)} still missing" + (f": {missing}" if missing else ""))
+            MANIFEST.write_text(
+                json.dumps(
+                    {
+                        "source": "https://doi.org/10.34810/DATA2500",
+                        "license": "CC BY 4.0",
+                        "note": "selectively downloaded from CORA; every file checked against the publisher MD5",
+                        "files": records,
+                        "missing": missing,
+                    },
+                    indent=2,
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            print(
+                f"{len(records)} files verified; {len(missing)} still missing"
+                + (f": {missing}" if missing else "")
+            )
 
         if run:
             main()
         return locals()
 
-
-    # ====================================================================================================
-    # export-images: Week 6, save the camera images as named files (professor remark)
-    # ====================================================================================================
+    # --- export-images: Week 6, save the camera images as named files (professor remark) ---
 
     def export_images(run: bool = True) -> dict:
         """Week 6: save this machine's camera images as named PNG files for the CNN.
@@ -10751,29 +14184,15 @@ def _make_wheel_loader():
         FRAMES = SECONDS * 1_000_000 // BIN_US
 
         def event_frames(stream):
-            """First 5 s of an event recording as 20 images of 250 ms; channel 0 = brighter, 1 = darker events."""
-            while True:
-                first = stream.read(1)
-                if first != b"%":
-                    break
-                stream.readline()
-            stream.read(1)
-            counts = np.zeros((FRAMES, 2, HEIGHT, WIDTH), dtype=np.uint32)
-            end = SECONDS * 1_000_000
-            while True:
-                chunk = stream.read(8 * 500_000)
-                if not chunk:
-                    break
-                ev = np.frombuffer(chunk, dtype=EVENT)
-                keep = ev["t"] < end
-                t, xy = ev["t"][keep], ev["xy"][keep]
-                x, y, polarity = xy & 0x3FFF, (xy >> 14) & 0x3FFF, (xy >> 28) & 1
-                index = ((((t // BIN_US) * 2 + (1 - polarity)) * HEIGHT + (y * HEIGHT // 480)) * WIDTH
-                         + (x * WIDTH // 640)).astype(np.int64)
-                counts += np.bincount(index, minlength=counts.size).reshape(counts.shape).astype(np.uint32)
-                if len(ev) and ev["t"][-1] >= end:
-                    break
-            return counts
+            return bin_event_stream(
+                stream,
+                frames=FRAMES,
+                seconds=SECONDS,
+                height=HEIGHT,
+                width=WIDTH,
+                event_dtype=EVENT,
+                bin_microseconds=BIN_US,
+            )
 
         def event_png(frame):
             """Brighter events in red, darker events in green, log-scaled to 0-255."""
@@ -10785,8 +14204,15 @@ def _make_wheel_loader():
             folder = OUT / label
             folder.mkdir(parents=True, exist_ok=True)
             cv2.imwrite(str(folder / name), image)
-            rows.append({"file": f"{label}/{name}", "machine": MACHINE, "class": label, "unit": unit, "group": group})
-
+            rows.append(
+                {
+                    "file": f"{label}/{name}",
+                    "machine": MACHINE,
+                    "class": label,
+                    "unit": unit,
+                    "group": group,
+                }
+            )
 
         def export():
             rows = []
@@ -10795,11 +14221,22 @@ def _make_wheel_loader():
                 folder = "cora_gear_wear" if condition == "H" else "cora_drive_faults"
                 for speed in ("F5", "F15", "F50", "F60"):
                     unit = f"{condition}_{speed}_S"
-                    frames = loadmat(ROOT / "Raw_Data" / folder / f"{unit}.mat",
-                                     variable_names=["imagenes_celda"])["imagenes_celda"]
+                    frames = loadmat(
+                        ROOT / "Raw_Data" / folder / f"{unit}.mat",
+                        variable_names=["imagenes_celda"],
+                    )["imagenes_celda"]
                     for k, frame in enumerate(frames.flat):
-                        gray = cv2.cvtColor(cv2.resize(np.asarray(frame), (WIDTH, HEIGHT)), cv2.COLOR_RGB2GRAY)
-                        write(rows, label, unit, speed, f"{MACHINE}_{label}_{speed}_f{k:03d}.png", gray)
+                        gray = cv2.cvtColor(
+                            cv2.resize(np.asarray(frame), (WIDTH, HEIGHT)), cv2.COLOR_RGB2GRAY
+                        )
+                        write(
+                            rows,
+                            label,
+                            unit,
+                            speed,
+                            f"{MACHINE}_{label}_{speed}_f{k:03d}.png",
+                            gray,
+                        )
                     print(f"{unit}: done", flush=True)
             return rows
 
@@ -10821,7 +14258,9 @@ def _make_wheel_loader():
                 shutil.rmtree(OUT)
             rows = export()
             with (OUT / "index.csv").open("w", newline="", encoding="utf-8") as handle:
-                writer = csv_module.DictWriter(handle, fieldnames=["file", "machine", "class", "unit", "group"])
+                writer = csv_module.DictWriter(
+                    handle, fieldnames=["file", "machine", "class", "unit", "group"]
+                )
                 writer.writeheader()
                 writer.writerows(rows)
             counts = {}
@@ -10833,10 +14272,7 @@ def _make_wheel_loader():
             main()
         return locals()
 
-
-    # ====================================================================================================
-    # csv: Week 6, 4-class sensor model from a CSV feature table (professor remark: "csv accuracy 90 plus")
-    # ====================================================================================================
+    # --- csv: Week 6, 4-class sensor model from a CSV feature table (professor remark: "csv accuracy 90 plus") ---
 
     def csv(run: bool = True) -> dict:
         """Week 6: write the sensor features to a CSV table and train 4-class models on it.
@@ -10855,8 +14291,12 @@ def _make_wheel_loader():
         matplotlib.use("Agg")
         import matplotlib.pyplot as plt
         import numpy as np
-        from sklearn.metrics import (accuracy_score, balanced_accuracy_score, confusion_matrix,
-                                     precision_recall_fscore_support)
+        from sklearn.metrics import (
+            accuracy_score,
+            balanced_accuracy_score,
+            confusion_matrix,
+            precision_recall_fscore_support,
+        )
 
         import pandas as pd
         from sklearn.dummy import DummyClassifier
@@ -10871,11 +14311,20 @@ def _make_wheel_loader():
         FIGURE = ROOT / "Figures" / "wheel_loader" / f"{MACHINE}_csv_4class.png"
         MODELS = {
             "Majority class (control)": lambda: DummyClassifier(strategy="most_frequent"),
-            "Logistic regression": lambda: make_pipeline(StandardScaler(), LogisticRegression(
-                C=1.0, class_weight="balanced", solver="lbfgs", max_iter=5000, random_state=42)),
+            "Logistic regression": lambda: make_pipeline(
+                StandardScaler(),
+                LogisticRegression(
+                    C=1.0, class_weight="balanced", solver="lbfgs", max_iter=5000, random_state=42
+                ),
+            ),
             "Random forest": lambda: RandomForestClassifier(
-                n_estimators=250, max_features="sqrt", class_weight="balanced_subsample",
-                min_samples_leaf=2, random_state=42, n_jobs=-1),
+                n_estimators=250,
+                max_features="sqrt",
+                class_weight="balanced_subsample",
+                min_samples_leaf=2,
+                random_state=42,
+                n_jobs=-1,
+            ),
         }
 
         unit_predictions = predict_recordings
@@ -10884,52 +14333,30 @@ def _make_wheel_loader():
 
         plot_matrix = save_confusion_matrix
 
-
-        VIB_ORDERS = ((0.5, 1.5), (1.5, 2.5), (2.5, 3.5), (3.5, 5.5), (5.5, 8.5), (8.5, 12.5), (12.5, 20.5))
-        VIB_NAMES = ["log_rms", "kurtosis", "skewness", "crest_factor", "peak_order", "log_ratio_2x_1x",
-                     *(f"order_power_{lo}_{hi}" for lo, hi in VIB_ORDERS)]
+        VIB_ORDERS = (
+            (0.5, 1.5),
+            (1.5, 2.5),
+            (2.5, 3.5),
+            (3.5, 5.5),
+            (5.5, 8.5),
+            (8.5, 12.5),
+            (12.5, 20.5),
+        )
+        VIB_NAMES = [
+            "log_rms",
+            "kurtosis",
+            "skewness",
+            "crest_factor",
+            "peak_order",
+            "log_ratio_2x_1x",
+            *(f"order_power_{lo}_{hi}" for lo, hi in VIB_ORDERS),
+        ]
 
         def vibration_rows(run_name, label, speed):
-            """CORA Vx vibration (3 kHz) in 1 s windows (every 10th window), measured in shaft orders.
-
-            Orders = frequency / speed setting, so 1x, 2x and higher multiples line up across speeds:
-            unbalance shows at 1x, misalignment at 2x, bearing and gear damage at higher orders and spikes.
-            """
-            cache = ROOT / "Processed_Data" / "cora_vibration" / f"{run_name}_Vx_features.csv"
-            if cache.is_file():
-                return load_csv(cache)
-            source = ROOT / "Raw_Data" / "cora_vibration" / f"{run_name}_Vx.csv"
-            if not source.is_file():
-                raise SystemExit(f"Missing {source.relative_to(ROOT)}: download it and run the intake command")
-            values = load_cora_sensor(source.name)
-            frame = vibration_frame(values, speed)
-            frame.insert(0, "window", np.arange(len(frame)))
-            frame.insert(0, "class", label)
-            frame.insert(0, "speed", speed)
-            frame.insert(0, "unit", run_name)
-            cache.parent.mkdir(parents=True, exist_ok=True)
-            frame.to_csv(cache, index=False)
-            return frame
+            return load_cora_feature_rows(run_name, label, speed, vibration_frame)
 
         def vibration_frame(values, speed):
-            """Order-domain vibration features for a raw 3 kHz Vx signal at speed setting F5/F15/F50/F60."""
-            rate, shaft = 3000, float(speed[1:])
-            n = len(values) // rate
-            windows = values[: n * rate].reshape(n, rate)[::10]
-            centered = windows - windows.mean(axis=1, keepdims=True)
-            std = np.maximum(centered.std(axis=1), 1e-12)
-            freq = np.fft.rfftfreq(rate, d=1 / rate)
-            power = np.abs(np.fft.rfft(centered * np.hanning(rate), axis=1)) ** 2
-            order = freq / shaft
-            usable = (order >= 0.5) & (order < 20.5)
-            share = power[:, usable] / np.maximum(power[:, usable].sum(axis=1, keepdims=True), 1e-12)
-            o = order[usable]
-            bands = [share[:, (o >= lo) & (o < hi)].sum(axis=1) for lo, hi in VIB_ORDERS]
-            frame = pd.DataFrame(np.column_stack([
-                np.log(std), (centered ** 4).mean(axis=1) / std ** 4, (centered ** 3).mean(axis=1) / std ** 3,
-                np.abs(centered).max(axis=1) / std, o[np.argmax(share, axis=1)],
-                np.log((bands[1] + 1e-9) / (bands[0] + 1e-9)), *bands]), columns=VIB_NAMES)
-            return frame
+            return extract_cora_vibration(values, speed, VIB_ORDERS, VIB_NAMES)
 
         def per_speed_normalised(table, names):
             """Rescale each feature within each speed using all recordings at that speed together (no labels used).
@@ -10941,90 +14368,56 @@ def _make_wheel_loader():
             for name in names:
                 column = f"{name}_per_speed"
                 grouped = table.groupby("speed")[name]
-                table[column] = (table[name] - grouped.transform("mean")) / grouped.transform("std").replace(0, 1)
+                table[column] = (table[name] - grouped.transform("mean")) / grouped.transform(
+                    "std"
+                ).replace(0, 1)
                 out.append(column)
             return out
 
         def build_table():
             labels = {"H": "healthy", "BD": "bearing", "HB": "half_broken_bar", "OB": "broken_bar"}
-            frames = [vibration_rows(f"{c}_{s}_S", label, s)
-                      for c, label in labels.items() for s in ("F5", "F15", "F50", "F60")]
+            frames = [
+                vibration_rows(f"{c}_{s}_S", label, s)
+                for c, label in labels.items()
+                for s in ("F5", "F15", "F50", "F60")
+            ]
             table = pd.concat(frames, ignore_index=True)
             folds = lambda t: [(t["speed"] == s).to_numpy() for s in ("F5", "F15", "F50", "F60")]
-            return (table, {"vibration": VIB_NAMES},
-                    ["healthy", "bearing", "half_broken_bar", "broken_bar"], folds,
-                    "four rounds, each holding out one whole speed (4 runs, one per class); 16 run-level predictions",
-                    ["CORA motor/gearbox rig, Vx vibration at 3 kHz; one row per 1 s window, every 10th window of each run",
-                     "features in shaft orders (frequency / speed setting) so they line up across the held-out speed",
-                     "no per-speed normalisation: preprocessing never looks at the held-out speed's runs"])
+            return (
+                table,
+                {"vibration": VIB_NAMES},
+                ["healthy", "bearing", "half_broken_bar", "broken_bar"],
+                folds,
+                "four rounds, each holding out one whole speed (4 runs, one per class); 16 run-level predictions",
+                [
+                    "CORA motor/gearbox rig, Vx vibration at 3 kHz; one row per 1 s window, every 10th window of each run",
+                    "features in shaft orders (frequency / speed setting) so they line up across the held-out speed",
+                    "no per-speed normalisation: preprocessing never looks at the held-out speed's runs",
+                ],
+            )
+
         INNER_GROUP = "speed"
 
-        def candidate_models():
-            from sklearn.ensemble import ExtraTreesClassifier, HistGradientBoostingClassifier
-            from sklearn.svm import SVC
-            return {
-                "Random forest": lambda: RandomForestClassifier(
-                    n_estimators=250, max_features="sqrt", class_weight="balanced_subsample",
-                    min_samples_leaf=2, random_state=42, n_jobs=-1),
-                "Extra trees": lambda: ExtraTreesClassifier(
-                    n_estimators=300, max_features="sqrt", class_weight="balanced",
-                    min_samples_leaf=2, random_state=42, n_jobs=-1),
-                "Gradient boosting": lambda: HistGradientBoostingClassifier(
-                    max_iter=200, learning_rate=0.05, class_weight="balanced", random_state=42),
-                "SVM (RBF)": lambda: make_pipeline(StandardScaler(), SVC(
-                    C=10.0, gamma="scale", class_weight="balanced", probability=True, random_state=42)),
-                "Logistic regression": lambda: make_pipeline(StandardScaler(), LogisticRegression(
-                    C=1.0, class_weight="balanced", solver="lbfgs", max_iter=5000, random_state=42)),
-            }
+        candidate_models = sensor_model_candidates
 
-        def nested_selection(table, feature_sets, labels, outer_folds, inner_group):
-            """Pick a feature set and model on validation data inside each training set, then test once.
-
-            Inner validation holds out whole groups (recordings, bearings or speeds) of the training set
-            only; the outer test units are never used for the choice.
-            """
-            from sklearn.metrics import f1_score
-            from sklearn.model_selection import GroupKFold
-
-            y = table["class"].to_numpy()
-            units = table["unit"].to_numpy()
-            groups = table[inner_group].to_numpy()
-            models = candidate_models()
-            actual, predicted, chosen = [], [], []
-            for test in outer_folds:
-                train_idx = np.flatnonzero(~test)
-                n_splits = min(4, len(set(groups[train_idx])))
-                inner = list(GroupKFold(n_splits=n_splits).split(train_idx, groups=groups[train_idx]))
-                best, best_score = None, -1.0
-                for set_name, names in feature_sets.items():
-                    x = table[names].to_numpy(dtype=np.float64)
-                    for model_name, factory in models.items():
-                        f1s = []
-                        for fit_part, val_part in inner:
-                            fit_rows, val_rows = train_idx[fit_part], train_idx[val_part]
-                            model = factory().fit(x[fit_rows], y[fit_rows])
-                            a, p = unit_predictions(model.predict_proba(x[val_rows]), model.classes_, y[val_rows], units[val_rows])
-                            f1s.append(f1_score(a, p, labels=labels, average="macro", zero_division=0))
-                        if float(np.mean(f1s)) > best_score:
-                            best, best_score = (set_name, model_name), float(np.mean(f1s))
-                x = table[feature_sets[best[0]]].to_numpy(dtype=np.float64)
-                model = models[best[1]]().fit(x[train_idx], y[train_idx])
-                a, p = unit_predictions(model.predict_proba(x[test]), model.classes_, y[test], units[test])
-                actual += a
-                predicted += p
-                chosen.append({"feature_set": best[0], "model": best[1], "validation_macro_f1": round(best_score, 4)})
-            return score(actual, predicted, labels), chosen
+        nested_selection = select_sensor_model
 
         def main():
             parser = argparse.ArgumentParser(description=csv.__doc__)
-            parser.add_argument("--split", choices=("speed", "time"), default="speed",
-                                help="speed (main, fair test): hold out each whole speed. time (secondary): train on the "
-                                     "first 60%% of every run, test on the last 30%% (10%% gap); the machine has been seen "
-                                     "before, and each fault comes from one recording, so this is an easier test")
+            parser.add_argument(
+                "--split",
+                choices=("speed", "time"),
+                default="speed",
+                help="speed (main, fair test): hold out each whole speed. time (secondary): train on the "
+                "first 60%% of every run, test on the last 30%% (10%% gap); the machine has been seen "
+                "before, and each fault comes from one recording, so this is an easier test",
+            )
             args = parser.parse_args()
             nonlocal RESULT, FIGURE
             table, feature_names, labels, folds, test_description, notes = build_table()
-            feature_sets = feature_names if isinstance(feature_names, dict) else {"base": feature_names}
+            feature_sets = (
+                feature_names if isinstance(feature_names, dict) else {"base": feature_names}
+            )
             feature_names = next(iter(feature_sets.values()))
             CSV_PATH.parent.mkdir(parents=True, exist_ok=True)
             table.to_csv(CSV_PATH, index=False)
@@ -11034,9 +14427,11 @@ def _make_wheel_loader():
                 late = position.loc[table.index] > 0.7
                 table["unit"] = table["unit"] + np.where(late, "_late", "_early")
                 folds = lambda t: [t["unit"].str.endswith("_late").to_numpy()]
-                test_description = ("TIME SPLIT (secondary): first 60% of every run trains, last 30% tests, 10% gap; "
-                                    "16 run-level predictions; the same recordings appear in training, so this is easier "
-                                    "than the main unseen-speed test")
+                test_description = (
+                    "TIME SPLIT (secondary): first 60% of every run trains, last 30% tests, 10% gap; "
+                    "16 run-level predictions; the same recordings appear in training, so this is easier "
+                    "than the main unseen-speed test"
+                )
                 RESULT = RESULT.with_name(RESULT.stem + "_timesplit.json")
                 FIGURE = FIGURE.with_name(FIGURE.stem + "_timesplit.png")
             x = table[feature_names].to_numpy(dtype=np.float64)
@@ -11050,52 +14445,80 @@ def _make_wheel_loader():
                     if set(units[train]) & set(units[test]):
                         raise ValueError("A test unit also appears in training")
                     model = factory().fit(x[train], y[train])
-                    a, p = unit_predictions(model.predict_proba(x[test]), model.classes_, y[test], units[test])
+                    a, p = unit_predictions(
+                        model.predict_proba(x[test]), model.classes_, y[test], units[test]
+                    )
                     actual += a
                     predicted += p
                 scores[name] = score(actual, predicted, labels)
             result = {
                 "purpose": "Week 6 professor remark: 4-class sensor model from a CSV feature table",
                 "csv_file": str(CSV_PATH.relative_to(ROOT)).replace("\\", "/"),
-                "rows": int(len(table)), "features": feature_names, "classes": labels,
-                "test": test_description, "main_model": "Random forest",
+                "rows": int(len(table)),
+                "features": feature_names,
+                "classes": labels,
+                "test": test_description,
+                "main_model": "Random forest",
                 "selection_rule": "settings fixed in advance; no model or setting chosen from these test results",
-                "notes": notes, "models": scores,
+                "notes": notes,
+                "models": scores,
             }
             if args.split == "time":
                 result["split"] = "time (secondary)"
                 RESULT.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
                 main_score = scores["Random forest"]
-                plot_matrix(main_score["confusion_matrix"], labels,
-                            f"{MACHINE}: CSV sensor, TIME SPLIT (random forest), accuracy {main_score['accuracy']:.3f}", FIGURE)
+                plot_matrix(
+                    main_score["confusion_matrix"],
+                    labels,
+                    f"{MACHINE}: CSV sensor, TIME SPLIT (random forest), accuracy {main_score['accuracy']:.3f}",
+                    FIGURE,
+                )
                 for name, s in scores.items():
-                    print(f"{name:<26} accuracy {s['accuracy']:.3f}  macro F1 {s['macro_f1']:.3f}  ({s['test_units']} test units, time split)")
+                    print(
+                        f"{name:<26} accuracy {s['accuracy']:.3f}  macro F1 {s['macro_f1']:.3f}  ({s['test_units']} test units, time split)"
+                    )
                 print(f"Saved {RESULT.relative_to(ROOT)} and {FIGURE.relative_to(ROOT)}")
                 return
-            selected, chosen = nested_selection(table, feature_sets, labels, folds(table), INNER_GROUP)
+            selected, chosen = nested_selection(
+                table, feature_sets, labels, folds(table), INNER_GROUP
+            )
             result["validation_selected"] = {
                 "description": "feature set and model chosen per round on validation groups inside the training set only "
-                               "(candidates: " + ", ".join(candidate_models()) + "; feature sets: " + ", ".join(feature_sets) + ")",
-                "feature_sets": feature_sets, "score": selected, "chosen_per_round": chosen}
+                "(candidates: "
+                + ", ".join(candidate_models())
+                + "; feature sets: "
+                + ", ".join(feature_sets)
+                + ")",
+                "feature_sets": feature_sets,
+                "score": selected,
+                "chosen_per_round": chosen,
+            }
             result["main_model"] = "validation-selected"
             RESULT.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
             main_score = selected
-            plot_matrix(main_score["confusion_matrix"], labels,
-                        f"{MACHINE}: CSV sensor model (validation-selected), accuracy {main_score['accuracy']:.3f}", FIGURE)
+            plot_matrix(
+                main_score["confusion_matrix"],
+                labels,
+                f"{MACHINE}: CSV sensor model (validation-selected), accuracy {main_score['accuracy']:.3f}",
+                FIGURE,
+            )
             for name, s in scores.items():
-                print(f"{name:<26} accuracy {s['accuracy']:.3f}  macro F1 {s['macro_f1']:.3f}  ({s['test_units']} test units)")
-            print(f"Validation-selected model: accuracy {selected['accuracy']:.3f}  macro F1 {selected['macro_f1']:.3f}  "
-                  f"(choices: {[c['feature_set'] + ' / ' + c['model'] for c in chosen]})")
-            print(f"Saved {CSV_PATH.relative_to(ROOT)}, {RESULT.relative_to(ROOT)} and {FIGURE.relative_to(ROOT)}")
+                print(
+                    f"{name:<26} accuracy {s['accuracy']:.3f}  macro F1 {s['macro_f1']:.3f}  ({s['test_units']} test units)"
+                )
+            print(
+                f"Validation-selected model: accuracy {selected['accuracy']:.3f}  macro F1 {selected['macro_f1']:.3f}  "
+                f"(choices: {[c['feature_set'] + ' / ' + c['model'] for c in chosen]})"
+            )
+            print(
+                f"Saved {CSV_PATH.relative_to(ROOT)}, {RESULT.relative_to(ROOT)} and {FIGURE.relative_to(ROOT)}"
+            )
 
         if run:
             main()
         return locals()
 
-
-    # ====================================================================================================
-    # cnn: Week 6, CNN with data augmentation on the named images (professor remark)
-    # ====================================================================================================
+    # --- cnn: Week 6, CNN with data augmentation on the named images (professor remark) ---
 
     def cnn(run: bool = True) -> dict:
         """Week 6: a small CNN with data augmentation, trained on the named images, 4 classes.
@@ -11116,8 +14539,12 @@ def _make_wheel_loader():
         matplotlib.use("Agg")
         import matplotlib.pyplot as plt
         import numpy as np
-        from sklearn.metrics import (accuracy_score, balanced_accuracy_score, confusion_matrix,
-                                     precision_recall_fscore_support)
+        from sklearn.metrics import (
+            accuracy_score,
+            balanced_accuracy_score,
+            confusion_matrix,
+            precision_recall_fscore_support,
+        )
 
         import random
 
@@ -11138,63 +14565,31 @@ def _make_wheel_loader():
 
         plot_matrix = save_confusion_matrix
 
-
         def read_index():
             return read_image_records(IMAGES)
 
         def load(rows):
             return load_model_images(IMAGES, rows, channels=(0,))
 
-        class Net(nn.Module):
-            def __init__(self, in_channels, n_classes):
-                super().__init__()
-                def block(a, b):
-                    return nn.Sequential(nn.Conv2d(a, b, 3, padding=1), nn.BatchNorm2d(b), nn.ReLU(), nn.MaxPool2d(2))
-                self.features = nn.Sequential(block(in_channels, 16), block(16, 32), block(32, 64), block(64, 64))
-                self.head = nn.Sequential(nn.AdaptiveAvgPool2d(1), nn.Flatten(), nn.Dropout(0.3), nn.Linear(64, n_classes))
+        Net = make_small_image_cnn
 
-            def forward(self, x):
-                return self.head(self.features(x))
-
-        def augment(batch, generator):
-            n = batch.shape[0]
-            flip = torch.rand(n, generator=generator) < 0.5
-            batch = torch.where(flip[:, None, None, None], batch.flip(-1), batch)
-            shifted = []
-            for image in batch:
-                dy, dx = (int(v) for v in torch.randint(-8, 9, (2,), generator=generator))
-                shifted.append(torch.roll(image, shifts=(dy, dx), dims=(-2, -1)))
-            batch = torch.stack(shifted)
-            scale = 0.8 + 0.4 * torch.rand(n, 1, 1, 1, generator=generator)
-            return batch * scale + 0.05 * torch.randn(batch.shape, generator=generator)
+        augment = augment_event_images
 
         def train(x, y):
-            random.seed(SEED)
-            np.random.seed(SEED)
-            torch.manual_seed(SEED)
-            generator = torch.Generator().manual_seed(SEED)
-            model = Net(x.shape[1], len(LABELS))
-            counts = np.bincount(y, minlength=len(LABELS)).astype(np.float32)
-            weights = torch.tensor(counts.sum() / (len(LABELS) * np.maximum(counts, 1)))
-            loss_fn = nn.CrossEntropyLoss(weight=weights)
-            optimiser = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE, weight_decay=1e-4)
-            xs, ys = torch.tensor(x), torch.tensor(y, dtype=torch.long)
-            for _ in range(EPOCHS):
-                model.train()
-                order = torch.randperm(len(xs), generator=generator)
-                for start in range(0, len(xs), BATCH):
-                    batch = order[start:start + BATCH]
-                    optimiser.zero_grad()
-                    loss = loss_fn(model(augment(xs[batch], generator)), ys[batch])
-                    loss.backward()
-                    optimiser.step()
-            return model
+            return train_small_image_cnn(
+                x,
+                y,
+                network=Net,
+                augment=augment,
+                labels=LABELS,
+                seed=SEED,
+                learning_rate=LEARNING_RATE,
+                epochs=EPOCHS,
+                batch_size=BATCH,
+            )
 
         def probabilities(model, x):
-            model.eval()
-            with torch.no_grad():
-                return np.concatenate([torch.softmax(model(torch.tensor(x[i:i + 256])), dim=1).numpy()
-                                       for i in range(0, len(x), 256)])
+            return image_probabilities(model, x, batch_size=256)
 
         def main():
             parser = argparse.ArgumentParser(description=cnn.__doc__)
@@ -11219,34 +14614,47 @@ def _make_wheel_loader():
                 unit_predicted += pr
                 image_actual += list(names[test])
                 image_predicted += [LABELS[i] for i in p.argmax(axis=1)]
-                print(f"fold {number}: trained on {int(train_mask.sum())} images, tested on {int(test.sum())}", flush=True)
+                print(
+                    f"fold {number}: trained on {int(train_mask.sum())} images, tested on {int(test.sum())}",
+                    flush=True,
+                )
             result = {
                 "purpose": "Week 6 professor remark: CNN with data augmentation on named images, 4 classes",
-                "images": int(len(rows)), "classes": LABELS, "test": "four rounds, each holding out one whole speed (4 runs, one per class); 16 run-level predictions",
-                "settings": {"epochs": EPOCHS, "batch": BATCH, "learning_rate": LEARNING_RATE, "seed": SEED,
-                             "architecture": "4 conv blocks (16, 32, 64, 64 channels) + global average pool + dropout 0.3",
-                             "augmentation": "random horizontal flip, shift up to 8 px, brightness/contrast x0.8-1.2, Gaussian noise 0.05",
-                             "normalisation": "each image standardised on its own"},
+                "images": int(len(rows)),
+                "classes": LABELS,
+                "test": "four rounds, each holding out one whole speed (4 runs, one per class); 16 run-level predictions",
+                "settings": {
+                    "epochs": EPOCHS,
+                    "batch": BATCH,
+                    "learning_rate": LEARNING_RATE,
+                    "seed": SEED,
+                    "architecture": "4 conv blocks (16, 32, 64, 64 channels) + global average pool + dropout 0.3",
+                    "augmentation": "random horizontal flip, shift up to 8 px, brightness/contrast x0.8-1.2, Gaussian noise 0.05",
+                    "normalisation": "each image standardised on its own",
+                },
                 "selection_rule": "settings fixed in advance; the test set is never used to choose epochs or settings",
                 "recording_level": score(unit_actual, unit_predicted, LABELS),
                 "image_level": score(image_actual, image_predicted, LABELS),
             }
             RESULT.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
             r = result["recording_level"]
-            plot_matrix(r["confusion_matrix"], LABELS,
-                        f"{MACHINE}: CNN on images, accuracy {r['accuracy']:.3f} ({r['test_units']} test units)", FIGURE)
-            print(f"CNN recording-level accuracy {r['accuracy']:.3f}, macro F1 {r['macro_f1']:.3f}; "
-                  f"image-level accuracy {result['image_level']['accuracy']:.3f}")
+            plot_matrix(
+                r["confusion_matrix"],
+                LABELS,
+                f"{MACHINE}: CNN on images, accuracy {r['accuracy']:.3f} ({r['test_units']} test units)",
+                FIGURE,
+            )
+            print(
+                f"CNN recording-level accuracy {r['accuracy']:.3f}, macro F1 {r['macro_f1']:.3f}; "
+                f"image-level accuracy {result['image_level']['accuracy']:.3f}"
+            )
             print(f"Saved {RESULT.relative_to(ROOT)} and {FIGURE.relative_to(ROOT)}")
 
         if run:
             main()
         return locals()
 
-
-    # ====================================================================================================
-    # cnn-pretrained: Week 6, transfer learning with a pretrained ResNet18 on the named images
-    # ====================================================================================================
+    # --- cnn-pretrained: Week 6, transfer learning with a pretrained ResNet18 on the named images ---
 
     def cnn_pretrained(run: bool = True) -> dict:
         """Week 6: transfer learning, an ImageNet-pretrained ResNet18 fine-tuned on the named images (4 classes).
@@ -11267,8 +14675,13 @@ def _make_wheel_loader():
         import matplotlib.pyplot as plt
         import numpy as np
         import torch
-        from sklearn.metrics import (accuracy_score, balanced_accuracy_score, confusion_matrix, f1_score,
-                                     precision_recall_fscore_support)
+        from sklearn.metrics import (
+            accuracy_score,
+            balanced_accuracy_score,
+            confusion_matrix,
+            f1_score,
+            precision_recall_fscore_support,
+        )
         from torch import nn
         from torchvision.models import ResNet18_Weights, resnet18
 
@@ -11277,7 +14690,7 @@ def _make_wheel_loader():
         RESULT = ROOT / "Results" / "wheel_loader" / f"{MACHINE}_cnn_pretrained_4class.json"
         FIGURE = ROOT / "Figures" / "wheel_loader" / f"{MACHINE}_cnn_pretrained_4class.png"
         LABELS = ["healthy", "bearing", "half_broken_bar", "broken_bar"]
-        SEGMENTS = 10   # test segments per held-out recording (segment-level score)
+        SEGMENTS = 10  # test segments per held-out recording (segment-level score)
         MAX_EPOCHS, BATCH, LEARNING_RATE, SEED = 15, 32, 3e-4, 42
 
         unit_predictions = predict_recordings
@@ -11287,28 +14700,7 @@ def _make_wheel_loader():
         plot_matrix = save_confusion_matrix
 
         def plot_levels(result, title, path):
-            """One panel per scoring level, so the figure shows how many images were really tested."""
-            levels = [("every test image", result["image_level"]), ("per 1/10 recording segment", result.get("segment_level")),
-                      ("per whole recording", result["recording_level"])]
-            levels = [(name, block) for name, block in levels if block]
-            figure, axes = plt.subplots(1, len(levels), figsize=(4.6 * len(levels), 4.4))
-            for axis, (name, block) in zip(np.atleast_1d(axes), levels):
-                array = np.asarray(block["confusion_matrix"])
-                axis.imshow(array, cmap="Blues", vmin=0)
-                axis.set_xticks(range(len(LABELS)), LABELS, rotation=30, fontsize=8)
-                axis.set_yticks(range(len(LABELS)), LABELS, fontsize=8)
-                axis.set_xlabel("Predicted")
-                axis.set_ylabel("Actual")
-                axis.set_title(f"{name}\n{block['test_units']:,} tested, accuracy {block['accuracy']:.3f}", fontsize=9)
-                for i in range(len(LABELS)):
-                    for j in range(len(LABELS)):
-                        axis.text(j, i, f"{array[i, j]:,}", ha="center", va="center", fontsize=8,
-                                  color="white" if array[i, j] > array.max() / 2 else "black")
-            figure.suptitle(title.replace("; ", "\n"), fontsize=10)
-            figure.tight_layout()
-            path.parent.mkdir(parents=True, exist_ok=True)
-            figure.savefig(path, dpi=110)
-            plt.close(figure)
+            save_prediction_levels(result, title, path, LABELS)
 
         _small = cnn(run=False)
         read_index, augment = _small["read_index"], _small["augment"]
@@ -11322,54 +14714,55 @@ def _make_wheel_loader():
             return model
 
         def fit(x, y, epochs, val=None):
-            random.seed(SEED)
-            np.random.seed(SEED)
-            torch.manual_seed(SEED)
-            generator = torch.Generator().manual_seed(SEED)
-            model = new_model()
-            counts = np.bincount(y, minlength=len(LABELS)).astype(np.float32)
-            loss_fn = nn.CrossEntropyLoss(weight=torch.tensor(counts.sum() / (len(LABELS) * np.maximum(counts, 1))))
-            optimiser = torch.optim.AdamW(model.parameters(), lr=LEARNING_RATE, weight_decay=1e-4)
-            xs, ys = torch.tensor(x), torch.tensor(y, dtype=torch.long)
-            history = []
-            for _ in range(epochs):
-                model.train()
-                order = torch.randperm(len(xs), generator=generator)
-                for start in range(0, len(xs), BATCH):
-                    batch = order[start:start + BATCH]
-                    if len(batch) < 2:
-                        continue
-                    optimiser.zero_grad()
-                    loss_fn(model(augment(xs[batch], generator)), ys[batch]).backward()
-                    optimiser.step()
-                if val is not None:
-                    vx, vnames, vunits = val
-                    a, p = unit_predictions(probabilities(model, vx), np.asarray(LABELS), vnames, vunits)
-                    history.append(f1_score(a, p, labels=LABELS, average="macro", zero_division=0))
-            return model, history
+            return fit_pretrained_image_cnn(
+                x,
+                y,
+                epochs,
+                val,
+                new_model=new_model,
+                augment=augment,
+                labels=LABELS,
+                seed=SEED,
+                learning_rate=LEARNING_RATE,
+                batch_size=BATCH,
+                probabilities=probabilities,
+            )
 
         def probabilities(model, x):
-            model.eval()
-            with torch.no_grad():
-                return np.concatenate([torch.softmax(model(torch.tensor(x[i:i + 128])), dim=1).numpy()
-                                       for i in range(0, len(x), 128)])
+            return image_probabilities(model, x, batch_size=128)
 
         def main():
             parser = argparse.ArgumentParser(description=cnn_pretrained.__doc__)
-            parser.add_argument("--split", choices=("speed", "time"), default="speed",
-                                help="speed (main, fair test) or time (secondary: first 60%% of each run's frames train, "
-                                     "last 30%% test, 10%% gap; easier, the same recordings appear in training)")
+            parser.add_argument(
+                "--split",
+                choices=("speed", "time"),
+                default="speed",
+                help="speed (main, fair test) or time (secondary: first 60%% of each run's frames train, "
+                "last 30%% test, 10%% gap; easier, the same recordings appear in training)",
+            )
             args = parser.parse_args()
             nonlocal RESULT, FIGURE
             rows = read_index()
             test_description = "four rounds, each holding out one whole speed (4 runs, one per class); 16 run-level predictions"
             if args.split == "time":
                 import re
-                position = {row["file"]: int(re.search(r"_f(\d{3})\.png$", row["file"]).group(1)) / 450 for row in rows}
-                rows = [dict(row, unit=row["unit"] + ("_late" if position[row["file"]] > 0.7 else "_early"))
-                        for row in rows if position[row["file"]] <= 0.6 or position[row["file"]] > 0.7]
-                test_description = ("TIME SPLIT (secondary): first 60% of every run's frames train, last 30% test, 10% gap; "
-                                    "16 run-level predictions; the same recordings appear in training, so this is easier")
+
+                position = {
+                    row["file"]: int(re.search(r"_f(\d{3})\.png$", row["file"]).group(1)) / 450
+                    for row in rows
+                }
+                rows = [
+                    dict(
+                        row,
+                        unit=row["unit"] + ("_late" if position[row["file"]] > 0.7 else "_early"),
+                    )
+                    for row in rows
+                    if position[row["file"]] <= 0.6 or position[row["file"]] > 0.7
+                ]
+                test_description = (
+                    "TIME SPLIT (secondary): first 60% of every run's frames train, last 30% test, 10% gap; "
+                    "16 run-level predictions; the same recordings appear in training, so this is easier"
+                )
                 RESULT = RESULT.with_name(RESULT.stem + "_timesplit.json")
                 FIGURE = FIGURE.with_name(FIGURE.stem + "_timesplit.png")
             x = load(rows)
@@ -11379,18 +14772,31 @@ def _make_wheel_loader():
             units = np.asarray([row["unit"] for row in rows])
             groups = np.asarray([row["group"] for row in rows])
             rng = np.random.default_rng(SEED)
-            unit_actual, unit_predicted, image_actual, image_predicted, epochs_chosen = [], [], [], [], []
+            unit_actual, unit_predicted, image_actual, image_predicted, epochs_chosen = (
+                [],
+                [],
+                [],
+                [],
+                [],
+            )
             segment_actual, segment_predicted, per_recording = [], [], {}
-            folds = ([np.char.endswith(units.astype(str), "_late")] if args.split == "time"
-                     else [groups == s for s in ("F5", "F15", "F50", "F60")])
+            folds = (
+                [np.char.endswith(units.astype(str), "_late")]
+                if args.split == "time"
+                else [groups == s for s in ("F5", "F15", "F50", "F60")]
+            )
             for number, test in enumerate(folds, 1):
                 train = ~test
                 if set(units[train]) & set(units[test]):
                     raise ValueError("A test recording also appears in training")
-                val_units = [rng.choice(sorted(set(units[train & (names == label)]))) for label in LABELS]
+                val_units = [
+                    rng.choice(sorted(set(units[train & (names == label)]))) for label in LABELS
+                ]
                 val = train & np.isin(units, val_units)
                 fit_part = train & ~val
-                _, history = fit(x[fit_part], y[fit_part], MAX_EPOCHS, (x[val], names[val], units[val]))
+                _, history = fit(
+                    x[fit_part], y[fit_part], MAX_EPOCHS, (x[val], names[val], units[val])
+                )
                 best_epochs = int(np.argmax(history)) + 1
                 model, _ = fit(x[train], y[train], best_epochs)
                 p = probabilities(model, x[test])
@@ -11407,53 +14813,83 @@ def _make_wheel_loader():
                     for part in np.array_split(np.arange(len(pu)), min(SEGMENTS, len(pu))):
                         segment_actual.append(true)
                         segment_predicted.append(LABELS[int(pu[part].mean(axis=0).argmax())])
-                    per_recording[str(unit)] = {"class": str(true), "images": int(len(pu)),
-                                                "images_predicted": {l: int((pu.argmax(axis=1) == i).sum())
-                                                                     for i, l in enumerate(LABELS)},
-                                                "recording_prediction": LABELS[int(pu.mean(axis=0).argmax())]}
+                    per_recording[str(unit)] = {
+                        "class": str(true),
+                        "images": int(len(pu)),
+                        "images_predicted": {
+                            l: int((pu.argmax(axis=1) == i).sum()) for i, l in enumerate(LABELS)
+                        },
+                        "recording_prediction": LABELS[int(pu.mean(axis=0).argmax())],
+                    }
                 epochs_chosen.append(best_epochs)
-                print(f"fold {number}: validation chose {best_epochs} epochs; tested on {int(test.sum())} images", flush=True)
+                print(
+                    f"fold {number}: validation chose {best_epochs} epochs; tested on {int(test.sum())} images",
+                    flush=True,
+                )
             result = {
                 "purpose": "Week 6: transfer learning (ImageNet-pretrained ResNet18) on named images, 4 classes",
-                "images": int(len(rows)), "classes": LABELS, "test": test_description,
-                "settings": {"model": "ResNet18, ImageNet weights, all layers fine-tuned", "max_epochs": MAX_EPOCHS,
-                             "batch": BATCH, "learning_rate": LEARNING_RATE, "optimiser": "AdamW", "seed": SEED,
-                             "epochs_chosen_per_round": epochs_chosen,
-                             "epoch_selection": "one training recording per class held out for validation; best validation macro F1",
-                             "augmentation": "random horizontal flip, shift up to 8 px, brightness/contrast x0.8-1.2, Gaussian noise 0.05"},
+                "images": int(len(rows)),
+                "classes": LABELS,
+                "test": test_description,
+                "settings": {
+                    "model": "ResNet18, ImageNet weights, all layers fine-tuned",
+                    "max_epochs": MAX_EPOCHS,
+                    "batch": BATCH,
+                    "learning_rate": LEARNING_RATE,
+                    "optimiser": "AdamW",
+                    "seed": SEED,
+                    "epochs_chosen_per_round": epochs_chosen,
+                    "epoch_selection": "one training recording per class held out for validation; best validation macro F1",
+                    "augmentation": "random horizontal flip, shift up to 8 px, brightness/contrast x0.8-1.2, Gaussian noise 0.05",
+                },
                 "selection_rule": "the test set is never used to choose epochs or settings",
                 "recording_level": score(unit_actual, unit_predicted, LABELS),
                 "image_level": score(image_actual, image_predicted, LABELS),
-                "segment_level": {**score(segment_actual, segment_predicted, LABELS),
-                                  "segments_per_recording": SEGMENTS,
-                                  "note": "each held-out recording split in time order into consecutive parts, one "
-                                          "prediction per part; parts of one recording are related, so the "
-                                          "recording-level score stays the main result"},
+                "segment_level": {
+                    **score(segment_actual, segment_predicted, LABELS),
+                    "segments_per_recording": SEGMENTS,
+                    "note": "each held-out recording split in time order into consecutive parts, one "
+                    "prediction per part; parts of one recording are related, so the "
+                    "recording-level score stays the main result",
+                },
                 "per_recording": per_recording,
             }
             RESULT.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
             s = result["segment_level"]
-            plot_matrix(s["confusion_matrix"], LABELS,
-                        f"{MACHINE}: pretrained ResNet18 per segment, accuracy {s['accuracy']:.3f} "
-                        f"({s['test_units']} test segments)", FIGURE.with_name(FIGURE.stem + "_segments.png"))
-            print(f"Segment-level accuracy {s['accuracy']:.3f} on {s['test_units']} test segments "
-                  f"({SEGMENTS} per held-out recording)")
+            plot_matrix(
+                s["confusion_matrix"],
+                LABELS,
+                f"{MACHINE}: pretrained ResNet18 per segment, accuracy {s['accuracy']:.3f} "
+                f"({s['test_units']} test segments)",
+                FIGURE.with_name(FIGURE.stem + "_segments.png"),
+            )
+            print(
+                f"Segment-level accuracy {s['accuracy']:.3f} on {s['test_units']} test segments "
+                f"({SEGMENTS} per held-out recording)"
+            )
             r = result["recording_level"]
-            plot_levels(result, f"{MACHINE}: pretrained ResNet18 on {result['images']:,} images in total; "
-                                f"{r['test_units']} test recordings" + (" (time split, secondary: later frames of training recordings)"
-                                if "timesplit" in FIGURE.stem else ", each never seen in training"), FIGURE)
-            print(f"Pretrained CNN recording-level accuracy {r['accuracy']:.3f}, macro F1 {r['macro_f1']:.3f}; "
-                  f"image-level accuracy {result['image_level']['accuracy']:.3f}")
+            plot_levels(
+                result,
+                f"{MACHINE}: pretrained ResNet18 on {result['images']:,} images in total; "
+                f"{r['test_units']} test recordings"
+                + (
+                    " (time split, secondary: later frames of training recordings)"
+                    if "timesplit" in FIGURE.stem
+                    else ", each never seen in training"
+                ),
+                FIGURE,
+            )
+            print(
+                f"Pretrained CNN recording-level accuracy {r['accuracy']:.3f}, macro F1 {r['macro_f1']:.3f}; "
+                f"image-level accuracy {result['image_level']['accuracy']:.3f}"
+            )
             print(f"Saved {RESULT.relative_to(ROOT)} and {FIGURE.relative_to(ROOT)}")
 
         if run:
             main()
         return locals()
 
-
-    # ====================================================================================================
-    # train-final / predict: use the trained sensor model on any CSV
-    # ====================================================================================================
+    # --- train-final / predict: use the trained sensor model on any CSV ---
 
     def train_final(run: bool = True) -> dict:
         """Train the sensor model on all of this machine's data and save it (Processed_Data/models/, not in Git).
@@ -11472,29 +14908,53 @@ def _make_wheel_loader():
 
         def main():
             parser = argparse.ArgumentParser(description=train_final.__doc__)
-            parser.add_argument("--exclude", nargs="*", default=[], help="recording names to leave out, e.g. U_F15_S")
+            parser.add_argument(
+                "--exclude",
+                nargs="*",
+                default=[],
+                help="recording names to leave out, e.g. U_F15_S",
+            )
             args = parser.parse_args()
             table, feature_sets, labels, *_ = csv(run=False)["build_table"]()
-            feature_sets = feature_sets if isinstance(feature_sets, dict) else {"base": feature_sets}
+            feature_sets = (
+                feature_sets if isinstance(feature_sets, dict) else {"base": feature_sets}
+            )
             features = feature_sets["vibration"]
             unknown = set(args.exclude) - set(table["unit"])
             if unknown:
                 raise SystemExit(f"Unknown recording names: {sorted(unknown)}")
             train = ~table["unit"].isin(args.exclude)
-            model = RandomForestClassifier(n_estimators=250, max_features="sqrt", class_weight="balanced_subsample",
-                                           min_samples_leaf=2, random_state=42, n_jobs=-1)
-            model.fit(table.loc[train, features].to_numpy(dtype=np.float64), table.loc[train, "class"])
+            model = RandomForestClassifier(
+                n_estimators=250,
+                max_features="sqrt",
+                class_weight="balanced_subsample",
+                min_samples_leaf=2,
+                random_state=42,
+                n_jobs=-1,
+            )
+            model.fit(
+                table.loc[train, features].to_numpy(dtype=np.float64), table.loc[train, "class"]
+            )
             MODEL_PATH.parent.mkdir(parents=True, exist_ok=True)
-            joblib.dump({"model": model, "features": features, "classes": list(labels), "machine": "wheel_loader",
-                         "trained_units": sorted(set(table.loc[train, "unit"])), "excluded_units": sorted(args.exclude)},
-                        MODEL_PATH)
-            print(f"Trained on {int(train.sum())} rows from {table.loc[train, 'unit'].nunique()} recordings "
-                  f"(excluded: {args.exclude or 'none'}); saved {MODEL_PATH.relative_to(ROOT)}")
+            joblib.dump(
+                {
+                    "model": model,
+                    "features": features,
+                    "classes": list(labels),
+                    "machine": "wheel_loader",
+                    "trained_units": sorted(set(table.loc[train, "unit"])),
+                    "excluded_units": sorted(args.exclude),
+                },
+                MODEL_PATH,
+            )
+            print(
+                f"Trained on {int(train.sum())} rows from {table.loc[train, 'unit'].nunique()} recordings "
+                f"(excluded: {args.exclude or 'none'}); saved {MODEL_PATH.relative_to(ROOT)}"
+            )
 
         if run:
             main()
         return locals()
-
 
     def predict(run: bool = True) -> dict:
         """Predict the condition from any CSV and, if the true class is known, show the accuracy.
@@ -11517,7 +14977,9 @@ def _make_wheel_loader():
 
         def read_any(path):
             table = load_csv(path)
-            if all(_is_number(c) for c in table.columns):   # no header row: plain column(s) of numbers
+            if all(
+                _is_number(c) for c in table.columns
+            ):  # no header row: plain column(s) of numbers
                 table = load_csv(path, header=None)
             return table
 
@@ -11532,15 +14994,25 @@ def _make_wheel_loader():
             if not args.speed:
                 raise SystemExit("Raw recordings need --speed (F5, F15, F50 or F60)")
             ns = csv(run=False)
-            return ns["vibration_frame"](values, args.speed)[ns["VIB_NAMES"]].to_numpy(dtype=np.float64)
-
+            return ns["vibration_frame"](values, args.speed)[ns["VIB_NAMES"]].to_numpy(
+                dtype=np.float64
+            )
 
         def main():
             parser = argparse.ArgumentParser(description=predict.__doc__)
             parser.add_argument("--csv", required=True, help="path to the CSV file")
-            parser.add_argument("--label", help="true class of a raw recording, one of: healthy, bearing, half_broken_bar, broken_bar")
-            parser.add_argument("--column", help="column holding the raw signal (default: first numeric column)")
-            parser.add_argument("--speed", choices=("F5", "F15", "F50", "F60"), help="speed setting of a raw recording")
+            parser.add_argument(
+                "--label",
+                help="true class of a raw recording, one of: healthy, bearing, half_broken_bar, broken_bar",
+            )
+            parser.add_argument(
+                "--column", help="column holding the raw signal (default: first numeric column)"
+            )
+            parser.add_argument(
+                "--speed",
+                choices=("F5", "F15", "F50", "F60"),
+                help="speed setting of a raw recording",
+            )
             args = parser.parse_args()
             if not MODEL_PATH.is_file():
                 print("No saved model yet: training it now (train-final).")
@@ -11552,12 +15024,26 @@ def _make_wheel_loader():
             if set(features) <= set(table.columns):
                 mode = "feature table"
                 x = table[features].to_numpy(dtype=np.float64)
-                units = table["unit"].astype(str).to_numpy() if "unit" in table.columns else np.full(len(table), path.stem)
-                truth = table["class"].astype(str).to_numpy() if "class" in table.columns else np.full(len(table), args.label)
+                units = (
+                    table["unit"].astype(str).to_numpy()
+                    if "unit" in table.columns
+                    else np.full(len(table), path.stem)
+                )
+                truth = (
+                    table["class"].astype(str).to_numpy()
+                    if "class" in table.columns
+                    else np.full(len(table), args.label)
+                )
             else:
                 mode = "raw recording"
-                column = args.column if args.column is not None else table.select_dtypes("number").columns[0]
-                values = table[column if column in table.columns else int(column)].to_numpy(dtype=np.float64)
+                column = (
+                    args.column
+                    if args.column is not None
+                    else table.select_dtypes("number").columns[0]
+                )
+                values = table[column if column in table.columns else int(column)].to_numpy(
+                    dtype=np.float64
+                )
                 x = raw_features(values, args)
                 units = np.full(len(x), path.stem)
                 truth = np.full(len(x), args.label)
@@ -11566,34 +15052,46 @@ def _make_wheel_loader():
             for unit in dict.fromkeys(units):
                 mask = units == unit
                 mean = probabilities[mask].mean(axis=0)
-                rows.append({"recording": unit, "predicted": model.classes_[int(mean.argmax())],
-                             "confidence": round(float(mean.max()), 3), "true": truth[mask][0], "rows": int(mask.sum())})
+                rows.append(
+                    {
+                        "recording": unit,
+                        "predicted": model.classes_[int(mean.argmax())],
+                        "confidence": round(float(mean.max()), 3),
+                        "true": truth[mask][0],
+                        "rows": int(mask.sum()),
+                    }
+                )
             report = pd.DataFrame(rows)
-            print(f"Model: {saved['machine']} random forest | input: {mode} | {len(report)} recording(s)")
+            print(
+                f"Model: {saved['machine']} random forest | input: {mode} | {len(report)} recording(s)"
+            )
             print(report.to_string(index=False))
             seen = sorted(set(report["recording"]) & set(saved["trained_units"]))
             if seen:
-                print(f"WARNING: {seen} were used to train this model, so their accuracy is optimistic. "
-                      "Use train-final --exclude ... to test fairly.")
+                print(
+                    f"WARNING: {seen} were used to train this model, so their accuracy is optimistic. "
+                    "Use train-final --exclude ... to test fairly."
+                )
             known = report["true"].notna() & (report["true"].astype(str) != "None")
             if known.any():
                 k = report[known]
-                print(f"\nAccuracy: {accuracy_score(k['true'], k['predicted']):.3f} "
-                      f"({int((k['true'] == k['predicted']).sum())}/{len(k)} recordings)")
+                print(
+                    f"\nAccuracy: {accuracy_score(k['true'], k['predicted']):.3f} "
+                    f"({int((k['true'] == k['predicted']).sum())}/{len(k)} recordings)"
+                )
                 labels = saved["classes"]
                 print("Confusion matrix (rows = true, columns = predicted):", labels)
                 print(confusion_matrix(k["true"], k["predicted"], labels=labels))
             else:
-                print("\nNo true class given (use --label or a 'class' column) so accuracy cannot be computed.")
+                print(
+                    "\nNo true class given (use --label or a 'class' column) so accuracy cannot be computed."
+                )
 
         if run:
             main()
         return locals()
 
-
-    # ====================================================================================================
-    # Proposal Week 6: advanced ensemble models (XGBoost / LightGBM comparison table)
-    # ====================================================================================================
+    # --- Proposal Week 6: advanced ensemble models (XGBoost / LightGBM comparison table) ---
 
     def ensembles(run: bool = True) -> dict:
         """Proposal Week 6: compare advanced ensemble models on the same CSV sensor features and held-out tests.
@@ -11614,14 +15112,25 @@ def _make_wheel_loader():
         import matplotlib.pyplot as plt
         import numpy as np
         from sklearn.dummy import DummyClassifier
-        from sklearn.ensemble import ExtraTreesClassifier, HistGradientBoostingClassifier, RandomForestClassifier
-        from sklearn.metrics import accuracy_score, balanced_accuracy_score, confusion_matrix, f1_score
+        from sklearn.ensemble import (
+            ExtraTreesClassifier,
+            HistGradientBoostingClassifier,
+            RandomForestClassifier,
+        )
+        from sklearn.metrics import (
+            accuracy_score,
+            balanced_accuracy_score,
+            confusion_matrix,
+            f1_score,
+        )
 
         try:
             from lightgbm import LGBMClassifier
             from xgboost import XGBClassifier
         except ImportError:
-            raise SystemExit("Install the ensemble libraries first:  python -m pip install xgboost lightgbm")
+            raise SystemExit(
+                "Install the ensemble libraries first:  python -m pip install xgboost lightgbm"
+            )
 
         MACHINE = "wheel_loader"
         RESULT = ROOT / "Results" / MACHINE / f"{MACHINE}_ensembles.json"
@@ -11629,30 +15138,66 @@ def _make_wheel_loader():
         MODELS = {
             "Majority class (control)": lambda: DummyClassifier(strategy="most_frequent"),
             "Random forest": lambda: RandomForestClassifier(
-                n_estimators=250, max_features="sqrt", class_weight="balanced_subsample",
-                min_samples_leaf=2, random_state=42, n_jobs=-1),
+                n_estimators=250,
+                max_features="sqrt",
+                class_weight="balanced_subsample",
+                min_samples_leaf=2,
+                random_state=42,
+                n_jobs=-1,
+            ),
             "Extra trees": lambda: ExtraTreesClassifier(
-                n_estimators=300, max_features="sqrt", class_weight="balanced",
-                min_samples_leaf=2, random_state=42, n_jobs=-1),
+                n_estimators=300,
+                max_features="sqrt",
+                class_weight="balanced",
+                min_samples_leaf=2,
+                random_state=42,
+                n_jobs=-1,
+            ),
             "Gradient boosting (scikit-learn)": lambda: HistGradientBoostingClassifier(
-                max_iter=200, learning_rate=0.05, class_weight="balanced", random_state=42),
+                max_iter=200, learning_rate=0.05, class_weight="balanced", random_state=42
+            ),
             "XGBoost": lambda: XGBClassifier(
-                n_estimators=300, max_depth=4, learning_rate=0.05, subsample=0.8, colsample_bytree=0.8,
-                tree_method="hist", random_state=42, n_jobs=-1, verbosity=0),
+                n_estimators=300,
+                max_depth=4,
+                learning_rate=0.05,
+                subsample=0.8,
+                colsample_bytree=0.8,
+                tree_method="hist",
+                random_state=42,
+                n_jobs=-1,
+                verbosity=0,
+            ),
             "LightGBM": lambda: LGBMClassifier(
-                n_estimators=300, num_leaves=15, learning_rate=0.05, subsample=0.8, subsample_freq=1,
-                colsample_bytree=0.8, class_weight="balanced", random_state=42, n_jobs=-1, verbose=-1),
+                n_estimators=300,
+                num_leaves=15,
+                learning_rate=0.05,
+                subsample=0.8,
+                subsample_freq=1,
+                colsample_bytree=0.8,
+                class_weight="balanced",
+                random_state=42,
+                n_jobs=-1,
+                verbose=-1,
+            ),
         }
 
         def main():
             parser = argparse.ArgumentParser(description=ensembles.__doc__)
-            parser.add_argument("--split", choices=("main", "time"), default="main",
-                                help="main (fair test) or time (secondary: first 60%% of every recording trains, "
-                                     "last 30%% tests, 10%% gap)")
+            parser.add_argument(
+                "--split",
+                choices=("main", "time"),
+                default="main",
+                help="main (fair test) or time (secondary: first 60%% of every recording trains, "
+                "last 30%% tests, 10%% gap)",
+            )
             args = parser.parse_args()
             nonlocal RESULT, FIGURE
-            table, feature_sets, labels, folds, test_description, notes = csv(run=False)["build_table"]()
-            feature_sets = feature_sets if isinstance(feature_sets, dict) else {"base": feature_sets}
+            table, feature_sets, labels, folds, test_description, notes = csv(run=False)[
+                "build_table"
+            ]()
+            feature_sets = (
+                feature_sets if isinstance(feature_sets, dict) else {"base": feature_sets}
+            )
             set_name, features = next(iter(feature_sets.items()))
             if args.split == "time":
                 if "window" not in table.columns:
@@ -11662,19 +15207,26 @@ def _make_wheel_loader():
                 late = position.loc[table.index] > 0.7
                 table["unit"] = table["unit"] + np.where(late, "_late", "_early")
                 folds = lambda t: [t["unit"].str.endswith("_late").to_numpy()]
-                test_description = ("TIME SPLIT (secondary): first 60% of every recording trains, last 30% tests, 10% gap; "
-                                    "the same recordings appear in training, so this is easier than the main test")
+                test_description = (
+                    "TIME SPLIT (secondary): first 60% of every recording trains, last 30% tests, 10% gap; "
+                    "the same recordings appear in training, so this is easier than the main test"
+                )
                 RESULT = RESULT.with_name(RESULT.stem + "_timesplit.json")
                 FIGURE = FIGURE.with_name(FIGURE.stem + "_timesplit.png")
             x = table[features].to_numpy(dtype=np.float64)
             code = {label: i for i, label in enumerate(labels)}
             y = table["class"].map(code).to_numpy()
             units = table["unit"].astype(str).to_numpy()
-            result = {"purpose": "Proposal Week 6: advanced ensemble comparison (XGBoost / LightGBM)",
-                      "machine": MACHINE, "features": f"{set_name} ({len(features)} sensor features, same CSV as Week 6)",
-                      "classes": list(labels), "test": test_description,
-                      "selection_rule": "settings fixed in advance; no model or setting chosen from these test results",
-                      "notes": notes, "models": {}}
+            result = {
+                "purpose": "Proposal Week 6: advanced ensemble comparison (XGBoost / LightGBM)",
+                "machine": MACHINE,
+                "features": f"{set_name} ({len(features)} sensor features, same CSV as Week 6)",
+                "classes": list(labels),
+                "test": test_description,
+                "selection_rule": "settings fixed in advance; no model or setting chosen from these test results",
+                "notes": notes,
+                "models": {},
+            }
             for name, make in MODELS.items():
                 actual, predicted, seconds = [], [], 0.0
                 for test in folds(table):
@@ -11694,26 +15246,55 @@ def _make_wheel_loader():
                 result["models"][name] = {
                     "test_units": len(actual),
                     "accuracy": round(float(accuracy_score(actual, predicted)), 4),
-                    "balanced_accuracy": round(float(balanced_accuracy_score(actual, predicted)), 4),
-                    "macro_f1": round(float(f1_score(actual, predicted, average="macro", labels=list(range(len(labels))),
-                                                     zero_division=0)), 4),
+                    "balanced_accuracy": round(
+                        float(balanced_accuracy_score(actual, predicted)), 4
+                    ),
+                    "macro_f1": round(
+                        float(
+                            f1_score(
+                                actual,
+                                predicted,
+                                average="macro",
+                                labels=list(range(len(labels))),
+                                zero_division=0,
+                            )
+                        ),
+                        4,
+                    ),
                     "train_seconds": round(seconds, 2),
-                    "confusion_matrix": confusion_matrix(actual, predicted, labels=list(range(len(labels)))).tolist(),
+                    "confusion_matrix": confusion_matrix(
+                        actual, predicted, labels=list(range(len(labels)))
+                    ).tolist(),
                 }
                 block = result["models"][name]
-                print(f"{name:33s} accuracy {block['accuracy']:.3f}  macro F1 {block['macro_f1']:.3f}  "
-                      f"({block['test_units']} recordings, {seconds:.1f} s to train)")
+                print(
+                    f"{name:33s} accuracy {block['accuracy']:.3f}  macro F1 {block['macro_f1']:.3f}  "
+                    f"({block['test_units']} recordings, {seconds:.1f} s to train)"
+                )
             names = list(result["models"])
             figure, axis = plt.subplots(figsize=(8, 3.6))
             positions = np.arange(len(names))
-            axis.bar(positions - 0.2, [result["models"][n]["accuracy"] for n in names], 0.4, label="accuracy")
-            axis.bar(positions + 0.2, [result["models"][n]["macro_f1"] for n in names], 0.4, label="macro F1")
+            axis.bar(
+                positions - 0.2,
+                [result["models"][n]["accuracy"] for n in names],
+                0.4,
+                label="accuracy",
+            )
+            axis.bar(
+                positions + 0.2,
+                [result["models"][n]["macro_f1"] for n in names],
+                0.4,
+                label="macro F1",
+            )
             axis.axhline(0.9, color="grey", ls="--", lw=1)
             axis.set_xticks(positions, [n.replace(" (", "\n(") for n in names], fontsize=7.5)
             axis.set_ylim(0, 1.05)
             axis.legend(fontsize=8)
-            axis.set_title(f"{MACHINE.replace('_', ' ').title()}: ensemble comparison"
-                           + (" - TIME SPLIT" if args.split == "time" else " (main test)"), fontsize=10)
+            axis.set_title(
+                f"{MACHINE.replace('_', ' ').title()}: ensemble comparison"
+                + (" - TIME SPLIT" if args.split == "time" else " (main test)"),
+                fontsize=10,
+            )
             figure.tight_layout()
             FIGURE.parent.mkdir(parents=True, exist_ok=True)
             figure.savefig(FIGURE, dpi=110)
@@ -11726,10 +15307,7 @@ def _make_wheel_loader():
             main()
         return locals()
 
-
-    # ====================================================================================================
-    # Week 7: anomaly detection (proposal Week 7: Isolation Forest / One-Class SVM)
-    # ====================================================================================================
+    # --- Week 7: anomaly detection (proposal Week 7: Isolation Forest / One-Class SVM) ---
 
     def anomaly(run: bool = True) -> dict:
         """Week 7: anomaly detection. Learn what HEALTHY looks like, then flag anything unusual as a possible fault.
@@ -11759,24 +15337,32 @@ def _make_wheel_loader():
         RESULT = ROOT / "Results" / MACHINE / f"{MACHINE}_anomaly.json"
         FIGURE = ROOT / "Figures" / MACHINE / f"{MACHINE}_anomaly.png"
         DETECTORS = {
-            "Isolation Forest": lambda: make_pipeline(StandardScaler(), IsolationForest(
-                n_estimators=300, max_samples=256, random_state=42, n_jobs=-1)),
-            "One-Class SVM": lambda: make_pipeline(StandardScaler(), OneClassSVM(kernel="rbf", gamma="scale", nu=0.05)),
+            "Isolation Forest": lambda: make_pipeline(
+                StandardScaler(),
+                IsolationForest(n_estimators=300, max_samples=256, random_state=42, n_jobs=-1),
+            ),
+            "One-Class SVM": lambda: make_pipeline(
+                StandardScaler(), OneClassSVM(kernel="rbf", gamma="scale", nu=0.05)
+            ),
         }
-        MAX_FIT_ROWS = 4000   # One-Class SVM gets slow on many rows; a fixed, evenly spaced subset is used
+        MAX_FIT_ROWS = (
+            4000  # One-Class SVM gets slow on many rows; a fixed, evenly spaced subset is used
+        )
 
         def fit(make, x):
             rows = np.linspace(0, len(x) - 1, min(len(x), MAX_FIT_ROWS)).astype(int)
             return make().fit(x[rows])
 
         def recording_scores(model, x, units):
-            window = -model.decision_function(x)   # higher = more unusual
+            window = -model.decision_function(x)  # higher = more unusual
             return {unit: float(window[units == unit].mean()) for unit in dict.fromkeys(units)}
 
         def threshold(make, x, units, healthy_units):
             """Highest score of any healthy training recording when it is left out of fitting (no test data used)."""
             if len(healthy_units) < 2:
-                raise SystemExit("Need at least two healthy training recordings to set the threshold")
+                raise SystemExit(
+                    "Need at least two healthy training recordings to set the threshold"
+                )
             scores = []
             for unit in healthy_units:
                 others = np.isin(units, [u for u in healthy_units if u != unit])
@@ -11786,13 +15372,21 @@ def _make_wheel_loader():
 
         def main():
             parser = argparse.ArgumentParser(description=anomaly.__doc__)
-            parser.add_argument("--split", choices=("main", "time"), default="main",
-                                help="main (fair: held-out recordings) or time (secondary: first 60%% of every recording "
-                                     "trains, last 30%% tests, 10%% gap)")
+            parser.add_argument(
+                "--split",
+                choices=("main", "time"),
+                default="main",
+                help="main (fair: held-out recordings) or time (secondary: first 60%% of every recording "
+                "trains, last 30%% tests, 10%% gap)",
+            )
             args = parser.parse_args()
             nonlocal RESULT, FIGURE
-            table, feature_sets, labels, folds, test_description, notes = csv(run=False)["build_table"]()
-            feature_sets = feature_sets if isinstance(feature_sets, dict) else {"base": feature_sets}
+            table, feature_sets, labels, folds, test_description, notes = csv(run=False)[
+                "build_table"
+            ]()
+            feature_sets = (
+                feature_sets if isinstance(feature_sets, dict) else {"base": feature_sets}
+            )
             set_name, features = next(iter(feature_sets.items()))
             if args.split == "time":
                 if "window" not in table.columns:
@@ -11802,8 +15396,10 @@ def _make_wheel_loader():
                 late = position.loc[table.index] > 0.7
                 table["unit"] = table["unit"] + np.where(late, "_late", "_early")
                 folds = lambda t: [t["unit"].str.endswith("_late").to_numpy()]
-                test_description = ("TIME SPLIT (secondary): healthy rows from the first 60% of every recording train, "
-                                    "the last 30% of every recording is tested (10% gap); easier than the main test")
+                test_description = (
+                    "TIME SPLIT (secondary): healthy rows from the first 60% of every recording train, "
+                    "the last 30% of every recording is tested (10% gap); easier than the main test"
+                )
                 RESULT = RESULT.with_name(RESULT.stem + "_timesplit.json")
                 FIGURE = FIGURE.with_name(FIGURE.stem + "_timesplit.png")
             x = table[features].to_numpy(dtype=np.float64)
@@ -11812,11 +15408,13 @@ def _make_wheel_loader():
             fault_classes = [c for c in labels if c != "healthy"]
             result = {
                 "purpose": "Week 7 (proposal): anomaly detection trained on healthy data only",
-                "machine": MACHINE, "features": f"{set_name} ({len(features)} sensor features, same CSV as Week 6)",
+                "machine": MACHINE,
+                "features": f"{set_name} ({len(features)} sensor features, same CSV as Week 6)",
                 "test": test_description,
                 "threshold_rule": "highest leave-one-recording-out score among the healthy TRAINING recordings; "
-                                  "no test data and no fault labels are used to train or to set it",
-                "notes": notes, "detectors": {},
+                "no test data and no fault labels are used to train or to set it",
+                "notes": notes,
+                "detectors": {},
             }
             figure, axes = plt.subplots(1, len(DETECTORS), figsize=(5.2 * len(DETECTORS), 3.6))
             for axis, (name, make) in zip(np.atleast_1d(axes), DETECTORS.items()):
@@ -11827,15 +15425,26 @@ def _make_wheel_loader():
                     model = fit(make, x[np.isin(units, train_healthy)])
                     scores = recording_scores(model, x[test], units[test])
                     for unit, score in scores.items():
-                        rows.append({"unit": unit, "class": y[units == unit][0], "margin": score - cut})
+                        rows.append(
+                            {"unit": unit, "class": y[units == unit][0], "margin": score - cut}
+                        )
                 truth = np.array([r["class"] != "healthy" for r in rows])
                 margin = np.array([r["margin"] for r in rows])
                 alarm = margin > 0
-                per_class = {c: round(float(alarm[[r["class"] == c for r in rows]].mean()), 4)
-                             for c in fault_classes if any(r["class"] == c for r in rows)}
+                per_class = {
+                    c: round(float(alarm[[r["class"] == c for r in rows]].mean()), 4)
+                    for c in fault_classes
+                    if any(r["class"] == c for r in rows)
+                }
                 block = {
-                    "test_recordings": len(rows), "healthy": int((~truth).sum()), "faulty": int(truth.sum()),
-                    "roc_auc": round(float(roc_auc_score(truth, margin)), 4) if 0 < truth.sum() < len(truth) else None,
+                    "test_recordings": len(rows),
+                    "healthy": int((~truth).sum()),
+                    "faulty": int(truth.sum()),
+                    "roc_auc": (
+                        round(float(roc_auc_score(truth, margin)), 4)
+                        if 0 < truth.sum() < len(truth)
+                        else None
+                    ),
                     "fault_detection_rate": round(float(alarm[truth].mean()), 4),
                     "false_alarm_rate": round(float(alarm[~truth].mean()), 4),
                     "accuracy": round(float((alarm == truth).mean()), 4),
@@ -11843,20 +15452,32 @@ def _make_wheel_loader():
                     "recordings": [{**r, "margin": round(r["margin"], 4)} for r in rows],
                 }
                 result["detectors"][name] = block
-                print(f"{name:17s} ROC-AUC {block['roc_auc']}  faults detected {block['fault_detection_rate']:.3f}  "
-                      f"false alarms {block['false_alarm_rate']:.3f}  ({len(rows)} test recordings)")
+                print(
+                    f"{name:17s} ROC-AUC {block['roc_auc']}  faults detected {block['fault_detection_rate']:.3f}  "
+                    f"false alarms {block['false_alarm_rate']:.3f}  ({len(rows)} test recordings)"
+                )
                 order = ["healthy", *fault_classes]
                 for k, c in enumerate(order):
                     values = margin[[r["class"] == c for r in rows]]
-                    axis.scatter(np.full(len(values), k) + np.linspace(-0.15, 0.15, len(values)), values, s=18,
-                                 color="tab:green" if c == "healthy" else "tab:red")
+                    axis.scatter(
+                        np.full(len(values), k) + np.linspace(-0.15, 0.15, len(values)),
+                        values,
+                        s=18,
+                        color="tab:green" if c == "healthy" else "tab:red",
+                    )
                 axis.axhline(0, color="black", lw=1, ls="--")
                 axis.set_xticks(range(len(order)), order, rotation=20)
                 axis.set_ylabel("score minus alarm threshold")
-                axis.set_title(f"{name}: AUC {block['roc_auc']}, detect {block['fault_detection_rate']:.2f}, "
-                               f"false alarm {block['false_alarm_rate']:.2f}", fontsize=8.5)
-            figure.suptitle(f"{MACHINE.replace('_', ' ').title()} anomaly detection (above the line = alarm)"
-                            + (" - TIME SPLIT" if args.split == "time" else ""), fontsize=10)
+                axis.set_title(
+                    f"{name}: AUC {block['roc_auc']}, detect {block['fault_detection_rate']:.2f}, "
+                    f"false alarm {block['false_alarm_rate']:.2f}",
+                    fontsize=8.5,
+                )
+            figure.suptitle(
+                f"{MACHINE.replace('_', ' ').title()} anomaly detection (above the line = alarm)"
+                + (" - TIME SPLIT" if args.split == "time" else ""),
+                fontsize=10,
+            )
             figure.tight_layout()
             FIGURE.parent.mkdir(parents=True, exist_ok=True)
             figure.savefig(FIGURE, dpi=110)
@@ -11869,32 +15490,40 @@ def _make_wheel_loader():
             main()
         return locals()
 
-
-    # ====================================================================================================
-    # Week 7: full-data sensor experiment (every CORA sensor, window and recording)
-    # ====================================================================================================
+    # --- Week 7: full-data sensor experiment (every CORA sensor, window and recording) ---
 
     def fulldata(run: bool = True) -> dict:
         """Week 7: every CORA sensor (vibration X/Y/Z, current C1-C3, temperatures T1-T6), every 1 s window, and the
-        five start-up test repeats per condition and speed. See Models/cora_fulldata.py. Saves *_fulldata.json."""
+        five start-up test repeats per condition and speed. See Models/cora_fulldata.py. Saves *_fulldata.json.
+        """
         import argparse
         import importlib.util
 
         def main():
             parser = argparse.ArgumentParser(description=fulldata.__doc__)
-            parser.add_argument("--part", choices=("classify", "ensembles", "anomaly", "all"), default="classify",
-                                help="classify (default), ensembles (XGBoost/LightGBM comparison), anomaly, or all")
+            parser.add_argument(
+                "--part",
+                choices=("classify", "ensembles", "anomaly", "all"),
+                default="classify",
+                help="classify (default), ensembles (XGBoost/LightGBM comparison), anomaly, or all",
+            )
             part = parser.parse_args().part
             engine = get_model("cora_fulldata")
-            conditions = {"H": "healthy", "BD": "bearing", "HB": "half_broken_bar", "OB": "broken_bar"}
+            conditions = {
+                "H": "healthy",
+                "BD": "bearing",
+                "HB": "half_broken_bar",
+                "OB": "broken_bar",
+            }
             for name in ("classify", "ensembles", "anomaly"):
                 if part in (name, "all"):
-                    (engine.run if name == "classify" else getattr(engine, name))("wheel_loader", conditions)
+                    (engine.run if name == "classify" else getattr(engine, name))(
+                        "wheel_loader", conditions
+                    )
 
         if run:
             main()
         return locals()
-
 
     COMMANDS = {
         "fulldata": fulldata,
@@ -11908,26 +15537,25 @@ def _make_wheel_loader():
         "cnn": cnn,
         "cnn-pretrained": cnn_pretrained,
     }
-    RUN_ALL = ['csv', 'export-images', 'cnn-pretrained']
-
+    RUN_ALL = ["csv", "export-images", "cnn-pretrained"]
 
     def cli() -> None:
         if len(sys.argv) < 2 or sys.argv[1] not in (*COMMANDS, "all"):
             print(__doc__)
             raise SystemExit(0 if len(sys.argv) < 2 or sys.argv[1] in ("-h", "--help") else 2)
         command, options = sys.argv[1], sys.argv[2:]
-        for name in (RUN_ALL if command == "all" else [command]):
+        for name in RUN_ALL if command == "all" else [command]:
             sys.argv = [f"wheel_loader.py {name}", *(options if command != "all" else [])]
             COMMANDS[name]()
 
-
     return SimpleNamespace(**locals())
 
-#endregion
+
+# endregion
 
 
 # DRILL_RIG MODEL IMPLEMENTATION
-#region Drill Rig: data, preprocessing, models and evaluation
+# region Drill Rig: data, preprocessing, models and evaluation
 def _make_drill_rig():
     """Drill Rig (machine 7): rotary-head reduction gear. Gearbox vibration plus rendered gear images, separate data.
 
@@ -11965,10 +15593,21 @@ def _make_drill_rig():
     ZIP = ROOT / "Raw_Data" / "mcc5_thu_gearbox" / "MCC5-THU gearbox fault diagnosis datasets.zip"
     SHA256 = "dcf7ba4b2d375c951ea57baf9bf90db4b3196982b324a13d85b187f286116b86"
     SOURCE = "MCC5-THU, Mendeley Data p92gj2732w v2 (doi 10.17632/p92gj2732w.2), CC BY 4.0"
-    PREFIX = {"health": "healthy", "gear_wear": "gear_wear", "gear_pitting": "gear_pitting", "teeth_crack": "tooth_crack"}
+    PREFIX = {
+        "health": "healthy",
+        "gear_wear": "gear_wear",
+        "gear_pitting": "gear_pitting",
+        "teeth_crack": "tooth_crack",
+    }
     LABELS = ["healthy", "gear_wear", "gear_pitting", "tooth_crack"]
-    CHANNELS = ["motor_vibration_x", "motor_vibration_y", "motor_vibration_z",
-                "gearbox_vibration_x", "gearbox_vibration_y", "gearbox_vibration_z"]
+    CHANNELS = [
+        "motor_vibration_x",
+        "motor_vibration_y",
+        "motor_vibration_z",
+        "gearbox_vibration_x",
+        "gearbox_vibration_y",
+        "gearbox_vibration_z",
+    ]
     RATE, WINDOW_SECONDS, SEED = 12_800, 1.0, 613
     FEATURES = ROOT / "Processed_Data" / f"{MACHINE}_sensor_features_4class.csv"
     RESULT = ROOT / "Results" / MACHINE / f"{MACHINE}_csv_4class.json"
@@ -11978,29 +15617,41 @@ def _make_drill_rig():
     def parse(name):
         """Class, severity and working condition from a file name such as gear_wear_M_speed_circulation_10Nm-1000rpm.csv."""
         import re
+
         base = name.rsplit("/", 1)[-1][:-4]
         for prefix, label in PREFIX.items():
             if base.startswith(prefix + "_"):
-                rest = base[len(prefix) + 1:]
+                rest = base[len(prefix) + 1 :]
                 break
         else:
             return None
         severity = "none"
         if label != "healthy":
             severity, rest = rest.split("_", 1)
-        if rest.startswith(("bearing", "and")):          # compound faults are not used
+        if rest.startswith(("bearing", "and")):  # compound faults are not used
             return None
         mode = "speed varying" if rest.startswith("speed_circulation") else "load varying"
         rpm = int(re.search(r"(\d+)rpm", rest).group(1))
         torque = int(re.search(r"(\d+)Nm", rest).group(1))
-        return {"file": name, "recording": base, "class": label, "severity": severity, "mode": mode,
-                "rpm": rpm, "torque_nm": torque}
+        return {
+            "file": name,
+            "recording": base,
+            "class": label,
+            "severity": severity,
+            "mode": mode,
+            "rpm": rpm,
+            "torque_nm": torque,
+        }
 
     def members():
         import zipfile
+
         with zipfile.ZipFile(ZIP) as archive:
-            rows = [parse(i.filename) for i in archive.infolist()
-                    if i.filename.endswith(".csv") and "__MACOSX" not in i.filename]
+            rows = [
+                parse(i.filename)
+                for i in archive.infolist()
+                if i.filename.endswith(".csv") and "__MACOSX" not in i.filename
+            ]
         return [r for r in rows if r]
 
     def intake(run: bool = True) -> dict:
@@ -12019,11 +15670,24 @@ def _make_drill_rig():
             rows = members()
             counts = {label: sum(r["class"] == label for r in rows) for label in LABELS}
             INTAKE.parent.mkdir(parents=True, exist_ok=True)
-            INTAKE.write_text(json.dumps({"source": SOURCE, "sha256_expected": SHA256,
-                                          "sha256_matches": ok, "zip_bytes": ZIP.stat().st_size,
-                                          "recordings_used": counts, "recordings": rows}, indent=2) + "\n",
-                              encoding="utf-8")
-            print(f"SHA-256 {'matches' if ok else 'DOES NOT MATCH'} the published value; recordings used: {counts}")
+            INTAKE.write_text(
+                json.dumps(
+                    {
+                        "source": SOURCE,
+                        "sha256_expected": SHA256,
+                        "sha256_matches": ok,
+                        "zip_bytes": ZIP.stat().st_size,
+                        "recordings_used": counts,
+                        "recordings": rows,
+                    },
+                    indent=2,
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            print(
+                f"SHA-256 {'matches' if ok else 'DOES NOT MATCH'} the published value; recordings used: {counts}"
+            )
             if not ok:
                 raise SystemExit(2)
 
@@ -12034,18 +15698,28 @@ def _make_drill_rig():
     def features(signal):
         """Fixed-size features of one 1 s window, per channel: time-domain statistics and 8 log band energies."""
         import numpy as np
+
         out = []
         spectrum = np.abs(np.fft.rfft(signal - signal.mean(axis=0), axis=0)) ** 2
         edges = np.linspace(0, spectrum.shape[0], 9).astype(int)
         for c in range(signal.shape[1]):
             x = signal[:, c]
-            rms = np.sqrt(np.mean(x ** 2))
+            rms = np.sqrt(np.mean(x**2))
             centred = x - x.mean()
             sd = centred.std() + 1e-12
-            out += [rms, sd, np.abs(x).max(), np.abs(x).max() / (rms + 1e-12),
-                    np.mean(centred ** 3) / sd ** 3, np.mean(centred ** 4) / sd ** 4]
+            out += [
+                rms,
+                sd,
+                np.abs(x).max(),
+                np.abs(x).max() / (rms + 1e-12),
+                np.mean(centred**3) / sd**3,
+                np.mean(centred**4) / sd**4,
+            ]
             total = spectrum[:, c].sum() + 1e-12
-            out += [np.log(spectrum[a:b, c].sum() / total + 1e-12) for a, b in zip(edges[:-1], edges[1:])]
+            out += [
+                np.log(spectrum[a:b, c].sum() / total + 1e-12)
+                for a, b in zip(edges[:-1], edges[1:])
+            ]
         return out
 
     def feature_names():
@@ -12059,16 +15733,39 @@ def _make_drill_rig():
         import zipfile
         import numpy as np
         import pandas as pd
+
         rows, size = [], int(RATE * WINDOW_SECONDS)
         with zipfile.ZipFile(ZIP) as archive:
             recordings = members()
             for n, r in enumerate(recordings, 1):
                 with archive.open(r["file"]) as handle:
-                    signal = pd.read_csv(handle, usecols=CHANNELS, dtype="float32")[CHANNELS].to_numpy()
+                    signal = pd.read_csv(handle, usecols=CHANNELS, dtype="float32")[
+                        CHANNELS
+                    ].to_numpy()
                 for w in range(len(signal) // size):
-                    rows.append({**{k: r[k] for k in ("recording", "class", "severity", "mode", "rpm", "torque_nm")},
-                                 "window": w, **dict(zip(feature_names(), features(signal[w * size:(w + 1) * size])))})
-                print(f"  {n}/{len(recordings)} {r['recording']}: {len(signal) // size} windows", flush=True)
+                    rows.append(
+                        {
+                            **{
+                                k: r[k]
+                                for k in (
+                                    "recording",
+                                    "class",
+                                    "severity",
+                                    "mode",
+                                    "rpm",
+                                    "torque_nm",
+                                )
+                            },
+                            "window": w,
+                            **dict(
+                                zip(feature_names(), features(signal[w * size : (w + 1) * size]))
+                            ),
+                        }
+                    )
+                print(
+                    f"  {n}/{len(recordings)} {r['recording']}: {len(signal) // size} windows",
+                    flush=True,
+                )
         table = pd.DataFrame(rows)
         FEATURES.parent.mkdir(parents=True, exist_ok=True)
         table.to_csv(FEATURES, index=False)
@@ -12078,24 +15775,42 @@ def _make_drill_rig():
         """4-class gearbox-vibration model, leave one speed out, model chosen on the training speeds only."""
         import json
         import matplotlib
+
         matplotlib.use("Agg")
         import matplotlib.pyplot as plt
         import numpy as np
         import pandas as pd
         from sklearn.dummy import DummyClassifier
-        from sklearn.ensemble import ExtraTreesClassifier, HistGradientBoostingClassifier, RandomForestClassifier
+        from sklearn.ensemble import (
+            ExtraTreesClassifier,
+            HistGradientBoostingClassifier,
+            RandomForestClassifier,
+        )
         from sklearn.linear_model import LogisticRegression
-        from sklearn.metrics import accuracy_score, balanced_accuracy_score, confusion_matrix, f1_score
+        from sklearn.metrics import (
+            accuracy_score,
+            balanced_accuracy_score,
+            confusion_matrix,
+            f1_score,
+        )
         from sklearn.pipeline import make_pipeline
         from sklearn.preprocessing import StandardScaler
 
         def candidates():
             return {
                 "Majority class (control)": DummyClassifier(strategy="most_frequent"),
-                "Logistic regression": make_pipeline(StandardScaler(), LogisticRegression(max_iter=3000, C=0.5)),
-                "Random forest": RandomForestClassifier(300, min_samples_leaf=2, n_jobs=-1, random_state=SEED),
-                "Extra trees": ExtraTreesClassifier(300, min_samples_leaf=2, n_jobs=-1, random_state=SEED),
-                "Gradient boosting": HistGradientBoostingClassifier(max_iter=200, random_state=SEED),
+                "Logistic regression": make_pipeline(
+                    StandardScaler(), LogisticRegression(max_iter=3000, C=0.5)
+                ),
+                "Random forest": RandomForestClassifier(
+                    300, min_samples_leaf=2, n_jobs=-1, random_state=SEED
+                ),
+                "Extra trees": ExtraTreesClassifier(
+                    300, min_samples_leaf=2, n_jobs=-1, random_state=SEED
+                ),
+                "Gradient boosting": HistGradientBoostingClassifier(
+                    max_iter=200, random_state=SEED
+                ),
             }
 
         def per_recording(model, table, rows):
@@ -12108,31 +15823,55 @@ def _make_drill_rig():
             return list(truth), list(mean.idxmax(axis=1))
 
         def score(actual, predicted):
-            return {"test_units": len(actual),
-                    "accuracy": round(float(accuracy_score(actual, predicted)), 4),
-                    "balanced_accuracy": round(float(balanced_accuracy_score(actual, predicted)), 4),
-                    "macro_f1": round(float(f1_score(actual, predicted, labels=LABELS, average="macro", zero_division=0)), 4),
-                    "confusion_matrix": confusion_matrix(actual, predicted, labels=LABELS).tolist()}
+            return {
+                "test_units": len(actual),
+                "accuracy": round(float(accuracy_score(actual, predicted)), 4),
+                "balanced_accuracy": round(float(balanced_accuracy_score(actual, predicted)), 4),
+                "macro_f1": round(
+                    float(
+                        f1_score(actual, predicted, labels=LABELS, average="macro", zero_division=0)
+                    ),
+                    4,
+                ),
+                "confusion_matrix": confusion_matrix(actual, predicted, labels=LABELS).tolist(),
+            }
 
         def main():
             table = pd.read_csv(FEATURES) if FEATURES.is_file() else build_features()
             speeds = sorted(table["rpm"].unique())
-            print(f"{table['recording'].nunique()} recordings, {len(table)} windows; held-out speeds {speeds}")
-            models_actual, models_predicted = {name: [] for name in candidates()}, {name: [] for name in candidates()}
+            print(
+                f"{table['recording'].nunique()} recordings, {len(table)} windows; held-out speeds {speeds}"
+            )
+            models_actual, models_predicted = {name: [] for name in candidates()}, {
+                name: [] for name in candidates()
+            }
             chosen_actual, chosen_predicted, folds = [], [], []
             for speed in speeds:
                 train, test = (table["rpm"] != speed).to_numpy(), (table["rpm"] == speed).to_numpy()
                 # inner validation: each remaining speed held out once, inside the training data only
                 inner = {name: [] for name in candidates()}
                 for check in sorted(set(table.loc[train, "rpm"])):
-                    fit_rows, check_rows = train & (table["rpm"] != check).to_numpy(), (table["rpm"] == check).to_numpy()
+                    fit_rows, check_rows = (
+                        train & (table["rpm"] != check).to_numpy(),
+                        (table["rpm"] == check).to_numpy(),
+                    )
                     for name, model in candidates().items():
-                        model.fit(table.loc[fit_rows, feature_names()].to_numpy(), table.loc[fit_rows, "class"])
+                        model.fit(
+                            table.loc[fit_rows, feature_names()].to_numpy(),
+                            table.loc[fit_rows, "class"],
+                        )
                         a, p = per_recording(model, table, check_rows)
-                        inner[name].append(f1_score(a, p, labels=LABELS, average="macro", zero_division=0))
-                choice = max((n for n in inner if n != "Majority class (control)"), key=lambda n: np.mean(inner[n]))
+                        inner[name].append(
+                            f1_score(a, p, labels=LABELS, average="macro", zero_division=0)
+                        )
+                choice = max(
+                    (n for n in inner if n != "Majority class (control)"),
+                    key=lambda n: np.mean(inner[n]),
+                )
                 for name, model in candidates().items():
-                    model.fit(table.loc[train, feature_names()].to_numpy(), table.loc[train, "class"])
+                    model.fit(
+                        table.loc[train, feature_names()].to_numpy(), table.loc[train, "class"]
+                    )
                     a, p = per_recording(model, table, test)
                     models_actual[name] += a
                     models_predicted[name] += p
@@ -12140,22 +15879,40 @@ def _make_drill_rig():
                         chosen_actual += a
                         chosen_predicted += p
                         fold_accuracy = accuracy_score(a, p)
-                folds.append({"held_out_rpm": int(speed), "test_recordings": int(table.loc[test, "recording"].nunique()),
-                              "chosen_model": choice, "accuracy": round(float(fold_accuracy), 4),
-                              "inner_macro_f1": {n: round(float(np.mean(v)), 4) for n, v in inner.items()}})
-                print(f"held-out {speed} rpm: chose {choice}; accuracy {fold_accuracy:.3f}", flush=True)
+                folds.append(
+                    {
+                        "held_out_rpm": int(speed),
+                        "test_recordings": int(table.loc[test, "recording"].nunique()),
+                        "chosen_model": choice,
+                        "accuracy": round(float(fold_accuracy), 4),
+                        "inner_macro_f1": {
+                            n: round(float(np.mean(v)), 4) for n, v in inner.items()
+                        },
+                    }
+                )
+                print(
+                    f"held-out {speed} rpm: chose {choice}; accuracy {fold_accuracy:.3f}",
+                    flush=True,
+                )
             result = {
-                "machine": MACHINE, "source": SOURCE, "modality": "sensor only (no matching gear image dataset found)",
-                "classes": LABELS, "recordings": int(table["recording"].nunique()), "windows": int(len(table)),
+                "machine": MACHINE,
+                "source": SOURCE,
+                "modality": "sensor only (no matching gear image dataset found)",
+                "classes": LABELS,
+                "recordings": int(table["recording"].nunique()),
+                "windows": int(len(table)),
                 "test": "leave one speed out (1000 / 2000 / 3000 rpm); model chosen by inner leave-one-speed-out "
-                        "on the training speeds; one answer per recording (mean of its 1 s windows)",
+                "on the training speeds; one answer per recording (mean of its 1 s windows)",
                 "features": f"{len(feature_names())} per 1 s window: RMS, std, peak, crest, skewness, kurtosis and "
-                            "8 relative log band energies for each of 6 vibration channels",
+                "8 relative log band energies for each of 6 vibration channels",
                 "folds": folds,
                 "validation_selected": {"score": score(chosen_actual, chosen_predicted)},
-                "models": {name: score(models_actual[name], models_predicted[name]) for name in candidates()},
+                "models": {
+                    name: score(models_actual[name], models_predicted[name])
+                    for name in candidates()
+                },
                 "caveat": "one laboratory gearbox; one healthy gear but three separately machined gears per fault, "
-                          "so the healthy class has fewer independent examples; recordings are 60 s each",
+                "so the healthy class has fewer independent examples; recordings are 60 s each",
             }
             RESULT.parent.mkdir(parents=True, exist_ok=True)
             RESULT.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
@@ -12169,16 +15926,27 @@ def _make_drill_rig():
             axis.set_ylabel("Actual")
             for i in range(len(LABELS)):
                 for j in range(len(LABELS)):
-                    axis.text(j, i, str(matrix[i, j]), ha="center", va="center",
-                              color="white" if matrix[i, j] > matrix.max() / 2 else "black")
-            axis.set_title(f"Drill Rig gearbox vibration (MCC5-THU), unseen speed\n"
-                           f"{s['test_units']} test recordings, accuracy {s['accuracy']:.3f}", fontsize=10)
+                    axis.text(
+                        j,
+                        i,
+                        str(matrix[i, j]),
+                        ha="center",
+                        va="center",
+                        color="white" if matrix[i, j] > matrix.max() / 2 else "black",
+                    )
+            axis.set_title(
+                f"Drill Rig gearbox vibration (MCC5-THU), unseen speed\n"
+                f"{s['test_units']} test recordings, accuracy {s['accuracy']:.3f}",
+                fontsize=10,
+            )
             figure.tight_layout()
             FIGURE.parent.mkdir(parents=True, exist_ok=True)
             figure.savefig(FIGURE, dpi=130)
             plt.close(figure)
-            print(f"Validation-selected model: accuracy {s['accuracy']:.3f}, macro F1 {s['macro_f1']:.3f} "
-                  f"on {s['test_units']} unseen-speed recordings")
+            print(
+                f"Validation-selected model: accuracy {s['accuracy']:.3f}, macro F1 {s['macro_f1']:.3f} "
+                f"on {s['test_units']} unseen-speed recordings"
+            )
             for name, block in result["models"].items():
                 print(f"  {name:26s} accuracy {block['accuracy']:.3f}")
             print(f"Saved {RESULT.relative_to(ROOT)} and {FIGURE.relative_to(ROOT)}")
@@ -12199,21 +15967,30 @@ def _make_drill_rig():
         import numpy as np
         import pandas as pd
         from scipy.signal import decimate
+
         recordings, size = members(), int(RAW_RATE * WINDOW_SECONDS)
-        per = 767_999 // 2 // size                         # every recording is 60 s: 59 whole windows each
+        per = 767_999 // 2 // size  # every recording is 60 s: 59 whole windows each
         RAW.parent.mkdir(parents=True, exist_ok=True)
-        store = np.lib.format.open_memmap(RAW, mode="w+", dtype=np.float16,
-                                          shape=(len(recordings) * per, len(CHANNELS), size))
+        store = np.lib.format.open_memmap(
+            RAW, mode="w+", dtype=np.float16, shape=(len(recordings) * per, len(CHANNELS), size)
+        )
         rows = []
         with zipfile.ZipFile(ZIP) as archive:
             for n, r in enumerate(recordings):
                 with archive.open(r["file"]) as handle:
-                    signal = pd.read_csv(handle, usecols=CHANNELS, dtype="float32")[CHANNELS].to_numpy()
+                    signal = pd.read_csv(handle, usecols=CHANNELS, dtype="float32")[
+                        CHANNELS
+                    ].to_numpy()
                 signal = decimate(signal, 2, axis=0, zero_phase=True)
                 for w in range(per):
-                    store[n * per + w] = signal[w * size:(w + 1) * size].T
-                    rows.append({k: r[k] for k in ("recording", "class", "severity", "mode", "rpm", "torque_nm")}
-                                | {"window": w})
+                    store[n * per + w] = signal[w * size : (w + 1) * size].T
+                    rows.append(
+                        {
+                            k: r[k]
+                            for k in ("recording", "class", "severity", "mode", "rpm", "torque_nm")
+                        }
+                        | {"window": w}
+                    )
                 print(f"  {n + 1}/{len(recordings)} {r['recording']}", flush=True)
         store.flush()
         pd.DataFrame(rows).to_csv(RAW_INDEX, index=False)
@@ -12222,21 +15999,38 @@ def _make_drill_rig():
         """1D CNN on the raw vibration windows, leave one speed out; epochs chosen on the training speeds only."""
         import json
         import matplotlib
+
         matplotlib.use("Agg")
         import matplotlib.pyplot as plt
         import numpy as np
         import pandas as pd
         import torch
         from torch import nn
-        from sklearn.metrics import accuracy_score, balanced_accuracy_score, confusion_matrix, f1_score
+        from sklearn.metrics import (
+            accuracy_score,
+            balanced_accuracy_score,
+            confusion_matrix,
+            f1_score,
+        )
 
         def network():
             def block(a, b, k, stride=1, pool=True):
-                return [nn.Conv1d(a, b, k, stride=stride, padding=k // 2), nn.BatchNorm1d(b), nn.ReLU()] + \
-                       ([nn.MaxPool1d(2)] if pool else [])
-            return nn.Sequential(*block(len(CHANNELS), 32, 64, stride=8, pool=False), *block(32, 64, 7),
-                                 *block(64, 64, 7), *block(64, 128, 7, pool=False),
-                                 nn.AdaptiveAvgPool1d(1), nn.Flatten(), nn.Dropout(0.3), nn.Linear(128, len(LABELS)))
+                return [
+                    nn.Conv1d(a, b, k, stride=stride, padding=k // 2),
+                    nn.BatchNorm1d(b),
+                    nn.ReLU(),
+                ] + ([nn.MaxPool1d(2)] if pool else [])
+
+            return nn.Sequential(
+                *block(len(CHANNELS), 32, 64, stride=8, pool=False),
+                *block(32, 64, 7),
+                *block(64, 64, 7),
+                *block(64, 128, 7, pool=False),
+                nn.AdaptiveAvgPool1d(1),
+                nn.Flatten(),
+                nn.Dropout(0.3),
+                nn.Linear(128, len(LABELS)),
+            )
 
         def train(x, y, epochs, check=None):
             """Train from scratch; if check=(x, y, recordings) is given, return its macro F1 after every epoch."""
@@ -12245,15 +16039,21 @@ def _make_drill_rig():
             y = np.asarray(y, dtype=np.int64)
             model = network()
             counts = np.bincount(y, minlength=len(LABELS))
-            loss_fn = nn.CrossEntropyLoss(weight=torch.tensor(counts.sum() / (len(LABELS) * counts), dtype=torch.float32))
+            loss_fn = nn.CrossEntropyLoss(
+                weight=torch.tensor(counts.sum() / (len(LABELS) * counts), dtype=torch.float32)
+            )
             optimiser = torch.optim.AdamW(model.parameters(), lr=1e-3, weight_decay=1e-3)
             curve = []
             for epoch in range(epochs):
                 model.train()
                 for batch in np.array_split(rng.permutation(len(x)), max(1, len(x) // 64)):
-                    start = rng.integers(0, x.shape[2] - CROP + 1, len(batch))      # random 0.8 s crop
-                    part = np.stack([x[i, :, s:s + CROP] for i, s in zip(batch, start)]).astype(np.float32)
-                    part *= rng.uniform(0.8, 1.25, (len(batch), 1, 1)).astype(np.float32)  # random gain
+                    start = rng.integers(0, x.shape[2] - CROP + 1, len(batch))  # random 0.8 s crop
+                    part = np.stack([x[i, :, s : s + CROP] for i, s in zip(batch, start)]).astype(
+                        np.float32
+                    )
+                    part *= rng.uniform(0.8, 1.25, (len(batch), 1, 1)).astype(
+                        np.float32
+                    )  # random gain
                     optimiser.zero_grad()
                     loss = loss_fn(model(torch.from_numpy(part)), torch.from_numpy(y[batch]))
                     loss.backward()
@@ -12266,21 +16066,36 @@ def _make_drill_rig():
         def probabilities(model, x):
             model.eval()
             with torch.no_grad():
-                return np.concatenate([torch.softmax(model(torch.from_numpy(x[i:i + 256].astype(np.float32))), 1).numpy()
-                                       for i in range(0, len(x), 256)])
+                return np.concatenate(
+                    [
+                        torch.softmax(
+                            model(torch.from_numpy(x[i : i + 256].astype(np.float32))), 1
+                        ).numpy()
+                        for i in range(0, len(x), 256)
+                    ]
+                )
 
         def per_recording(model, x, y, recordings):
             frame = pd.DataFrame(probabilities(model, x), columns=LABELS)
             frame["recording"], frame["truth"] = recordings, np.asarray(LABELS)[y]
             mean = frame.groupby("recording")[LABELS].mean()
-            return list(frame.groupby("recording")["truth"].first().loc[mean.index]), list(mean.idxmax(axis=1))
+            return list(frame.groupby("recording")["truth"].first().loc[mean.index]), list(
+                mean.idxmax(axis=1)
+            )
 
         def score(actual, predicted):
-            return {"test_units": len(actual),
-                    "accuracy": round(float(accuracy_score(actual, predicted)), 4),
-                    "balanced_accuracy": round(float(balanced_accuracy_score(actual, predicted)), 4),
-                    "macro_f1": round(float(f1_score(actual, predicted, labels=LABELS, average="macro", zero_division=0)), 4),
-                    "confusion_matrix": confusion_matrix(actual, predicted, labels=LABELS).tolist()}
+            return {
+                "test_units": len(actual),
+                "accuracy": round(float(accuracy_score(actual, predicted)), 4),
+                "balanced_accuracy": round(float(balanced_accuracy_score(actual, predicted)), 4),
+                "macro_f1": round(
+                    float(
+                        f1_score(actual, predicted, labels=LABELS, average="macro", zero_division=0)
+                    ),
+                    4,
+                ),
+                "confusion_matrix": confusion_matrix(actual, predicted, labels=LABELS).tolist(),
+            }
 
         def main():
             if not RAW.is_file() or not RAW_INDEX.is_file():
@@ -12289,7 +16104,10 @@ def _make_drill_rig():
             raw, index = np.load(RAW, mmap_mode="r"), pd.read_csv(RAW_INDEX)
             raw = np.asarray(raw)
             y = index["class"].map(LABELS.index).to_numpy()
-            print(f"{index['recording'].nunique()} recordings, {len(index)} windows of {raw.shape[2]} samples", flush=True)
+            print(
+                f"{index['recording'].nunique()} recordings, {len(index)} windows of {raw.shape[2]} samples",
+                flush=True,
+            )
 
             def scaled(rows, reference):
                 # per-channel scale from the training windows only
@@ -12307,36 +16125,59 @@ def _make_drill_rig():
                     fit = train_rows[index.loc[train_rows, "rpm"].to_numpy() != check]
                     hold = train_rows[index.loc[train_rows, "rpm"].to_numpy() == check]
                     reference = raw[fit]
-                    _, curve = train(scaled(fit, reference), y[fit], CNN_EPOCHS,
-                                     (scaled(hold, reference), y[hold], index.loc[hold, "recording"].to_numpy()))
+                    _, curve = train(
+                        scaled(fit, reference),
+                        y[fit],
+                        CNN_EPOCHS,
+                        (scaled(hold, reference), y[hold], index.loc[hold, "recording"].to_numpy()),
+                    )
                     curves.append(curve)
-                    print(f"  held-out {speed} rpm, inner check {check} rpm: best macro F1 {max(curve):.3f} "
-                          f"at epoch {int(np.argmax(curve)) + 1}", flush=True)
+                    print(
+                        f"  held-out {speed} rpm, inner check {check} rpm: best macro F1 {max(curve):.3f} "
+                        f"at epoch {int(np.argmax(curve)) + 1}",
+                        flush=True,
+                    )
                 epochs = int(np.argmax(np.mean(curves, axis=0))) + 1
                 reference = raw[train_rows]
                 model, _ = train(scaled(train_rows, reference), y[train_rows], epochs)
                 x_test = scaled(test_rows, reference)
-                a, p = per_recording(model, x_test, y[test_rows], index.loc[test_rows, "recording"].to_numpy())
+                a, p = per_recording(
+                    model, x_test, y[test_rows], index.loc[test_rows, "recording"].to_numpy()
+                )
                 windows_right += int((probabilities(model, x_test).argmax(1) == y[test_rows]).sum())
                 actual += a
                 predicted += p
-                folds.append({"held_out_rpm": int(speed), "test_recordings": len(a), "epochs": epochs,
-                              "inner_macro_f1_by_epoch": np.round(np.mean(curves, axis=0), 4).tolist(),
-                              "accuracy": round(float(accuracy_score(a, p)), 4)})
-                print(f"held-out {speed} rpm: {epochs} epochs; accuracy {accuracy_score(a, p):.3f}", flush=True)
+                folds.append(
+                    {
+                        "held_out_rpm": int(speed),
+                        "test_recordings": len(a),
+                        "epochs": epochs,
+                        "inner_macro_f1_by_epoch": np.round(np.mean(curves, axis=0), 4).tolist(),
+                        "accuracy": round(float(accuracy_score(a, p)), 4),
+                    }
+                )
+                print(
+                    f"held-out {speed} rpm: {epochs} epochs; accuracy {accuracy_score(a, p):.3f}",
+                    flush=True,
+                )
             s = score(actual, predicted)
             result = {
-                "machine": MACHINE, "source": SOURCE, "modality": "sensor only, raw vibration",
-                "classes": LABELS, "recordings": int(index["recording"].nunique()), "windows": int(len(index)),
+                "machine": MACHINE,
+                "source": SOURCE,
+                "modality": "sensor only, raw vibration",
+                "classes": LABELS,
+                "recordings": int(index["recording"].nunique()),
+                "windows": int(len(index)),
                 "test": "leave one speed out (1000 / 2000 / 3000 rpm); epoch count chosen by inner "
-                        "leave-one-speed-out on the training speeds; one answer per recording (mean of its 1 s windows)",
+                "leave-one-speed-out on the training speeds; one answer per recording (mean of its 1 s windows)",
                 "model": "1D CNN, 4 conv blocks (32-64-64-128 filters), global average pooling; 6 vibration channels "
-                         "at 6.4 kHz (anti-alias filtered); training: random 0.8 s crops, random gain 0.8-1.25, "
-                         "class-weighted loss, AdamW lr 1e-3, batch 64, at most 25 epochs; seed 613",
-                "folds": folds, "score": s,
+                "at 6.4 kHz (anti-alias filtered); training: random 0.8 s crops, random gain 0.8-1.25, "
+                "class-weighted loss, AdamW lr 1e-3, batch 64, at most 25 epochs; seed 613",
+                "folds": folds,
+                "score": s,
                 "window_accuracy": round(windows_right / len(index), 4),
                 "caveat": "one training run per fold on CPU, which is not exactly repeatable; one laboratory gearbox "
-                          "and one healthy gear",
+                "and one healthy gear",
             }
             CNN_RESULT.parent.mkdir(parents=True, exist_ok=True)
             CNN_RESULT.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
@@ -12349,16 +16190,27 @@ def _make_drill_rig():
             axis.set_ylabel("Actual")
             for i in range(len(LABELS)):
                 for j in range(len(LABELS)):
-                    axis.text(j, i, str(matrix[i, j]), ha="center", va="center",
-                              color="white" if matrix[i, j] > matrix.max() / 2 else "black")
-            axis.set_title(f"Drill Rig raw-vibration 1D CNN (MCC5-THU), unseen speed\n"
-                           f"{s['test_units']} test recordings, accuracy {s['accuracy']:.3f}", fontsize=10)
+                    axis.text(
+                        j,
+                        i,
+                        str(matrix[i, j]),
+                        ha="center",
+                        va="center",
+                        color="white" if matrix[i, j] > matrix.max() / 2 else "black",
+                    )
+            axis.set_title(
+                f"Drill Rig raw-vibration 1D CNN (MCC5-THU), unseen speed\n"
+                f"{s['test_units']} test recordings, accuracy {s['accuracy']:.3f}",
+                fontsize=10,
+            )
             figure.tight_layout()
             CNN_FIGURE.parent.mkdir(parents=True, exist_ok=True)
             figure.savefig(CNN_FIGURE, dpi=130)
             plt.close(figure)
-            print(f"1D CNN: accuracy {s['accuracy']:.3f}, macro F1 {s['macro_f1']:.3f} on {s['test_units']} "
-                  f"unseen-speed recordings (window accuracy {result['window_accuracy']:.3f})")
+            print(
+                f"1D CNN: accuracy {s['accuracy']:.3f}, macro F1 {s['macro_f1']:.3f} on {s['test_units']} "
+                f"unseen-speed recordings (window accuracy {result['window_accuracy']:.3f})"
+            )
             print(f"Saved {CNN_RESULT.relative_to(ROOT)} and {CNN_FIGURE.relative_to(ROOT)}")
 
         if run:
@@ -12368,26 +16220,48 @@ def _make_drill_rig():
     # Camera side: MFGNet-Gear synthetic gear meshes rendered to images (NOT the MCC5-THU gears, NOT photographs)
     GEAR_ZIP = ROOT / "Raw_Data" / "mfgnet_gear" / "mesh_ply.zip"
     GEAR_SHA1 = "b6b402b9f59a4e77c11cb5885fbcf5d1c30f99b6"
-    GEAR_SOURCE = ("MFGNet-Gear, Mei and Shao, University of Michigan Deep Blue Data, doi 10.7302/qrdj-n812, CC BY 4.0 "
-                   "(synthetic CAD gear meshes)")
+    GEAR_SOURCE = (
+        "MFGNet-Gear, Mei and Shao, University of Michigan Deep Blue Data, doi 10.7302/qrdj-n812, CC BY 4.0 "
+        "(synthetic CAD gear meshes)"
+    )
     GEAR_CLASS = {"G0": "healthy", "W0": "gear_wear", "P0": "gear_pitting", "R0": "tooth_crack"}
-    GEAR_DESIGNS = [["T20ID10", "T30ID20", "T40ID30"], ["T20ID15", "T30ID30", "T40ID40"],
-                    ["T20ID20", "T30ID40", "T40ID50"], ["T20ID25", "T30ID50", "T40ID60"]]   # 4 folds of 3 unseen designs
+    GEAR_DESIGNS = [
+        ["T20ID10", "T30ID20", "T40ID30"],
+        ["T20ID15", "T30ID30", "T40ID40"],
+        ["T20ID20", "T30ID40", "T40ID50"],
+        ["T20ID25", "T30ID50", "T40ID60"],
+    ]  # 4 folds of 3 unseen designs
     GEAR_IMAGES = ROOT / "Images" / MACHINE
     GEAR_PER_COMBO, GEAR_SIZE = 100, 224
-    GEAR_VIEWS = [(90, 0), (-90, 0)]          # (elevation, azimuth): both gear faces, where the defects show
+    GEAR_VIEWS = [
+        (90, 0),
+        (-90, 0),
+    ]  # (elevation, azimuth): both gear faces, where the defects show
     GEAR_RESULT = ROOT / "Results" / MACHINE / f"{MACHINE}_cnn_images_4class.json"
     GEAR_FIGURE = ROOT / "Figures" / MACHINE / f"{MACHINE}_cnn_images_4class.png"
 
     def read_ply(data):
         """Vertices (n, 3) and triangles (m, 3) from an ASCII or binary little-endian PLY file."""
         import numpy as np
+
         end = data.index(b"end_header") + len(b"end_header")
-        end += 2 if data[end:end + 2] == b"\r\n" else 1
+        end += 2 if data[end : end + 2] == b"\r\n" else 1
         header = data[:end].decode("ascii", "replace").split("\n")
         kind = next(line.split()[1] for line in header if line.startswith("format"))
-        types = {"float": "f4", "float32": "f4", "double": "f8", "uchar": "u1", "uint8": "u1", "char": "i1",
-                 "int": "i4", "int32": "i4", "uint": "u4", "uint32": "u4", "short": "i2", "ushort": "u2"}
+        types = {
+            "float": "f4",
+            "float32": "f4",
+            "double": "f8",
+            "uchar": "u1",
+            "uint8": "u1",
+            "char": "i1",
+            "int": "i4",
+            "int32": "i4",
+            "uint": "u4",
+            "uint32": "u4",
+            "short": "i2",
+            "ushort": "u2",
+        }
         elements, current = [], None
         for line in header:
             part = line.split()
@@ -12401,7 +16275,7 @@ def _make_drill_rig():
             lines, out = body.decode("ascii").split("\n"), {}
             start = 0
             for e in elements:
-                out[e["name"]] = lines[start:start + e["count"]]
+                out[e["name"]] = lines[start : start + e["count"]]
                 start += e["count"]
             vertices = np.array([l.split()[:3] for l in out["vertex"]], dtype=np.float64)
             faces = np.array([l.split()[1:4] for l in out["face"]], dtype=np.int64)
@@ -12409,9 +16283,9 @@ def _make_drill_rig():
         assert kind == "binary_little_endian", kind
         offset, result = 0, {}
         for e in elements:
-            fields = []                                    # face colours are read past but never used
+            fields = []  # face colours are read past but never used
             for p in e["props"]:
-                if p[0] == "list":                         # triangle meshes only: fixed count of 3
+                if p[0] == "list":  # triangle meshes only: fixed count of 3
                     fields += [("n", "<" + types[p[1]]), ("index", "<" + types[p[2]], 3)]
                 else:
                     fields.append((p[1], "<" + types[p[0]]))
@@ -12421,7 +16295,9 @@ def _make_drill_rig():
                 assert (block["n"] == 3).all(), "only triangle meshes are handled"
                 result[e["name"]] = block["index"].astype(np.int64)
             else:
-                result[e["name"]] = np.stack([block[k] for k in ("x", "y", "z")], 1).astype(np.float64)
+                result[e["name"]] = np.stack([block[k] for k in ("x", "y", "z")], 1).astype(
+                    np.float64
+                )
             offset += dtype.itemsize * e["count"]
         return result["vertex"], result["face"]
 
@@ -12434,6 +16310,7 @@ def _make_drill_rig():
         """
         import cv2
         import numpy as np
+
         size, views = size or GEAR_SIZE, views or GEAR_VIEWS
         rng = np.random.default_rng(seed)
         v = vertices - (vertices.max(0) + vertices.min(0)) / 2
@@ -12448,7 +16325,11 @@ def _make_drill_rig():
         a, b = rng.random((2, len(pick)))
         flip = a + b > 1
         a[flip], b[flip] = 1 - a[flip], 1 - b[flip]
-        points = tri[pick, 0] + a[:, None] * (tri[pick, 1] - tri[pick, 0]) + b[:, None] * (tri[pick, 2] - tri[pick, 0])
+        points = (
+            tri[pick, 0]
+            + a[:, None] * (tri[pick, 1] - tri[pick, 0])
+            + b[:, None] * (tri[pick, 2] - tri[pick, 0])
+        )
         normals = normal[pick]
         images = []
         for elevation, azimuth in views:
@@ -12457,8 +16338,8 @@ def _make_drill_rig():
             tilt = np.array([[1, 0, 0], [0, np.cos(e), -np.sin(e)], [0, np.sin(e), np.cos(e)]])
             rotation = tilt @ turn
             p, n = points @ rotation.T, normals @ rotation.T
-            n = np.where(n[:, 2:3] < 0, -n, n)                  # face the camera (camera on +z)
-            light = np.array([0.75, -0.40, 0.45])                # low raking light, as in surface inspection
+            n = np.where(n[:, 2:3] < 0, -n, n)  # face the camera (camera on +z)
+            light = np.array([0.75, -0.40, 0.45])  # low raking light, as in surface inspection
             shade = 0.15 + 0.85 * np.clip(n @ (light / np.linalg.norm(light)), 0, 1)
             px = np.clip(((p[:, 0] * zoom / 1.15 + 1) / 2 * size).astype(int), 0, size - 1)
             py = np.clip(((1 - p[:, 1] * zoom / 1.15) / 2 * size).astype(int), 0, size - 1)
@@ -12472,8 +16353,12 @@ def _make_drill_rig():
             filled = count > 0
             image = np.zeros(size * size, np.float32)
             depth = np.full(size * size, -10.0, np.float32)
-            image[filled] = (np.bincount(pixel[seen], shade[seen], size * size)[filled] / count[filled])
-            depth[filled] = (np.bincount(pixel[seen], p[seen, 2], size * size)[filled] / count[filled])
+            image[filled] = (
+                np.bincount(pixel[seen], shade[seen], size * size)[filled] / count[filled]
+            )
+            depth[filled] = (
+                np.bincount(pixel[seen], p[seen, 2], size * size)[filled] / count[filled]
+            )
             image, depth = image.reshape(size, size), depth.reshape(size, size)
             # a pixel that missed the front surface shows a hidden surface (or nothing): take its neighbour's value
             near = cv2.dilate(depth, np.ones((3, 3), np.uint8))
@@ -12485,24 +16370,34 @@ def _make_drill_rig():
             local = cv2.blur(depth * solid, (9, 9)) / np.maximum(cv2.blur(solid, (9, 9)), 1e-6)
             relief = np.clip(0.5 + 400 * (depth - local), 0, 1) * solid
             height = np.clip((depth + 1) / 2, 0, 1) * solid
-            images.append((np.dstack([height, relief, image]) * 255).astype(np.uint8))   # saved as BGR
+            images.append(
+                (np.dstack([height, relief, image]) * 255).astype(np.uint8)
+            )  # saved as BGR
         return images
 
     def gear_members():
         import re
         import zipfile
+
         rows = []
         with zipfile.ZipFile(GEAR_ZIP) as archive:
             for name in archive.namelist():
                 match = re.search(r"(T\d+ID\d+)(G0|P0|W0|R0)_(\d+)\.ply$", name, re.IGNORECASE)
                 if match and "__MACOSX" not in name:
-                    rows.append({"member": name, "design": match.group(1), "class": GEAR_CLASS[match.group(2)],
-                                 "instance": int(match.group(3))})
+                    rows.append(
+                        {
+                            "member": name,
+                            "design": match.group(1),
+                            "class": GEAR_CLASS[match.group(2)],
+                            "instance": int(match.group(3)),
+                        }
+                    )
         return rows
 
     def _render_batch(job):
         import zipfile
         import cv2
+
         out = []
         with zipfile.ZipFile(GEAR_ZIP) as archive:
             for row in job:
@@ -12510,9 +16405,14 @@ def _make_drill_rig():
                 for view, image in enumerate(render_gear(vertices, faces, SEED + row["instance"])):
                     name = f"{row['design']}_{row['class']}_{row['instance']:05d}_v{view}.png"
                     cv2.imwrite(str(GEAR_IMAGES / name), image)
-                    out.append({**{k: row[k] for k in ("design", "class", "instance")},
-                                "gear": f"{row['design']}_{row['class']}_{row['instance']:05d}",
-                                "view": view, "file": name})
+                    out.append(
+                        {
+                            **{k: row[k] for k in ("design", "class", "instance")},
+                            "gear": f"{row['design']}_{row['class']}_{row['instance']:05d}",
+                            "view": view,
+                            "file": name,
+                        }
+                    )
         return out
 
     def images(run: bool = True) -> dict:
@@ -12540,10 +16440,18 @@ def _make_drill_rig():
             for design in sorted({r["design"] for r in rows}):
                 for label in LABELS:
                     pool = [r for r in rows if r["design"] == design and r["class"] == label]
-                    chosen += [pool[i] for i in sorted(rng.choice(len(pool), min(GEAR_PER_COMBO, len(pool)), replace=False))]
-            print(f"{len(rows)} meshes in the zip; rendering {len(chosen)} gears x {len(GEAR_VIEWS)} views", flush=True)
+                    chosen += [
+                        pool[i]
+                        for i in sorted(
+                            rng.choice(len(pool), min(GEAR_PER_COMBO, len(pool)), replace=False)
+                        )
+                    ]
+            print(
+                f"{len(rows)} meshes in the zip; rendering {len(chosen)} gears x {len(GEAR_VIEWS)} views",
+                flush=True,
+            )
             GEAR_IMAGES.mkdir(parents=True, exist_ok=True)
-            jobs = [chosen[i:i + 50] for i in range(0, len(chosen), 50)]
+            jobs = [chosen[i : i + 50] for i in range(0, len(chosen), 50)]
             index = []
             with ProcessPoolExecutor(max_workers=10) as pool:
                 for n, part in enumerate(pool.map(_render_batch_entry, jobs), 1):
@@ -12556,11 +16464,24 @@ def _make_drill_rig():
                 writer.writerows(index)
             counts = {label: sum(r["class"] == label for r in rows) for label in LABELS}
             (ROOT / "Results" / MACHINE).mkdir(parents=True, exist_ok=True)
-            (ROOT / "Results" / MACHINE / f"{MACHINE}_mfgnet_gear_intake.json").write_text(json.dumps(
-                {"source": GEAR_SOURCE, "sha1_expected": GEAR_SHA1, "sha1_matches": ok,
-                 "zip_bytes": GEAR_ZIP.stat().st_size, "meshes_in_zip": counts, "gears_rendered": len(chosen),
-                 "views_per_gear": GEAR_VIEWS, "image_size": GEAR_SIZE, "images": len(index)}, indent=2) + "\n",
-                encoding="utf-8")
+            (ROOT / "Results" / MACHINE / f"{MACHINE}_mfgnet_gear_intake.json").write_text(
+                json.dumps(
+                    {
+                        "source": GEAR_SOURCE,
+                        "sha1_expected": GEAR_SHA1,
+                        "sha1_matches": ok,
+                        "zip_bytes": GEAR_ZIP.stat().st_size,
+                        "meshes_in_zip": counts,
+                        "gears_rendered": len(chosen),
+                        "views_per_gear": GEAR_VIEWS,
+                        "image_size": GEAR_SIZE,
+                        "images": len(index),
+                    },
+                    indent=2,
+                )
+                + "\n",
+                encoding="utf-8",
+            )
             print(f"Saved {len(index)} images to {GEAR_IMAGES.relative_to(ROOT)}")
 
         if run:
@@ -12574,19 +16495,30 @@ def _make_drill_rig():
         import random
         import cv2
         import matplotlib
+
         matplotlib.use("Agg")
         import matplotlib.pyplot as plt
         import numpy as np
         import torch
         from torch import nn
         from torchvision.models import ResNet18_Weights, resnet18
-        from sklearn.metrics import accuracy_score, balanced_accuracy_score, confusion_matrix, f1_score
+        from sklearn.metrics import (
+            accuracy_score,
+            balanced_accuracy_score,
+            confusion_matrix,
+            f1_score,
+        )
 
         MAX_EPOCHS, BATCH, TRAIN_PER_COMBO = 6, 32, 50
-        MEAN, STD = np.array([0.485, 0.456, 0.406], np.float32), np.array([0.229, 0.224, 0.225], np.float32)
+        MEAN, STD = np.array([0.485, 0.456, 0.406], np.float32), np.array(
+            [0.229, 0.224, 0.225], np.float32
+        )
 
         def load(rows):
-            rgb = np.stack([cv2.imread(str(GEAR_IMAGES / r["file"]))[:, :, ::-1] for r in rows]) / 255.0
+            rgb = (
+                np.stack([cv2.imread(str(GEAR_IMAGES / r["file"]))[:, :, ::-1] for r in rows])
+                / 255.0
+            )
             return ((rgb.astype(np.float32) - MEAN) / STD).transpose(0, 3, 1, 2).copy()
 
         def augment(batch, generator):
@@ -12613,7 +16545,7 @@ def _make_drill_rig():
                 model.train()
                 order = torch.randperm(len(xs), generator=generator)
                 for start in range(0, len(xs) - 1, BATCH):
-                    batch = order[start:start + BATCH]
+                    batch = order[start : start + BATCH]
                     optimiser.zero_grad()
                     loss_fn(model(augment(xs[batch], generator)), ys[batch]).backward()
                     optimiser.step()
@@ -12625,8 +16557,12 @@ def _make_drill_rig():
         def probabilities(model, x):
             model.eval()
             with torch.no_grad():
-                return np.concatenate([torch.softmax(model(torch.from_numpy(x[i:i + 128])), 1).numpy()
-                                       for i in range(0, len(x), 128)])
+                return np.concatenate(
+                    [
+                        torch.softmax(model(torch.from_numpy(x[i : i + 128])), 1).numpy()
+                        for i in range(0, len(x), 128)
+                    ]
+                )
 
         def per_gear(p, truth, gears):
             """One answer per gear: mean class probability over its views."""
@@ -12638,11 +16574,18 @@ def _make_drill_rig():
             return actual, predicted
 
         def score(actual, predicted):
-            return {"test_units": len(actual),
-                    "accuracy": round(float(accuracy_score(actual, predicted)), 4),
-                    "balanced_accuracy": round(float(balanced_accuracy_score(actual, predicted)), 4),
-                    "macro_f1": round(float(f1_score(actual, predicted, labels=LABELS, average="macro", zero_division=0)), 4),
-                    "confusion_matrix": confusion_matrix(actual, predicted, labels=LABELS).tolist()}
+            return {
+                "test_units": len(actual),
+                "accuracy": round(float(accuracy_score(actual, predicted)), 4),
+                "balanced_accuracy": round(float(balanced_accuracy_score(actual, predicted)), 4),
+                "macro_f1": round(
+                    float(
+                        f1_score(actual, predicted, labels=LABELS, average="macro", zero_division=0)
+                    ),
+                    4,
+                ),
+                "confusion_matrix": confusion_matrix(actual, predicted, labels=LABELS).tolist(),
+            }
 
         def main():
             torch.set_num_threads(max(1, torch.get_num_threads()))
@@ -12660,17 +16603,32 @@ def _make_drill_rig():
                 for c in LABELS:
                     ids = sorted(set(instance[(design == d) & (truth == c)]))
                     rank.update({(d, c, i): n for n, i in enumerate(ids)})
-            in_budget = np.array([rank[(d, c, i)] < TRAIN_PER_COMBO for d, c, i in zip(design, truth, instance)])
-            print(f"{len(set(gears))} gears, {len(rows)} images; 4 folds of 3 unseen gear designs", flush=True)
+            in_budget = np.array(
+                [rank[(d, c, i)] < TRAIN_PER_COMBO for d, c, i in zip(design, truth, instance)]
+            )
+            print(
+                f"{len(set(gears))} gears, {len(rows)} images; 4 folds of 3 unseen gear designs",
+                flush=True,
+            )
             image_actual, image_predicted, actual, predicted, folds = [], [], [], [], []
             for number, held_out in enumerate(GEAR_DESIGNS):
                 test = np.isin(design, held_out)
                 train = ~test & in_budget
                 check_designs = GEAR_DESIGNS[(number + 1) % len(GEAR_DESIGNS)]
-                fit_rows, check_rows = train & ~np.isin(design, check_designs), train & np.isin(design, check_designs)
+                fit_rows, check_rows = train & ~np.isin(design, check_designs), train & np.isin(
+                    design, check_designs
+                )
                 # inner check on 3 other training designs picks the number of epochs; the test designs are never used
-                _, curve = fit(load([rows[i] for i in np.flatnonzero(fit_rows)]), y[fit_rows], MAX_EPOCHS,
-                               (load([rows[i] for i in np.flatnonzero(check_rows)]), truth[check_rows], gears[check_rows]))
+                _, curve = fit(
+                    load([rows[i] for i in np.flatnonzero(fit_rows)]),
+                    y[fit_rows],
+                    MAX_EPOCHS,
+                    (
+                        load([rows[i] for i in np.flatnonzero(check_rows)]),
+                        truth[check_rows],
+                        gears[check_rows],
+                    ),
+                )
                 epochs = int(np.argmax(curve)) + 1
                 model, _ = fit(load([rows[i] for i in np.flatnonzero(train)]), y[train], epochs)
                 p = probabilities(model, load([rows[i] for i in np.flatnonzero(test)]))
@@ -12679,57 +16637,100 @@ def _make_drill_rig():
                 image_predicted += [LABELS[k] for k in p.argmax(1)]
                 actual += a
                 predicted += q
-                folds.append({"held_out_designs": held_out, "check_designs": check_designs, "epochs": epochs,
-                              "inner_macro_f1_by_epoch": np.round(curve, 4).tolist(), "test_gears": len(a),
-                              "accuracy": round(float(accuracy_score(a, q)), 4)})
-                print(f"held-out {held_out}: {epochs} epochs; gear accuracy {accuracy_score(a, q):.3f}", flush=True)
+                folds.append(
+                    {
+                        "held_out_designs": held_out,
+                        "check_designs": check_designs,
+                        "epochs": epochs,
+                        "inner_macro_f1_by_epoch": np.round(curve, 4).tolist(),
+                        "test_gears": len(a),
+                        "accuracy": round(float(accuracy_score(a, q)), 4),
+                    }
+                )
+                print(
+                    f"held-out {held_out}: {epochs} epochs; gear accuracy {accuracy_score(a, q):.3f}",
+                    flush=True,
+                )
             result = {
-                "machine": MACHINE, "source": GEAR_SOURCE,
+                "machine": MACHINE,
+                "source": GEAR_SOURCE,
                 "modality": "camera stand-in: synthetic CAD gear meshes rendered as 3D-camera images (shading, surface "
-                            "relief, depth) of both gear faces (not photographs, "
-                            "not the MCC5-THU gears used for the vibration model)",
-                "classes": LABELS, "class_mapping": {"G0 good": "healthy", "W0 tooth wear": "gear_wear",
-                                                      "P0 pitting": "gear_pitting", "R0 tooth root breakage": "tooth_crack"},
+                "relief, depth) of both gear faces (not photographs, "
+                "not the MCC5-THU gears used for the vibration model)",
+                "classes": LABELS,
+                "class_mapping": {
+                    "G0 good": "healthy",
+                    "W0 tooth wear": "gear_wear",
+                    "P0 pitting": "gear_pitting",
+                    "R0 tooth root breakage": "tooth_crack",
+                },
                 "test": "4 folds, each holding out 3 whole gear designs (one per tooth count 20/30/40); epochs chosen "
-                        "on 3 other training designs; one answer per gear (mean of its views)",
+                "on 3 other training designs; one answer per gear (mean of its views)",
                 "model": f"ResNet-18 (ImageNet weights), {GEAR_SIZE}px 3-channel images, {len(GEAR_VIEWS)} views per gear, "
-                         f"{TRAIN_PER_COMBO} training gears per design and class, at most {MAX_EPOCHS} epochs, seed {SEED}",
-                "folds": folds, "gear_level": score(actual, predicted), "image_level": score(image_actual, image_predicted),
+                f"{TRAIN_PER_COMBO} training gears per design and class, at most {MAX_EPOCHS} epochs, seed {SEED}",
+                "folds": folds,
+                "gear_level": score(actual, predicted),
+                "image_level": score(image_actual, image_predicted),
                 "caveat": "synthetic, noise-free renders; a real camera adds lighting, oil, dirt and blur, so this "
-                          "is an upper bound for the camera route, not a field result",
+                "is an upper bound for the camera route, not a field result",
             }
             GEAR_RESULT.parent.mkdir(parents=True, exist_ok=True)
             GEAR_RESULT.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
             figure, axes = plt.subplots(1, 2, figsize=(9.6, 4.6))
-            for axis, (name, block) in zip(axes, [("every test image", result["image_level"]),
-                                                  ("per gear (mean of views)", result["gear_level"])]):
+            for axis, (name, block) in zip(
+                axes,
+                [
+                    ("every test image", result["image_level"]),
+                    ("per gear (mean of views)", result["gear_level"]),
+                ],
+            ):
                 matrix = np.asarray(block["confusion_matrix"])
                 axis.imshow(matrix, cmap="Blues", vmin=0)
                 axis.set_xticks(range(len(LABELS)), LABELS, rotation=25, fontsize=8)
                 axis.set_yticks(range(len(LABELS)), LABELS, fontsize=8)
                 axis.set_xlabel("Predicted")
                 axis.set_ylabel("Actual")
-                axis.set_title(f"{name}\n{block['test_units']:,} tested, accuracy {block['accuracy']:.3f}", fontsize=9)
+                axis.set_title(
+                    f"{name}\n{block['test_units']:,} tested, accuracy {block['accuracy']:.3f}",
+                    fontsize=9,
+                )
                 for i in range(len(LABELS)):
                     for j in range(len(LABELS)):
-                        axis.text(j, i, f"{matrix[i, j]:,}", ha="center", va="center", fontsize=8,
-                                  color="white" if matrix[i, j] > matrix.max() / 2 else "black")
-            figure.suptitle("Drill Rig camera stand-in: rendered synthetic gears (MFGNet-Gear), unseen gear designs",
-                            fontsize=10)
+                        axis.text(
+                            j,
+                            i,
+                            f"{matrix[i, j]:,}",
+                            ha="center",
+                            va="center",
+                            fontsize=8,
+                            color="white" if matrix[i, j] > matrix.max() / 2 else "black",
+                        )
+            figure.suptitle(
+                "Drill Rig camera stand-in: rendered synthetic gears (MFGNet-Gear), unseen gear designs",
+                fontsize=10,
+            )
             figure.tight_layout()
             GEAR_FIGURE.parent.mkdir(parents=True, exist_ok=True)
             figure.savefig(GEAR_FIGURE, dpi=120)
             plt.close(figure)
             s = result["gear_level"]
-            print(f"Gear images CNN: accuracy {s['accuracy']:.3f}, macro F1 {s['macro_f1']:.3f} on {s['test_units']} "
-                  f"unseen-design gears (image accuracy {result['image_level']['accuracy']:.3f})")
+            print(
+                f"Gear images CNN: accuracy {s['accuracy']:.3f}, macro F1 {s['macro_f1']:.3f} on {s['test_units']} "
+                f"unseen-design gears (image accuracy {result['image_level']['accuracy']:.3f})"
+            )
             print(f"Saved {GEAR_RESULT.relative_to(ROOT)} and {GEAR_FIGURE.relative_to(ROOT)}")
 
         if run:
             main()
         return locals()
 
-    COMMANDS = {"intake": intake, "csv": csv, "cnn": cnn, "images": images, "cnn-images": cnn_images}
+    COMMANDS = {
+        "intake": intake,
+        "csv": csv,
+        "cnn": cnn,
+        "images": images,
+        "cnn-images": cnn_images,
+    }
     RUN_ALL = ["intake", "csv", "cnn", "images", "cnn-images"]
 
     def cli() -> None:
@@ -12737,13 +16738,14 @@ def _make_drill_rig():
             print(_make_drill_rig.__doc__)
             raise SystemExit(0 if len(sys.argv) < 2 or sys.argv[1] in ("-h", "--help") else 2)
         command, options = sys.argv[1], sys.argv[2:]
-        for name in (RUN_ALL if command == "all" else [command]):
+        for name in RUN_ALL if command == "all" else [command]:
             sys.argv = [f"drill_rig {name}", *(options if command != "all" else [])]
             COMMANDS[name]()
 
     return SimpleNamespace(**locals())
 
-#endregion
+
+# endregion
 
 
 def _render_batch_entry(job):
@@ -12752,9 +16754,8 @@ def _render_batch_entry(job):
 
 
 # CORA_FULLDATA MODEL IMPLEMENTATION
-#region Cora Fulldata: data, preprocessing, models and evaluation
+# region Cora Fulldata: data, preprocessing, models and evaluation
 def _make_cora_fulldata():
-    __doc__ = "Week 7 full-data sensor experiment for the CORA machines (Belt Conveyor, Dozer, Excavator, Wheel Loader).\n\nShared engine; each machine file has a `fulldata` command that calls `run(machine, conditions)`.\nUses every CORA sensor and every recording that exists for the machine's conditions:\n\n  - stationary runs (one 45-50 min run per condition and speed): vibration X/Y/Z (3 kHz), motor current\n    C1-C3 (4 kHz) and six temperature probes T1-T6 (1 kHz), EVERY 1-second window;\n  - start-up transient tests (FIVE 30 s repeats per condition and speed): vibration X/Y/Z and current\n    C1-C3; the steady part (10-30 s) is used, 20 one-second windows per repeat.\n\nMain test: each whole speed is held out in turn (4 rounds). Training uses all stationary and transient\nrecordings of the other three speeds; the held-out speed gives 6 test recordings per class (1 stationary\n+ 5 transient). One prediction per recording (mean class probabilities of its windows); every training\nrecording gets equal weight. The feature set and model are chosen by leave-one-speed-out validation\ninside the training speeds only. All features are computed per window from that window alone (vibration\nin shaft orders, current in supply-frequency orders), so no preprocessing looks at the held-out speed.\n\nSecondary (easier) time split: stationary runs only, first 60% of every run trains, last 30% tests.\nTemperature turned out to identify the recording session (it separates the conditions already in the\nfirst 5 minutes, before any fault heating), so temperature sets are reported but excluded from selection.\nTemperature is offered two ways: the pattern only (each probe relative to the others and to the run's first\nminute) and including absolute temperature, which mostly follows the room temperature of that recording day.\nResults go to Results/<machine>/<machine>_fulldata.json; the Week 6 results are not changed."
     """Week 7 full-data sensor experiment for the CORA machines (Belt Conveyor, Dozer, Excavator, Wheel Loader).
 
     Shared engine; each machine file has a `fulldata` command that calls `run(machine, conditions)`.
@@ -12779,7 +16780,7 @@ def _make_cora_fulldata():
     minute) and including absolute temperature, which mostly follows the room temperature of that recording day.
     Results go to Results/<machine>/<machine>_fulldata.json; the Week 6 results are not changed.
     """
-
+    __doc__ = cleandoc(_make_cora_fulldata.__doc__)
 
     import json
     import time
@@ -12788,19 +16789,31 @@ def _make_cora_fulldata():
     import numpy as np
     import pandas as pd
 
-
     FULL = ROOT / "Raw_Data" / "cora_full"
     VX = ROOT / "Raw_Data" / "cora_vibration"
     CACHE = ROOT / "Processed_Data" / "cora_full_features"
     SPEEDS = ("F5", "F15", "F50", "F60")
     RATE = {"V": 3000, "C": 4000, "T": 1000}
     ORDERS = ((0.5, 1.5), (1.5, 2.5), (2.5, 3.5), (3.5, 5.5), (5.5, 8.5), (8.5, 12.5), (12.5, 20.5))
-    VIB = ["log_rms", "kurtosis", "skewness", "crest", "peak_order", "log_2x_1x",
-           *(f"order_{lo}_{hi}" for lo, hi in ORDERS)]
-    CUR = ["log_rms", "kurtosis", "crest", "log_thd", "log_sideband", "spectral_entropy",
-           *(f"order_{lo}_{hi}" for lo, hi in ORDERS)]
-    TRANSIENT_WINDOWS = range(10, 30)   # steady part of the 30 s start-up test
-
+    VIB = [
+        "log_rms",
+        "kurtosis",
+        "skewness",
+        "crest",
+        "peak_order",
+        "log_2x_1x",
+        *(f"order_{lo}_{hi}" for lo, hi in ORDERS),
+    ]
+    CUR = [
+        "log_rms",
+        "kurtosis",
+        "crest",
+        "log_thd",
+        "log_sideband",
+        "spectral_entropy",
+        *(f"order_{lo}_{hi}" for lo, hi in ORDERS),
+    ]
+    TRANSIENT_WINDOWS = range(10, 30)  # steady part of the 30 s start-up test
 
     # ---------------------------------------------------------------------------------------------- features
 
@@ -12809,12 +16822,10 @@ def _make_cora_fulldata():
             raise SystemExit(f"Missing {path.relative_to(ROOT)}: download the CORA files first")
         return load_csv(path, header=None, dtype=np.float64, engine="c").iloc[:, 0].to_numpy()
 
-
     def _windows(x: np.ndarray, rate: int) -> np.ndarray:
         n = len(x) // rate
         w = x[: n * rate].reshape(n, rate)
         return w - w.mean(axis=1, keepdims=True)
-
 
     def _order_shares(power, freq, base):
         order = freq / base
@@ -12823,7 +16834,6 @@ def _make_cora_fulldata():
         o = order[usable]
         return share, o, [share[:, (o >= lo) & (o < hi)].sum(axis=1) for lo, hi in ORDERS]
 
-
     def vibration_features(x, speed):
         rate, shaft = RATE["V"], float(speed[1:])
         w = _windows(x, rate)
@@ -12831,34 +16841,51 @@ def _make_cora_fulldata():
         freq = np.fft.rfftfreq(rate, d=1 / rate)
         power = np.abs(np.fft.rfft(w * np.hanning(rate), axis=1)) ** 2
         share, o, bands = _order_shares(power, freq, shaft)
-        return np.column_stack([np.log(std), (w ** 4).mean(axis=1) / std ** 4, (w ** 3).mean(axis=1) / std ** 3,
-                                np.abs(w).max(axis=1) / std, o[np.argmax(share, axis=1)],
-                                np.log((bands[1] + 1e-9) / (bands[0] + 1e-9)), *bands])
-
+        return np.column_stack(
+            [
+                np.log(std),
+                (w**4).mean(axis=1) / std**4,
+                (w**3).mean(axis=1) / std**3,
+                np.abs(w).max(axis=1) / std,
+                o[np.argmax(share, axis=1)],
+                np.log((bands[1] + 1e-9) / (bands[0] + 1e-9)),
+                *bands,
+            ]
+        )
 
     def current_features(x, speed):
         rate, supply = RATE["C"], float(speed[1:])
         w = _windows(x, rate)
         std = np.maximum(w.std(axis=1), 1e-12)
-        freq = np.fft.rfftfreq(rate, d=1 / rate)            # 1 Hz bins
+        freq = np.fft.rfftfreq(rate, d=1 / rate)  # 1 Hz bins
         power = np.abs(np.fft.rfft(w * np.hanning(rate), axis=1)) ** 2
         f0 = int(round(supply))
-        fundamental = power[:, max(f0 - 1, 1): f0 + 2].sum(axis=1) + 1e-12
-        harmonics = sum(power[:, k * f0 - 1: k * f0 + 2].sum(axis=1) for k in range(2, 10) if k * f0 + 2 < power.shape[1])
-        side = np.r_[max(f0 - 6, 1): max(f0 - 1, 1), f0 + 2: f0 + 7]
+        fundamental = power[:, max(f0 - 1, 1) : f0 + 2].sum(axis=1) + 1e-12
+        harmonics = sum(
+            power[:, k * f0 - 1 : k * f0 + 2].sum(axis=1)
+            for k in range(2, 10)
+            if k * f0 + 2 < power.shape[1]
+        )
+        side = np.r_[max(f0 - 6, 1) : max(f0 - 1, 1), f0 + 2 : f0 + 7]
         sideband = power[:, side].sum(axis=1)
         p = power[:, 1:] / np.maximum(power[:, 1:].sum(axis=1, keepdims=True), 1e-12)
         entropy = -(p * np.log(p + 1e-15)).sum(axis=1)
         _, _, bands = _order_shares(power, freq, supply)
-        return np.column_stack([np.log(std), (w ** 4).mean(axis=1) / std ** 4, np.abs(w).max(axis=1) / std,
-                                np.log(harmonics / fundamental + 1e-12), np.log(sideband / fundamental + 1e-12),
-                                entropy, *bands])
-
+        return np.column_stack(
+            [
+                np.log(std),
+                (w**4).mean(axis=1) / std**4,
+                np.abs(w).max(axis=1) / std,
+                np.log(harmonics / fundamental + 1e-12),
+                np.log(sideband / fundamental + 1e-12),
+                entropy,
+                *bands,
+            ]
+        )
 
     def temperature_features(x):
         n = len(x) // RATE["T"]
         return x[: n * RATE["T"]].reshape(n, RATE["T"]).mean(axis=1)[:, None]
-
 
     def cached(name: str, compute):
         CACHE.mkdir(parents=True, exist_ok=True)
@@ -12868,7 +16895,6 @@ def _make_cora_fulldata():
         value = compute()
         np.save(path, value)
         return value
-
 
     def recording(code: str, speed: str, regime: str, rep: int | None = None) -> pd.DataFrame:
         """All features of one recording, one row per 1 s window."""
@@ -12880,21 +16906,43 @@ def _make_cora_fulldata():
                 path = VX / f"{tag}_Vx.csv"
             else:
                 path = FULL / f"{tag}_V{axis}{suffix}.csv"
-            parts[f"vib_{axis}"] = (cached(f"{tag}_V{axis}{suffix}", lambda p=path: vibration_features(_read(p), speed)), VIB)
+            parts[f"vib_{axis}"] = (
+                cached(
+                    f"{tag}_V{axis}{suffix}", lambda p=path: vibration_features(_read(p), speed)
+                ),
+                VIB,
+            )
         for phase in ("1", "2", "3"):
             path = FULL / f"{tag}_C{phase}{suffix}.csv"
-            parts[f"cur_{phase}"] = (cached(f"{tag}_C{phase}{suffix}", lambda p=path: current_features(_read(p), speed)), CUR)
+            parts[f"cur_{phase}"] = (
+                cached(f"{tag}_C{phase}{suffix}", lambda p=path: current_features(_read(p), speed)),
+                CUR,
+            )
         if regime == "S":
             for probe in range(1, 7):
                 path = FULL / f"{tag}_T{probe}.csv"
-                parts[f"temp_{probe}"] = (cached(f"{tag}_T{probe}", lambda p=path: temperature_features(_read(p))), ["mean"])
+                parts[f"temp_{probe}"] = (
+                    cached(f"{tag}_T{probe}", lambda p=path: temperature_features(_read(p))),
+                    ["mean"],
+                )
         n = min(len(v) for v, _ in parts.values())
-        frame = pd.DataFrame({f"{key}_{name}": values[:n, i] for key, (values, names) in parts.items()
-                              for i, name in enumerate(names)})
-        if regime == "S":   # temperature relative to the probes' own mean and to the run's first minute (same recording only)
+        frame = pd.DataFrame(
+            {
+                f"{key}_{name}": values[:n, i]
+                for key, (values, names) in parts.items()
+                for i, name in enumerate(names)
+            }
+        )
+        if (
+            regime == "S"
+        ):  # temperature relative to the probes' own mean and to the run's first minute (same recording only)
             probes = [f"temp_{p}_mean" for p in range(1, 7)]
-            frame[[f"{c}_vs_probes" for c in probes]] = frame[probes].to_numpy() - frame[probes].mean(axis=1).to_numpy()[:, None]
-            frame[[f"{c}_rise" for c in probes]] = frame[probes].to_numpy() - frame[probes].iloc[:60].mean().to_numpy()
+            frame[[f"{c}_vs_probes" for c in probes]] = (
+                frame[probes].to_numpy() - frame[probes].mean(axis=1).to_numpy()[:, None]
+            )
+            frame[[f"{c}_rise" for c in probes]] = (
+                frame[probes].to_numpy() - frame[probes].iloc[:60].mean().to_numpy()
+            )
         else:
             frame = frame.iloc[[i for i in TRANSIENT_WINDOWS if i < len(frame)]]
         frame.insert(0, "window", np.arange(len(frame)))
@@ -12903,17 +16951,19 @@ def _make_cora_fulldata():
         frame.insert(0, "unit", tag + suffix)
         return frame.reset_index(drop=True)
 
-
     def build(conditions: dict[str, str]) -> pd.DataFrame:
         frames = []
         for code, label in conditions.items():
             for speed in SPEEDS:
-                for frame in [recording(code, speed, "S")] + [recording(code, speed, "T", r) for r in range(1, 6)]:
+                for frame in [recording(code, speed, "S")] + [
+                    recording(code, speed, "T", r) for r in range(1, 6)
+                ]:
                     frame.insert(1, "class", label)
                     frames.append(frame)
-                print(f"  features ready: {code}_{speed} (stationary + 5 start-up tests)", flush=True)
+                print(
+                    f"  features ready: {code}_{speed} (stationary + 5 start-up tests)", flush=True
+                )
         return pd.concat(frames, ignore_index=True)
-
 
     def feature_sets(table: pd.DataFrame) -> dict[str, list[str]]:
         cols = [c for c in table.columns if c not in ("unit", "class", "speed", "regime", "window")]
@@ -12921,64 +16971,115 @@ def _make_cora_fulldata():
         vib = [c for c in cols if c.startswith("vib_")]
         cur = [c for c in cols if c.startswith("cur_")]
         temp = [c for c in cols if c.startswith("temp_")]
-        pattern = [c for c in temp if c.endswith(("_vs_probes", "_rise"))]   # no absolute temperature (room-dependent)
-        return {"vibration X (as Week 6, all windows)": vx, "vibration X/Y/Z": vib, "current C1-C3": cur,
-                "vibration + current": vib + cur,
-                "vibration + current + temperature pattern (stationary only)": vib + cur + pattern,
-                "vibration + current + temperature incl. absolute (stationary only)": vib + cur + temp}
-
+        pattern = [
+            c for c in temp if c.endswith(("_vs_probes", "_rise"))
+        ]  # no absolute temperature (room-dependent)
+        return {
+            "vibration X (as Week 6, all windows)": vx,
+            "vibration X/Y/Z": vib,
+            "current C1-C3": cur,
+            "vibration + current": vib + cur,
+            "vibration + current + temperature pattern (stationary only)": vib + cur + pattern,
+            "vibration + current + temperature incl. absolute (stationary only)": vib + cur + temp,
+        }
 
     # ---------------------------------------------------------------------------------------------- models
 
     def models():
         from lightgbm import LGBMClassifier
         from sklearn.ensemble import RandomForestClassifier
-        return {
-            "Random forest": lambda: RandomForestClassifier(n_estimators=250, max_features="sqrt", min_samples_leaf=2,
-                                                            class_weight="balanced_subsample", random_state=42, n_jobs=-1),
-            "LightGBM": lambda: LGBMClassifier(n_estimators=300, num_leaves=15, learning_rate=0.05, subsample=0.8,
-                                               subsample_freq=1, colsample_bytree=0.8, random_state=42, n_jobs=-1,
-                                               verbose=-1),
-        }
 
+        return {
+            "Random forest": lambda: RandomForestClassifier(
+                n_estimators=250,
+                max_features="sqrt",
+                min_samples_leaf=2,
+                class_weight="balanced_subsample",
+                random_state=42,
+                n_jobs=-1,
+            ),
+            "LightGBM": lambda: LGBMClassifier(
+                n_estimators=300,
+                num_leaves=15,
+                learning_rate=0.05,
+                subsample=0.8,
+                subsample_freq=1,
+                colsample_bytree=0.8,
+                random_state=42,
+                n_jobs=-1,
+                verbose=-1,
+            ),
+        }
 
     def _fit_predict(make, train: pd.DataFrame, test: pd.DataFrame, features, labels):
         import warnings
+
         weight = 1.0 / train.groupby("unit")["unit"].transform("size").to_numpy()
         model = make()
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             model.fit(train[features].to_numpy(), train["class"].to_numpy(), sample_weight=weight)
             proba = model.predict_proba(test[features].to_numpy())
-        out = pd.DataFrame(proba, columns=list(model.classes_)).reindex(columns=labels, fill_value=0.0)
-        out["unit"], out["class"], out["regime"] = test["unit"].to_numpy(), test["class"].to_numpy(), test["regime"].to_numpy()
-        per_unit = out.groupby("unit").agg({**{c: "mean" for c in labels}, "class": "first", "regime": "first"})
+        out = pd.DataFrame(proba, columns=list(model.classes_)).reindex(
+            columns=labels, fill_value=0.0
+        )
+        out["unit"], out["class"], out["regime"] = (
+            test["unit"].to_numpy(),
+            test["class"].to_numpy(),
+            test["regime"].to_numpy(),
+        )
+        per_unit = out.groupby("unit").agg(
+            {**{c: "mean" for c in labels}, "class": "first", "regime": "first"}
+        )
         per_unit["predicted"] = per_unit[labels].idxmax(axis=1)
         return per_unit
 
-
     def _score(per_unit: pd.DataFrame, labels):
-        from sklearn.metrics import accuracy_score, balanced_accuracy_score, confusion_matrix, f1_score
-        block = {}
-        for name, part in (("all", per_unit), ("stationary", per_unit[per_unit.regime == "stationary"]),
-                           ("transient", per_unit[per_unit.regime == "transient"])):
-            if len(part):
-                block[name] = {"test_recordings": int(len(part)),
-                               "accuracy": round(float(accuracy_score(part["class"], part["predicted"])), 4),
-                               "balanced_accuracy": round(float(balanced_accuracy_score(part["class"], part["predicted"])), 4),
-                               "macro_f1": round(float(f1_score(part["class"], part["predicted"], labels=labels,
-                                                                average="macro", zero_division=0)), 4)}
-        block["confusion_matrix_all"] = confusion_matrix(per_unit["class"], per_unit["predicted"], labels=labels).tolist()
-        return block
+        from sklearn.metrics import (
+            accuracy_score,
+            balanced_accuracy_score,
+            confusion_matrix,
+            f1_score,
+        )
 
+        block = {}
+        for name, part in (
+            ("all", per_unit),
+            ("stationary", per_unit[per_unit.regime == "stationary"]),
+            ("transient", per_unit[per_unit.regime == "transient"]),
+        ):
+            if len(part):
+                block[name] = {
+                    "test_recordings": int(len(part)),
+                    "accuracy": round(float(accuracy_score(part["class"], part["predicted"])), 4),
+                    "balanced_accuracy": round(
+                        float(balanced_accuracy_score(part["class"], part["predicted"])), 4
+                    ),
+                    "macro_f1": round(
+                        float(
+                            f1_score(
+                                part["class"],
+                                part["predicted"],
+                                labels=labels,
+                                average="macro",
+                                zero_division=0,
+                            )
+                        ),
+                        4,
+                    ),
+                }
+        block["confusion_matrix_all"] = confusion_matrix(
+            per_unit["class"], per_unit["predicted"], labels=labels
+        ).tolist()
+        return block
 
     def _subset(table, name):
         return table[table.regime == "stationary"] if "stationary only" in name else table
 
-
     def run(machine: str, conditions: dict[str, str], train_step: int = 3) -> dict:
         """Run the full-data experiment for one machine and save Results/<machine>/<machine>_fulldata.json."""
         import matplotlib
+
         matplotlib.use("Agg")
         import matplotlib.pyplot as plt
 
@@ -12998,7 +17099,7 @@ def _make_cora_fulldata():
             best, best_score = None, -1.0
             for set_name, features in sets.items():
                 if "temperature" in set_name:
-                    continue   # confounded with the recording session (see temperature_diagnostic); never selected
+                    continue  # confounded with the recording session (see temperature_diagnostic); never selected
                 for model_name, make in makers.items():
                     scores = []
                     for inner in sorted(set(train_all.speed)):
@@ -13008,12 +17109,24 @@ def _make_cora_fulldata():
                         scores.append(_score(pu, labels)["all"]["macro_f1"])
                     if np.mean(scores) > best_score:
                         best, best_score = (set_name, model_name), float(np.mean(scores))
-            chosen.append({"held_out_speed": held, "feature_set": best[0], "model": best[1],
-                           "validation_macro_f1": round(best_score, 4)})
+            chosen.append(
+                {
+                    "held_out_speed": held,
+                    "feature_set": best[0],
+                    "model": best[1],
+                    "validation_macro_f1": round(best_score, 4),
+                }
+            )
             # every feature set x model on the held-out speed (reported for comparison, not used to choose)
             for set_name, features in sets.items():
                 for model_name, make in makers.items():
-                    pu = _fit_predict(make, thin(_subset(train_all, set_name)), _subset(test_all, set_name), features, labels)
+                    pu = _fit_predict(
+                        make,
+                        thin(_subset(train_all, set_name)),
+                        _subset(test_all, set_name),
+                        features,
+                        labels,
+                    )
                     grid.setdefault((set_name, model_name), []).append(pu)
                     if (set_name, model_name) == best:
                         outer_units.append(pu)
@@ -13021,17 +17134,25 @@ def _make_cora_fulldata():
 
         result = {
             "purpose": "Week 7 full-data sensor experiment: every CORA sensor, every window, stationary + start-up recordings",
-            "machine": machine, "classes": labels,
+            "machine": machine,
+            "classes": labels,
             "test": "four rounds, each holding out one whole speed; test recordings per round = 1 stationary + 5 start-up "
-                    "tests per class; one prediction per recording",
+            "tests per class; one prediction per recording",
             "selection_rule": "feature set and model chosen by leave-one-speed-out validation inside the training speeds; "
-                              "test speeds never used for any choice or preprocessing; temperature sets excluded from "
-                              "selection (session confound, see temperature_diagnostic)",
-            "recordings": {"stationary": int(table[table.regime == "stationary"].unit.nunique()),
-                           "transient": int(table[table.regime == "transient"].unit.nunique())},
+            "test speeds never used for any choice or preprocessing; temperature sets excluded from "
+            "selection (session confound, see temperature_diagnostic)",
+            "recordings": {
+                "stationary": int(table[table.regime == "stationary"].unit.nunique()),
+                "transient": int(table[table.regime == "transient"].unit.nunique()),
+            },
             "windows": int(len(table)),
-            "validation_selected": {"choices": chosen, "score": _score(pd.concat(outer_units), labels)},
-            "all_combinations": {f"{s} | {m}": _score(pd.concat(v), labels) for (s, m), v in grid.items()},
+            "validation_selected": {
+                "choices": chosen,
+                "score": _score(pd.concat(outer_units), labels),
+            },
+            "all_combinations": {
+                f"{s} | {m}": _score(pd.concat(v), labels) for (s, m), v in grid.items()
+            },
         }
 
         # temperature diagnostic: does the probe pattern identify the condition before fault heating can build up?
@@ -13039,25 +17160,50 @@ def _make_cora_fulldata():
         probe_pattern = [c for c in table.columns if c.endswith("_vs_probes")]
         warming = [c for c in table.columns if c.endswith("_rise")]
         diag = {}
-        for name, part, cols in (("probe pattern, first 5 minutes only", stat_all[stat_all.window < 300], probe_pattern),
-                                 ("probe pattern, whole run", stat_all[stat_all.window % train_step == 0], probe_pattern),
-                                 ("warming since run start, whole run", stat_all[stat_all.window % train_step == 0], warming)):
-            units = pd.concat([_fit_predict(makers["Random forest"], part[part.speed != h], part[part.speed == h], cols, labels)
-                               for h in SPEEDS])
+        for name, part, cols in (
+            ("probe pattern, first 5 minutes only", stat_all[stat_all.window < 300], probe_pattern),
+            (
+                "probe pattern, whole run",
+                stat_all[stat_all.window % train_step == 0],
+                probe_pattern,
+            ),
+            (
+                "warming since run start, whole run",
+                stat_all[stat_all.window % train_step == 0],
+                warming,
+            ),
+        ):
+            units = pd.concat(
+                [
+                    _fit_predict(
+                        makers["Random forest"],
+                        part[part.speed != h],
+                        part[part.speed == h],
+                        cols,
+                        labels,
+                    )
+                    for h in SPEEDS
+                ]
+            )
             diag[name] = _score(units, labels)["all"]
         result["temperature_diagnostic"] = {
             "finding": "if the probe pattern already identifies the condition in the first 5 minutes, it reflects the "
-                       "recording session (probe placement / residual heat after each rebuild), not fault heating; "
-                       "temperature feature sets are therefore reported but never selected",
-            "unseen_speed_scores": diag}
+            "recording session (probe placement / residual heat after each rebuild), not fault heating; "
+            "temperature feature sets are therefore reported but never selected",
+            "unseen_speed_scores": diag,
+        }
 
         # secondary time split: stationary runs only
         stat = table[table.regime == "stationary"].copy()
         position = stat.groupby("unit")["window"].rank(pct=True)
         early, late = stat[position <= 0.6], stat[position > 0.7]
         result["time_split_stationary"] = {
-            f"{s} | Random forest": _score(_fit_predict(makers["Random forest"], early.iloc[::train_step], late, f, labels), labels)
-            for s, f in sets.items()}
+            f"{s} | Random forest": _score(
+                _fit_predict(makers["Random forest"], early.iloc[::train_step], late, f, labels),
+                labels,
+            )
+            for s, f in sets.items()
+        }
 
         out = ROOT / "Results" / machine / f"{machine}_fulldata.json"
         out.parent.mkdir(parents=True, exist_ok=True)
@@ -13066,54 +17212,91 @@ def _make_cora_fulldata():
         names = list(result["all_combinations"])
         figure, axis = plt.subplots(figsize=(9, 4))
         pos = np.arange(len(names))
-        axis.bar(pos - 0.2, [result["all_combinations"][n]["all"]["accuracy"] for n in names], 0.4, label="all test recordings")
-        axis.bar(pos + 0.2, [result["all_combinations"][n].get("stationary", {}).get("accuracy", 0) for n in names], 0.4,
-                 label="stationary runs only")
+        axis.bar(
+            pos - 0.2,
+            [result["all_combinations"][n]["all"]["accuracy"] for n in names],
+            0.4,
+            label="all test recordings",
+        )
+        axis.bar(
+            pos + 0.2,
+            [result["all_combinations"][n].get("stationary", {}).get("accuracy", 0) for n in names],
+            0.4,
+            label="stationary runs only",
+        )
         axis.axhline(1 / len(labels), color="grey", ls="--", lw=1)
-        axis.set_xticks(pos, [n.replace(" | ", "\n").replace(" (", "\n(") for n in names], fontsize=6)
+        axis.set_xticks(
+            pos, [n.replace(" | ", "\n").replace(" (", "\n(") for n in names], fontsize=6
+        )
         axis.set_ylim(0, 1.05)
         axis.legend(fontsize=8)
         v = result["validation_selected"]["score"]["all"]
-        axis.set_title(f"{machine.replace('_', ' ').title()} full data, unseen speed: validation-selected "
-                       f"{v['accuracy']:.3f} on {v['test_recordings']} recordings (dashed = chance)", fontsize=9)
+        axis.set_title(
+            f"{machine.replace('_', ' ').title()} full data, unseen speed: validation-selected "
+            f"{v['accuracy']:.3f} on {v['test_recordings']} recordings (dashed = chance)",
+            fontsize=9,
+        )
         figure.tight_layout()
         fig = ROOT / "Figures" / machine / f"{machine}_fulldata.png"
         fig.parent.mkdir(parents=True, exist_ok=True)
         figure.savefig(fig, dpi=110)
         plt.close(figure)
         s = result["validation_selected"]["score"]
-        parts = ", ".join(f"{k} {s[k]['accuracy']:.3f}" for k in ("stationary", "transient") if k in s)
-        print(f"Validation-selected: all {s['all']['accuracy']:.3f} ({s['all']['test_recordings']} recordings); {parts}")
-        print(f"Saved {out.relative_to(ROOT)} and {fig.relative_to(ROOT)} in {(time.perf_counter() - start) / 60:.1f} min")
+        parts = ", ".join(
+            f"{k} {s[k]['accuracy']:.3f}" for k in ("stationary", "transient") if k in s
+        )
+        print(
+            f"Validation-selected: all {s['all']['accuracy']:.3f} ({s['all']['test_recordings']} recordings); {parts}"
+        )
+        print(
+            f"Saved {out.relative_to(ROOT)} and {fig.relative_to(ROOT)} in {(time.perf_counter() - start) / 60:.1f} min"
+        )
         save_recording_confusion(result)
         return result
-
 
     # ---------------------------------------------------------------------------------------------- Week 7 extras
     # The ensemble comparison and the anomaly detection rerun on the full data, with the same fair main test:
     # one whole speed held out per round, nothing chosen or fitted on the held-out speed.
 
-    FIXED_SET = "vibration + current"   # every non-temperature sensor; fixed in advance, not chosen on any test
-
+    FIXED_SET = "vibration + current"  # every non-temperature sensor; fixed in advance, not chosen on any test
 
     def ensemble_models():
         from lightgbm import LGBMClassifier
         from sklearn.dummy import DummyClassifier
-        from sklearn.ensemble import ExtraTreesClassifier, HistGradientBoostingClassifier, RandomForestClassifier
+        from sklearn.ensemble import (
+            ExtraTreesClassifier,
+            HistGradientBoostingClassifier,
+            RandomForestClassifier,
+        )
         from xgboost import XGBClassifier
+
         return {
             "Majority class (control)": lambda: DummyClassifier(strategy="most_frequent"),
             "Random forest": models()["Random forest"],
-            "Extra trees": lambda: ExtraTreesClassifier(n_estimators=300, max_features="sqrt", min_samples_leaf=2,
-                                                        class_weight="balanced", random_state=42, n_jobs=-1),
-            "Gradient boosting (scikit-learn)": lambda: HistGradientBoostingClassifier(max_iter=200, learning_rate=0.05,
-                                                                                       random_state=42),
-            "XGBoost": lambda: XGBClassifier(n_estimators=300, max_depth=4, learning_rate=0.05, subsample=0.8,
-                                             colsample_bytree=0.8, tree_method="hist", random_state=42, n_jobs=-1,
-                                             verbosity=0),
+            "Extra trees": lambda: ExtraTreesClassifier(
+                n_estimators=300,
+                max_features="sqrt",
+                min_samples_leaf=2,
+                class_weight="balanced",
+                random_state=42,
+                n_jobs=-1,
+            ),
+            "Gradient boosting (scikit-learn)": lambda: HistGradientBoostingClassifier(
+                max_iter=200, learning_rate=0.05, random_state=42
+            ),
+            "XGBoost": lambda: XGBClassifier(
+                n_estimators=300,
+                max_depth=4,
+                learning_rate=0.05,
+                subsample=0.8,
+                colsample_bytree=0.8,
+                tree_method="hist",
+                random_state=42,
+                n_jobs=-1,
+                verbosity=0,
+            ),
             "LightGBM": models()["LightGBM"],
         }
-
 
     class _Encoded:
         """Wrap a classifier so it trains on integer labels (XGBoost needs them) and reports the class names."""
@@ -13130,7 +17313,6 @@ def _make_cora_fulldata():
         def predict_proba(self, x):
             return self.model.predict_proba(x)
 
-
     def ensembles(machine: str, conditions: dict[str, str], train_step: int = 3) -> dict:
         """Ensemble comparison on the full data; saves Results/<machine>/<machine>_fulldata_ensembles.json."""
         start = time.perf_counter()
@@ -13142,72 +17324,117 @@ def _make_cora_fulldata():
         stat = table[table.regime == "stationary"]
         position = stat.groupby("unit")["window"].rank(pct=True)
         early, late = stat[position <= 0.6], stat[position > 0.7]
-        result = {"purpose": "Week 7: ensemble comparison (proposal Week 6) rerun on every CORA sensor, window and recording",
-                  "machine": machine, "classes": labels, "features": f"{FIXED_SET} ({len(features)} features)",
-                  "test": "MAIN: four rounds, each holding out one whole speed (24 test recordings per round, 96 in total); "
-                          "one prediction per recording. TIME SPLIT (secondary, easier): stationary runs, first 60% "
-                          "trains, last 30% tests",
-                  "selection_rule": "feature set and model settings fixed in advance; nothing chosen on any test result",
-                  "models": {}}
+        result = {
+            "purpose": "Week 7: ensemble comparison (proposal Week 6) rerun on every CORA sensor, window and recording",
+            "machine": machine,
+            "classes": labels,
+            "features": f"{FIXED_SET} ({len(features)} features)",
+            "test": "MAIN: four rounds, each holding out one whole speed (24 test recordings per round, 96 in total); "
+            "one prediction per recording. TIME SPLIT (secondary, easier): stationary runs, first 60% "
+            "trains, last 30% tests",
+            "selection_rule": "feature set and model settings fixed in advance; nothing chosen on any test result",
+            "models": {},
+        }
         for name, make in ensemble_models().items():
             wrapped = lambda make=make: _Encoded(make(), labels)
             t0 = time.perf_counter()
-            main = pd.concat([_fit_predict(wrapped, thin(table[table.speed != held]), table[table.speed == held],
-                                           features, labels) for held in SPEEDS])
+            main = pd.concat(
+                [
+                    _fit_predict(
+                        wrapped,
+                        thin(table[table.speed != held]),
+                        table[table.speed == held],
+                        features,
+                        labels,
+                    )
+                    for held in SPEEDS
+                ]
+            )
             seconds = time.perf_counter() - t0
-            result["models"][name] = {"main": _score(main, labels),
-                                      "time_split_stationary": _score(_fit_predict(wrapped, early.iloc[::train_step], late,
-                                                                                   features, labels), labels),
-                                      "seconds": round(seconds, 1)}
+            result["models"][name] = {
+                "main": _score(main, labels),
+                "time_split_stationary": _score(
+                    _fit_predict(wrapped, early.iloc[::train_step], late, features, labels), labels
+                ),
+                "seconds": round(seconds, 1),
+            }
             m = result["models"][name]
-            print(f"  {name:33s} main {m['main']['all']['accuracy']:.3f} (stationary "
-                  f"{m['main']['stationary']['accuracy']:.3f}, start-up {m['main']['transient']['accuracy']:.3f})  "
-                  f"time split {m['time_split_stationary']['all']['accuracy']:.3f}  [{seconds:.0f} s]", flush=True)
+            print(
+                f"  {name:33s} main {m['main']['all']['accuracy']:.3f} (stationary "
+                f"{m['main']['stationary']['accuracy']:.3f}, start-up {m['main']['transient']['accuracy']:.3f})  "
+                f"time split {m['time_split_stationary']['all']['accuracy']:.3f}  [{seconds:.0f} s]",
+                flush=True,
+            )
         out = ROOT / "Results" / machine / f"{machine}_fulldata_ensembles.json"
         out.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
-        _bar_figure(machine, "ensembles", {n: (m["main"]["all"]["accuracy"], m["time_split_stationary"]["all"]["accuracy"])
-                                           for n, m in result["models"].items()},
-                    ("main test (unseen speed)", "time split (secondary)"), 1 / len(labels),
-                    f"{machine.replace('_', ' ').title()} full data: ensemble comparison (dashed = chance)")
+        _bar_figure(
+            machine,
+            "ensembles",
+            {
+                n: (m["main"]["all"]["accuracy"], m["time_split_stationary"]["all"]["accuracy"])
+                for n, m in result["models"].items()
+            },
+            ("main test (unseen speed)", "time split (secondary)"),
+            1 / len(labels),
+            f"{machine.replace('_', ' ').title()} full data: ensemble comparison (dashed = chance)",
+        )
         print(f"Saved {out.relative_to(ROOT)} in {(time.perf_counter() - start) / 60:.1f} min")
         return result
-
 
     def _detectors():
         from sklearn.ensemble import IsolationForest
         from sklearn.pipeline import make_pipeline
         from sklearn.preprocessing import StandardScaler
         from sklearn.svm import OneClassSVM
-        return {"Isolation Forest": lambda: make_pipeline(StandardScaler(), IsolationForest(
-                    n_estimators=300, max_samples=256, random_state=42, n_jobs=-1)),
-                "One-Class SVM": lambda: make_pipeline(StandardScaler(), OneClassSVM(kernel="rbf", gamma="scale", nu=0.05))}
 
+        return {
+            "Isolation Forest": lambda: make_pipeline(
+                StandardScaler(),
+                IsolationForest(n_estimators=300, max_samples=256, random_state=42, n_jobs=-1),
+            ),
+            "One-Class SVM": lambda: make_pipeline(
+                StandardScaler(), OneClassSVM(kernel="rbf", gamma="scale", nu=0.05)
+            ),
+        }
 
     def _detector_fit(make, frame, features, max_rows=4000):
         # every healthy recording gets an equal share of the (at most max_rows) training rows
         per_unit = max(1, max_rows // frame.unit.nunique())
-        keep = np.concatenate([idx[np.linspace(0, len(idx) - 1, min(len(idx), per_unit)).astype(int)]
-                               for idx in frame.groupby("unit").indices.values()])
+        keep = np.concatenate(
+            [
+                idx[np.linspace(0, len(idx) - 1, min(len(idx), per_unit)).astype(int)]
+                for idx in frame.groupby("unit").indices.values()
+            ]
+        )
         return make().fit(frame[features].to_numpy()[keep])
 
-
     def _recording_scores(model, frame, features):
-        window = -model.decision_function(frame[features].to_numpy())   # higher = more unusual
+        window = -model.decision_function(frame[features].to_numpy())  # higher = more unusual
         return pd.Series(window, index=frame.index).groupby(frame.unit).mean()
-
 
     def _anomaly_block(rows: pd.DataFrame, labels) -> dict:
         from sklearn.metrics import roc_auc_score
+
         truth = (rows["class"] != "healthy").to_numpy()
         alarm = rows["margin"].to_numpy() > 0
-        return {"test_recordings": int(len(rows)), "healthy": int((~truth).sum()), "faulty": int(truth.sum()),
-                "roc_auc": round(float(roc_auc_score(truth, rows["margin"])), 4) if 0 < truth.sum() < len(truth) else None,
-                "fault_detection_rate": round(float(alarm[truth].mean()), 4),
-                "false_alarm_rate": round(float(alarm[~truth].mean()), 4),
-                "accuracy": round(float((alarm == truth).mean()), 4),
-                "detection_rate_per_fault": {c: round(float(alarm[(rows["class"] == c).to_numpy()].mean()), 4)
-                                             for c in labels if c != "healthy"}}
-
+        return {
+            "test_recordings": int(len(rows)),
+            "healthy": int((~truth).sum()),
+            "faulty": int(truth.sum()),
+            "roc_auc": (
+                round(float(roc_auc_score(truth, rows["margin"])), 4)
+                if 0 < truth.sum() < len(truth)
+                else None
+            ),
+            "fault_detection_rate": round(float(alarm[truth].mean()), 4),
+            "false_alarm_rate": round(float(alarm[~truth].mean()), 4),
+            "accuracy": round(float((alarm == truth).mean()), 4),
+            "detection_rate_per_fault": {
+                c: round(float(alarm[(rows["class"] == c).to_numpy()].mean()), 4)
+                for c in labels
+                if c != "healthy"
+            },
+        }
 
     def anomaly(machine: str, conditions: dict[str, str]) -> dict:
         """Anomaly detection on the full data; saves Results/<machine>/<machine>_fulldata_anomaly.json."""
@@ -13216,16 +17443,19 @@ def _make_cora_fulldata():
         print(f"{machine}: anomaly detection on the full data", flush=True)
         table = build(conditions)
         features = feature_sets(table)[FIXED_SET]
-        result = {"purpose": "Week 7: anomaly detection rerun on every CORA sensor, window and recording "
-                             "(trained on healthy data only)",
-                  "machine": machine, "features": f"{FIXED_SET} ({len(features)} features)",
-                  "test": "MAIN: four rounds, each holding out one whole speed (24 test recordings per round: 6 healthy, "
-                          "18 faulty). TIME SPLIT (secondary): stationary runs, healthy first 60% trains, last 30% tests",
-                  "threshold_rule": "MAIN: leave-one-speed-out inside the training speeds - fit on the healthy recordings "
-                                    "of two training speeds, score the healthy recordings of the third; the highest score "
-                                    "is the alarm threshold. TIME SPLIT: leave-one-healthy-run-out on the early parts. "
-                                    "No test data and no fault labels are used to train or to set the threshold",
-                  "detectors": {}}
+        result = {
+            "purpose": "Week 7: anomaly detection rerun on every CORA sensor, window and recording "
+            "(trained on healthy data only)",
+            "machine": machine,
+            "features": f"{FIXED_SET} ({len(features)} features)",
+            "test": "MAIN: four rounds, each holding out one whole speed (24 test recordings per round: 6 healthy, "
+            "18 faulty). TIME SPLIT (secondary): stationary runs, healthy first 60% trains, last 30% tests",
+            "threshold_rule": "MAIN: leave-one-speed-out inside the training speeds - fit on the healthy recordings "
+            "of two training speeds, score the healthy recordings of the third; the highest score "
+            "is the alarm threshold. TIME SPLIT: leave-one-healthy-run-out on the early parts. "
+            "No test data and no fault labels are used to train or to set the threshold",
+            "detectors": {},
+        }
         stat = table[table.regime == "stationary"]
         position = stat.groupby("unit")["window"].rank(pct=True)
         early, late = stat[position <= 0.6], stat[position > 0.7]
@@ -13233,42 +17463,66 @@ def _make_cora_fulldata():
             rows = []
             for held in SPEEDS:
                 train = table[(table.speed != held) & (table["class"] == "healthy")]
-                cut = max(_recording_scores(_detector_fit(make, train[train.speed != inner], features),
-                                            train[train.speed == inner], features).max()
-                          for inner in sorted(set(train.speed)))
+                cut = max(
+                    _recording_scores(
+                        _detector_fit(make, train[train.speed != inner], features),
+                        train[train.speed == inner],
+                        features,
+                    ).max()
+                    for inner in sorted(set(train.speed))
+                )
                 test = table[table.speed == held]
                 scores = _recording_scores(_detector_fit(make, train, features), test, features)
-                rows.append(test.groupby("unit")[["class", "regime"]].first().assign(margin=scores - cut))
+                rows.append(
+                    test.groupby("unit")[["class", "regime"]].first().assign(margin=scores - cut)
+                )
             rows = pd.concat(rows)
             healthy_early = early[early["class"] == "healthy"]
-            cut = max(_recording_scores(_detector_fit(make, healthy_early[healthy_early.unit != u], features),
-                                        healthy_early[healthy_early.unit == u], features).max()
-                      for u in sorted(set(healthy_early.unit)))
+            cut = max(
+                _recording_scores(
+                    _detector_fit(make, healthy_early[healthy_early.unit != u], features),
+                    healthy_early[healthy_early.unit == u],
+                    features,
+                ).max()
+                for u in sorted(set(healthy_early.unit))
+            )
             ts = _recording_scores(_detector_fit(make, healthy_early, features), late, features)
             ts_rows = late.groupby("unit")[["class", "regime"]].first().assign(margin=ts - cut)
-            block = {"main": _anomaly_block(rows, labels),
-                     "main_stationary": _anomaly_block(rows[rows.regime == "stationary"], labels),
-                     "main_transient": _anomaly_block(rows[rows.regime == "transient"], labels),
-                     "time_split_stationary": _anomaly_block(ts_rows, labels)}
+            block = {
+                "main": _anomaly_block(rows, labels),
+                "main_stationary": _anomaly_block(rows[rows.regime == "stationary"], labels),
+                "main_transient": _anomaly_block(rows[rows.regime == "transient"], labels),
+                "time_split_stationary": _anomaly_block(ts_rows, labels),
+            }
             result["detectors"][name] = block
             m, t = block["main"], block["time_split_stationary"]
-            print(f"  {name:17s} main ROC-AUC {m['roc_auc']}  detected {m['fault_detection_rate']:.3f}  false alarms "
-                  f"{m['false_alarm_rate']:.3f} ({m['test_recordings']} recordings) | time split ROC-AUC {t['roc_auc']}",
-                  flush=True)
+            print(
+                f"  {name:17s} main ROC-AUC {m['roc_auc']}  detected {m['fault_detection_rate']:.3f}  false alarms "
+                f"{m['false_alarm_rate']:.3f} ({m['test_recordings']} recordings) | time split ROC-AUC {t['roc_auc']}",
+                flush=True,
+            )
         out = ROOT / "Results" / machine / f"{machine}_fulldata_anomaly.json"
         out.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
-        _bar_figure(machine, "anomaly", {n: (b["main"]["roc_auc"], b["time_split_stationary"]["roc_auc"])
-                                         for n, b in result["detectors"].items()},
-                    ("main test ROC-AUC (unseen speed)", "time split ROC-AUC (secondary)"), 0.5,
-                    f"{machine.replace('_', ' ').title()} full data: anomaly detection (dashed = chance)")
+        _bar_figure(
+            machine,
+            "anomaly",
+            {
+                n: (b["main"]["roc_auc"], b["time_split_stationary"]["roc_auc"])
+                for n, b in result["detectors"].items()
+            },
+            ("main test ROC-AUC (unseen speed)", "time split ROC-AUC (secondary)"),
+            0.5,
+            f"{machine.replace('_', ' ').title()} full data: anomaly detection (dashed = chance)",
+        )
         print(f"Saved {out.relative_to(ROOT)} in {(time.perf_counter() - start) / 60:.1f} min")
         return result
 
-
     def _bar_figure(machine, kind, values, legend, chance, title):
         import matplotlib
+
         matplotlib.use("Agg")
         import matplotlib.pyplot as plt
+
         names = list(values)
         figure, axis = plt.subplots(figsize=(8, 3.6))
         pos = np.arange(len(names))
@@ -13283,12 +17537,13 @@ def _make_cora_fulldata():
         figure.savefig(ROOT / "Figures" / machine / f"{machine}_fulldata_{kind}.png", dpi=110)
         plt.close(figure)
 
-
     def save_recording_confusion(result: dict) -> Path:
         """Plot real held-out recording counts and row percentages from saved results."""
         import matplotlib
+
         matplotlib.use("Agg")
         import matplotlib.pyplot as plt
+
         matrix = np.asarray(result["validation_selected"]["score"]["confusion_matrix_all"])
         labels = result["classes"]
         support = matrix.sum(axis=1)
@@ -13297,28 +17552,47 @@ def _make_cora_fulldata():
         figure, axis = plt.subplots(figsize=(8, 7))
         axis.imshow(matrix, cmap="Blues", vmin=0)
         axis.set_xticks(range(len(labels)), labels, rotation=25)
-        axis.set_yticks(range(len(labels)), [f"{label} (n={n})" for label, n in zip(labels, support)])
+        axis.set_yticks(
+            range(len(labels)), [f"{label} (n={n})" for label, n in zip(labels, support)]
+        )
         axis.set_xlabel("Predicted condition")
         axis.set_ylabel("Actual condition")
         for i in range(len(labels)):
             for j in range(len(labels)):
                 percentage = 100 * matrix[i, j] / support[i] if support[i] else 0
-                axis.text(j, i, f"{matrix[i, j]}\n({percentage:.1f}%)", ha="center", va="center",
-                          color="white" if matrix[i, j] > matrix.max() / 2 else "black", fontsize=11)
-        axis.set_title(f"{result['machine'].replace('_', ' ').title()}: full sensor evaluation\n"
-                       f"{total} held-out recordings | accuracy {score['accuracy']:.1%} | four unseen-speed folds")
-        figure.text(.5, .025, "Each cell counts whole recordings; percentages are within each actual class.\n"
-                    "0 means no recordings in that combination. Start-up repeats share one laboratory rig.",
-                    ha="center", fontsize=9)
-        figure.tight_layout(rect=(0, .08, 1, 1))
-        output = ROOT / "Figures" / result["machine"] / f"{result['machine']}_fulldata_confusion.png"
+                axis.text(
+                    j,
+                    i,
+                    f"{matrix[i, j]}\n({percentage:.1f}%)",
+                    ha="center",
+                    va="center",
+                    color="white" if matrix[i, j] > matrix.max() / 2 else "black",
+                    fontsize=11,
+                )
+        axis.set_title(
+            f"{result['machine'].replace('_', ' ').title()}: full sensor evaluation\n"
+            f"{total} held-out recordings | accuracy {score['accuracy']:.1%} | four unseen-speed folds"
+        )
+        figure.text(
+            0.5,
+            0.025,
+            "Each cell counts whole recordings; percentages are within each actual class.\n"
+            "0 means no recordings in that combination. Start-up repeats share one laboratory rig.",
+            ha="center",
+            fontsize=9,
+        )
+        figure.tight_layout(rect=(0, 0.08, 1, 1))
+        output = (
+            ROOT / "Figures" / result["machine"] / f"{result['machine']}_fulldata_confusion.png"
+        )
         figure.savefig(output, dpi=160)
         plt.close(figure)
         return output
 
     return SimpleNamespace(**locals())
 
-#endregion
+
+# endregion
 
 
 @lru_cache(maxsize=None)
@@ -13342,7 +17616,9 @@ def get_model(equipment: str):
 if __name__ == "__main__":
     if len(sys.argv) < 2 or sys.argv[1] in ("-h", "--help"):
         print("Usage: python Notebook/notebook_helpers.py <equipment> <command> [options]")
-        print("Equipment: pump, haul_truck, belt_conveyor, excavator, dozer, wheel_loader, drill_rig")
+        print(
+            "Equipment: pump, haul_truck, belt_conveyor, excavator, dozer, wheel_loader, drill_rig"
+        )
     else:
         equipment = sys.argv.pop(1)
         get_model(equipment).cli()
