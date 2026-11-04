@@ -2,28 +2,30 @@
 
 Saskatchewan Polytechnic PROJ 613 capstone · Group 9 · Ganesh Mishra, Lakshya Sharma and Sagar Patel
 
-For seven mining machines we pick one component and classify its current condition (four classes) two separate ways: from a **sensor** recording and from **camera images**. Then we compare the two. All data are public laboratory datasets used as stand-ins for mining equipment, and a machine's sensor and image sides come from different rigs. The results show the method; they are not a mine-site result.
+For eight mining machines we pick one component and classify its current condition (four classes) two separate ways: from a **sensor** recording and from **camera images**. Then we compare the two. All data are public laboratory datasets used as stand-ins for mining equipment, and a machine's sensor and image sides come from different rigs. The results show the method; they are not a mine-site result.
 
 ## Results
 
-Accuracy per test recording (per gear for the Drill Rig images). The **fair test** holds out whole recordings, speeds or bearings that the model never saw. The **time split** trains on the start of each recording and tests on its end, which is much easier.
+Accuracy per test recording (per gear for the Drill Rig images; balanced accuracy per tooth crop for the Grader images). The **fair test** holds out whole recordings, speeds or bearings that the model never saw. The **time split** trains on the start of each recording and tests on its end, which is much easier.
 
 | Machine | Component | Sensor, fair | Majority control | Images, fair | Sensor, time split | Images, time split |
 |---|---|---|---|---|---|---|
 | Pump | support bearing | 0.958 | 0.250 | 1.000 | – | – |
-| Haul Truck | wheel-motor bearing | 0.800 | 0.500 | 0.583 | 1.000 | rerun pending |
-| Belt Conveyor | geared drive | 0.438 | 0.250 | 0.500 | 1.000 | rerun pending |
-| Excavator | drive train | 0.250 | 0.250 | 0.250 | 0.938 | rerun pending |
+| Haul Truck | wheel-motor bearing | 0.800 | 0.500 | 0.583 | 1.000 | running |
+| Belt Conveyor | geared drive | 0.438 | 0.250 | 0.500 | 1.000 | running |
+| Excavator | drive train | 0.250 | 0.250 | 0.250 | 0.938 | running |
 | Dozer | final drive | 0.438 | 0.250 | 0.562 | 1.000 | 0.938 |
-| Wheel Loader | electric drive | 0.312 | 0.250 | 0.188 | 0.938 | rerun pending |
+| Wheel Loader | electric drive | 0.312 | 0.250 | 0.188 | 0.938 | running |
 | Drill Rig | rotary-head reduction gear | 0.733 | 0.300 | 0.889 | – | – |
+| Grader | circle-drive slewing bearing | running | running | running | – | – |
 
-- "–" means that test does not apply (the Pump and Drill Rig data have no matching recordings to cut in time). "rerun pending" image time splits are being rerun on the same images as the fair test.
+- "–" means that test does not apply (the Pump, Drill Rig and Grader data have no matching recordings to cut in time). "running" means that result was still being computed at this commit.
 - Guessing gives about 0.25 (four classes). The majority control always predicts the most common training class.
 - Only the Pump scores above 0.9 on both sides of the fair test.
 - The four CORA machines score 0.94 to 1.00 on the sensor time split but only 0.19 to 0.56 on the fair test. The models recognise recordings they have already seen, but do not carry over to an unseen speed. There is only one run per class and speed.
 - The Dozer reuses the Belt Conveyor's runs, so it is not independent evidence.
 - The Drill Rig images are noise-free CAD renders, so 0.889 is an upper bound for a camera.
+- The Grader image side is a separate two-class task (good vs damaged tooth crops of real gear photos, not the slewing ring), scored by balanced accuracy because 94% of the crops are good teeth.
 - Test sets are small: on a 16-run test, one recording moves accuracy by 6 points.
 
 ## How it works
@@ -47,7 +49,7 @@ Raw_Data/ ─► 1a load sensor data ─► one feature row per time window ─�
 | 1 | load data: raw sensor files → feature rows (1a); raw camera files → PNG images (1b); data check (1c) |
 | 2 | the fair test and the time split |
 | 3 | one answer per recording and metrics (3a); sensor model (3b); ImageNet ResNet-18 image model (3c) |
-| 4 | the seven machines: datasets, classes, what each fair test holds out |
+| 4 | the eight machines: datasets, classes, what each fair test holds out |
 | 5 | run the steps for one machine; writes `Results/` and `Figures/` |
 | 6 | classify a new file |
 | 7 | tables and figures for the notebook |
@@ -79,7 +81,7 @@ From the project folder (Windows: `.venv\Scripts\python.exe`, Mac/Linux: `.venv/
 | `python Notebook/pdm.py predict <file>` | identify the file's dataset format and classify it | seconds |
 | `python Notebook/pdm.py data-check` | list missing raw files | seconds |
 
-Machines: `pump`, `haul_truck`, `belt_conveyor`, `excavator`, `dozer`, `wheel_loader`, `drill_rig`.
+Machines: `pump`, `haul_truck`, `belt_conveyor`, `excavator`, `dozer`, `wheel_loader`, `drill_rig`, `grader`.
 
 `predict` first checks which dataset format the file matches (columns, variable names, image size and colours). This is a format check, not machine learning. Several machines share one laboratory rig, so for those formats the machine must be named with `--machine`.
 
@@ -98,5 +100,6 @@ Local only (git-ignored): `Raw_Data/`, `Processed_Data/` (feature tables and tra
 ## Notes
 
 - The fair-test image scores were produced before this code was reorganised (commit c7d8d25) and carried over, because each run takes hours to a day on a CPU. The reorganised image code uses the same method. PyTorch training on a multi-core CPU is not bit-for-bit repeatable, so a rerun can differ slightly.
+- **GPU (optional).** `requirements.txt` installs the CPU build of PyTorch, which works everywhere. With an NVIDIA GPU, run `.venv\Scripts\python.exe -m pip install --force-reinstall --no-deps torch==2.14.1 torchvision==0.29.1 --index-url https://download.pytorch.org/whl/cu130`. The image model then uses the GPU by itself (set `PDM_DEVICE=cpu` to force the CPU). Each image result records the device it was trained on, because GPU and CPU runs can differ slightly.
 - These models classify the current condition of a component. They do not predict remaining useful life.
 - Project code and documentation are under the [MIT License](LICENSE). Datasets keep their publishers' licences (all CC BY 4.0) and are not redistributed here.

@@ -33,6 +33,7 @@ raw files ──► 1a load sensor data ──► feature table (one row per tim
 | Haul Truck | 5 rounds, each holding out 3 whole bearings (30 recordings) | train 1000 rpm, test 2000 rpm (12 recordings) |
 | Belt Conveyor, Excavator, Dozer, Wheel Loader | 4 rounds, each holding out one speed (16 runs) | same |
 | Drill Rig | 3 rounds, each holding out one speed (120 recordings) | 4 rounds, each holding out 3 gear designs (4,800 gears) |
+| Grader | 6 rounds, each holding out one working condition (120 recordings) | each video or photo set held out in turn (tooth crops; a separate two-class task) |
 
 Every choice (model, feature set, number of epochs) is made inside the training data only.
 
@@ -51,3 +52,4 @@ Every choice (model, feature set, number of epochs) is made inside the training 
 - Test sets are small. One recording is worth 6 points of accuracy on a 16-run test and 8 points on the Haul Truck's 12 image recordings.
 - The CORA rig has one run per class and speed. The Dozer reuses the Belt Conveyor's runs, so it is not separate evidence.
 - The Drill Rig images are noise-free CAD renders, so their score is an upper bound for a camera.
+- The Grader images use a different method: frozen ImageNet ResNet-18 features and a logistic regression, with settings fixed in advance (choosing them inside the training sources is saved as a check). They show real photos of small gears, not the slewing ring, and are scored by balanced accuracy because 94% of the tooth crops are good teeth.
