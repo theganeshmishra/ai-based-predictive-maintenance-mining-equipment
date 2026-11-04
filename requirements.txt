@@ -1,14 +1,11 @@
+# Packages used by Notebook/pdm.py and the notebook. torch installs the CPU build;
+# see README.md for the optional NVIDIA GPU build.
 ipykernel>=6.29,<8
-lightgbm>=4.3,<5
 matplotlib>=3.9,<4
 numpy>=2.0,<3
 opencv-python>=4.10,<5
-openpyxl>=3.1,<4
 pandas>=2.2,<3
-remotezip>=0.12,<1
 scikit-learn>=1.5,<2
 scipy>=1.13,<2
 torch>=2.2,<3
 torchvision>=0.17,<1
-truststore>=0.9,<1
-xgboost>=2.0,<4

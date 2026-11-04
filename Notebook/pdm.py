@@ -9,7 +9,7 @@ The sections follow the workflow, top to bottom:
     3   train and score: one answer per recording (3a), sensor model (3b), image model (3c)
     4   the eight machines: their datasets, classes and what each fair test holds out
     5   run the workflow for one machine and save Results/ and Figures/
-    6   predict a new file
+    6   predict a new file (6b: an upload page for it)
     7   tables and figures for the notebook
     8   command line
 
@@ -21,6 +21,7 @@ Use it from the notebook (import pdm) or from a terminal in the project folder:
     python Notebook/pdm.py <machine> train-final               sensor model on all data, for predict
     python Notebook/pdm.py <machine> train-final-images        image model on all images, for predict
     python Notebook/pdm.py predict <file> [--machine <name>]   classify one new recording or image
+    python Notebook/pdm.py serve                               upload page at http://localhost:8613
     python Notebook/pdm.py data-check                          list missing or changed raw files
 
 Machines: pump, haul_truck, belt_conveyor, excavator, dozer, wheel_loader, drill_rig, grader
@@ -1767,31 +1768,51 @@ def sensor_features(path, source, details):
     return cora_windows(values, details["speed"])
 
 
-def predict(path, machine=None):
-    source, machines, details = identify(path)
-    if machine is None:
-        if len(machines) > 1:
-            raise ValueError(f"{source}: this format is used by {', '.join(machines)}; give --machine")
-        machine = machines[0]
-    if machine not in machines:
-        raise ValueError(f"{source} does not belong to {machine} (it matches {', '.join(machines)})")
-    labels = MACHINES[machine].labels
+def predict_one(path, machine, source, details):
+    """Step 3: run one machine's trained model on the file; class probabilities averaged over its windows."""
     if "image" in source or "frame" in source:
-        probability = image_probability(path, machine)
-    else:
-        import joblib
+        return image_probability(path, machine)
+    import joblib
 
-        model_file = MODELS / f"{machine}_sensor.joblib"
-        if not model_file.is_file():
-            raise FileNotFoundError(f"No trained sensor model: run  python Notebook/pdm.py {machine} train-final")
-        final = joblib.load(model_file)
-        features = sensor_features(path, source, details)[final["features"]].to_numpy(dtype=np.float64)
-        p = final["model"].predict_proba(features).mean(axis=0)
-        probability = dict(zip(final["model"].classes_, p))
-    best = max(probability, key=probability.get)
-    return {"file format": source, "machine": MACHINES[machine].title, "condition": best,
-            "model probability": round(float(probability[best]), 3),
-            "all classes": {label: round(float(probability[label]), 3) for label in labels}}
+    model_file = MODELS / f"{machine}_sensor.joblib"
+    if not model_file.is_file():
+        raise FileNotFoundError(f"No trained sensor model: run  python Notebook/pdm.py {machine} train-final")
+    final = joblib.load(model_file)
+    features = sensor_features(path, source, details)[final["features"]].to_numpy(dtype=np.float64)
+    return dict(zip(final["model"].classes_, final["model"].predict_proba(features).mean(axis=0)))
+
+
+def predict(path, machine=None):
+    """Steps 1-3 for one file. Returns the file format, machine, condition and the model's probability.
+
+    When the format is shared by several machines and no machine is given, the file cannot say which
+    machine it came from, so the answer lists the condition under each of those machines instead.
+    """
+    source, machines, details = identify(path)                   # steps 1 and 2
+    if machine is not None and machine not in machines:
+        raise ValueError(f"{source} does not belong to {machine} (it matches {', '.join(machines)})")
+    candidates = [machine] if machine else machines
+    answers, missing = {}, []
+    for name in candidates:                                       # step 3
+        try:
+            probability = predict_one(path, name, source, details)
+        except FileNotFoundError as problem:
+            missing.append(str(problem))
+            continue
+        labels = MACHINES[name].labels
+        best = max(probability, key=probability.get)
+        answers[name] = {"condition": best, "model probability": round(float(probability[best]), 3),
+                         "all classes": {label: round(float(probability[label]), 3) for label in labels}}
+    if not answers:
+        raise FileNotFoundError(missing[0])
+    if len(candidates) == 1:
+        return {"file format": source, "machine": MACHINES[candidates[0]].title, **answers[candidates[0]]}
+    return {"file format": source,
+            "machine": "cannot be told apart from the file: " + ", ".join(MACHINES[n].title for n in candidates)
+                       + " use the same laboratory data format (give --machine to choose one)",
+            "condition under each machine": {MACHINES[n].title: f"{a['condition']} ({a['model probability']})"
+                                             for n, a in answers.items()},
+            **({"not trained yet": missing} if missing else {})}
 
 
 def image_probability(path, machine):
@@ -1806,6 +1827,89 @@ def image_probability(path, machine):
     model.load_state_dict(torch.load(model_file, map_location="cpu", weights_only=True))
     x = load_images(Path(path).parent, [{"file": Path(path).name}], m.image_settings["normalise"])
     return dict(zip(m.labels, image_probabilities(model, x)[0]))
+
+
+# ==================================================================================================
+# 6b. Upload page: the same predict() behind a web form on this computer only (http://localhost:8613).
+# ==================================================================================================
+
+PAGE = """<!doctype html><html><head><meta charset="utf-8"><title>Condition check</title>
+<style>body{font-family:system-ui,sans-serif;max-width:720px;margin:40px auto;padding:0 16px;color:#222}
+table{border-collapse:collapse;margin-top:16px}td{border:1px solid #ccc;padding:6px 10px;vertical-align:top}
+.note{color:#666;font-size:14px}.error{color:#b00020}</style></head><body>
+<h1>Mining equipment condition check</h1>
+<p class="note">Upload one sensor recording (.mat or .csv) or one camera image (.png or .jpg). The file's format
+tells which machine it belongs to; then that machine's model gives the condition. Laboratory models only:
+not tested on real mining machines.</p>
+<form method="post" enctype="multipart/form-data">
+<p><input type="file" name="file" required></p>
+<p>Machine (only needed when several machines share a format): <select name="machine">
+<option value="">find it from the file</option>{options}</select></p>
+<p><button type="submit">Check condition</button></p></form>{result}</body></html>"""
+
+
+def serve(port=8613):
+    """Start the upload page; stop it with Ctrl-C."""
+    import email
+    import html
+    import tempfile
+    from http.server import BaseHTTPRequestHandler, HTTPServer
+
+    options = "".join(f'<option value="{k}">{m.title}</option>' for k, m in MACHINES.items())
+
+    def page(result=""):
+        return PAGE.replace("{options}", options).replace("{result}", result).encode("utf-8")
+
+    def table(answer):
+        rows = []
+        for key, value in answer.items():
+            if isinstance(value, dict):
+                value = "<br>".join(f"{html.escape(str(k))}: {html.escape(str(v))}" for k, v in value.items())
+            elif isinstance(value, list):
+                value = "<br>".join(html.escape(str(v)) for v in value)
+            else:
+                value = html.escape(str(value))
+            rows.append(f"<tr><td>{html.escape(key)}</td><td>{value}</td></tr>")
+        return "<table>" + "".join(rows) + "</table>"
+
+    class Handler(BaseHTTPRequestHandler):
+        def send(self, body):
+            self.send_response(200)
+            self.send_header("Content-Type", "text/html; charset=utf-8")
+            self.end_headers()
+            self.wfile.write(body)
+
+        def do_GET(self):
+            self.send(page())
+
+        def do_POST(self):
+            length = int(self.headers.get("Content-Length", 0))
+            if length > 300_000_000:
+                return self.send(page('<p class="error">File too large (limit 300 MB).</p>'))
+            body = self.rfile.read(length)
+            message = email.message_from_bytes(
+                f"Content-Type: {self.headers['Content-Type']}\r\n\r\n".encode() + body)
+            fields = {part.get_param("name", header="content-disposition"): part for part in message.get_payload()}
+            upload, choice = fields.get("file"), fields.get("machine")
+            machine = (choice.get_payload(decode=True) or b"").decode().strip() if choice else ""
+            name = Path(upload.get_filename() or "upload").name if upload else ""
+            try:
+                if not name:
+                    raise ValueError("no file was uploaded")
+                with tempfile.TemporaryDirectory() as folder:
+                    path = Path(folder) / name  # the original name is kept: CORA files carry their speed in it
+                    path.write_bytes(upload.get_payload(decode=True))
+                    answer = predict(path, machine or None)
+                result = f"<h2>{html.escape(name)}</h2>" + table(answer)
+            except (ValueError, FileNotFoundError) as problem:
+                result = f'<p class="error">No prediction for {html.escape(name)}: {html.escape(str(problem))}</p>'
+            self.send(page(result))
+
+        def log_message(self, *args):
+            pass
+
+    print(f"Upload page: http://localhost:{port}  (this computer only; Ctrl-C to stop)")
+    HTTPServer(("127.0.0.1", port), Handler).serve_forever()
 
 
 # ==================================================================================================
@@ -1885,6 +1989,8 @@ def main():
     args = parser.parse_args()
     if args.target == "data-check":
         raise SystemExit(check_data())
+    if args.target == "serve":
+        return serve()
     if args.target == "predict":
         if not args.command:
             parser.error("give the file to predict")

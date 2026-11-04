@@ -1,0 +1,170 @@
+{
+  "machine": "haul_truck",
+  "source": "XJTU-DV-Rotor event camera, Zenodo 17447083, CC BY 4.0",
+  "classes": [
+    "healthy",
+    "inner",
+    "outer",
+    "ball"
+  ],
+  "images": 2421,
+  "test": "time split (secondary, easier): first 60% of every recording's frames train, last 30% test",
+  "notes": [
+    "sensor: five rounds, each holding out three whole bearings",
+    "sensor: ball faults were recorded without load, so ball results may partly reflect load",
+    "images: train on 12 recordings at 1000 rpm, test 12 separate recordings at 2000 rpm"
+  ],
+  "settings": {
+    "normalise": "per_image",
+    "augment": "augment_frames",
+    "class_weights": true,
+    "max_epochs": 15,
+    "seed": 42,
+    "validation": "one_recording_per_class",
+    "segments": 10
+  },
+  "unit_level": {
+    "test_units": 24,
+    "accuracy": 1.0,
+    "balanced_accuracy": 1.0,
+    "macro_precision": 1.0,
+    "macro_recall": 1.0,
+    "macro_f1": 1.0,
+    "confusion_matrix": [
+      [
+        6,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        6,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        6,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        6
+      ]
+    ],
+    "per_class_recall": {
+      "healthy": 1.0,
+      "inner": 1.0,
+      "outer": 1.0,
+      "ball": 1.0
+    }
+  },
+  "image_level": {
+    "test_units": 817,
+    "accuracy": 0.9767,
+    "balanced_accuracy": 0.9772,
+    "macro_precision": 0.9778,
+    "macro_recall": 0.9772,
+    "macro_f1": 0.9772,
+    "confusion_matrix": [
+      [
+        230,
+        0,
+        0,
+        1
+      ],
+      [
+        6,
+        232,
+        5,
+        0
+      ],
+      [
+        2,
+        0,
+        175,
+        0
+      ],
+      [
+        4,
+        0,
+        1,
+        161
+      ]
+    ],
+    "per_class_recall": {
+      "healthy": 0.9957,
+      "inner": 0.9547,
+      "outer": 0.9887,
+      "ball": 0.9699
+    }
+  },
+  "rounds": [
+    {
+      "epochs": 10,
+      "validation_macro_f1_by_epoch": [
+        0.0,
+        0.0,
+        0.125,
+        0.0,
+        0.25,
+        0.1667,
+        0.25,
+        0.1667,
+        0.1667,
+        0.375,
+        0.25,
+        0.125,
+        0.1667,
+        0.25,
+        0.0
+      ],
+      "test_images": 817
+    }
+  ],
+  "device": "cpu",
+  "segment_level": {
+    "test_units": 240,
+    "accuracy": 0.9875,
+    "balanced_accuracy": 0.9875,
+    "macro_precision": 0.9878,
+    "macro_recall": 0.9875,
+    "macro_f1": 0.9875,
+    "confusion_matrix": [
+      [
+        60,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        59,
+        1,
+        0
+      ],
+      [
+        0,
+        0,
+        60,
+        0
+      ],
+      [
+        2,
+        0,
+        0,
+        58
+      ]
+    ],
+    "per_class_recall": {
+      "healthy": 1.0,
+      "inner": 0.9833,
+      "outer": 1.0,
+      "ball": 0.9667
+    }
+  }
+}

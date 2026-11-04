@@ -11,13 +11,13 @@ Accuracy per test recording (per gear for the Drill Rig images; balanced accurac
 | Machine | Component | Sensor, fair | Majority control | Images, fair | Sensor, time split | Images, time split |
 |---|---|---|---|---|---|---|
 | Pump | support bearing | 0.958 | 0.250 | 1.000 | – | – |
-| Haul Truck | wheel-motor bearing | 0.800 | 0.500 | 0.583 | 1.000 | running |
+| Haul Truck | wheel-motor bearing | 0.800 | 0.500 | 0.583 | 1.000 | 1.000 |
 | Belt Conveyor | geared drive | 0.438 | 0.250 | 0.500 | 1.000 | running |
 | Excavator | drive train | 0.250 | 0.250 | 0.250 | 0.938 | running |
 | Dozer | final drive | 0.438 | 0.250 | 0.562 | 1.000 | 0.938 |
 | Wheel Loader | electric drive | 0.312 | 0.250 | 0.188 | 0.938 | running |
 | Drill Rig | rotary-head reduction gear | 0.733 | 0.300 | 0.889 | – | – |
-| Grader | circle-drive slewing bearing | running | running | running | – | – |
+| Grader | circle-drive slewing bearing | 0.842 | 0.250 | 0.826 | – | – |
 
 - "–" means that test does not apply (the Pump, Drill Rig and Grader data have no matching recordings to cut in time). "running" means that result was still being computed at this commit.
 - Guessing gives about 0.25 (four classes). The majority control always predicts the most common training class.
@@ -61,10 +61,21 @@ The full method is in [Documentation/methodology.md](Documentation/methodology.m
 
 You need [Python 3.11](https://www.python.org/downloads/) (tick **Add python.exe to PATH**), [VS Code](https://code.visualstudio.com/) and [Git](https://git-scm.com/downloads).
 
-1. Clone this repository and open the folder in VS Code.
-2. Run `powershell -ExecutionPolicy Bypass -File .\setup.ps1` (Mac/Linux: `bash setup.sh`). This creates `.venv`, installs the packages and lists any raw data files still missing.
-3. Download the missing data by hand from the sources in the [dataset manifest](Dataset_Manifest/manifest.md) into `Raw_Data/`.
-4. Open [Notebook/Mining_Equipment_Condition_Monitoring.ipynb](Notebook/Mining_Equipment_Condition_Monitoring.ipynb), choose the **Capstone (.venv)** kernel and click **Run All**. The results section works without the raw data.
+1. Clone this repository and open the folder in a terminal.
+2. Create the environment and install the packages (Mac/Linux: `python3` and `.venv/bin/python`):
+
+   ```bash
+   python -m venv .venv
+   .venv\Scripts\python.exe -m pip install -r requirements.txt
+   ```
+
+3. Download the data by hand from the sources in the [dataset manifest](Dataset_Manifest/manifest.md) into `Raw_Data/`, then check it:
+
+   ```bash
+   .venv\Scripts\python.exe Notebook\pdm.py data-check
+   ```
+
+4. Open [Notebook/Mining_Equipment_Condition_Monitoring.ipynb](Notebook/Mining_Equipment_Condition_Monitoring.ipynb) in VS Code, choose the `.venv` Python as the kernel and click **Run All**. The results section works without the raw data.
 
 ## Commands
 
@@ -78,7 +89,8 @@ From the project folder (Windows: `.venv\Scripts\python.exe`, Mac/Linux: `.venv/
 | `python Notebook/pdm.py <machine> images` | image model, fair test → `Results/<machine>/images.json` | hours |
 | `python Notebook/pdm.py <machine> images --time-split` | image model, time split | minutes to an hour |
 | `python Notebook/pdm.py <machine> train-final` | sensor model on all data, for `predict` | minutes |
-| `python Notebook/pdm.py predict <file>` | identify the file's dataset format and classify it | seconds |
+| `python Notebook/pdm.py predict <file>` | identify the file's dataset format, then the machine's model gives the condition; if several machines share the format, the condition under each | seconds |
+| `python Notebook/pdm.py serve` | upload page at http://localhost:8613 (this computer only): drop in a file, get machine, condition and confidence | – |
 | `python Notebook/pdm.py data-check` | list missing raw files | seconds |
 
 Machines: `pump`, `haul_truck`, `belt_conveyor`, `excavator`, `dozer`, `wheel_loader`, `drill_rig`, `grader`.
