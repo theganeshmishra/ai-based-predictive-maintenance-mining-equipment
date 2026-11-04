@@ -1,0 +1,119 @@
+{
+  "machine": "excavator",
+  "source": "CORA infrared camera, same runs, all 450 frames per run",
+  "classes": [
+    "healthy",
+    "bearing",
+    "unbalance",
+    "misalignment"
+  ],
+  "images": 7200,
+  "test": "fair test: hold out [['F5'], ['F15'], ['F50'], ['F60']], one round each",
+  "notes": [
+    "four rounds, each holding out one whole speed; one run per class and speed"
+  ],
+  "settings": {
+    "normalise": "per_image",
+    "augment": "augment_frames",
+    "class_weights": true,
+    "max_epochs": 15,
+    "seed": 42,
+    "validation": "one_recording_per_class",
+    "segments": 10
+  },
+  "unit_level": {
+    "test_units": 16,
+    "accuracy": 0.25,
+    "balanced_accuracy": 0.25,
+    "macro_precision": 0.1917,
+    "macro_recall": 0.25,
+    "macro_f1": 0.2167,
+    "confusion_matrix": [
+      [
+        0,
+        1,
+        2,
+        1
+      ],
+      [
+        0,
+        1,
+        2,
+        1
+      ],
+      [
+        0,
+        2,
+        1,
+        1
+      ],
+      [
+        0,
+        2,
+        0,
+        2
+      ]
+    ],
+    "per_class_recall": {
+      "healthy": 0.0,
+      "bearing": 0.25,
+      "unbalance": 0.25,
+      "misalignment": 0.5
+    }
+  },
+  "image_level": {
+    "test_units": 7200,
+    "accuracy": 0.2838,
+    "balanced_accuracy": 0.2837,
+    "macro_precision": 0.4491,
+    "macro_recall": 0.2838,
+    "macro_f1": 0.2694,
+    "confusion_matrix": [
+      [
+        166,
+        450,
+        734,
+        450
+      ],
+      [
+        0,
+        629,
+        760,
+        411
+      ],
+      [
+        0,
+        717,
+        515,
+        568
+      ],
+      [
+        2,
+        859,
+        206,
+        733
+      ]
+    ],
+    "per_class_recall": {
+      "healthy": 0.0922,
+      "bearing": 0.3494,
+      "unbalance": 0.2861,
+      "misalignment": 0.4072
+    }
+  },
+  "rounds": [
+    {
+      "epochs": 4
+    },
+    {
+      "epochs": 2
+    },
+    {
+      "epochs": 9
+    },
+    {
+      "epochs": 4
+    }
+  ],
+  "produced_by": "pre-cleanup code (commit c7d8d25, Results/excavator/excavator_cnn_pretrained_4class_allframes.json); carried over, not rerun, because the run takes hours on CPU. The cleaned code uses the same method."
+}

@@ -1,0 +1,111 @@
+{
+  "machine": "excavator",
+  "source": "CORA motor/gearbox rig, drive-fault runs (Vx vibration), CC BY 4.0",
+  "classes": [
+    "healthy",
+    "bearing",
+    "unbalance",
+    "misalignment"
+  ],
+  "rows": 4800,
+  "recordings": 16,
+  "notes": [
+    "four rounds, each holding out one whole speed; one run per class and speed"
+  ],
+  "test": "time split (secondary, easier): first 60% of every recording trains, last 30% tests, 10% gap; fixed random forest",
+  "features": [
+    "log_rms",
+    "kurtosis",
+    "skewness",
+    "crest_factor",
+    "peak_order",
+    "log_ratio_2x_1x",
+    "order_power_0.5_1.5",
+    "order_power_1.5_2.5",
+    "order_power_2.5_3.5",
+    "order_power_3.5_5.5",
+    "order_power_5.5_8.5",
+    "order_power_8.5_12.5",
+    "order_power_12.5_20.5"
+  ],
+  "score": {
+    "test_units": 16,
+    "accuracy": 0.9375,
+    "balanced_accuracy": 0.9375,
+    "macro_precision": 0.95,
+    "macro_recall": 0.9375,
+    "macro_f1": 0.9365,
+    "confusion_matrix": [
+      [
+        3,
+        0,
+        0,
+        1
+      ],
+      [
+        0,
+        4,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        4,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        4
+      ]
+    ],
+    "per_class_recall": {
+      "healthy": 0.75,
+      "bearing": 1.0,
+      "unbalance": 1.0,
+      "misalignment": 1.0
+    }
+  },
+  "majority_control": {
+    "test_units": 16,
+    "accuracy": 0.25,
+    "balanced_accuracy": 0.25,
+    "macro_precision": 0.0625,
+    "macro_recall": 0.25,
+    "macro_f1": 0.1,
+    "confusion_matrix": [
+      [
+        0,
+        4,
+        0,
+        0
+      ],
+      [
+        0,
+        4,
+        0,
+        0
+      ],
+      [
+        0,
+        4,
+        0,
+        0
+      ],
+      [
+        0,
+        4,
+        0,
+        0
+      ]
+    ],
+    "per_class_recall": {
+      "healthy": 0.0,
+      "bearing": 1.0,
+      "unbalance": 0.0,
+      "misalignment": 0.0
+    }
+  }
+}

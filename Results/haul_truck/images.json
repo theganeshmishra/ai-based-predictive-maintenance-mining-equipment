@@ -1,0 +1,153 @@
+{
+  "machine": "haul_truck",
+  "source": "XJTU-DV-Rotor event camera, Zenodo 17447083, CC BY 4.0",
+  "classes": [
+    "healthy",
+    "inner",
+    "outer",
+    "ball"
+  ],
+  "images": 2691,
+  "test": "fair test: hold out [['2000rpm']], one round each",
+  "notes": [
+    "sensor: five rounds, each holding out three whole bearings",
+    "sensor: ball faults were recorded without load, so ball results may partly reflect load",
+    "images: train on 12 recordings at 1000 rpm, test 12 separate recordings at 2000 rpm"
+  ],
+  "settings": {
+    "normalise": "per_image",
+    "augment": "augment_frames",
+    "class_weights": true,
+    "max_epochs": 15,
+    "seed": 42,
+    "validation": "one_recording_per_class",
+    "segments": 10
+  },
+  "unit_level": {
+    "test_units": 12,
+    "accuracy": 0.5833,
+    "balanced_accuracy": 0.5833,
+    "macro_precision": 0.6458,
+    "macro_recall": 0.5833,
+    "macro_f1": 0.5655,
+    "confusion_matrix": [
+      [
+        3,
+        0,
+        0,
+        0
+      ],
+      [
+        1,
+        2,
+        0,
+        0
+      ],
+      [
+        0,
+        2,
+        1,
+        0
+      ],
+      [
+        0,
+        0,
+        2,
+        1
+      ]
+    ],
+    "per_class_recall": {
+      "healthy": 1.0,
+      "inner": 0.6667,
+      "outer": 0.3333,
+      "ball": 0.3333
+    }
+  },
+  "image_level": {
+    "test_units": 1392,
+    "accuracy": 0.5632,
+    "balanced_accuracy": 0.5249,
+    "macro_precision": 0.6313,
+    "macro_recall": 0.5249,
+    "macro_f1": 0.5293,
+    "confusion_matrix": [
+      [
+        354,
+        52,
+        2,
+        0
+      ],
+      [
+        106,
+        249,
+        71,
+        0
+      ],
+      [
+        37,
+        155,
+        99,
+        0
+      ],
+      [
+        3,
+        38,
+        144,
+        82
+      ]
+    ],
+    "per_class_recall": {
+      "healthy": 0.8676,
+      "inner": 0.5845,
+      "outer": 0.3402,
+      "ball": 0.3071
+    }
+  },
+  "rounds": [
+    {
+      "epochs": 1
+    }
+  ],
+  "produced_by": "pre-cleanup code (commit c7d8d25, Results/haul_truck/haul_truck_cnn_pretrained_4class_denseframes.json); carried over, not rerun, because the run takes hours on CPU. The cleaned code uses the same method.",
+  "segment_level": {
+    "test_units": 120,
+    "accuracy": 0.5667,
+    "balanced_accuracy": 0.5667,
+    "macro_precision": 0.6556,
+    "macro_recall": 0.5667,
+    "macro_f1": 0.563,
+    "confusion_matrix": [
+      [
+        27,
+        3,
+        0,
+        0
+      ],
+      [
+        5,
+        20,
+        5,
+        0
+      ],
+      [
+        0,
+        19,
+        11,
+        0
+      ],
+      [
+        0,
+        4,
+        16,
+        10
+      ]
+    ],
+    "per_class_recall": {
+      "healthy": 0.9,
+      "inner": 0.6667,
+      "outer": 0.3667,
+      "ball": 0.3333
+    },
+    "segments_per_recording": 10
+  }
+}

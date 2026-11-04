@@ -1,0 +1,113 @@
+{
+  "machine": "haul_truck",
+  "source": "UODS-VAFDC bearing rig (vibration and microphone), CC BY 4.0",
+  "classes": [
+    "healthy",
+    "inner",
+    "outer",
+    "ball"
+  ],
+  "rows": 3000,
+  "recordings": 30,
+  "notes": [
+    "sensor: five rounds, each holding out three whole bearings",
+    "sensor: ball faults were recorded without load, so ball results may partly reflect load",
+    "images: train on 12 recordings at 1000 rpm, test 12 separate recordings at 2000 rpm"
+  ],
+  "test": "time split (secondary, easier): first 60% of every recording trains, last 30% tests, 10% gap; fixed random forest",
+  "features": [
+    "std",
+    "peak_to_peak",
+    "crest_factor",
+    "skew",
+    "excess_kurtosis",
+    "spectral_centroid_hz",
+    "dominant_frequency_hz",
+    "spectral_entropy",
+    "power_0_1000_hz",
+    "power_1000_2000_hz",
+    "power_2000_5000_hz",
+    "power_5000_10000_hz",
+    "power_10000_21000_hz"
+  ],
+  "score": {
+    "test_units": 30,
+    "accuracy": 1.0,
+    "balanced_accuracy": 1.0,
+    "macro_precision": 1.0,
+    "macro_recall": 1.0,
+    "macro_f1": 1.0,
+    "confusion_matrix": [
+      [
+        15,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        5,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        5,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        5
+      ]
+    ],
+    "per_class_recall": {
+      "healthy": 1.0,
+      "inner": 1.0,
+      "outer": 1.0,
+      "ball": 1.0
+    }
+  },
+  "majority_control": {
+    "test_units": 30,
+    "accuracy": 0.5,
+    "balanced_accuracy": 0.25,
+    "macro_precision": 0.125,
+    "macro_recall": 0.25,
+    "macro_f1": 0.1667,
+    "confusion_matrix": [
+      [
+        15,
+        0,
+        0,
+        0
+      ],
+      [
+        5,
+        0,
+        0,
+        0
+      ],
+      [
+        5,
+        0,
+        0,
+        0
+      ],
+      [
+        5,
+        0,
+        0,
+        0
+      ]
+    ],
+    "per_class_recall": {
+      "healthy": 1.0,
+      "inner": 0.0,
+      "outer": 0.0,
+      "ball": 0.0
+    }
+  }
+}

@@ -1,13 +1,12 @@
 <#
 One-step setup on Windows. From this folder, in PowerShell:
 
-    .\setup.ps1          create .venv, install packages, register the "Capstone (.venv)" notebook kernel
-    .\setup.ps1 -Data    the same, then fetch the automatically available source files
+    .\setup.ps1    create .venv, install packages, register the "Capstone (.venv)" notebook kernel,
+                   then list any raw data files that are still missing
 
 If Windows blocks the script, run instead:
     powershell -ExecutionPolicy Bypass -File .\setup.ps1
 #>
-param([switch]$Data)
 $ErrorActionPreference = "Stop"
 Set-Location -LiteralPath $PSScriptRoot
 
@@ -57,12 +56,8 @@ Check "Registering the kernel"
 & $py -c "import cv2, numpy, pandas, sklearn; print('Packages OK: OpenCV', cv2.__version__, '| scikit-learn', sklearn.__version__)"
 Check "Checking the packages"
 
-if ($Data) {
-    Step "Download automatically available data (Pump, Haul Truck, CORA thermal)"
-    & $py Notebook/notebook_helpers.py pump intake;                    Check "Pump data download"
-    & $py Notebook/notebook_helpers.py haul_truck intake --sensor-only; Check "Haul Truck data download"
-    & $py Notebook/notebook_helpers.py belt_conveyor intake;           Check "Belt Conveyor data download"
-}
+Step "Check which raw data files are present"
+& $py Notebook\pdm.py data-check
 
 Step "Done"
 Write-Host @"
@@ -70,10 +65,8 @@ Next:
   1. Open this folder in VS Code (File > Open Folder). Install the Python and Jupyter extensions if VS Code asks.
   2. Open Notebook\Mining_Equipment_Condition_Monitoring.ipynb.
      Check the top right says 'Capstone (.venv)' (click it to choose it if not), then click Run All.
-  3. Run All shows saved results. To rerun one equipment, set ACTIVE_EQUIPMENT near the top.
 
-Without the data the working notebook still shows the saved results.
-To fetch the automatically available source files: .\setup.ps1 -Data
-CORA vibration and other publisher-gated files still require the manual intake
-steps in Dataset_Manifest\manifest.md before every strict experiment can rerun.
+The results section works without the raw data. Sections 2, 3 and 5 need the files in Raw_Data\;
+download them by hand from the sources in Dataset_Manifest\manifest.md.
+To rerun a model: .venv\Scripts\python.exe Notebook\pdm.py <machine> sensor   (see README.md)
 "@
