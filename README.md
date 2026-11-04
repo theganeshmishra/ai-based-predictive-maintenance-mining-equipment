@@ -1,104 +1,102 @@
 # AI-Based Predictive Maintenance for Mining Equipment
 
-Saskatchewan Polytechnic PROJ 613 capstone · Ganesh Mishra, Lakshya Sharma and Sagar Patel
+Saskatchewan Polytechnic PROJ 613 capstone · Group 9 · Ganesh Mishra, Lakshya Sharma and Sagar Patel
 
-For each machine we detect the **current fault condition of one component** two separate ways, from a **sensor** (vibration or temperature, as a CSV of features) and from a **camera** (CNN on images), and compare them. All data are public laboratory datasets used as stand-ins for mining equipment, so the results show the method, not a validated mine-site detector.
+For seven mining machines we pick one component and classify its current condition (four classes) two separate ways: from a **sensor** recording and from **camera images**. Then we compare the two. All data are public laboratory datasets used as stand-ins for mining equipment, and a machine's sensor and image sides come from different rigs. The results show the method; they are not a mine-site result.
 
-## Results (accuracy, 4 classes)
+## Results
 
-**Week 6 presentation scope:** the five machine mappings below. Dozer reuses Belt Conveyor data; Wheel Loader, Drill Rig and Grader remain planned. Existing Week 7 anomaly work is outside this checkpoint.
+Accuracy per test recording (per gear for the Drill Rig images). The **fair test** holds out whole recordings, speeds or bearings that the model never saw. The **time split** trains on the start of each recording and tests on its end, which is much easier.
 
-| Machine (component) | Classes | Sensor | Images (CNN) | Sensor, time split | Images, time split |
-|---|---|---:|---:|---:|---:|
-| **Pump** (support bearing) | healthy, inner, outer, ball | **0.958** | **1.000** | — | — |
-| **Haul Truck** (wheel-motor bearing) | healthy, inner, outer, ball | 0.800–0.867 | 0.417 | 1.000 | 0.913 |
-| **Belt Conveyor** (geared drive) | healthy, wear 25/50/75% | 0.625 | 0.562 | 1.000 | 0.812 rerun (1.000 saved) |
-| **Excavator** (swing drive) | healthy, bearing, unbalance, misalignment | 0.188 | 0.312 | 0.938 | 1.000 rerun (0.938 earlier) |
-| **Dozer** (track final drive)* | healthy, wear 25/50/75% | 0.625 | 0.562 | 1.000 | 1.000 |
+| Machine | Component | Sensor, fair | Majority control | Images, fair | Sensor, time split | Images, time split |
+|---|---|---|---|---|---|---|
+| Pump | support bearing | 0.958 | 0.250 | 1.000 | – | – |
+| Haul Truck | wheel-motor bearing | 0.800 | 0.500 | 0.583 | 1.000 | rerun pending |
+| Belt Conveyor | geared drive | 0.438 | 0.250 | 0.500 | 1.000 | rerun pending |
+| Excavator | drive train | 0.250 | 0.250 | 0.250 | 0.938 | rerun pending |
+| Dozer | final drive | 0.438 | 0.250 | 0.562 | 1.000 | 0.938 |
+| Wheel Loader | electric drive | 0.312 | 0.250 | 0.188 | 0.938 | rerun pending |
+| Drill Rig | rotary-head reduction gear | 0.733 | 0.300 | 0.889 | – | – |
 
-- **Main test (columns 3–4):** whole recordings, bearings or speeds the model never saw in training. This is the primary grouped result, subject to the CORA preprocessing caveat below.
-- **CORA preprocessing caveat:** the later four-class Belt Conveyor/Dozer and some Excavator sensor folds normalize features across all recordings at a speed, including the held-out speed. No test labels enter fitting, but these are batch-transductive scores, not estimates for one entirely isolated new machine. See [methodology](Documentation/methodology.md).
-- **Time split (columns 5–6):** the model trains on the first 60% of each recording and is tested on the last 30%. This test is easier because the same recordings appear in training, so it is reported separately.
-- **Week 6 reproduction note:** on October 23, the published Belt Conveyor time-split sensor command reproduced 1.000, but the published image command produced 0.8125 (13/16 runs) instead of its earlier saved 1.000. The image score is not exactly reproducible in this local rerun; see the [Week 6 summary](Documentation/week_06_professor_remarks.md). The whole-speed image result remains 0.5625. The Dozer time-split image number below is the earlier saved score on the same CORA runs, not an independent rerun.
-- \*The Dozer reuses the **same 16 CORA runs, features and 4 classes as the Belt Conveyor** (no public dozer dataset exists). Its saved scores matched the Belt Conveyor's saved scores; a later Belt image rerun differed. This is a mapping, not separate evidence.
-- Only the Pump reaches 90% on the main test. The reasons and caveats are in the [Week 6 summary](Documentation/week_06_professor_remarks.md).
-- **More-than-80% in both modalities is currently met only by Pump (1 of 8 equipment mappings).** Wheel Loader now has an evaluated pair (shown below). The Drill Rig is evaluated on **separate data**, not CORA. Sensor (MCC5-THU gearbox vibration): 0.792 accuracy on 120 unseen-speed recordings (majority class 0.300; a 1D CNN on raw vibration reached 0.750). Camera: ResNet-18 on rendered **synthetic CAD gear meshes** (MFGNet-Gear, DOI 10.7302/qrdj-n812, CC BY 4.0) reached 0.889 on 4,800 gears of unseen designs (4 folds, 0.82 to 0.94; simple image statistics 0.325). The renders are noise-free and not the MCC5-THU gears, so 0.889 is an upper bound and the two sides are not a matched pair. The Grader is not evaluated. Reusing the Belt Conveyor's CORA runs under another machine name does not create a new validation result; the [methodology](Documentation/methodology.md) defines the accuracy gate.
-- XGBoost and LightGBM were compared with the random forest on the same tests and did not beat it ([Week 6 ensembles](Documentation/week_06_ensembles.md)).
+- "–" means that test does not apply (the Pump and Drill Rig data have no matching recordings to cut in time). "rerun pending" image time splits are being rerun on the same images as the fair test.
+- Guessing gives about 0.25 (four classes). The majority control always predicts the most common training class.
+- Only the Pump scores above 0.9 on both sides of the fair test.
+- The four CORA machines score 0.94 to 1.00 on the sensor time split but only 0.19 to 0.56 on the fair test. The models recognise recordings they have already seen, but do not carry over to an unseen speed. There is only one run per class and speed.
+- The Dozer reuses the Belt Conveyor's runs, so it is not independent evidence.
+- The Drill Rig images are noise-free CAD renders, so 0.889 is an upper bound for a camera.
+- Test sets are small: on a 16-run test, one recording moves accuracy by 6 points.
 
-**Week 7 addition — Wheel Loader (electric drive motor), machine 6.** New CORA fault data (half-broken and broken rotor bars, not used by any other machine), 4 classes: healthy, bearing defect, half-broken bar, broken bar. Training-data-only preprocessing. [Week 7 Wheel Loader](Documentation/week_07_wheel_loader.md).
+## How it works
 
-| Machine (component) | Classes | Sensor | Images (CNN) | Sensor, time split | Images, time split |
-|---|---|---:|---:|---:|---:|
-| **Wheel Loader** (electric drive motor) | healthy, bearing, half-broken bar, broken bar | 0.312 | 0.188 (7,200 images) | 0.938 | 1.000* |
+The project is **one Python file and one notebook**:
 
-The Wheel Loader camera result is below the 0.250 chance baseline on the unseen-speed test (3/16 recordings). Its 1.000 time-split score is secondary: train and test frames come from the same recordings. Expanding the training set from 2,400 to 7,200 adjacent frames did not improve unseen-speed performance (the prior run scored 0.312); these frames do not add independent recordings. \*The updated time-split result is 16/16 recordings, but is not evidence of new-recording generalization.
+- [Notebook/pdm.py](Notebook/pdm.py) holds all the code. Its sections run in workflow order, top to bottom.
+- [Notebook/Mining_Equipment_Condition_Monitoring.ipynb](Notebook/Mining_Equipment_Condition_Monitoring.ipynb) walks through the workflow and shows the results.
 
-**Week 7 — all available data.** Every remaining CORA file (1,806 files, about 37 GB, MD5-checked; local only), every image frame, and whole Haul Truck event recordings. New results are saved separately; the Week 6 numbers above are unchanged. [Week 7 full data](Documentation/week_07_full_data.md).
+```text
+Raw_Data/ ─► 1a load sensor data ─► one feature row per time window ─► 3b sensor model ─┐
+          └► 1b load camera data ─► PNG images + index.csv          ─► 3c image model  ─┤
+                                                                                        ▼
+     2  split: fair test and time split               3a  one answer per recording
+     4  MACHINES: each machine's data and what its fair test holds out
+```
 
-| Machine | Sensor: all CORA sensors + start-up tests (96 test recordings) | Images: every frame / whole recordings |
-|---|---:|---:|
-| Haul Truck | — (all data already used) | **0.750** (was 0.417) |
-| Belt Conveyor / Dozer | 0.521 (stationary runs 0.625) | 0.500 (was 0.562) |
-| Excavator | **0.375** (was 0.188) | 0.250 (was 0.312) |
-| Wheel Loader | **0.406** (was 0.312) | 0.188 (Ganesh's 7,200-image run) |
+| Section of `pdm.py` | What it does |
+|---|---|
+| 0 | project folders |
+| 1 | load data: raw sensor files → feature rows (1a); raw camera files → PNG images (1b); data check (1c) |
+| 2 | the fair test and the time split |
+| 3 | one answer per recording and metrics (3a); sensor model (3b); ImageNet ResNet-18 image model (3c) |
+| 4 | the seven machines: datasets, classes, what each fair test holds out |
+| 5 | run the steps for one machine; writes `Results/` and `Figures/` |
+| 6 | classify a new file |
+| 7 | tables and figures for the notebook |
+| 8 | command line |
 
-Unseen-speed (main) test; guessing = 0.250. Motor current helps most. Temperature probes appeared to give 0.75–1.00, but their pattern identifies the condition in the first 5 minutes of a run, before any fault heating, so it reflects the recording session; temperature is reported but excluded from model selection.
+The full method is in [Documentation/methodology.md](Documentation/methodology.md).
 
 ## Quick start
 
 You need [Python 3.11](https://www.python.org/downloads/) (tick **Add python.exe to PATH**), [VS Code](https://code.visualstudio.com/) and [Git](https://git-scm.com/downloads).
 
-1. **Get the project.** In VS Code press `Ctrl+Shift+P` → **Git: Clone**, paste `https://github.com/theganeshmishra/ai-based-predictive-maintenance-mining-equipment.git`, then open the folder.
-2. **Set it up once.** In the terminal run `powershell -ExecutionPolicy Bypass -File .\setup.ps1` (Mac/Linux: `bash setup.sh`). Add `-Data` (`--data`) to fetch only the source files available automatically. The CORA vibration files and other publisher-gated inputs need the separate intake steps in the [dataset manifest](Dataset_Manifest/manifest.md).
-3. **Run it.** Open the single working notebook, [Mining_Equipment_Condition_Monitoring.ipynb](Notebook/Mining_Equipment_Condition_Monitoring.ipynb), pick the **Capstone (.venv)** kernel, and click **Run All**. It shows a compact overview and one results section for each of the seven implemented equipment mappings. Run All only reads saved results by default. Under **Optional tools**, choose `EQUIPMENT`, `COMMAND` and `OPTIONS`, then set `RUN_MODEL = True` only when you want to rerun that command using local data. Secondary time-split and historical experiments are separate optional views.
+1. Clone this repository and open the folder in VS Code.
+2. Run `powershell -ExecutionPolicy Bypass -File .\setup.ps1` (Mac/Linux: `bash setup.sh`). This creates `.venv`, installs the packages and lists any raw data files still missing.
+3. Download the missing data by hand from the sources in the [dataset manifest](Dataset_Manifest/manifest.md) into `Raw_Data/`.
+4. Open [Notebook/Mining_Equipment_Condition_Monitoring.ipynb](Notebook/Mining_Equipment_Condition_Monitoring.ipynb), choose the **Capstone (.venv)** kernel and click **Run All**. The results section works without the raw data.
 
-The working notebook still shows saved results when raw data are missing. If you get `No module named cv2`, the wrong kernel is selected: choose **Capstone (.venv)**. The six old per-equipment notebooks were consolidated into this one file; their prior versions remain recoverable from Git history. Append future equipment as a new section in the same notebook.
+## Commands
 
-On macOS, if an ensemble run cannot load `xgboost` or `lightgbm` because `libomp.dylib` is missing, install the system OpenMP runtime or set `DYLD_LIBRARY_PATH` to the `torch/lib` directory inside this environment before launching Python. This is a local runtime issue, not evidence that the saved model results have been reproduced.
+From the project folder (Windows: `.venv\Scripts\python.exe`, Mac/Linux: `.venv/bin/python`):
 
-## Repository layout
+| Command | What it does | Time on a laptop CPU |
+|---|---|---|
+| `python Notebook/pdm.py <machine> sensor` | sensor model, fair test → `Results/<machine>/sensor.json` | seconds to minutes |
+| `python Notebook/pdm.py <machine> sensor --time-split` | sensor model, time split | seconds |
+| `python Notebook/pdm.py <machine> export-images` | raw camera files → `Images/<machine>/` | minutes (Drill Rig: hours) |
+| `python Notebook/pdm.py <machine> images` | image model, fair test → `Results/<machine>/images.json` | hours |
+| `python Notebook/pdm.py <machine> images --time-split` | image model, time split | minutes to an hour |
+| `python Notebook/pdm.py <machine> train-final` | sensor model on all data, for `predict` | minutes |
+| `python Notebook/pdm.py predict <file>` | identify the file's dataset format and classify it | seconds |
+| `python Notebook/pdm.py data-check` | list missing raw files | seconds |
+
+Machines: `pump`, `haul_truck`, `belt_conveyor`, `excavator`, `dozer`, `wheel_loader`, `drill_rig`.
+
+`predict` first checks which dataset format the file matches (columns, variable names, image size and colours). This is a format check, not machine learning. Several machines share one laboratory rig, so for those formats the machine must be named with `--machine`.
+
+## Folders
 
 ```text
-Notebook/notebook_helpers.py   all equipment models, data loading and result helpers
-Notebook/        one working notebook and the consolidated model/helper file
-Results/<machine>/   saved metrics (JSON) and written comparisons
-Figures/<machine>/   result charts
-Documentation/   weekly progress, methodology, full capstone details
-Dataset_Manifest/    where every dataset comes from, its licence and limits
-setup.ps1, setup.sh  one-step setup; requirements.txt / requirements-lock.txt
+Notebook/            pdm.py (all code) and the notebook: load → split → train → results → predict
+Results/<machine>/   sensor.json, images.json and the time-split versions
+Figures/<machine>/   confusion matrices for each result
+Dataset_Manifest/    data sources, licences and the file lists with SHA-256
+Documentation/       methodology
 ```
 
-Local only (git-ignored): `Raw_Data/`, `Processed_Data/` (feature CSVs and saved models), `Images/` and `.venv/`.
+Local only (git-ignored): `Raw_Data/`, `Processed_Data/` (feature tables and trained models), `Images/` and `.venv/`.
 
-## Main commands
+## Notes
 
-Run these from the project folder (Windows: `.venv\Scripts\python.exe`, Mac/Linux: `.venv/bin/python`):
-
-| Command | What it does |
-|---|---|
-| `python Notebook/notebook_helpers.py <machine>` | list every command for that machine |
-| `python Notebook/notebook_helpers.py <machine> csv` | sensor (CSV) model, main test; add `--split time` for the time split |
-| `python Notebook/notebook_helpers.py <machine> export-images` | save the named images to `Images/<machine>/` |
-| `python Notebook/notebook_helpers.py <machine> cnn-pretrained` | pretrained ResNet18 with data augmentation |
-| `python Notebook/notebook_helpers.py <machine> baselines` | Week 5 baseline comparison (Pump, Haul Truck, Belt Conveyor) |
-| `python Notebook/notebook_helpers.py <machine> ensembles` | proposal Week 6: XGBoost and LightGBM vs random forest and others |
-| `python Notebook/notebook_helpers.py <machine> fulldata` | Week 7: every CORA sensor, window and start-up test (Belt Conveyor, Dozer, Excavator, Wheel Loader) |
-| `python Notebook/notebook_helpers.py <machine> fulldata --part all` | Week 7: also rerun the XGBoost/LightGBM comparison and anomaly detection on the full data (same unseen-speed test) |
-| `python Notebook/notebook_helpers.py <machine> cnn-pretrained --all-frames` | Week 7: CNN on every frame (run `export-images --all-frames` first; Belt Conveyor, Excavator, Haul Truck) |
-| `python Notebook/notebook_helpers.py <machine> anomaly` | Week 7: anomaly detection trained on healthy data only (Isolation Forest, One-Class SVM) |
-| `python Notebook/notebook_helpers.py <machine> train-final` | train the sensor model on all data and save it |
-| `python Notebook/notebook_helpers.py <machine> predict --csv file.csv --label CLASS` | predict any CSV and show its accuracy (CORA machines also need `--speed F15`) |
-
-## Documentation
-
-- [Week 4 progress](Documentation/week_04_progress.md), [Week 5 baselines](Documentation/week_05_progress.md), [Week 6 professor's remarks](Documentation/week_06_professor_remarks.md), [Week 6 XGBoost/LightGBM](Documentation/week_06_ensembles.md), [Week 6 Dozer](Documentation/week_06_dozer.md), [Week 7 anomaly detection](Documentation/week_07_anomaly_detection.md), [Week 7 Wheel Loader](Documentation/week_07_wheel_loader.md), [Week 7 full data](Documentation/week_07_full_data.md)
-- [Methodology](Documentation/methodology.md) and [capstone details](Documentation/capstone_details.md) (data download, reproduction, limits)
-- [Dataset manifest](Dataset_Manifest/manifest.md) covering all eight planned equipment types, and the [collaboration guide](CONTRIBUTING.md)
-
-These models classify the **current condition** of a component. They do not predict remaining useful life. Sensor and image results come from separately tested models; sensor and image data from unrelated sources are never paired.
-
-Project code and documentation are under the [MIT License](LICENSE). Source datasets keep their publishers' terms, recorded in the dataset manifest, and are not redistributed here.
-
-## Expanded event-image evaluation
-
-See [Pump and Haul Truck image expansion](Documentation/event_image_expansion.md) for the tested image counts, evaluation protocol, results and reproduction commands.
+- The fair-test image scores were produced before this code was reorganised (commit c7d8d25) and carried over, because each run takes hours to a day on a CPU. The reorganised image code uses the same method. PyTorch training on a multi-core CPU is not bit-for-bit repeatable, so a rerun can differ slightly.
+- These models classify the current condition of a component. They do not predict remaining useful life.
+- Project code and documentation are under the [MIT License](LICENSE). Datasets keep their publishers' licences (all CC BY 4.0) and are not redistributed here.

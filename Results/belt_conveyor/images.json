@@ -1,0 +1,119 @@
+{
+  "machine": "belt_conveyor",
+  "source": "CORA infrared camera, same gear-wear runs, all 450 frames per run",
+  "classes": [
+    "healthy",
+    "wear25",
+    "wear50",
+    "wear75"
+  ],
+  "images": 7200,
+  "test": "fair test: hold out [['F5'], ['F15'], ['F50'], ['F60']], one round each",
+  "notes": [
+    "four rounds, each holding out one whole speed; one run per class and speed"
+  ],
+  "settings": {
+    "normalise": "per_image",
+    "augment": "augment_frames",
+    "class_weights": true,
+    "max_epochs": 15,
+    "seed": 42,
+    "validation": "one_recording_per_class",
+    "segments": 10
+  },
+  "unit_level": {
+    "test_units": 16,
+    "accuracy": 0.5,
+    "balanced_accuracy": 0.5,
+    "macro_precision": 0.4179,
+    "macro_recall": 0.5,
+    "macro_f1": 0.4318,
+    "confusion_matrix": [
+      [
+        1,
+        0,
+        1,
+        2
+      ],
+      [
+        0,
+        3,
+        1,
+        0
+      ],
+      [
+        0,
+        0,
+        4,
+        0
+      ],
+      [
+        1,
+        2,
+        1,
+        0
+      ]
+    ],
+    "per_class_recall": {
+      "healthy": 0.25,
+      "wear25": 0.75,
+      "wear50": 1.0,
+      "wear75": 0.0
+    }
+  },
+  "image_level": {
+    "test_units": 7200,
+    "accuracy": 0.4997,
+    "balanced_accuracy": 0.4997,
+    "macro_precision": 0.4545,
+    "macro_recall": 0.4997,
+    "macro_f1": 0.4633,
+    "confusion_matrix": [
+      [
+        594,
+        0,
+        310,
+        896
+      ],
+      [
+        12,
+        1338,
+        450,
+        0
+      ],
+      [
+        4,
+        91,
+        1524,
+        181
+      ],
+      [
+        538,
+        835,
+        285,
+        142
+      ]
+    ],
+    "per_class_recall": {
+      "healthy": 0.33,
+      "wear25": 0.7433,
+      "wear50": 0.8467,
+      "wear75": 0.0789
+    }
+  },
+  "rounds": [
+    {
+      "epochs": 15
+    },
+    {
+      "epochs": 6
+    },
+    {
+      "epochs": 6
+    },
+    {
+      "epochs": 1
+    }
+  ],
+  "produced_by": "pre-cleanup code (commit c7d8d25, Results/belt_conveyor/belt_conveyor_cnn_pretrained_4class_allframes.json); carried over, not rerun, because the run takes hours on CPU. The cleaned code uses the same method."
+}

@@ -1,0 +1,152 @@
+{
+  "machine": "pump",
+  "source": "XJTU-DV-Pump event camera, Zenodo 17447083, CC BY 4.0",
+  "classes": [
+    "healthy",
+    "inner",
+    "outer",
+    "ball"
+  ],
+  "images": 3913,
+  "test": "fair test: hold out [['30Hz']], one round each",
+  "notes": [
+    "sensor: train on speed profiles A/B, test 24 separate C/D recordings",
+    "images: train on 20 Hz recordings, test 24 separate 30 Hz recordings"
+  ],
+  "settings": {
+    "normalise": "per_image",
+    "augment": "augment_frames",
+    "class_weights": true,
+    "max_epochs": 15,
+    "seed": 42,
+    "validation": "one_recording_per_class",
+    "segments": 10
+  },
+  "unit_level": {
+    "test_units": 24,
+    "accuracy": 1.0,
+    "balanced_accuracy": 1.0,
+    "macro_precision": 1.0,
+    "macro_recall": 1.0,
+    "macro_f1": 1.0,
+    "confusion_matrix": [
+      [
+        6,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        6,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        6,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        6
+      ]
+    ],
+    "per_class_recall": {
+      "healthy": 1.0,
+      "inner": 1.0,
+      "outer": 1.0,
+      "ball": 1.0
+    }
+  },
+  "image_level": {
+    "test_units": 1946,
+    "accuracy": 0.9985,
+    "balanced_accuracy": 0.9985,
+    "macro_precision": 0.9984,
+    "macro_recall": 0.9985,
+    "macro_f1": 0.9984,
+    "confusion_matrix": [
+      [
+        494,
+        0,
+        2,
+        0
+      ],
+      [
+        0,
+        487,
+        1,
+        0
+      ],
+      [
+        0,
+        0,
+        471,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        491
+      ]
+    ],
+    "per_class_recall": {
+      "healthy": 0.996,
+      "inner": 0.998,
+      "outer": 1.0,
+      "ball": 1.0
+    }
+  },
+  "rounds": [
+    {
+      "epochs": 2
+    }
+  ],
+  "produced_by": "pre-cleanup code (commit c7d8d25, Results/pump/pump_cnn_pretrained_4class_denseframes.json); carried over, not rerun, because the run takes hours on CPU. The cleaned code uses the same method.",
+  "segment_level": {
+    "test_units": 240,
+    "accuracy": 1.0,
+    "balanced_accuracy": 1.0,
+    "macro_precision": 1.0,
+    "macro_recall": 1.0,
+    "macro_f1": 1.0,
+    "confusion_matrix": [
+      [
+        60,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        60,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        60,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        60
+      ]
+    ],
+    "per_class_recall": {
+      "healthy": 1.0,
+      "inner": 1.0,
+      "outer": 1.0,
+      "ball": 1.0
+    },
+    "segments_per_recording": 10
+  }
+}

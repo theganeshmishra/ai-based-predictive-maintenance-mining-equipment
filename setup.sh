@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # One-step setup on macOS or Linux. From this folder:
 #
-#     bash setup.sh          create .venv, install packages, register the "Capstone (.venv)" notebook kernel
-#     bash setup.sh --data   the same, then fetch the automatically available source files
+#     bash setup.sh    create .venv, install packages, register the "Capstone (.venv)" notebook kernel,
+#                      then list any raw data files that are still missing
 set -euo pipefail
 cd "$(dirname "$0")"
 
@@ -49,12 +49,8 @@ fi
 "$PY" -m ipykernel install --user --name capstone-week4 --display-name "Capstone (.venv)" "${KERNEL_ENV[@]}"
 "$PY" -c "import cv2, numpy, pandas, sklearn; print('Packages OK: OpenCV', cv2.__version__, '| scikit-learn', sklearn.__version__)"
 
-if [ "${1:-}" = "--data" ]; then
-  step "Download automatically available data (Pump, Haul Truck, CORA thermal)"
-  "$PY" Notebook/notebook_helpers.py pump intake
-  "$PY" Notebook/notebook_helpers.py haul_truck intake --sensor-only
-  "$PY" Notebook/notebook_helpers.py belt_conveyor intake
-fi
+step "Check which raw data files are present"
+"$PY" Notebook/pdm.py data-check
 
 step "Done"
 cat <<'EOF'
@@ -62,10 +58,8 @@ Next:
   1. Open this folder in VS Code (File > Open Folder). Install the Python and Jupyter extensions if VS Code asks.
   2. Open Notebook/Mining_Equipment_Condition_Monitoring.ipynb.
      Check the top right says 'Capstone (.venv)' (click it to choose it if not), then click Run All.
-  3. Run All shows saved results. To rerun one equipment, set ACTIVE_EQUIPMENT near the top.
 
-Without the data the working notebook still shows the saved results.
-To fetch the automatically available source files: bash setup.sh --data
-CORA vibration and other publisher-gated files still require the manual intake
-steps in Dataset_Manifest/manifest.md before every strict experiment can rerun.
+The results section works without the raw data. Sections 2, 3 and 5 need the files in Raw_Data/;
+download them by hand from the sources in Dataset_Manifest/manifest.md.
+To rerun a model: .venv/bin/python Notebook/pdm.py <machine> sensor   (see README.md)
 EOF

@@ -1,0 +1,119 @@
+{
+  "machine": "wheel_loader",
+  "source": "CORA infrared camera, same runs, all 450 frames per run",
+  "classes": [
+    "healthy",
+    "bearing",
+    "half_broken_bar",
+    "broken_bar"
+  ],
+  "images": 7200,
+  "test": "fair test: hold out [['F5'], ['F15'], ['F50'], ['F60']], one round each",
+  "notes": [
+    "four rounds, each holding out one whole speed; healthy and bearing runs are shared with the Excavator"
+  ],
+  "settings": {
+    "normalise": "per_image",
+    "augment": "augment_frames",
+    "class_weights": true,
+    "max_epochs": 15,
+    "seed": 42,
+    "validation": "one_recording_per_class",
+    "segments": 10
+  },
+  "unit_level": {
+    "test_units": 16,
+    "accuracy": 0.1875,
+    "balanced_accuracy": 0.1875,
+    "macro_precision": 0.3417,
+    "macro_recall": 0.1875,
+    "macro_f1": 0.2056,
+    "confusion_matrix": [
+      [
+        1,
+        1,
+        0,
+        2
+      ],
+      [
+        0,
+        1,
+        2,
+        1
+      ],
+      [
+        0,
+        2,
+        1,
+        1
+      ],
+      [
+        0,
+        2,
+        2,
+        0
+      ]
+    ],
+    "per_class_recall": {
+      "healthy": 0.25,
+      "bearing": 0.25,
+      "half_broken_bar": 0.25,
+      "broken_bar": 0.0
+    }
+  },
+  "image_level": {
+    "test_units": 7200,
+    "accuracy": 0.1974,
+    "balanced_accuracy": 0.1974,
+    "macro_precision": 0.3317,
+    "macro_recall": 0.1974,
+    "macro_f1": 0.219,
+    "confusion_matrix": [
+      [
+        542,
+        389,
+        62,
+        807
+      ],
+      [
+        0,
+        422,
+        900,
+        478
+      ],
+      [
+        14,
+        900,
+        435,
+        451
+      ],
+      [
+        8,
+        895,
+        875,
+        22
+      ]
+    ],
+    "per_class_recall": {
+      "healthy": 0.3011,
+      "bearing": 0.2344,
+      "half_broken_bar": 0.2417,
+      "broken_bar": 0.0122
+    }
+  },
+  "rounds": [
+    {
+      "epochs": 3
+    },
+    {
+      "epochs": 3
+    },
+    {
+      "epochs": 5
+    },
+    {
+      "epochs": 2
+    }
+  ],
+  "produced_by": "pre-cleanup code (commit c7d8d25, Results/wheel_loader/wheel_loader_cnn_pretrained_4class.json); carried over, not rerun, because the run takes hours on CPU. The cleaned code uses the same method."
+}

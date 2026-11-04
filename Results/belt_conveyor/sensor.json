@@ -1,0 +1,153 @@
+{
+  "machine": "belt_conveyor",
+  "source": "CORA motor/gearbox rig, gear-wear runs (Vx vibration, T1 temperature), CC BY 4.0",
+  "classes": [
+    "healthy",
+    "wear25",
+    "wear50",
+    "wear75"
+  ],
+  "rows": 4800,
+  "recordings": 16,
+  "notes": [
+    "four rounds, each holding out one whole speed; one run per class and speed"
+  ],
+  "test": "fair test: hold out speed [['F5'], ['F15'], ['F50'], ['F60']], one round each; model and feature set chosen on validation groups inside the training data",
+  "feature_sets": {
+    "vibration": [
+      "log_rms",
+      "kurtosis",
+      "skewness",
+      "crest_factor",
+      "peak_order",
+      "log_ratio_2x_1x",
+      "order_power_0.5_1.5",
+      "order_power_1.5_2.5",
+      "order_power_2.5_3.5",
+      "order_power_3.5_5.5",
+      "order_power_5.5_8.5",
+      "order_power_8.5_12.5",
+      "order_power_12.5_20.5"
+    ],
+    "vibration+temperature": [
+      "log_rms",
+      "kurtosis",
+      "skewness",
+      "crest_factor",
+      "peak_order",
+      "log_ratio_2x_1x",
+      "order_power_0.5_1.5",
+      "order_power_1.5_2.5",
+      "order_power_2.5_3.5",
+      "order_power_3.5_5.5",
+      "order_power_5.5_8.5",
+      "order_power_8.5_12.5",
+      "order_power_12.5_20.5",
+      "t1_mean",
+      "t1_std",
+      "t1_slope"
+    ]
+  },
+  "score": {
+    "test_units": 16,
+    "accuracy": 0.4375,
+    "balanced_accuracy": 0.4375,
+    "macro_precision": 0.3333,
+    "macro_recall": 0.4375,
+    "macro_f1": 0.35,
+    "confusion_matrix": [
+      [
+        2,
+        0,
+        0,
+        2
+      ],
+      [
+        2,
+        0,
+        1,
+        1
+      ],
+      [
+        2,
+        0,
+        1,
+        1
+      ],
+      [
+        0,
+        0,
+        0,
+        4
+      ]
+    ],
+    "per_class_recall": {
+      "healthy": 0.5,
+      "wear25": 0.0,
+      "wear50": 0.25,
+      "wear75": 1.0
+    }
+  },
+  "chosen_per_round": [
+    {
+      "feature_set": "vibration+temperature",
+      "model": "Logistic regression",
+      "validation_macro_f1": 0.5972
+    },
+    {
+      "feature_set": "vibration",
+      "model": "Extra trees",
+      "validation_macro_f1": 0.4778
+    },
+    {
+      "feature_set": "vibration+temperature",
+      "model": "Random forest",
+      "validation_macro_f1": 0.4861
+    },
+    {
+      "feature_set": "vibration+temperature",
+      "model": "Extra trees",
+      "validation_macro_f1": 0.4028
+    }
+  ],
+  "majority_control": {
+    "test_units": 16,
+    "accuracy": 0.25,
+    "balanced_accuracy": 0.25,
+    "macro_precision": 0.0625,
+    "macro_recall": 0.25,
+    "macro_f1": 0.1,
+    "confusion_matrix": [
+      [
+        4,
+        0,
+        0,
+        0
+      ],
+      [
+        4,
+        0,
+        0,
+        0
+      ],
+      [
+        4,
+        0,
+        0,
+        0
+      ],
+      [
+        4,
+        0,
+        0,
+        0
+      ]
+    ],
+    "per_class_recall": {
+      "healthy": 1.0,
+      "wear25": 0.0,
+      "wear50": 0.0,
+      "wear75": 0.0
+    }
+  }
+}
