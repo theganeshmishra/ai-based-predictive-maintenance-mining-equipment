@@ -1,0 +1,107 @@
+{
+  "machine": "drill_rig",
+  "source": "MFGNet-Gear synthetic CAD meshes (doi 10.7302/qrdj-n812, CC BY 4.0), rendered; not photographs",
+  "classes": [
+    "healthy",
+    "gear_wear",
+    "gear_pitting",
+    "tooth_crack"
+  ],
+  "images": null,
+  "test": "fair test: hold out [['T20ID10', 'T30ID20', 'T40ID30'], ['T20ID15', 'T30ID30', 'T40ID40'], ['T20ID20', 'T30ID40', 'T40ID50'], ['T20ID25', 'T30ID50', 'T40ID60']], one round each",
+  "notes": [
+    "sensor: leave one speed out (1000 / 2000 / 3000 rpm)",
+    "images: four rounds, each holding out three whole gear designs; one answer per gear",
+    "images are noise-free renders, so the image score is an upper bound, not a field result"
+  ],
+  "settings": {
+    "normalise": "imagenet",
+    "augment": "augment_gears",
+    "class_weights": false,
+    "max_epochs": 6,
+    "seed": 613,
+    "validation": "next_round_groups",
+    "train_per_group_and_class": 50,
+    "segments": null,
+    "load_per_round": true
+  },
+  "unit_level": {
+    "test_units": 4800,
+    "accuracy": 0.8894,
+    "balanced_accuracy": 0.8894,
+    "macro_f1": 0.8881,
+    "confusion_matrix": [
+      [
+        950,
+        107,
+        44,
+        99
+      ],
+      [
+        155,
+        990,
+        9,
+        46
+      ],
+      [
+        64,
+        7,
+        1129,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        1200
+      ]
+    ]
+  },
+  "image_level": {
+    "test_units": 9600,
+    "accuracy": 0.8367,
+    "balanced_accuracy": 0.8367,
+    "macro_f1": 0.8371,
+    "confusion_matrix": [
+      [
+        1909,
+        211,
+        94,
+        186
+      ],
+      [
+        379,
+        1911,
+        18,
+        92
+      ],
+      [
+        446,
+        45,
+        1835,
+        74
+      ],
+      [
+        23,
+        0,
+        0,
+        2377
+      ]
+    ]
+  },
+  "rounds": [
+    {
+      "epochs": 6
+    },
+    {
+      "epochs": 4
+    },
+    {
+      "epochs": 6
+    },
+    {
+      "epochs": 6
+    }
+  ],
+  "produced_by": "pre-cleanup code (commit c7d8d25, Results/drill_rig/drill_rig_cnn_images_4class.json); carried over, not rerun, because the run takes hours on CPU. The cleaned code uses the same method."
+}

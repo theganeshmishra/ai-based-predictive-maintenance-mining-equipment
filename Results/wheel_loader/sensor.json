@@ -1,0 +1,135 @@
+{
+  "machine": "wheel_loader",
+  "source": "CORA motor/gearbox rig, rotor-bar and bearing runs (Vx vibration), CC BY 4.0",
+  "classes": [
+    "healthy",
+    "bearing",
+    "half_broken_bar",
+    "broken_bar"
+  ],
+  "rows": 4800,
+  "recordings": 16,
+  "notes": [
+    "four rounds, each holding out one whole speed; healthy and bearing runs are shared with the Excavator"
+  ],
+  "test": "fair test: hold out speed [['F5'], ['F15'], ['F50'], ['F60']], one round each; model and feature set chosen on validation groups inside the training data",
+  "feature_sets": {
+    "vibration": [
+      "log_rms",
+      "kurtosis",
+      "skewness",
+      "crest_factor",
+      "peak_order",
+      "log_ratio_2x_1x",
+      "order_power_0.5_1.5",
+      "order_power_1.5_2.5",
+      "order_power_2.5_3.5",
+      "order_power_3.5_5.5",
+      "order_power_5.5_8.5",
+      "order_power_8.5_12.5",
+      "order_power_12.5_20.5"
+    ]
+  },
+  "score": {
+    "test_units": 16,
+    "accuracy": 0.3125,
+    "balanced_accuracy": 0.3125,
+    "macro_precision": 0.35,
+    "macro_recall": 0.3125,
+    "macro_f1": 0.3254,
+    "confusion_matrix": [
+      [
+        1,
+        0,
+        2,
+        1
+      ],
+      [
+        1,
+        2,
+        1,
+        0
+      ],
+      [
+        2,
+        0,
+        1,
+        1
+      ],
+      [
+        1,
+        1,
+        1,
+        1
+      ]
+    ],
+    "per_class_recall": {
+      "healthy": 0.25,
+      "bearing": 0.5,
+      "half_broken_bar": 0.25,
+      "broken_bar": 0.25
+    }
+  },
+  "chosen_per_round": [
+    {
+      "feature_set": "vibration",
+      "model": "Extra trees",
+      "validation_macro_f1": 0.2222
+    },
+    {
+      "feature_set": "vibration",
+      "model": "Extra trees",
+      "validation_macro_f1": 0.1306
+    },
+    {
+      "feature_set": "vibration",
+      "model": "Extra trees",
+      "validation_macro_f1": 0.1222
+    },
+    {
+      "feature_set": "vibration",
+      "model": "Logistic regression",
+      "validation_macro_f1": 0.2
+    }
+  ],
+  "majority_control": {
+    "test_units": 16,
+    "accuracy": 0.25,
+    "balanced_accuracy": 0.25,
+    "macro_precision": 0.0625,
+    "macro_recall": 0.25,
+    "macro_f1": 0.1,
+    "confusion_matrix": [
+      [
+        0,
+        4,
+        0,
+        0
+      ],
+      [
+        0,
+        4,
+        0,
+        0
+      ],
+      [
+        0,
+        4,
+        0,
+        0
+      ],
+      [
+        0,
+        4,
+        0,
+        0
+      ]
+    ],
+    "per_class_recall": {
+      "healthy": 0.0,
+      "bearing": 1.0,
+      "half_broken_bar": 0.0,
+      "broken_bar": 0.0
+    }
+  }
+}

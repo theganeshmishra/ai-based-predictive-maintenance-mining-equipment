@@ -1,13 +1,10 @@
 # Collaboration guide
 
-This is the shared Saskatchewan Polytechnic PROJ 613 capstone of Ganesh Mishra, Lakshya Sharma, and Sagar Patel. Work in this **one repository** and follow the [active project README](README.md).
+Shared PROJ 613 capstone of Ganesh Mishra, Lakshya Sharma and Sagar Patel. Work in this one repository.
 
-1. Pull current `main`, claim or create a GitHub Issue, and make a focused branch.
-2. Record dataset provenance, licence, comparable component/fault labels, and independent test units in the [matrix](Dataset_Manifest/manifest.md) before new modelling.
-3. Keep downloaded datasets, raw images/events, processed tables, virtual environments, caches, and model binaries local. Do not add credentials or personal filesystem paths.
-4. Use group-aware held-out evaluation. Keep frames/windows from a test run entirely out of training, and report per-class metrics and confusion matrices.
-5. Distinguish a shared laboratory component benchmark from data collected on the named mining equipment. Do not pair samples from unrelated physical machines or claim future-repair prediction without future outcome labels.
-6. Update the methodology, results, and progress checkpoint when an experiment changes. As of the Week 6 checkpoint, Wheel Loader, Drill Rig, and Grader remain planned, not evaluated. The Dozer mapping reuses the Belt Conveyor's CORA runs rather than adding independent evidence.
-7. Open a pull request with the issue, files changed, data prerequisites, checks run, and limitations. Obtain teammate review before merging to `main`.
-
-The [root dependency list](requirements.txt) and VS Code tasks are the supported local entry points. A negative or weak result is still useful when the evaluation and limitation are preserved accurately.
+1. Pull the latest `main` and make a branch for your change.
+2. Keep datasets, images, feature tables, models and `.venv` local (they are git-ignored). Do not commit credentials or personal paths.
+3. A new machine is one new entry in `MACHINES` (section 4 of `Notebook/pdm.py`), plus a loader in section 1 if it uses a new dataset. Record its source and licence in `Dataset_Manifest/manifest.md`.
+4. Keep every window or image of a test recording out of training, and make every choice (model, features, epochs) inside the training data. Report the fair test as the main result.
+5. Rerun the affected `python Notebook/pdm.py ...` commands, then run the notebook, and say in the pull request which results changed.
+6. Open a pull request and get a teammate's review before merging to `main`. A weak result is still useful when it is reported honestly.

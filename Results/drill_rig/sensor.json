@@ -1,0 +1,203 @@
+{
+  "machine": "drill_rig",
+  "source": "MCC5-THU gearbox, Mendeley Data p92gj2732w v2, CC BY 4.0",
+  "classes": [
+    "healthy",
+    "gear_wear",
+    "gear_pitting",
+    "tooth_crack"
+  ],
+  "rows": 7080,
+  "recordings": 120,
+  "notes": [
+    "sensor: leave one speed out (1000 / 2000 / 3000 rpm)",
+    "images: four rounds, each holding out three whole gear designs; one answer per gear",
+    "images are noise-free renders, so the image score is an upper bound, not a field result"
+  ],
+  "test": "fair test: hold out rpm [[1000], [2000], [3000]], one round each; model and feature set chosen on validation groups inside the training data",
+  "feature_sets": {
+    "vibration": [
+      "motor_vibration_x_rms",
+      "motor_vibration_x_std",
+      "motor_vibration_x_peak",
+      "motor_vibration_x_crest",
+      "motor_vibration_x_skew",
+      "motor_vibration_x_kurtosis",
+      "motor_vibration_x_band0",
+      "motor_vibration_x_band1",
+      "motor_vibration_x_band2",
+      "motor_vibration_x_band3",
+      "motor_vibration_x_band4",
+      "motor_vibration_x_band5",
+      "motor_vibration_x_band6",
+      "motor_vibration_x_band7",
+      "motor_vibration_y_rms",
+      "motor_vibration_y_std",
+      "motor_vibration_y_peak",
+      "motor_vibration_y_crest",
+      "motor_vibration_y_skew",
+      "motor_vibration_y_kurtosis",
+      "motor_vibration_y_band0",
+      "motor_vibration_y_band1",
+      "motor_vibration_y_band2",
+      "motor_vibration_y_band3",
+      "motor_vibration_y_band4",
+      "motor_vibration_y_band5",
+      "motor_vibration_y_band6",
+      "motor_vibration_y_band7",
+      "motor_vibration_z_rms",
+      "motor_vibration_z_std",
+      "motor_vibration_z_peak",
+      "motor_vibration_z_crest",
+      "motor_vibration_z_skew",
+      "motor_vibration_z_kurtosis",
+      "motor_vibration_z_band0",
+      "motor_vibration_z_band1",
+      "motor_vibration_z_band2",
+      "motor_vibration_z_band3",
+      "motor_vibration_z_band4",
+      "motor_vibration_z_band5",
+      "motor_vibration_z_band6",
+      "motor_vibration_z_band7",
+      "gearbox_vibration_x_rms",
+      "gearbox_vibration_x_std",
+      "gearbox_vibration_x_peak",
+      "gearbox_vibration_x_crest",
+      "gearbox_vibration_x_skew",
+      "gearbox_vibration_x_kurtosis",
+      "gearbox_vibration_x_band0",
+      "gearbox_vibration_x_band1",
+      "gearbox_vibration_x_band2",
+      "gearbox_vibration_x_band3",
+      "gearbox_vibration_x_band4",
+      "gearbox_vibration_x_band5",
+      "gearbox_vibration_x_band6",
+      "gearbox_vibration_x_band7",
+      "gearbox_vibration_y_rms",
+      "gearbox_vibration_y_std",
+      "gearbox_vibration_y_peak",
+      "gearbox_vibration_y_crest",
+      "gearbox_vibration_y_skew",
+      "gearbox_vibration_y_kurtosis",
+      "gearbox_vibration_y_band0",
+      "gearbox_vibration_y_band1",
+      "gearbox_vibration_y_band2",
+      "gearbox_vibration_y_band3",
+      "gearbox_vibration_y_band4",
+      "gearbox_vibration_y_band5",
+      "gearbox_vibration_y_band6",
+      "gearbox_vibration_y_band7",
+      "gearbox_vibration_z_rms",
+      "gearbox_vibration_z_std",
+      "gearbox_vibration_z_peak",
+      "gearbox_vibration_z_crest",
+      "gearbox_vibration_z_skew",
+      "gearbox_vibration_z_kurtosis",
+      "gearbox_vibration_z_band0",
+      "gearbox_vibration_z_band1",
+      "gearbox_vibration_z_band2",
+      "gearbox_vibration_z_band3",
+      "gearbox_vibration_z_band4",
+      "gearbox_vibration_z_band5",
+      "gearbox_vibration_z_band6",
+      "gearbox_vibration_z_band7"
+    ]
+  },
+  "score": {
+    "test_units": 120,
+    "accuracy": 0.7333,
+    "balanced_accuracy": 0.6806,
+    "macro_precision": 0.826,
+    "macro_recall": 0.6806,
+    "macro_f1": 0.7054,
+    "confusion_matrix": [
+      [
+        5,
+        7,
+        0,
+        0
+      ],
+      [
+        0,
+        36,
+        0,
+        0
+      ],
+      [
+        0,
+        9,
+        25,
+        2
+      ],
+      [
+        1,
+        13,
+        0,
+        22
+      ]
+    ],
+    "per_class_recall": {
+      "healthy": 0.4167,
+      "gear_wear": 1.0,
+      "gear_pitting": 0.6944,
+      "tooth_crack": 0.6111
+    }
+  },
+  "chosen_per_round": [
+    {
+      "feature_set": "vibration",
+      "model": "Logistic regression",
+      "validation_macro_f1": 0.5523
+    },
+    {
+      "feature_set": "vibration",
+      "model": "Random forest",
+      "validation_macro_f1": 0.487
+    },
+    {
+      "feature_set": "vibration",
+      "model": "Gradient boosting",
+      "validation_macro_f1": 0.7194
+    }
+  ],
+  "majority_control": {
+    "test_units": 120,
+    "accuracy": 0.3,
+    "balanced_accuracy": 0.25,
+    "macro_precision": 0.075,
+    "macro_recall": 0.25,
+    "macro_f1": 0.1154,
+    "confusion_matrix": [
+      [
+        0,
+        0,
+        12,
+        0
+      ],
+      [
+        0,
+        0,
+        36,
+        0
+      ],
+      [
+        0,
+        0,
+        36,
+        0
+      ],
+      [
+        0,
+        0,
+        36,
+        0
+      ]
+    ],
+    "per_class_recall": {
+      "healthy": 0.0,
+      "gear_wear": 0.0,
+      "gear_pitting": 1.0,
+      "tooth_crack": 0.0
+    }
+  }
+}
