@@ -1,13 +1,13 @@
 """All the code of the project in one file (PROJ 613, Group 9).
 
-Sensor-vs-image fault classification for seven mining-machine mappings, using public laboratory data.
+Sensor-vs-image fault classification for eight mining-machine mappings, using public laboratory data.
 The sections follow the workflow, top to bottom:
 
     0   project folders
     1   load data: raw sensor files -> feature rows (1a), raw camera files -> PNG images (1b), data check (1c)
     2   split: the fair test and the time split
     3   train and score: one answer per recording (3a), sensor model (3b), image model (3c)
-    4   the seven machines: their datasets, classes and what each fair test holds out
+    4   the eight machines: their datasets, classes and what each fair test holds out
     5   run the workflow for one machine and save Results/ and Figures/
     6   predict a new file
     7   tables and figures for the notebook
@@ -23,7 +23,7 @@ Use it from the notebook (import pdm) or from a terminal in the project folder:
     python Notebook/pdm.py predict <file> [--machine <name>]   classify one new recording or image
     python Notebook/pdm.py data-check                          list missing or changed raw files
 
-Machines: pump, haul_truck, belt_conveyor, excavator, dozer, wheel_loader, drill_rig
+Machines: pump, haul_truck, belt_conveyor, excavator, dozer, wheel_loader, drill_rig, grader
 """
 
 from dataclasses import dataclass, field
@@ -341,6 +341,83 @@ def mcc5_gearbox():
     return pd.concat(frames, ignore_index=True), {"vibration": MCC5_FEATURES}
 
 
+# Grader: JUST slewing-bearing rig, six accelerometers at 50 kHz, 1 s windows.
+JUST_DIR = RAW / "just_slewing"
+JUST_SHA256 = {
+    "condition1": "27b6add40a742668c52bfe683a23d33de398aaa59dbbd5fa9ec756c576de36e3",
+    "condition2": "3692e2173577e0df08bc823702debfbee81a9756892d304f5b9ac9a1d3e46878",
+    "condition3": "f31e147bdc9ed657604bab9c8cb114531777aa38d3b7a28257974611f7caa2ef",
+    "condition4": "74ccb0d69c0f24b35a5823ed4ace5ffa597a201950489e201340f52f3e098e48",
+    "condition5": "f94ec5334a33a84d908c9675a1d1acd4ad0c3d2f94ae75740af53dbd240caa7f",
+    "condition6": "7c30f4bc7cae20669ae0337183ead3eaafb2dd72965d5c63ef28d5da3a696a86",
+}
+JUST_CLASS = {"N": "healthy", "I": "inner_ring", "O": "outer_ring", "B1": "rolling_element"}
+JUST_CHANNELS = [f"AI {n} (m/s2)" for n in range(1, 7)]  # AI 7 is a microphone: not used
+JUST_FEATURES = [f"AI{n}_{k}" for n in range(1, 7)
+                 for k in ("rms", "std", "peak", "crest", "skew", "kurtosis", *(f"band{b}" for b in range(8)))]
+
+
+def just_recordings():
+    """The 120 recordings: 4 classes x 5 repeats x 6 working conditions (2 or 6 rpm, 0/30/60 N)."""
+    import zipfile
+
+    rows = []
+    for n in range(1, 7):
+        with zipfile.ZipFile(JUST_DIR / f"condition{n}.zip") as archive:
+            for name in archive.namelist():
+                match = re.search(r"(\d{8})-(N|I|O|B1)-(\d+)rpm-(\d+)N-(\d+)\.csv$", name)
+                if match:
+                    code, rpm, force, repeat = match.group(2), *map(int, match.groups()[2:])
+                    rows.append({"zip": f"condition{n}", "file": name, "unit": f"condition{n}_{code}_{repeat}",
+                                 "class": JUST_CLASS[code], "condition": f"condition{n}", "rpm": rpm,
+                                 "force_n": force})
+    return rows
+
+
+def just_recording(handle, rate=50_000):
+    """Every whole 1 s window of one recording: per channel 6 statistics and 8 relative log band energies."""
+    signal = pd.read_csv(handle, usecols=JUST_CHANNELS, dtype="float32")[JUST_CHANNELS].to_numpy(np.float64)
+    rows = []
+    for w in range(len(signal) // rate):
+        x = signal[w * rate:(w + 1) * rate]
+        spectrum = np.abs(np.fft.rfft(x - x.mean(axis=0), axis=0)) ** 2
+        edges = np.linspace(0, spectrum.shape[0], 9).astype(int)
+        row = []
+        for c in range(x.shape[1]):
+            v = x[:, c]
+            rms, centred = np.sqrt(np.mean(v ** 2)), v - v.mean()
+            sd = centred.std() + 1e-12
+            row += [rms, sd, np.abs(v).max(), np.abs(v).max() / (rms + 1e-12),
+                    np.mean(centred ** 3) / sd ** 3, np.mean(centred ** 4) / sd ** 4]
+            total = spectrum[:, c].sum() + 1e-12
+            row += [np.log(spectrum[a:b, c].sum() / total + 1e-12) for a, b in zip(edges[:-1], edges[1:])]
+        rows.append(row)
+    return pd.DataFrame(rows, columns=JUST_FEATURES)
+
+
+def _just_worker(r):
+    """One recording -> its window rows (module level, so that Windows worker processes can run it)."""
+    import zipfile
+
+    with zipfile.ZipFile(JUST_DIR / f"{r['zip']}.zip") as archive, archive.open(r["file"]) as handle:
+        frame = just_recording(handle)
+    frame.insert(0, "window", np.arange(len(frame)))
+    for key in ("force_n", "rpm", "condition", "class", "unit"):
+        frame.insert(0, key, r[key])
+    return frame
+
+
+def just_slewing(workers=6):
+    """The fair test holds out one working condition at a time (six rounds of 20 recordings)."""
+    from concurrent.futures import ProcessPoolExecutor
+
+    recordings = just_recordings()
+    with ProcessPoolExecutor(workers) as pool:
+        frames = list(pool.map(_just_worker, recordings))
+    print(f"  {len(recordings)} recordings, {sum(len(f) for f in frames)} windows", flush=True)
+    return pd.concat(frames, ignore_index=True), {"vibration": JUST_FEATURES}
+
+
 # ==================================================================================================
 # 1b. Load the camera data: raw files -> PNG images and index.csv
 # Turn each camera dataset into PNG images plus an index.csv, in Images/<machine>/.
@@ -656,6 +733,51 @@ def gear_renders(out, workers=10):
     write_index(out, rows)
 
 
+# Grader images: real photos of small gears (Roboflow), cut into one 224 px crop per labelled tooth.
+TOOTH_ZIP = RAW / "roboflow_gear_photos" / "GearBox_adddingImg.v1i.coco.zip"
+TOOTH_LABELS = ["good_tooth", "damaged_tooth"]
+DAMAGED_TOOTH = {"badTeeth", "tooth failure", "teethCrack", "Gear tooth breakage", "Breakage",
+                 "damage", "Wear and Tear", "pitting"}
+
+
+def tooth_source(original):
+    """The video or photo set an image came from, e.g. dot_on_top_1 from dot_on_top_1_front_frame_30_jpg."""
+    match = re.match(r"(.+?_\d+)_(front|back)_frame_\d+", original)
+    return match.group(1) if match else re.sub(r"[-_ ]?\d+(_jpe?g|_png)?$|_jpg$", "", original)
+
+
+def tooth_crops(margin=0.15):
+    """(crops (N, 224, 224, 3) BGR, rows) for every good or damaged tooth box; margin is a share of the box."""
+    import zipfile
+
+    import cv2
+
+    crops, rows = [], []
+    with zipfile.ZipFile(TOOTH_ZIP) as archive:
+        for split in ("train", "valid", "test"):
+            document = json.loads(archive.read(f"{split}/_annotations.coco.json"))
+            names = {c["id"]: c["name"] for c in document["categories"]}
+            images = {i["id"]: i for i in document["images"]}
+            for box in document["annotations"]:
+                name = names[box["category_id"]]
+                if name != "goodTeeth" and name not in DAMAGED_TOOTH:
+                    continue
+                info = images[box["image_id"]]
+                picture = cv2.imdecode(np.frombuffer(archive.read(f"{split}/{info['file_name']}"), np.uint8),
+                                       cv2.IMREAD_COLOR)
+                x, y, w, h = box["bbox"]
+                pad = margin * max(w, h)
+                x0, y0 = int(max(0, x - pad)), int(max(0, y - pad))
+                x1, y1 = int(min(picture.shape[1], x + w + pad)), int(min(picture.shape[0], y + h + pad))
+                if x1 - x0 < 4 or y1 - y0 < 4:
+                    continue
+                original = info["file_name"].split(".rf.")[0]
+                crops.append(cv2.resize(picture[y0:y1, x0:x1], (224, 224), interpolation=cv2.INTER_AREA))
+                rows.append({"unit": tooth_source(original), "frame": original, "box_label": name,
+                             "class": "good_tooth" if name == "goodTeeth" else "damaged_tooth"})
+    return np.stack(crops), rows
+
+
 # ==================================================================================================
 # 1c. Check that the raw files are present
 # Check that the raw files each machine needs are in Raw_Data/ (and match their SHA-256 where known).
@@ -688,7 +810,9 @@ def required_files():
               (RAW / "xjtu_dv_rotor" / "XJTU-DV-Rotor.zip", None),
               (RAW / "mcc5_thu_gearbox" / "MCC5-THU gearbox fault diagnosis datasets.zip",
                "dcf7ba4b2d375c951ea57baf9bf90db4b3196982b324a13d85b187f286116b86"),
-              (RAW / "mfgnet_gear" / "mesh_ply.zip", None)]
+              (RAW / "mfgnet_gear" / "mesh_ply.zip", None),
+              (TOOTH_ZIP, "daae26100160b88554bd3c311e1b445376d59bcce2e4bd5ed48c41e2089136f6")]
+    files += [(JUST_DIR / f"{name}.zip", digest) for name, digest in JUST_SHA256.items()]
     return files
 
 
@@ -1039,6 +1163,23 @@ def augment_gears(batch, generator):
     return torch.roll(batch, shifts=(dy, dx), dims=(-2, -1))
 
 
+def device():
+    """The NVIDIA GPU when PyTorch can use one, otherwise the CPU. Set PDM_DEVICE=cpu to force the CPU.
+
+    Results can differ slightly between GPU and CPU (and between CPU thread counts), so every image
+    result records the device it was trained on.
+    """
+    import os
+
+    import torch
+
+    if os.environ.get("PDM_DEVICE", "").lower() != "cpu" and torch.cuda.is_available():
+        torch.backends.cudnn.deterministic = True  # repeatable GPU runs
+        torch.backends.cudnn.benchmark = False
+        return torch.device("cuda")
+    return torch.device("cpu")
+
+
 def new_resnet18(n_classes):
     from torch import nn
     from torchvision.models import ResNet18_Weights, resnet18
@@ -1051,10 +1192,11 @@ def new_resnet18(n_classes):
 def image_probabilities(model, x, batch_size=128):
     import torch
 
+    where = next(model.parameters()).device
     model.eval()
     with torch.no_grad():
         return np.concatenate([
-            torch.softmax(model(torch.from_numpy(x[i : i + batch_size])), dim=1).numpy()
+            torch.softmax(model(torch.from_numpy(x[i : i + batch_size]).to(where)), dim=1).cpu().numpy()
             for i in range(0, len(x), batch_size)
         ])
 
@@ -1070,11 +1212,12 @@ def fit_resnet(x, y, epochs, labels, settings, val=None):
     np.random.seed(seed)
     torch.manual_seed(seed)
     generator = torch.Generator().manual_seed(seed)
-    model = new_resnet18(len(labels))
+    where = device()
+    model = new_resnet18(len(labels)).to(where)
     weight = None
     if settings["class_weights"]:
         counts = np.bincount(y, minlength=len(labels)).astype(np.float32)
-        weight = torch.tensor(counts.sum() / (len(labels) * np.maximum(counts, 1)))
+        weight = torch.tensor(counts.sum() / (len(labels) * np.maximum(counts, 1))).to(where)
     loss_fn = nn.CrossEntropyLoss(weight=weight)
     optimiser = torch.optim.AdamW(model.parameters(), lr=3e-4, weight_decay=1e-4)
     xs, ys = torch.from_numpy(x), torch.tensor(y, dtype=torch.long)
@@ -1087,7 +1230,9 @@ def fit_resnet(x, y, epochs, labels, settings, val=None):
             if len(batch) < 2:
                 continue
             optimiser.zero_grad()
-            loss_fn(model(settings["augment"](xs[batch], generator)), ys[batch]).backward()
+            # augmentation runs on the CPU with a seeded generator, then the batch moves to the device
+            images = settings["augment"](xs[batch], generator).to(where)
+            loss_fn(model(images), ys[batch].to(where)).backward()
             optimiser.step()
         if val is not None:
             a, p = predict_recordings(image_probabilities(model, val[0]), np.asarray(labels), val[1], val[2])
@@ -1151,15 +1296,91 @@ def evaluate_images(folder, rows, labels, folds, settings, choose_validation, tr
         "unit_level": classification_metrics(unit_actual, unit_predicted, labels),
         "image_level": classification_metrics(image_actual, image_predicted, labels),
         "rounds": rounds,
+        "device": str(device()),
     }
     if segments:
         result["segment_level"] = classification_metrics(segment_actual, segment_predicted, labels)
     return result
 
 
+def resnet18_features(crops, batch_size=64):
+    """Frozen ImageNet ResNet-18: 512 numbers per BGR crop (the network is not trained)."""
+    import torch
+    from torchvision.models import ResNet18_Weights, resnet18
+
+    network = resnet18(weights=ResNet18_Weights.IMAGENET1K_V1)
+    encoder = torch.nn.Sequential(*list(network.children())[:-1]).eval()
+    mean = torch.tensor(IMAGENET_MEAN).view(1, 3, 1, 1)
+    std = torch.tensor(IMAGENET_STD).view(1, 3, 1, 1)
+    out = []
+    with torch.no_grad():
+        for start in range(0, len(crops), batch_size):
+            batch = torch.from_numpy(crops[start:start + batch_size][..., ::-1].copy()).permute(0, 3, 1, 2)
+            out.append(encoder((batch.float() / 255 - mean) / std).flatten(1).numpy())
+    return np.concatenate(out)
+
+
+def evaluate_tooth_photos(seed=613):
+    """Grader images: good vs damaged tooth crops, each video or photo set held out in turn.
+
+    Main result: frozen ResNet-18 features + balanced logistic regression (C 0.1, crop margin 0.15),
+    fixed in advance. Check: margin and C chosen inside the training sources only. Control: colour and
+    brightness statistics only. 94% of crops are good teeth, so balanced accuracy is the headline number.
+    """
+    from sklearn.linear_model import LogisticRegression
+    from sklearn.metrics import balanced_accuracy_score, recall_score
+    from sklearn.model_selection import StratifiedGroupKFold
+    from sklearn.pipeline import make_pipeline
+    from sklearn.preprocessing import StandardScaler
+
+    def fit(x, y, c):
+        return make_pipeline(StandardScaler(), LogisticRegression(max_iter=5000, C=c,
+                                                                 class_weight="balanced")).fit(x, y)
+
+    def score(actual, predicted):
+        block = classification_metrics(list(actual), list(predicted), TOOTH_LABELS)
+        block["damaged_tooth_recall"] = round(float(recall_score(actual, predicted, pos_label="damaged_tooth")), 4)
+        return block
+
+    crops, rows = tooth_crops(0.15)
+    labels = np.asarray([r["class"] for r in rows])
+    sources = np.asarray([r["unit"] for r in rows])
+    wide, wide_rows = tooth_crops(0.5)
+    if [r["frame"] for r in wide_rows] != [r["frame"] for r in rows]:
+        raise ValueError("Crop order differs between margins")
+    views = {0.15: resnet18_features(crops), 0.5: resnet18_features(wide)}
+    x = crops.reshape(len(crops), -1, 3).astype(np.float32) / 255
+    colour = np.concatenate([x.mean(1), x.std(1),
+                             np.percentile(x, [5, 50, 95], axis=1).transpose(1, 0, 2).reshape(len(x), -1)], 1)
+    settings = [(margin, c) for margin in views for c in (0.01, 0.1, 1.0)]
+    fixed, control, selected = (np.empty(len(rows), dtype=object) for _ in range(3))
+    choices = []
+    for source in sorted(set(sources)):
+        test = sources == source
+        check_no_overlap(sources, test)
+        train = np.flatnonzero(~test)
+        fixed[test] = fit(views[0.15][train], labels[train], 0.1).predict(views[0.15][test])
+        control[test] = fit(colour[train], labels[train], 0.1).predict(colour[test])
+        inner = StratifiedGroupKFold(4, shuffle=True, random_state=seed)
+        splits = [(train[a], train[b]) for a, b in inner.split(train, labels[train], sources[train])
+                  if len(set(labels[train[b]])) == 2]
+        best = max(settings, key=lambda s: np.mean([
+            balanced_accuracy_score(labels[b], fit(views[s[0]][a], labels[a], s[1]).predict(views[s[0]][b]))
+            for a, b in splits]))
+        choices.append(best)
+        selected[test] = fit(views[best[0]][train], labels[train], best[1]).predict(views[best[0]][test])
+    counts = {label: int((labels == label).sum()) for label in TOOTH_LABELS}
+    print(f"{len(rows)} tooth crops {counts} from {len(set(sources))} videos or photo sets", flush=True)
+    return {"unit_level": score(labels, fixed), "settings_chosen_inside": {
+                **score(labels, selected),
+                "choices": {f"margin {m}, C {c}": choices.count((m, c)) for m, c in sorted(set(choices))}},
+            "colour_statistics_control": score(labels, control), "crops": len(rows), "crops_by_class": counts,
+            "sources": len(set(sources)), "headline_metric": "balanced_accuracy"}
+
+
 # ==================================================================================================
-# 4. The seven machines: data sources, classes and what each fair test holds out
-# The seven machines: where each one's data comes from and what its fair test holds out.
+# 4. The eight machines: data sources, classes and what each fair test holds out
+# The eight machines: where each one's data comes from and what its fair test holds out.
 #
 # Each machine is a mapping of a mining component onto public laboratory data. None of the data was
 # recorded on mining equipment, and the sensor and image sides of one machine come from different rigs,
@@ -1194,6 +1415,7 @@ class Machine:
     image_settings: dict = field(default_factory=lambda: dict(FRAME_IMAGES))
     time_split: bool = True         # also report the easier time split
     notes: list = field(default_factory=list)
+    image_labels: list = None       # image classes when they differ from the sensor classes (Grader)
 
 
 MACHINES = {
@@ -1292,6 +1514,28 @@ MACHINES = {
                "images: four rounds, each holding out three whole gear designs; one answer per gear",
                "images are noise-free renders, so the image score is an upper bound, not a field result"],
     ),
+    "grader": Machine(
+        title="Grader", component="circle-drive slewing bearing",
+        labels=["healthy", "inner_ring", "outer_ring", "rolling_element"],
+        sensor_source="JUST Slewing bearing datasets-1, Xiaodie Ren, Mendeley Data hwg8v5j8t6 v1 "
+                      "(doi 10.17632/hwg8v5j8t6.1), CC BY 4.0",
+        load_sensor=just_slewing,
+        sensor_group="condition", sensor_held_out=[[f"condition{n}"] for n in range(1, 7)],
+        inner_group="condition",
+        image_source="GearBox_adddingImg v1 by Vjs, Roboflow Universe "
+                     "(https://universe.roboflow.com/vjs-jek7v/gearbox_adddingimg), CC BY 4.0; real photos",
+        export_images=None,
+        image_held_out=None,        # each video or photo set held out in turn
+        image_settings={"method": "frozen_resnet18_features", "seed": 613},
+        image_labels=TOOTH_LABELS,
+        time_split=False,
+        notes=["sensor: six rounds, each holding out one working condition (2 or 6 rpm, 0/30/60 N); "
+               "one slewing support per class, so the model may partly learn the individual ring",
+               "images: a SEPARATE two-class task (good vs damaged tooth crops of small gears), not the "
+               "slewing ring; scored by balanced accuracy because 94% of crops are good teeth",
+               "images: frozen ResNet-18 features + logistic regression, settings fixed in advance; "
+               "choosing them inside the training sources is saved as a check"],
+    ),
 }
 
 
@@ -1308,12 +1552,12 @@ MACHINES = {
 #     run_train_final_images(machine)  image model on all images, for predict()
 # ==================================================================================================
 
-def save_result(machine, name, result, panels, title):
+def save_result(machine, name, result, panels, title, labels=None):
     m = MACHINES[machine]
     path = RESULTS / machine / f"{name}.json"
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
-    save_confusion_figure(panels, m.labels, title, FIGURES / machine / f"{name}.png")
+    save_confusion_figure(panels, labels or m.labels, title, FIGURES / machine / f"{name}.png")
     print(f"Saved {path.relative_to(RESULTS.parent)}")
 
 
@@ -1352,12 +1596,31 @@ def run_sensor(machine, split="fair"):
 
 
 def run_export_images(machine):
+    if MACHINES[machine].export_images is None:
+        print(f"{machine}: nothing to export; its images are read straight from the raw zip")
+        return
     MACHINES[machine].export_images(IMAGES / machine)
 
 
 def run_images(machine, split="fair"):
     m = MACHINES[machine]
     settings = m.image_settings
+    if settings.get("method") == "frozen_resnet18_features":  # Grader: tooth crops, own test
+        scores = evaluate_tooth_photos(settings["seed"])
+        result = {"machine": machine, "source": m.image_source, "classes": m.image_labels, "notes": m.notes,
+                  "test": "fair test: hold out each video or photo set in turn (frames of one video never on "
+                          "both sides); frozen ImageNet ResNet-18 features + logistic regression", **scores}
+        for title, block in (("fixed settings (main)", scores["unit_level"]),
+                             ("settings chosen inside (check)", scores["settings_chosen_inside"]),
+                             ("colour statistics (control)", scores["colour_statistics_control"])):
+            print(f"{m.title} images, {title}: balanced accuracy {block['balanced_accuracy']:.3f}, "
+                  f"damaged-tooth recall {block['damaged_tooth_recall']:.3f}")
+        save_result(machine, "images", result,
+                    [("ResNet-18 features, fixed settings", scores["unit_level"]),
+                     ("settings chosen inside", scores["settings_chosen_inside"]),
+                     ("colour statistics (control)", scores["colour_statistics_control"])],
+                    f"{m.title}: tooth crops of real gear photos, unseen video or photo set", m.image_labels)
+        return result
     folder = IMAGES / machine
     rows = read_index(folder)
     groups = np.asarray([r["group"] for r in rows])
@@ -1414,6 +1677,8 @@ def run_train_final_images(machine):
     import torch
 
     m = MACHINES[machine]
+    if m.image_settings.get("method"):
+        raise ValueError(f"{machine}: no image model for new files (its image task is a separate check)")
     rounds = json.loads((RESULTS / machine / "images.json").read_text(encoding="utf-8"))["rounds"]
     epochs = int(np.median([r["epochs"] for r in rounds]))
     rows = read_index(IMAGES / machine)
@@ -1460,6 +1725,8 @@ def identify(path):
         first = path.open(encoding="utf-8", errors="replace").readline()
         if "gearbox_vibration_x" in first:
             return "MCC5-THU gearbox recording", ["drill_rig"], {}
+        if all(channel in first for channel in JUST_CHANNELS):
+            return "JUST slewing-bearing recording", ["grader"], {}
         speed = re.search(r"_(F5|F15|F50|F60)_", path.name)
         try:
             float(first.strip())
@@ -1492,6 +1759,8 @@ def sensor_features(path, source, details):
     if source.startswith("MCC5"):
         with open(path, "rb") as handle:
             return mcc5_recording(handle)
+    if source.startswith("JUST"):
+        return just_recording(path)
     import pandas as pd
 
     values = pd.read_csv(path, header=None, dtype=np.float64).iloc[:, 0].to_numpy()
@@ -1559,7 +1828,7 @@ def results_overview():
                                   ("Sensor, time split", "sensor_timesplit", "score"),
                                   ("Images, time split", "images_timesplit", "unit_level")):
             result = load_result(machine, name)
-            row[column] = result[key]["accuracy"] if result else None
+            row[column] = result[key][result.get("headline_metric", "accuracy")] if result else None
             if name == "sensor" and result:
                 row["Majority control"] = result["majority_control"]["accuracy"]
                 row["Test recordings (sensor)"] = result[key]["test_units"]
