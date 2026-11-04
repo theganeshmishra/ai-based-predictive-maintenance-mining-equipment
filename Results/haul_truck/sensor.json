@@ -1,0 +1,255 @@
+{
+  "machine": "haul_truck",
+  "source": "UODS-VAFDC bearing rig (vibration and microphone), CC BY 4.0",
+  "classes": [
+    "healthy",
+    "inner",
+    "outer",
+    "ball"
+  ],
+  "rows": 3000,
+  "recordings": 30,
+  "notes": [
+    "sensor: five rounds, each holding out three whole bearings",
+    "sensor: ball faults were recorded without load, so ball results may partly reflect load",
+    "images: train on 12 recordings at 1000 rpm, test 12 separate recordings at 2000 rpm"
+  ],
+  "test": "fair test: hold out bearing [[1, 6, 11], [2, 7, 12], [3, 8, 13], [4, 9, 14], [5, 10, 15]], one round each; model and feature set chosen on validation groups inside the training data",
+  "feature_sets": {
+    "vibration": [
+      "std",
+      "peak_to_peak",
+      "crest_factor",
+      "skew",
+      "excess_kurtosis",
+      "spectral_centroid_hz",
+      "dominant_frequency_hz",
+      "spectral_entropy",
+      "power_0_1000_hz",
+      "power_1000_2000_hz",
+      "power_2000_5000_hz",
+      "power_5000_10000_hz",
+      "power_10000_21000_hz"
+    ],
+    "vibration+envelope": [
+      "std",
+      "peak_to_peak",
+      "crest_factor",
+      "skew",
+      "excess_kurtosis",
+      "spectral_centroid_hz",
+      "dominant_frequency_hz",
+      "spectral_entropy",
+      "power_0_1000_hz",
+      "power_1000_2000_hz",
+      "power_2000_5000_hz",
+      "power_5000_10000_hz",
+      "power_10000_21000_hz",
+      "envelope_kurtosis",
+      "envelope_peak_hz",
+      "envelope_power_5_50_hz",
+      "envelope_power_50_90_hz",
+      "envelope_power_90_130_hz",
+      "envelope_power_130_180_hz",
+      "envelope_power_180_250_hz",
+      "envelope_power_250_400_hz",
+      "envelope_power_400_800_hz"
+    ],
+    "vibration+long envelope": [
+      "std",
+      "peak_to_peak",
+      "crest_factor",
+      "skew",
+      "excess_kurtosis",
+      "spectral_centroid_hz",
+      "dominant_frequency_hz",
+      "spectral_entropy",
+      "power_0_1000_hz",
+      "power_1000_2000_hz",
+      "power_2000_5000_hz",
+      "power_5000_10000_hz",
+      "power_10000_21000_hz",
+      "long_envelope_kurtosis",
+      "long_envelope_peak_hz",
+      "long_envelope_power_5_50_hz",
+      "long_envelope_power_50_90_hz",
+      "long_envelope_power_90_130_hz",
+      "long_envelope_power_130_180_hz",
+      "long_envelope_power_180_250_hz",
+      "long_envelope_power_250_400_hz",
+      "long_envelope_power_400_800_hz"
+    ],
+    "vibration+microphone": [
+      "std",
+      "peak_to_peak",
+      "crest_factor",
+      "skew",
+      "excess_kurtosis",
+      "spectral_centroid_hz",
+      "dominant_frequency_hz",
+      "spectral_entropy",
+      "power_0_1000_hz",
+      "power_1000_2000_hz",
+      "power_2000_5000_hz",
+      "power_5000_10000_hz",
+      "power_10000_21000_hz",
+      "mic_std",
+      "mic_peak_to_peak",
+      "mic_crest_factor",
+      "mic_skew",
+      "mic_excess_kurtosis",
+      "mic_spectral_centroid_hz",
+      "mic_dominant_frequency_hz",
+      "mic_spectral_entropy",
+      "mic_power_0_1000_hz",
+      "mic_power_1000_2000_hz",
+      "mic_power_2000_5000_hz",
+      "mic_power_5000_10000_hz",
+      "mic_power_10000_21000_hz"
+    ],
+    "vibration+long envelope+microphone": [
+      "std",
+      "peak_to_peak",
+      "crest_factor",
+      "skew",
+      "excess_kurtosis",
+      "spectral_centroid_hz",
+      "dominant_frequency_hz",
+      "spectral_entropy",
+      "power_0_1000_hz",
+      "power_1000_2000_hz",
+      "power_2000_5000_hz",
+      "power_5000_10000_hz",
+      "power_10000_21000_hz",
+      "long_envelope_kurtosis",
+      "long_envelope_peak_hz",
+      "long_envelope_power_5_50_hz",
+      "long_envelope_power_50_90_hz",
+      "long_envelope_power_90_130_hz",
+      "long_envelope_power_130_180_hz",
+      "long_envelope_power_180_250_hz",
+      "long_envelope_power_250_400_hz",
+      "long_envelope_power_400_800_hz",
+      "mic_std",
+      "mic_peak_to_peak",
+      "mic_crest_factor",
+      "mic_skew",
+      "mic_excess_kurtosis",
+      "mic_spectral_centroid_hz",
+      "mic_dominant_frequency_hz",
+      "mic_spectral_entropy",
+      "mic_power_0_1000_hz",
+      "mic_power_1000_2000_hz",
+      "mic_power_2000_5000_hz",
+      "mic_power_5000_10000_hz",
+      "mic_power_10000_21000_hz"
+    ]
+  },
+  "score": {
+    "test_units": 30,
+    "accuracy": 0.8,
+    "balanced_accuracy": 0.7333,
+    "macro_precision": 0.7604,
+    "macro_recall": 0.7333,
+    "macro_f1": 0.741,
+    "confusion_matrix": [
+      [
+        14,
+        1,
+        0,
+        0
+      ],
+      [
+        1,
+        3,
+        0,
+        1
+      ],
+      [
+        1,
+        0,
+        3,
+        1
+      ],
+      [
+        0,
+        0,
+        1,
+        4
+      ]
+    ],
+    "per_class_recall": {
+      "healthy": 0.9333,
+      "inner": 0.6,
+      "outer": 0.6,
+      "ball": 0.8
+    }
+  },
+  "chosen_per_round": [
+    {
+      "feature_set": "vibration+long envelope+microphone",
+      "model": "Extra trees",
+      "validation_macro_f1": 0.9286
+    },
+    {
+      "feature_set": "vibration+long envelope",
+      "model": "Gradient boosting",
+      "validation_macro_f1": 0.8958
+    },
+    {
+      "feature_set": "vibration",
+      "model": "Random forest",
+      "validation_macro_f1": 0.8333
+    },
+    {
+      "feature_set": "vibration+long envelope",
+      "model": "Gradient boosting",
+      "validation_macro_f1": 0.9167
+    },
+    {
+      "feature_set": "vibration+long envelope",
+      "model": "Logistic regression",
+      "validation_macro_f1": 0.8119
+    }
+  ],
+  "majority_control": {
+    "test_units": 30,
+    "accuracy": 0.5,
+    "balanced_accuracy": 0.25,
+    "macro_precision": 0.125,
+    "macro_recall": 0.25,
+    "macro_f1": 0.1667,
+    "confusion_matrix": [
+      [
+        15,
+        0,
+        0,
+        0
+      ],
+      [
+        5,
+        0,
+        0,
+        0
+      ],
+      [
+        5,
+        0,
+        0,
+        0
+      ],
+      [
+        5,
+        0,
+        0,
+        0
+      ]
+    ],
+    "per_class_recall": {
+      "healthy": 1.0,
+      "inner": 0.0,
+      "outer": 0.0,
+      "ball": 0.0
+    }
+  }
+}
