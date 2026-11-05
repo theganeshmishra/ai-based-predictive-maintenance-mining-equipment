@@ -12,17 +12,17 @@ Accuracy per test recording (per gear for the Drill Rig images; balanced accurac
 |---|---|---|---|---|---|---|
 | Pump | support bearing | 0.958 | 0.250 | 1.000 | – | – |
 | Haul Truck | wheel-motor bearing | 0.800 | 0.500 | 0.583 | 1.000 | 1.000 |
-| Belt Conveyor | geared drive | 0.438 | 0.250 | 0.500 | 1.000 | running |
-| Excavator | drive train | 0.250 | 0.250 | 0.250 | 0.938 | running |
+| Belt Conveyor | geared drive | 0.438 | 0.250 | 0.500 | 1.000 | 1.000 |
+| Excavator | drive train | 0.250 | 0.250 | 0.250 | 0.938 | 1.000 |
 | Dozer | final drive | 0.438 | 0.250 | 0.562 | 1.000 | 0.938 |
-| Wheel Loader | electric drive | 0.312 | 0.250 | 0.188 | 0.938 | running |
+| Wheel Loader | electric drive | 0.312 | 0.250 | 0.188 | 0.938 | 1.000 |
 | Drill Rig | rotary-head reduction gear | 0.733 | 0.300 | 0.889 | – | – |
 | Grader | circle-drive slewing bearing | 0.842 | 0.250 | 0.826 | – | – |
 
-- "–" means that test does not apply (the Pump, Drill Rig and Grader data have no matching recordings to cut in time). "running" means that result was still being computed at this commit.
+- "–" means that test does not apply (the Pump, Drill Rig and Grader data have no matching recordings to cut in time).
 - Guessing gives about 0.25 (four classes). The majority control always predicts the most common training class.
-- Only the Pump scores above 0.9 on both sides of the fair test.
-- The four CORA machines score 0.94 to 1.00 on the sensor time split but only 0.19 to 0.56 on the fair test. The models recognise recordings they have already seen, but do not carry over to an unseen speed. There is only one run per class and speed.
+- Only the Pump scores above 0.9 on both sides of the fair test. The Grader scores above 0.8 on both sides, but its two sides are different tasks.
+- The four CORA machines score 0.94 to 1.00 on both time splits but only 0.19 to 0.56 on the fair test. The models recognise recordings they have already seen, but do not carry over to an unseen speed. There is only one run per class and speed.
 - The Dozer reuses the Belt Conveyor's runs, so it is not independent evidence.
 - The Drill Rig images are noise-free CAD renders, so 0.889 is an upper bound for a camera.
 - The Grader image side is a separate two-class task (good vs damaged tooth crops of real gear photos, not the slewing ring), scored by balanced accuracy because 94% of the crops are good teeth.
@@ -111,7 +111,8 @@ Local only (git-ignored): `Raw_Data/`, `Processed_Data/` (feature tables and tra
 
 ## Notes
 
-- The fair-test image scores were produced before this code was reorganised (commit c7d8d25) and carried over, because each run takes hours to a day on a CPU. The reorganised image code uses the same method. PyTorch training on a multi-core CPU is not bit-for-bit repeatable, so a rerun can differ slightly.
+- The fair-test image scores of the first seven machines were produced before this code was reorganised (commit c7d8d25) and carried over, because each run takes hours to a day on a CPU. The reorganised code gave identical results on a Dozer test subset (single CPU thread). On a Drill Rig subset it gave the same per-gear accuracy (0.271) but chose different epochs in one round, so the gear-image path is not confirmed identical. The Grader images and all image time splits were run with the reorganised code. PyTorch training on a multi-core CPU is not bit-for-bit repeatable, so a rerun can differ slightly.
 - **GPU (optional).** `requirements.txt` installs the CPU build of PyTorch, which works everywhere. With an NVIDIA GPU, run `.venv\Scripts\python.exe -m pip install --force-reinstall --no-deps torch==2.14.1 torchvision==0.29.1 --index-url https://download.pytorch.org/whl/cu130`. The image model then uses the GPU by itself (set `PDM_DEVICE=cpu` to force the CPU). Each image result records the device it was trained on, because GPU and CPU runs can differ slightly.
+- `predict` and the upload page use models trained on all of each machine's data (`train-final`, `train-final-images`; saved in `Processed_Data/models/`, not in Git). The Grader has no image model for new files. A file whose format several machines share (the four CORA machines, or the Pump and Haul Truck camera frames) gets the condition under each of those machines, because the file cannot say which one it is.
 - These models classify the current condition of a component. They do not predict remaining useful life.
 - Project code and documentation are under the [MIT License](LICENSE). Datasets keep their publishers' licences (all CC BY 4.0) and are not redistributed here.
