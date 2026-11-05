@@ -1124,6 +1124,8 @@ def device():
         torch.backends.cudnn.deterministic = True  # repeatable GPU runs
         torch.backends.cudnn.benchmark = False
         return torch.device("cuda")
+    if os.environ.get("PDM_DEVICE", "").lower() == "mps" and torch.backends.mps.is_available():
+        return torch.device("mps")
     return torch.device("cpu")
 
 
@@ -1597,7 +1599,19 @@ def run_images(machine, split="fair"):
     return result
 
 
-def run_train_final(machine):
+def deployment_metadata(machine, modality):
+    config = MACHINES[machine]
+    return {
+        "version": 1,
+        "machine": machine,
+        "modality": modality,
+        "component": config.component,
+        "source": config.sensor_source if modality == "sensor" else config.image_source,
+        "training_scope": "Final fit on all available training data; separate from held-out evaluation",
+    }
+
+
+def run_train_final(machine, random_forest=False):
     """Sensor model for new files: chosen and trained on all of this machine's data."""
     import joblib
 
@@ -1605,7 +1619,20 @@ def run_train_final(machine):
     table, feature_sets = load_sensor_table(machine)
     # a single new file has no run-level T1 temperature sample, so only vibration sets are offered
     feature_sets = {k: v for k, v in feature_sets.items() if not set(v) & set(TEMPERATURE)}
-    final = fit_final_sensor_model(table, feature_sets, m.labels, m.inner_group)
+    if random_forest:
+        feature_set, features = next(iter(feature_sets.items()))
+        model_name = "Random forest"
+        model = sensor_candidates()[model_name]().fit(
+            table[features].to_numpy(dtype=np.float64), table["class"].to_numpy())
+        final = {"model": model, "features": features, "model_name": model_name, "feature_set": feature_set}
+    else:
+        final = fit_final_sensor_model(table, feature_sets, m.labels, m.inner_group)
+    final["metadata"] = {
+        **deployment_metadata(machine, "sensor"),
+        "classes": final["model"].classes_.tolist(),
+        "preprocessing": {"extractor": "pdm.sensor_features", "features": final["features"],
+                          "feature_set": final["feature_set"], "aggregation": "mean window probability"},
+    }
     MODELS.mkdir(parents=True, exist_ok=True)
     joblib.dump(final, MODELS / f"{machine}_sensor.joblib")
     print(f"{m.title}: saved {final['model_name']} on '{final['feature_set']}' to {MODELS / f'{machine}_sensor.joblib'}")
@@ -1620,7 +1647,13 @@ def run_train_final_images(machine):
         raise ValueError(f"{machine}: no image model for new files (its image task is a separate check)")
     rounds = json.loads((RESULTS / machine / "images.json").read_text(encoding="utf-8"))["rounds"]
     epochs = int(np.median([r["epochs"] for r in rounds]))
-    rows = read_index(IMAGES / machine)
+    folder = IMAGES / machine
+    dense = IMAGES / f"{machine}_denseframes"
+    if machine in {"pump", "haul_truck"} and (dense / "index.csv").is_file():
+        folder = dense
+    rows = read_index(folder)
+    if set(m.labels) != {row["class"] for row in rows} or epochs < 1:
+        raise ValueError("Deployment training requires all expected classes and at least one epoch.")
     limit = m.image_settings.get("train_per_group_and_class")
     if limit:  # Drill Rig: the same cap as in the fair test (first `limit` gears per design and class)
         rank = {}
@@ -1628,11 +1661,22 @@ def run_train_final_images(machine):
             rank.setdefault((r["group"], r["class"]), set()).add(int(r["order"]))
         rank = {key: sorted(ids)[:limit] for key, ids in rank.items()}
         rows = [r for r in rows if int(r["order"]) in rank[(r["group"], r["class"])]]
-    x = load_images(IMAGES / machine, rows, m.image_settings["normalise"])
+    x = load_images(folder, rows, m.image_settings["normalise"])
     y = np.asarray([m.labels.index(r["class"]) for r in rows])
     model, _ = fit_resnet(x, y, epochs, m.labels, m.image_settings)
     MODELS.mkdir(parents=True, exist_ok=True)
-    torch.save(model.state_dict(), MODELS / f"{machine}_images.pt")
+    torch.save({
+        "state_dict": model.state_dict(),
+        "metadata": {
+            **deployment_metadata(machine, "image"),
+            "model_name": "ResNet18 CNN",
+            "classes": list(m.labels),
+            "preprocessing": {"loader": "pdm.load_images", "normalise": m.image_settings["normalise"]},
+            "epochs": epochs,
+            "training_images": len(rows),
+            "image_export": folder.name,
+        },
+    }, MODELS / f"{machine}_images.pt")
     print(f"{m.title}: saved ResNet-18 trained for {epochs} epochs on {len(rows)} images")
 
 
@@ -1752,16 +1796,25 @@ def predict(path, machine=None):
 
 def image_probability(path, machine):
     import torch
-
+    from torch import nn
+    from torchvision.models import resnet18
 
     model_file = MODELS / f"{machine}_images.pt"
     if not model_file.is_file():
         raise FileNotFoundError(f"No trained image model: run  python Notebook/pdm.py {machine} train-final-images")
-    m = MACHINES[machine]
-    model = new_resnet18(len(m.labels))
-    model.load_state_dict(torch.load(model_file, map_location="cpu", weights_only=True))
-    x = load_images(Path(path).parent, [{"file": Path(path).name}], m.image_settings["normalise"])
-    return dict(zip(m.labels, image_probabilities(model, x)[0]))
+    config = MACHINES[machine]
+    saved = torch.load(model_file, map_location="cpu", weights_only=True)
+    # Existing exports contain just the state dict; newer bundles also record preprocessing.
+    metadata = saved.get("metadata", {})
+    if metadata and (metadata["machine"] != machine or metadata["modality"] != "image"):
+        raise ValueError("Image checkpoint belongs to a different equipment or modality.")
+    labels = metadata.get("classes", config.labels)
+    normalise = metadata.get("preprocessing", {}).get("normalise", config.image_settings["normalise"])
+    model = resnet18(weights=None)
+    model.fc = nn.Linear(model.fc.in_features, len(labels))
+    model.load_state_dict(saved.get("state_dict", saved))
+    x = load_images(Path(path).parent, [{"file": Path(path).name}], normalise)
+    return dict(zip(labels, image_probabilities(model, x)[0]))
 
 
 # ==================================================================================================
@@ -1919,6 +1972,7 @@ def main():
                         "train-final-images; or the file to predict")
     parser.add_argument("--time-split", action="store_true", help="the easier secondary test")
     parser.add_argument("--machine", help="predict only: which machine the file belongs to")
+    parser.add_argument("--random-forest", action="store_true", help="train-final: fit Random Forest on the first compatible feature set")
     args = parser.parse_args()
     if args.target == "data-check":
         raise SystemExit(check_data())
@@ -1943,7 +1997,7 @@ def main():
         "sensor": lambda: run_sensor(args.target, split),
         "export-images": lambda: run_export_images(args.target),
         "images": lambda: run_images(args.target, split),
-        "train-final": lambda: run_train_final(args.target),
+        "train-final": lambda: run_train_final(args.target, random_forest=args.random_forest),
         "train-final-images": lambda: run_train_final_images(args.target),
     }
     if args.command not in steps:
