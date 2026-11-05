@@ -28,6 +28,7 @@ Machines: pump, haul_truck, belt_conveyor, excavator, dozer, wheel_loader, drill
 """
 
 from dataclasses import dataclass, field
+from functools import lru_cache
 from pathlib import Path
 import csv
 import hashlib
@@ -1699,6 +1700,11 @@ def run_train_final_images(machine):
 CORA = ["belt_conveyor", "excavator", "dozer", "wheel_loader"]
 
 
+@lru_cache(maxsize=3)
+def indexed_image_hashes(folder):
+    return {hashlib.sha256((folder / row["file"]).read_bytes()).digest() for row in read_index(folder)}
+
+
 def identify(path):
     """(dataset format, machines that use it, details) from the file's contents."""
     path = Path(path)
@@ -1733,7 +1739,13 @@ def identify(path):
         image = cv2.imread(str(path), cv2.IMREAD_COLOR)
         if image is not None:
             if image.shape[:2] == (224, 224):
-                return "rendered gear image (MFGNet-Gear style)", ["drill_rig"], {}
+                try:
+                    known_render = hashlib.sha256(path.read_bytes()).digest() in indexed_image_hashes(IMAGES / "drill_rig")
+                except OSError:
+                    known_render = False
+                if known_render:
+                    return "rendered gear image (MFGNet-Gear style)", ["drill_rig"], {"indexed_image": True}
+                raise ValueError("Unknown Equipment: image provenance could not be verified.")
             if image.shape[:2] == (96, 128) and not image[:, :, 0].any():
                 return "event-camera frame (XJTU-DV style)", ["pump", "haul_truck"], {}
             if image.shape[:2] == (96, 128) and (image[:, :, 0] == image[:, :, 2]).all():
@@ -1788,35 +1800,19 @@ def predict_one(path, machine, source, details):
 
 
 def predict(path, machine=None):
-    """Steps 1-3 for one file: file format, machine, condition and the model's probability.
-
-    If several machines share the format and none is given, the condition under each is listed.
-    """
-    source, machines, details = identify(path)                   # steps 1 and 2
+    """Return one condition prediction when the source mapping is known."""
+    source, machines, details = identify(path)
     if machine is not None and machine not in machines:
         raise ValueError(f"{source} does not belong to {machine} (it matches {', '.join(machines)})")
-    candidates = [machine] if machine else machines
-    answers, missing = {}, []
-    for name in candidates:                                       # step 3
-        try:
-            probability = predict_one(path, name, source, details)
-        except FileNotFoundError as problem:
-            missing.append(str(problem))
-            continue
-        labels = MACHINES[name].labels
-        best = max(probability, key=probability.get)
-        answers[name] = {"condition": best, "model probability": round(float(probability[best]), 3),
-                         "all classes": {label: round(float(probability[label]), 3) for label in labels}}
-    if not answers:
-        raise FileNotFoundError(missing[0])
-    if len(candidates) == 1:
-        return {"file format": source, "machine": MACHINES[candidates[0]].title, **answers[candidates[0]]}
-    return {"file format": source,
-            "machine": "cannot be told apart from the file: " + ", ".join(MACHINES[n].title for n in candidates)
-                       + " use the same laboratory data format (give --machine to choose one)",
-            "condition under each machine": {MACHINES[n].title: f"{a['condition']} ({a['model probability']})"
-                                             for n, a in answers.items()},
-            **({"not trained yet": missing} if missing else {})}
+    if machine is None and len(machines) > 1:
+        return {"file format": source, "status": "Ambiguous Equipment",
+                "candidates": [MACHINES[name].title for name in machines]}
+    machine = machine or machines[0]
+    probability = predict_one(path, machine, source, details)
+    best = max(probability, key=probability.get)
+    return {"file format": source, "machine": MACHINES[machine].title, "condition": best,
+            "model probability": round(float(probability[best]), 3),
+            "all classes": {label: round(float(probability[label]), 3) for label in MACHINES[machine].labels}}
 
 
 def image_probability(path, machine):
@@ -1851,8 +1847,7 @@ PAGE = """<!doctype html><html><head><meta charset="utf-8"><title>Condition chec
 table{border-collapse:collapse;margin-top:16px}td{border:1px solid #ccc;padding:6px 10px;vertical-align:top}
 .note{color:#666;font-size:14px}.error{color:#b00020}</style></head><body>
 <h1>Mining equipment condition check</h1>
-<p class="note">Upload one sensor recording (.mat or .csv) or one camera image (.png or .jpg). The file's format
-tells which machine it belongs to; then that machine's model gives the condition. Laboratory models only:
+<p class="note">Upload one sensor recording (.mat or .csv) or one camera image (.png or .jpg). A recognized format can narrow the laboratory mapping. Shared formats require a confirmed mapping. Laboratory models only:
 not tested on real mining machines.</p>
 <form method="post" enctype="multipart/form-data">
 <p><input type="file" name="file" required></p>
