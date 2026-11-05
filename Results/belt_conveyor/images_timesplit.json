@@ -1,0 +1,168 @@
+{
+  "machine": "belt_conveyor",
+  "source": "CORA infrared camera, same gear-wear runs, all 450 frames per run",
+  "classes": [
+    "healthy",
+    "wear25",
+    "wear50",
+    "wear75"
+  ],
+  "images": 6480,
+  "test": "time split (secondary, easier): first 60% of every recording's frames train, last 30% test",
+  "notes": [
+    "four rounds, each holding out one whole speed; one run per class and speed"
+  ],
+  "settings": {
+    "normalise": "per_image",
+    "augment": "augment_frames",
+    "class_weights": true,
+    "max_epochs": 15,
+    "seed": 42,
+    "validation": "one_recording_per_class",
+    "segments": 10
+  },
+  "unit_level": {
+    "test_units": 16,
+    "accuracy": 1.0,
+    "balanced_accuracy": 1.0,
+    "macro_precision": 1.0,
+    "macro_recall": 1.0,
+    "macro_f1": 1.0,
+    "confusion_matrix": [
+      [
+        4,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        4,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        4,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        4
+      ]
+    ],
+    "per_class_recall": {
+      "healthy": 1.0,
+      "wear25": 1.0,
+      "wear50": 1.0,
+      "wear75": 1.0
+    }
+  },
+  "image_level": {
+    "test_units": 2160,
+    "accuracy": 0.9796,
+    "balanced_accuracy": 0.9796,
+    "macro_precision": 0.9812,
+    "macro_recall": 0.9796,
+    "macro_f1": 0.9796,
+    "confusion_matrix": [
+      [
+        496,
+        44,
+        0,
+        0
+      ],
+      [
+        0,
+        540,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        540,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        540
+      ]
+    ],
+    "per_class_recall": {
+      "healthy": 0.9185,
+      "wear25": 1.0,
+      "wear50": 1.0,
+      "wear75": 1.0
+    }
+  },
+  "rounds": [
+    {
+      "epochs": 9,
+      "validation_macro_f1_by_epoch": [
+        0.375,
+        0.375,
+        0.375,
+        0.25,
+        0.5,
+        0.25,
+        0.375,
+        0.5,
+        0.6667,
+        0.5,
+        0.5,
+        0.5,
+        0.5,
+        0.5,
+        0.5
+      ],
+      "test_images": 2160
+    }
+  ],
+  "device": "cpu",
+  "segment_level": {
+    "test_units": 160,
+    "accuracy": 0.9812,
+    "balanced_accuracy": 0.9812,
+    "macro_precision": 0.9826,
+    "macro_recall": 0.9812,
+    "macro_f1": 0.9812,
+    "confusion_matrix": [
+      [
+        37,
+        3,
+        0,
+        0
+      ],
+      [
+        0,
+        40,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        40,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        40
+      ]
+    ],
+    "per_class_recall": {
+      "healthy": 0.925,
+      "wear25": 1.0,
+      "wear50": 1.0,
+      "wear75": 1.0
+    }
+  }
+}

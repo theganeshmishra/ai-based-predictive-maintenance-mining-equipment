@@ -1,0 +1,168 @@
+{
+  "machine": "excavator",
+  "source": "CORA infrared camera, same runs, all 450 frames per run",
+  "classes": [
+    "healthy",
+    "bearing",
+    "unbalance",
+    "misalignment"
+  ],
+  "images": 6480,
+  "test": "time split (secondary, easier): first 60% of every recording's frames train, last 30% test",
+  "notes": [
+    "four rounds, each holding out one whole speed; one run per class and speed"
+  ],
+  "settings": {
+    "normalise": "per_image",
+    "augment": "augment_frames",
+    "class_weights": true,
+    "max_epochs": 15,
+    "seed": 42,
+    "validation": "one_recording_per_class",
+    "segments": 10
+  },
+  "unit_level": {
+    "test_units": 16,
+    "accuracy": 1.0,
+    "balanced_accuracy": 1.0,
+    "macro_precision": 1.0,
+    "macro_recall": 1.0,
+    "macro_f1": 1.0,
+    "confusion_matrix": [
+      [
+        4,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        4,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        4,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        4
+      ]
+    ],
+    "per_class_recall": {
+      "healthy": 1.0,
+      "bearing": 1.0,
+      "unbalance": 1.0,
+      "misalignment": 1.0
+    }
+  },
+  "image_level": {
+    "test_units": 2160,
+    "accuracy": 0.9889,
+    "balanced_accuracy": 0.9889,
+    "macro_precision": 0.9892,
+    "macro_recall": 0.9889,
+    "macro_f1": 0.9888,
+    "confusion_matrix": [
+      [
+        540,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        517,
+        6,
+        17
+      ],
+      [
+        1,
+        0,
+        539,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        540
+      ]
+    ],
+    "per_class_recall": {
+      "healthy": 1.0,
+      "bearing": 0.9574,
+      "unbalance": 0.9981,
+      "misalignment": 1.0
+    }
+  },
+  "rounds": [
+    {
+      "epochs": 7,
+      "validation_macro_f1_by_epoch": [
+        0.125,
+        0.1667,
+        0.4167,
+        0.4167,
+        0.4167,
+        0.125,
+        0.6667,
+        0.1667,
+        0.125,
+        0.4167,
+        0.4167,
+        0.6667,
+        0.4167,
+        0.4167,
+        0.1667
+      ],
+      "test_images": 2160
+    }
+  ],
+  "device": "cpu",
+  "segment_level": {
+    "test_units": 160,
+    "accuracy": 0.9938,
+    "balanced_accuracy": 0.9938,
+    "macro_precision": 0.9939,
+    "macro_recall": 0.9938,
+    "macro_f1": 0.9937,
+    "confusion_matrix": [
+      [
+        40,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        39,
+        0,
+        1
+      ],
+      [
+        0,
+        0,
+        40,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        40
+      ]
+    ],
+    "per_class_recall": {
+      "healthy": 1.0,
+      "bearing": 0.975,
+      "unbalance": 1.0,
+      "misalignment": 1.0
+    }
+  }
+}

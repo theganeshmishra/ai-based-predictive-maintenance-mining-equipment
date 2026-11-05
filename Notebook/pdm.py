@@ -1683,6 +1683,13 @@ def run_train_final_images(machine):
     rounds = json.loads((RESULTS / machine / "images.json").read_text(encoding="utf-8"))["rounds"]
     epochs = int(np.median([r["epochs"] for r in rounds]))
     rows = read_index(IMAGES / machine)
+    limit = m.image_settings.get("train_per_group_and_class")
+    if limit:  # Drill Rig: the same cap as in the fair test (first `limit` gears per design and class)
+        rank = {}
+        for r in rows:
+            rank.setdefault((r["group"], r["class"]), set()).add(int(r["order"]))
+        rank = {key: sorted(ids)[:limit] for key, ids in rank.items()}
+        rows = [r for r in rows if int(r["order"]) in rank[(r["group"], r["class"])]]
     x = load_images(IMAGES / machine, rows, m.image_settings["normalise"])
     y = np.asarray([m.labels.index(r["class"]) for r in rows])
     model, _ = fit_resnet(x, y, epochs, m.labels, m.image_settings)
