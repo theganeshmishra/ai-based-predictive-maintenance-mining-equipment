@@ -1,6 +1,6 @@
 # Dataset manifest
 
-All data are public laboratory datasets. None was recorded on mining equipment. Each machine is a mapping of one mining component onto a comparable laboratory component. Files are downloaded once by hand into `Raw_Data/` (git-ignored, never committed). `python Notebook/pdm.py data-check` lists anything missing and checks the SHA-256 where it is known.
+The project uses public laboratory benchmarks, synthetic CAD renders, and small-gear inspection photos as equipment analogues. The [evidence matrix](../Documentation/equipment_evidence_matrix.md) records the component and label alignment of each mapping. Files are downloaded once by hand into `Raw_Data/` (git-ignored, never committed). `python Notebook/pdm.py data-check` lists anything missing and checks the SHA-256 where it is known.
 
 | Machine | Side | Dataset | Source | Licence | Local folder |
 |---|---|---|---|---|---|
@@ -17,7 +17,7 @@ All data are public laboratory datasets. None was recorded on mining equipment. 
 
 ## Points to keep in mind
 
-- The sensor and image sides of every machine come from different rigs or recordings, so the two scores are not a matched pair and are never combined.
+- Pump and Haul Truck use separate sensor and event-camera rigs. CORA sensor and infrared data share run IDs. Synchronization below run level was not verified. Drill Rig uses CAD renders and Grader compares separate tasks.
 - The CORA rig has one run per class and speed. The Dozer reuses the Belt Conveyor's runs, and the Wheel Loader shares the healthy and bearing runs with the Excavator, so these mappings are not independent evidence.
 - The CORA T1 temperature was downloaded as a bounded sample (8 short ranges of 6,000 readings per run), not the full stream.
 - UODS ball faults were recorded without load while the other classes ran at about 400 N, so the Haul Truck ball class may partly reflect load.
