@@ -726,6 +726,7 @@ def gear_renders(out, workers=10):
 
 # Grader images: real photos of small gears (Roboflow), cut into one 224 px crop per labelled tooth.
 TOOTH_ZIP = RAW / "roboflow_gear_photos" / "GearBox_adddingImg.v1i.coco.zip"
+TOOTH_ZIP_SHA256 = "dd01bcb3dd90ea5ba0cf390022103fc6f78aa2fd9279cd75da5a1dbec8fabae8"
 TOOTH_LABELS = ["good_tooth", "damaged_tooth"]
 DAMAGED_TOOTH = {"badTeeth", "tooth failure", "teethCrack", "Gear tooth breakage", "Breakage",
                  "damage", "Wear and Tear", "pitting"}
@@ -798,7 +799,7 @@ def required_files():
               (RAW / "mcc5_thu_gearbox" / "MCC5-THU gearbox fault diagnosis datasets.zip",
                "dcf7ba4b2d375c951ea57baf9bf90db4b3196982b324a13d85b187f286116b86"),
               (RAW / "mfgnet_gear" / "mesh_ply.zip", None),
-              (TOOTH_ZIP, "daae26100160b88554bd3c311e1b445376d59bcce2e4bd5ed48c41e2089136f6")]
+              (TOOTH_ZIP, TOOTH_ZIP_SHA256)]
     files += [(JUST_DIR / f"{name}.zip", digest) for name, digest in JUST_SHA256.items()]
     return files
 
@@ -1262,13 +1263,20 @@ def evaluate_images(folder, rows, labels, folds, settings, choose_validation, tr
     return result
 
 
-def resnet18_features(crops, batch_size=64):
-    """Frozen ImageNet ResNet-18: 512 numbers per BGR crop (the network is not trained)."""
+def tooth_encoder(pretrained):
     import torch
     from torchvision.models import ResNet18_Weights, resnet18
 
-    network = resnet18(weights=ResNet18_Weights.IMAGENET1K_V1)
-    encoder = torch.nn.Sequential(*list(network.children())[:-1]).eval()
+    network = resnet18(weights=ResNet18_Weights.IMAGENET1K_V1 if pretrained else None)
+    return torch.nn.Sequential(*list(network.children())[:-1]).eval()
+
+
+def resnet18_features(crops, batch_size=64, encoder=None):
+    """Frozen ImageNet ResNet-18: 512 numbers per BGR crop."""
+    import torch
+
+    if encoder is None:
+        encoder = tooth_encoder(pretrained=True)
     mean = torch.tensor(IMAGENET_MEAN).view(1, 3, 1, 1)
     std = torch.tensor(IMAGENET_STD).view(1, 3, 1, 1)
     out = []
@@ -1279,6 +1287,75 @@ def resnet18_features(crops, batch_size=64):
     return np.concatenate(out)
 
 
+def fit_tooth_classifier(x, y, c=0.1):
+    from sklearn.linear_model import LogisticRegression
+    from sklearn.pipeline import make_pipeline
+    from sklearn.preprocessing import StandardScaler
+
+    return make_pipeline(StandardScaler(), LogisticRegression(max_iter=5000, C=c,
+                                                               class_weight="balanced")).fit(x, y)
+
+
+def run_train_grader_images():
+    """Fit the published fixed gear-tooth configuration for local deployment."""
+    import joblib
+
+    if not TOOTH_ZIP.is_file():
+        raise FileNotFoundError(f"Original Grader image export required: {TOOTH_ZIP.name}")
+    if sha256(TOOTH_ZIP) != TOOTH_ZIP_SHA256:
+        raise ValueError("The Grader archive does not match the evaluated version's SHA-256.")
+    crops, rows = tooth_crops(margin=0.15)
+    labels = [row["class"] for row in rows]
+    if set(labels) != set(TOOTH_LABELS):
+        raise ValueError("The Grader export must contain both gear-tooth labels.")
+    encoder = tooth_encoder(pretrained=True)
+    classifier = fit_tooth_classifier(resnet18_features(crops, encoder=encoder), labels)
+    checkpoint = {
+        "classifier": classifier,
+        "encoder": {key: tensor.detach().numpy() for key, tensor in encoder.state_dict().items()},
+        "metadata": {
+            "task": "Gear-tooth visual inspection",
+            "classes": classifier.classes_.tolist(),
+            "crop_size": 224,
+            "crop_margin": 0.15,
+            "image_normalization": "ImageNet",
+            "source_archive_sha256": TOOTH_ZIP_SHA256,
+            "source_groups": len({row["unit"] for row in rows}),
+        },
+    }
+    MODELS.mkdir(parents=True, exist_ok=True)
+    target = MODELS / "grader_gear_tooth.joblib"
+    partial = target.with_suffix(".part")
+    joblib.dump(checkpoint, partial)
+    partial.replace(target)
+    print(f"Motor Grader: saved gear-tooth deployment model on {len(crops)} labeled crops")
+
+
+def predict_grader_tooth(path):
+    """Score a user-confirmed crop of one gear tooth with the local checkpoint."""
+    import cv2
+    import joblib
+    import torch
+
+    model_file = MODELS / "grader_gear_tooth.joblib"
+    if not model_file.is_file():
+        raise FileNotFoundError("Motor Grader gear-tooth model unavailable. Build it from the original Roboflow export.")
+    crop = cv2.imread(str(path))
+    if crop is None or min(crop.shape[:2]) < 4 or not np.any(crop != crop[0, 0]):
+        raise ValueError("Upload a valid, nonblank crop of one gear tooth.")
+    saved = joblib.load(model_file)
+    encoder = tooth_encoder(pretrained=False)
+    encoder.load_state_dict({key: torch.from_numpy(value) for key, value in saved["encoder"].items()})
+    size = saved["metadata"]["crop_size"]
+    pixels = cv2.resize(crop, (size, size), interpolation=cv2.INTER_AREA)
+    classifier = saved["classifier"]
+    scores = classifier.predict_proba(resnet18_features(pixels[None], encoder=encoder))[0]
+    best = int(np.argmax(scores))
+    return {"Equipment": "Motor Grader", "Task": "Gear-tooth visual inspection",
+            "Status": "Prediction", "Predicted tooth condition": str(classifier.classes_[best]),
+            "Model confidence": f"{scores[best]:.1%}", "Model used": "ResNet18 features + logistic regression"}
+
+
 def evaluate_tooth_photos(seed=613):
     """Grader images: good vs damaged tooth crops, each video or photo set held out in turn.
 
@@ -1286,15 +1363,8 @@ def evaluate_tooth_photos(seed=613):
     fixed in advance. Check: margin and C chosen inside the training sources only. Control: colour and
     brightness statistics only. 94% of crops are good teeth, so balanced accuracy is the headline number.
     """
-    from sklearn.linear_model import LogisticRegression
     from sklearn.metrics import balanced_accuracy_score, recall_score
     from sklearn.model_selection import StratifiedGroupKFold
-    from sklearn.pipeline import make_pipeline
-    from sklearn.preprocessing import StandardScaler
-
-    def fit(x, y, c):
-        return make_pipeline(StandardScaler(), LogisticRegression(max_iter=5000, C=c,
-                                                                 class_weight="balanced")).fit(x, y)
 
     def score(actual, predicted):
         block = classification_metrics(list(actual), list(predicted), TOOTH_LABELS)
@@ -1318,16 +1388,16 @@ def evaluate_tooth_photos(seed=613):
         test = sources == source
         check_no_overlap(sources, test)
         train = np.flatnonzero(~test)
-        fixed[test] = fit(views[0.15][train], labels[train], 0.1).predict(views[0.15][test])
+        fixed[test] = fit_tooth_classifier(views[0.15][train], labels[train], 0.1).predict(views[0.15][test])
         control[test] = fit(colour[train], labels[train], 0.1).predict(colour[test])
         inner = StratifiedGroupKFold(4, shuffle=True, random_state=seed)
         splits = [(train[a], train[b]) for a, b in inner.split(train, labels[train], sources[train])
                   if len(set(labels[train[b]])) == 2]
         best = max(settings, key=lambda s: np.mean([
-            balanced_accuracy_score(labels[b], fit(views[s[0]][a], labels[a], s[1]).predict(views[s[0]][b]))
+            balanced_accuracy_score(labels[b], fit_tooth_classifier(views[s[0]][a], labels[a], s[1]).predict(views[s[0]][b]))
             for a, b in splits]))
         choices.append(best)
-        selected[test] = fit(views[best[0]][train], labels[train], best[1]).predict(views[best[0]][test])
+        selected[test] = fit_tooth_classifier(views[best[0]][train], labels[train], best[1]).predict(views[best[0]][test])
     counts = {label: int((labels == label).sum()) for label in TOOTH_LABELS}
     print(f"{len(rows)} tooth crops {counts} from {len(set(sources))} videos or photo sets", flush=True)
     return {"unit_level": score(labels, fixed), "settings_chosen_inside": {
@@ -1653,8 +1723,8 @@ def run_train_final_images(machine):
     import torch
 
     m = MACHINES[machine]
-    if m.image_settings.get("method"):
-        raise ValueError(f"{machine}: no image model for new files (its image task is a separate check)")
+    if machine == "grader":
+        return run_train_grader_images()
     rounds = json.loads((RESULTS / machine / "images.json").read_text(encoding="utf-8"))["rounds"]
     epochs = int(np.median([r["epochs"] for r in rounds]))
     folder = IMAGES / machine
@@ -1822,6 +1892,8 @@ def predict_one(path, machine, source, details):
 
 def predict(path, machine=None):
     """Return one condition prediction when the source mapping is known."""
+    if machine == "grader" and Path(path).suffix.lower() in {".png", ".jpg", ".jpeg"}:
+        return predict_grader_tooth(path)
     source, machines, details = identify(path)
     if machine is not None and machine not in machines:
         raise ValueError(f"{source} does not belong to {machine} (it matches {', '.join(machines)})")
@@ -1868,7 +1940,7 @@ PAGE = """<!doctype html><html><head><meta charset="utf-8"><title>Condition chec
 table{border-collapse:collapse;margin-top:16px}td{border:1px solid #ccc;padding:6px 10px;vertical-align:top}
 .note{color:#666;font-size:14px}.error{color:#b00020}</style></head><body>
 <h1>Mining equipment condition check</h1>
-<p class="note">Upload one sensor recording (.mat or .csv) or one camera image (.png or .jpg). A recognized format can narrow the laboratory mapping. Shared formats require a confirmed mapping. Laboratory models only:
+<p class="note">Upload one sensor recording (.mat or .csv) or one camera image (.png or .jpg). A recognized format can narrow the laboratory mapping. Shared formats require a confirmed mapping. For Grader gear-tooth inspection, choose Grader and upload a crop of one tooth. Laboratory models only:
 not tested on real mining machines.</p>
 <form method="post" enctype="multipart/form-data">
 <p><input type="file" name="file" required></p>
