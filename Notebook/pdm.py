@@ -41,11 +41,10 @@ import warnings
 
 
 # ==================================================================================================
-# 0. Project folders
-# Project folders. Raw_Data, Processed_Data and Images stay on your computer (not in Git).
+# 0. Project folders (Raw_Data, Processed_Data and Images are not in Git)
 # ==================================================================================================
 
-ROOT = Path(__file__).resolve().parents[1]  # the project folder (this file is in Notebook/)
+ROOT = Path(__file__).resolve().parents[1]  # this file is in Notebook/
 RAW = ROOT / "Raw_Data"
 PROCESSED = ROOT / "Processed_Data"
 IMAGES = ROOT / "Images"
@@ -56,22 +55,11 @@ MANIFEST = ROOT / "Dataset_Manifest"  # file lists (with SHA-256) of the Pump an
 
 
 # ==================================================================================================
-# 1a. Load the sensor data: raw recordings -> one feature row per time window
-# Load each sensor dataset and turn every recording into fixed-size feature rows.
-#
-# Every function returns one table with one row per time window and these columns:
-#     unit     the recording the window came from (one answer per unit at test time)
-#     class    the fault label of the recording
-#     window   the window's position in its recording (used by the time split)
-#     <group>  the column the fair test holds out (speed, speed profile or bearing number)
-#     features numbers computed from the signal of that window only, never from any label
-#
-# The four sources:
-#     Ottawa bearing rig (Pump)                      ottawa_bearing()
-#     UODS bearing rig (Haul Truck)                  uods_bearing()
-#     CORA motor and gearbox rig (Belt Conveyor,     cora_rig()
-#         Excavator, Dozer, Wheel Loader)
-#     MCC5-THU gearbox (Drill Rig)                   mcc5_gearbox()
+# 1a. Sensor data: one feature row per time window
+# Columns: unit (recording), class, window (position, for the time split), the group the fair test
+# holds out, and features computed from the signal only, never from a label.
+# Sources: Ottawa (Pump), UODS (Haul Truck), CORA (Belt Conveyor, Excavator, Dozer, Wheel Loader),
+# MCC5-THU (Drill Rig), JUST (Grader).
 # ==================================================================================================
 
 def window_statistics(windows, rate, bands_hz):
@@ -420,18 +408,10 @@ def just_slewing(workers=6):
 
 
 # ==================================================================================================
-# 1b. Load the camera data: raw files -> PNG images and index.csv
-# Turn each camera dataset into PNG images plus an index.csv, in Images/<machine>/.
-#
-# index.csv has one row per image: file, class, unit (the recording or gear it came from), group (the
-# column the fair test holds out) and order (frame number, used by the time split). The images are
-# made from the raw files every time, so they can be deleted and rebuilt.
-#
-# The three sources:
-#     XJTU-DV event camera (Pump, Haul Truck)                       event_camera()
-#     CORA infrared camera (Belt Conveyor, Excavator, Dozer,        cora_infrared()
-#         Wheel Loader)
-#     MFGNet-Gear CAD meshes rendered as 3D-camera images (Drill)   gear_renders()
+# 1b. Camera data: PNG images and index.csv in Images/<machine>/ (rebuilt from the raw files)
+# index.csv columns: file, class, unit, group, order (frame number, for the time split).
+# Sources: XJTU-DV event camera (Pump, Haul Truck), CORA infrared (the four CORA machines),
+# MFGNet-Gear renders (Drill Rig), Roboflow gear photos (Grader).
 # ==================================================================================================
 
 INDEX_COLUMNS = ["file", "class", "unit", "group", "order"]
@@ -530,7 +510,7 @@ def event_camera(machine, out):
             counts = event_counts(stream)
         (out / label).mkdir(exist_ok=True)
         for k, frame in enumerate(counts):
-            if frame.sum() > 0:  # recordings are 16-30 s long; empty frames after the end are skipped
+            if frame.sum() > 0:  # skip empty frames after the recording ends
                 name = f"{label}/{stem}_t{k:03d}.png"
                 cv2.imwrite(str(out / name), event_png(frame))
                 rows.append({"file": name, "class": label, "unit": unit, "group": group, "order": k})
@@ -780,12 +760,8 @@ def tooth_crops(margin=0.15):
 
 
 # ==================================================================================================
-# 1c. Check that the raw files are present
-# Check that the raw files each machine needs are in Raw_Data/ (and match their SHA-256 where known).
-#
-#     python Notebook/pdm.py data-check
-#
-# Downloading is done once, by hand, from the sources in Dataset_Manifest/manifest.md.
+# 1c. Data check: raw files present in Raw_Data/ with the right SHA-256 (python Notebook/pdm.py data-check)
+# Download by hand from the sources in Dataset_Manifest/manifest.md.
 # ==================================================================================================
 
 CORA_RUNS = {
@@ -839,20 +815,9 @@ def check_data():
 
 
 # ==================================================================================================
-# 2. Split: the fair test and the time split
-# How the data is split into training and test sets.
-#
-# Two tests are used, and every machine uses the same two functions:
-#
-# 1. Fair test (main result): whole groups of recordings are held out, for example every recording at
-#    one speed. The model never sees any part of a test recording, so a good score cannot come from
-#    memorising one recording. Each machine names its group column and the values to hold out in
-#    section 4 (MACHINES).
-#
-# 2. Time split (secondary, easier): every recording is cut in time. The first 60% of each recording
-#    trains, the last 30% tests, and the 10% in between is thrown away so neighbouring windows cannot
-#    leak across the cut. The same recordings appear on both sides, so this test is much easier than
-#    the fair test and is only reported for comparison.
+# 2. Split
+# Fair test (main): whole groups (e.g. one speed) are held out; no part of a test recording is trained on.
+# Time split (easier, for comparison): first 60% of each recording trains, last 30% tests, 10% gap.
 # ==================================================================================================
 
 def fair_test_folds(groups, held_out):
@@ -884,8 +849,7 @@ def time_split(units, order, train_until=0.6, test_after=0.7):
 
 
 # ==================================================================================================
-# 3a. Score: one answer per recording, metrics and figures
-# Scoring shared by every machine: one answer per recording, metrics and a confusion-matrix figure.
+# 3a. Scoring: one answer per recording, metrics and a confusion-matrix figure
 # ==================================================================================================
 
 def predict_recordings(probabilities, classes, y, units):
@@ -954,22 +918,12 @@ def save_confusion_figure(panels, labels, title, path):
 
 # ==================================================================================================
 # 3b. Sensor model
-# Sensor model, the same for every machine.
-#
-# Input: a feature table with one row per time window and the columns unit (recording), class, the
-# machine's group column and the feature columns.
-#
-# Fair test: in each round, five candidate models and the machine's feature sets are compared on
-# validation groups taken from the training data only (whole groups held out, as in the outer test).
-# The best one is retrained on the whole training data and tested once on the held-out recordings.
-# The test recordings are never used to make a choice.
-#
-# Time split: a random forest with fixed settings (no choice is made).
-#
-# Both are compared with a majority-class control (always predicts the most common class).
+# Fair test: five candidate models and the feature sets are compared on validation groups inside the
+# training data; the best is retrained and tested once. Time split: a fixed random forest.
+# Both are compared with a majority-class control.
 # ==================================================================================================
 
-# scikit-learn 1.9 announces a future change to SVC(probability=True); the current behaviour is used
+# silence scikit-learn 1.9's SVC(probability=True) deprecation notice
 warnings.filterwarnings("ignore", message=r".*`probability` parameter was deprecated.*")
 
 
@@ -1097,16 +1051,9 @@ def fit_final_sensor_model(table, feature_sets, labels, inner_group):
 
 
 # ==================================================================================================
-# 3c. Image model
-# Image model, the same for every machine: an ImageNet-pretrained ResNet-18, fine-tuned.
-#
-# Input: an image index (index.csv) with one row per image: file, class, unit (recording or gear) and
-# the machine's group column.
-#
-# In each round of the fair test, part of the training data is held back as validation to choose the
-# number of training epochs. The model is then retrained on all training images for that many epochs
-# and tested once. Test images are never used for any choice. Each test recording (or gear) gets one
-# answer, the mean of its images' probabilities.
+# 3c. Image model: ImageNet-pretrained ResNet-18, fine-tuned
+# Epochs are chosen on validation data inside the training data, then the model is retrained and tested
+# once. Each test recording or gear gets the mean of its images' probabilities.
 # ==================================================================================================
 
 IMAGENET_MEAN = np.array([0.485, 0.456, 0.406], np.float32)
@@ -1165,10 +1112,9 @@ def augment_gears(batch, generator):
 
 
 def device():
-    """The NVIDIA GPU when PyTorch can use one, otherwise the CPU. Set PDM_DEVICE=cpu to force the CPU.
+    """The GPU if PyTorch can use one, else the CPU (PDM_DEVICE=cpu forces the CPU).
 
-    Results can differ slightly between GPU and CPU (and between CPU thread counts), so every image
-    result records the device it was trained on.
+    GPU and CPU results can differ slightly, so each image result records its device.
     """
     import os
 
@@ -1380,12 +1326,9 @@ def evaluate_tooth_photos(seed=613):
 
 
 # ==================================================================================================
-# 4. The eight machines: data sources, classes and what each fair test holds out
-# The eight machines: where each one's data comes from and what its fair test holds out.
-#
-# Each machine is a mapping of a mining component onto public laboratory data. None of the data was
-# recorded on mining equipment, and the sensor and image sides of one machine come from different rigs,
-# so the two scores of a machine are not a matched pair.
+# 4. The eight machines: data sources, classes and fair-test hold-outs
+# All data is laboratory data, not mining equipment. A machine's sensor and image data come from
+# different rigs, so its two scores are not a matched pair.
 # ==================================================================================================
 
 CORA_SPEEDS = [["F5"], ["F15"], ["F50"], ["F60"]]
@@ -1541,16 +1484,11 @@ MACHINES = {
 
 
 # ==================================================================================================
-# 5. Run the workflow for one machine
-# The workflow for one machine: load data -> split -> train -> score -> save result and figure.
-#
-#     run_sensor(machine)          sensor model, fair test           Results/<machine>/sensor.json
-#     run_sensor(machine, "time")  sensor model, time split          Results/<machine>/sensor_timesplit.json
-#     run_export_images(machine)   raw camera files -> PNG images    Images/<machine>/
-#     run_images(machine)          image model, fair test            Results/<machine>/images.json
-#     run_images(machine, "time")  image model, time split           Results/<machine>/images_timesplit.json
-#     run_train_final(machine)         sensor model on all data, for predict()
-#     run_train_final_images(machine)  image model on all images, for predict()
+# 5. Run the workflow for one machine: load -> split -> train -> score -> save
+#     run_sensor(machine[, "time"])    Results/<machine>/sensor[_timesplit].json
+#     run_export_images(machine)       Images/<machine>/
+#     run_images(machine[, "time"])    Results/<machine>/images[_timesplit].json
+#     run_train_final(machine), run_train_final_images(machine)   models for predict()
 # ==================================================================================================
 
 def save_result(machine, name, result, panels, title, labels=None):
@@ -1700,18 +1638,9 @@ def run_train_final_images(machine):
 
 # ==================================================================================================
 # 6. Predict a new file
-# Classify one new file: a sensor recording or a camera image.
-#
-# Step 1  Is the file a sensor recording or an image?
-# Step 2  Which dataset format does it match? This is a plain check of the file's format (columns,
-#         variable names, image size and colours), not machine learning. Several machines are mapped
-#         onto the same laboratory rig, so one format can belong to more than one machine. In that
-#         case the machine has to be given (--machine); the file itself cannot tell them apart.
-# Step 3  Run that machine's trained model on every window (or the image) and average.
-# Result  machine, predicted condition and the model's probability for it.
-#
-# A file that matches no known format is rejected. The models only know their own laboratory
-# datasets, so a recording or photo from a real mining machine is outside what they were tested on.
+# 1. Sensor recording or image?  2. Which dataset format (a format check, not machine learning)?
+# Machines mapped onto one rig share a format; then --machine picks one.  3. Run that machine's model
+# and average over windows. Unknown formats are rejected. Models only know their laboratory data.
 # ==================================================================================================
 
 CORA = ["belt_conveyor", "excavator", "dozer", "wheel_loader"]
@@ -1790,10 +1719,9 @@ def predict_one(path, machine, source, details):
 
 
 def predict(path, machine=None):
-    """Steps 1-3 for one file. Returns the file format, machine, condition and the model's probability.
+    """Steps 1-3 for one file: file format, machine, condition and the model's probability.
 
-    When the format is shared by several machines and no machine is given, the file cannot say which
-    machine it came from, so the answer lists the condition under each of those machines instead.
+    If several machines share the format and none is given, the condition under each is listed.
     """
     source, machines, details = identify(path)                   # steps 1 and 2
     if machine is not None and machine not in machines:
@@ -1837,7 +1765,7 @@ def image_probability(path, machine):
 
 
 # ==================================================================================================
-# 6b. Upload page: the same predict() behind a web form on this computer only (http://localhost:8613).
+# 6b. Upload page: predict() behind a web form, this computer only (http://localhost:8613)
 # ==================================================================================================
 
 PAGE = """<!doctype html><html><head><meta charset="utf-8"><title>Condition check</title>
@@ -1904,7 +1832,7 @@ def serve(port=8613):
                 if not name:
                     raise ValueError("no file was uploaded")
                 with tempfile.TemporaryDirectory() as folder:
-                    path = Path(folder) / name  # the original name is kept: CORA files carry their speed in it
+                    path = Path(folder) / name  # keep the name: CORA files carry their speed in it
                     path.write_bytes(upload.get_payload(decode=True))
                     answer = predict(path, machine or None)
                 result = f"<h2>{html.escape(name)}</h2>" + table(answer)
@@ -1920,8 +1848,7 @@ def serve(port=8613):
 
 
 # ==================================================================================================
-# 7. Tables and figures for the notebook
-# Tables and figures for the notebook, read from Results/ (nothing is trained here).
+# 7. Tables and figures for the notebook (read from Results/; nothing is trained here)
 # ==================================================================================================
 
 def load_result(machine, name):
@@ -1966,8 +1893,7 @@ def show_machine(machine):
     if sensor:
         chosen = ", ".join(f"{c['model']} ({c['feature_set']})" for c in sensor["chosen_per_round"])
         print(f"  sensor model chosen in each round: {chosen}")
-    # Only the fair-test figures are shown, as small JPEGs, so the notebook file stays small.
-    # The time-split figures are in Figures/<machine>/ next to them.
+    # fair-test figures only, as small JPEGs (time-split figures are in Figures/<machine>/)
     import cv2
 
     for name in ("sensor", "images"):
@@ -1981,7 +1907,7 @@ def show_machine(machine):
 
 
 # ==================================================================================================
-# 8. Command line (see the top of this file)
+# 8. Command line
 # ==================================================================================================
 
 def main():
