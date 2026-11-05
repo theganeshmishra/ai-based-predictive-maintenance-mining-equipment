@@ -30,10 +30,11 @@ Accuracy per test recording (per gear for the Drill Rig images; balanced accurac
 
 ## How it works
 
-The project is **one Python file and one notebook**:
+The project uses one Python module and two notebooks.
 
 - [Notebook/pdm.py](Notebook/pdm.py) holds all the code. Its sections run in workflow order, top to bottom.
 - [Notebook/Mining_Equipment_Condition_Monitoring.ipynb](Notebook/Mining_Equipment_Condition_Monitoring.ipynb) walks through the workflow and shows the results.
+- [Notebook/Integrated_Equipment_Fault_Prediction.ipynb](Notebook/Integrated_Equipment_Fault_Prediction.ipynb) accepts uploads and runs the local deployment checkpoints.
 
 ```text
 Raw_Data/ ─► 1a load sensor data ─► one feature row per time window ─► 3b sensor model ─┐
@@ -77,6 +78,38 @@ You need [Python 3.11](https://www.python.org/downloads/) (tick **Add python.exe
 
 4. Open [Notebook/Mining_Equipment_Condition_Monitoring.ipynb](Notebook/Mining_Equipment_Condition_Monitoring.ipynb) in VS Code, choose the `.venv` Python as the kernel and click **Run All**. The results section works without the raw data.
 
+## Interactive fault classification
+
+Open [Integrated Equipment Fault Prediction](Notebook/Integrated_Equipment_Fault_Prediction.ipynb) in VS Code, select the project’s `.venv` kernel and run all cells. Install `ipywidgets>=8,<9` in that environment if the upload widget is missing. Upload one supported CSV, MAT or image and select **Predict**. The notebook checks the input format and local provenance, then displays the equipment mapping, fault class, model, and confidence.
+
+- **Automatic** uses recognized sensor schemas or an exact match to a trusted local image export. Keep the `Images/` indexes and frames locally for automatic image matching. The separate **Whole-machine photo** mode described below provides limited visual identification.
+- Shared CORA inputs and event-camera frames with unresolved provenance return **Ambiguous Equipment**. Choose a compatible mapping only when you know the source. The display identifies this as a user-confirmed laboratory mapping.
+- Keep trusted deployment checkpoints in `Processed_Data/models/`. They contain the estimator or weights, the class order, and preprocessing metadata. The notebook displays availability and loads the models for inference.
+- Motor Grader’s gear-tooth image experiment measures visible damage on a separate set of small gears. The integrated Grader sensor model classifies slewing-bearing conditions. A Grader photograph has no supported fault inference route.
+- Drill Rig images come from synthetic CAD gear renders. The Drill Rig and Grader sensor deployment fits use two-second excerpts per publisher recording. The Drill Rig image checkpoint uses a bounded mesh subset. Those deployment fits are separate from the published experiments.
+
+Local verification on November 5, 2026 loaded eight sensor checkpoints and seven CNN checkpoints and ran them on real recordings, infrared or event-camera frames, and synthetic CAD renders as applicable. The Grader image route remains unavailable. The local log at `Processed_Data/final_deployment_verification.json` records the inputs, predictions, confidence, and upload error checks. In the four-frame checks, the Haul Truck CNN mislabeled one ball-fault frame and the Drill Rig CNN mislabeled one wear and one pitting render.
+
+For raw sensor CSV uploads, use these schemas. The header identifies the expected source format and rate. Prepare the CSV from the corresponding recording without resampling or substituting channels.
+
+| Source mapping | CSV columns and requirements |
+|---|---|
+| Pump, Ottawa | `ottawa_accel_200khz` from MAT `Channel_1`. At least 20,000 samples at 200 kHz. |
+| Haul Truck, UODS | `uods_accel_42khz,uods_mic_42khz` from the first two MAT columns. At least 21,000 samples at 42 kHz. The upload uses complete half-second blocks. |
+| CORA mappings | Original one-column, headerless Vx CSV with the published speed in the filename. Confirm the laboratory mapping when prompted. |
+| Drill Rig, MCC5-THU | Original motor and gearbox vibration channel headers at 12.8 kHz. |
+| Motor Grader, JUST | Original six accelerometer channel headers at 50 kHz. |
+
+See the [deployment verification report](Documentation/deployment_verification.md) for the per-equipment results and demonstration limits.
+
+The fair tests above hold out complete recordings, speeds, bearings or designs. The time-split experiments use later segments of recordings also seen in training. Inference smoke tests check routing and output on known local samples. Model confidence is a class probability, and the task is current laboratory component condition classification.
+
+### Whole-machine photo identification
+
+Choose **Whole-machine photo** in the task menu and upload a site photo. The optional BuildVision v0.3 detector supports excavators, wheel loaders and dump trucks. It reports a detection score for a single supported category, **Ambiguous Equipment** when several categories pass the threshold, and **Unknown Equipment** when none pass. A dump-truck detection does not establish mining haul-truck provenance. Use **Component fault** for supported sensor files and laboratory component images.
+
+Install `onnxruntime` in the notebook environment and put the publisher’s [ONNX model and config](https://huggingface.co/constructelligence/construction-site-safety-hazards/tree/79673cff5a8bb249fc8ec9cca3daa19e2ef95191) in `Processed_Data/models/whole_machine/`. The optional model is published under AGPL-3.0 and runs locally. Photo mode returns equipment identity only. Motor Grader slewing-bearing image diagnosis still requires appropriate labeled data.
+
 ## Commands
 
 From the project folder (Windows: `.venv\Scripts\python.exe`, Mac/Linux: `.venv/bin/python`):
@@ -89,13 +122,14 @@ From the project folder (Windows: `.venv\Scripts\python.exe`, Mac/Linux: `.venv/
 | `python Notebook/pdm.py <machine> images` | image model, fair test → `Results/<machine>/images.json` | hours |
 | `python Notebook/pdm.py <machine> images --time-split` | image model, time split | minutes to an hour |
 | `python Notebook/pdm.py <machine> train-final` | sensor model on all data, for `predict` | minutes |
+| `python Notebook/pdm.py <machine> train-final-images` | save a supported ResNet18 deployment checkpoint from exported frames | minutes to hours |
 | `python Notebook/pdm.py predict <file>` | identify the file's dataset format, then the machine's model gives the condition; if several machines share the format, the condition under each | seconds |
 | `python Notebook/pdm.py serve` | upload page at http://localhost:8613 (this computer only): drop in a file, get machine, condition and confidence | – |
 | `python Notebook/pdm.py data-check` | list missing raw files | seconds |
 
 Machines: `pump`, `haul_truck`, `belt_conveyor`, `excavator`, `dozer`, `wheel_loader`, `drill_rig`, `grader`.
 
-`predict` first checks which dataset format the file matches (columns, variable names, image size and colours). This is a format check, not machine learning. Several machines share one laboratory rig, so for those formats the machine must be named with `--machine`.
+`predict` first checks which dataset format the file matches (columns, variable names, image size and colours). This is a format check, not machine learning. For shared formats the command lists predictions for the compatible mappings. Use `--machine` when the source mapping is known. The integrated notebook reports ambiguity by default.
 
 ## Folders
 
@@ -113,6 +147,5 @@ Local only (git-ignored): `Raw_Data/`, `Processed_Data/` (feature tables and tra
 
 - The fair-test image scores of the first seven machines were produced before this code was reorganised (commit c7d8d25) and carried over, because each run takes hours to a day on a CPU. The reorganised code gave identical results on a Dozer test subset (single CPU thread). On a Drill Rig subset it gave the same per-gear accuracy (0.271) but chose different epochs in one round, so the gear-image path is not confirmed identical. The Grader images and all image time splits were run with the reorganised code. PyTorch training on a multi-core CPU is not bit-for-bit repeatable, so a rerun can differ slightly.
 - **GPU (optional).** `requirements.txt` installs the CPU build of PyTorch, which works everywhere. With an NVIDIA GPU, run `.venv\Scripts\python.exe -m pip install --force-reinstall --no-deps torch==2.14.1 torchvision==0.29.1 --index-url https://download.pytorch.org/whl/cu130`. The image model then uses the GPU by itself (set `PDM_DEVICE=cpu` to force the CPU). Each image result records the device it was trained on, because GPU and CPU runs can differ slightly.
-- `predict` and the upload page use models trained on all of each machine's data (`train-final`, `train-final-images`; saved in `Processed_Data/models/`, not in Git). The Grader has no image model for new files. A file whose format several machines share (the four CORA machines, or the Pump and Haul Truck camera frames) gets the condition under each of those machines, because the file cannot say which one it is.
 - These models classify the current condition of a component. They do not predict remaining useful life.
 - Project code and documentation are under the [MIT License](LICENSE). Datasets keep their publishers' licences (all CC BY 4.0) and are not redistributed here.

@@ -97,6 +97,11 @@ def ottawa_recording(path):
     from scipy.io import loadmat
 
     signal = loadmat(path, variable_names=["Channel_1"])["Channel_1"].ravel().astype(np.float64)
+
+    return ottawa_signal_features(signal)
+
+
+def ottawa_signal_features(signal):
     size = 20_000
     windows = signal[: len(signal) // size * size].reshape(-1, size)
     stats = window_statistics(windows, 200_000, OTTAWA_BANDS)
@@ -170,6 +175,10 @@ def uods_recording(path):
 
     data = loadmat(path)[Path(path).stem]
     signal, microphone = data[:, 0].astype(np.float64), data[:, 1].astype(np.float64)
+    return uods_signal_features(signal, microphone)
+
+
+def uods_signal_features(signal, microphone):
     frame = pd.DataFrame(uods_windows(signal), columns=UODS_FEATURES)
     frame[ENVELOPE_FEATURES] = envelope(signal, len(frame))
     # 0.5 s envelope windows (2 Hz resolution), repeated for their five 0.1 s rows
@@ -1732,18 +1741,34 @@ def identify(path):
     raise ValueError(f"{path.name} matches none of the known dataset formats; no prediction made")
 
 
+OTTAWA_CSV_CHANNEL = "ottawa_accel_200khz"
+UODS_CSV_CHANNELS = ["uods_accel_42khz", "uods_mic_42khz"]
+
+
 def sensor_features(path, source, details):
     if source.startswith("Ottawa"):
+        if Path(path).suffix.lower() == ".csv":
+            signal = pd.read_csv(path, usecols=[OTTAWA_CSV_CHANNEL], dtype=np.float64)[OTTAWA_CSV_CHANNEL].to_numpy()
+            if len(signal) < 20_000:
+                raise ValueError("The recording is too short. Ottawa CSVs need at least 20,000 samples.")
+            return ottawa_signal_features(signal)
         return ottawa_recording(path)
     if source.startswith("UODS"):
+        if Path(path).suffix.lower() == ".csv":
+            signals = pd.read_csv(path, usecols=UODS_CSV_CHANNELS, dtype=np.float64)
+            length = len(signals) // 21_000 * 21_000
+            if not length:
+                raise ValueError("The recording is too short. UODS CSVs need at least 21,000 samples.")
+            signal, microphone = signals[UODS_CSV_CHANNELS].to_numpy()[:length].T
+            if not np.isfinite(signal).all() or not np.isfinite(microphone).all():
+                raise ValueError("The recording contains invalid UODS signal values.")
+            return uods_signal_features(signal, microphone)
         return uods_recording(path)
     if source.startswith("MCC5"):
         with open(path, "rb") as handle:
             return mcc5_recording(handle)
     if source.startswith("JUST"):
         return just_recording(path)
-    import pandas as pd
-
     values = pd.read_csv(path, header=None, dtype=np.float64).iloc[:, 0].to_numpy()
     return cora_windows(values, details["speed"])
 
