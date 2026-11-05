@@ -82,7 +82,7 @@ You need [Python 3.11](https://www.python.org/downloads/) (tick **Add python.exe
 
 Open [Integrated Equipment Fault Prediction](Notebook/Integrated_Equipment_Fault_Prediction.ipynb) in VS Code, select the project’s `.venv` kernel and run all cells. Install `ipywidgets>=8,<9` in that environment if the upload widget is missing. Upload one supported CSV, MAT or image and select **Predict**. The notebook checks the input format and local provenance, then displays the equipment mapping, fault class, model, and confidence.
 
-- **Automatic** uses recognized sensor schemas or an exact match to a trusted local image export. Keep the `Images/` indexes and frames locally for automatic image matching. The separate **Whole-machine photo** mode described below provides limited visual identification.
+- **Automatic** uses recognized sensor schemas or an exact match to a trusted local image export. Keep the `Images/` indexes and frames locally for automatic image matching. The separate **Whole-machine photo** mode described below provides unverified visual suggestions.
 - Shared CORA inputs and event-camera frames with unresolved provenance return **Ambiguous Equipment**. Choose a compatible mapping only when you know the source. The display identifies this as a user-confirmed laboratory mapping.
 - Keep trusted deployment checkpoints in `Processed_Data/models/`. They contain the estimator or weights, the class order, and preprocessing metadata. The notebook displays availability and loads the models for inference.
 - Motor Grader’s gear-tooth image experiment measures visible damage on a separate set of small gears. The integrated Grader sensor model classifies slewing-bearing conditions. A Grader photograph has no supported fault inference route.
@@ -106,9 +106,9 @@ The fair tests above hold out complete recordings, speeds, bearings or designs. 
 
 ### Whole-machine photo identification
 
-Choose **Whole-machine photo** in the task menu and upload a site photo. The optional BuildVision v0.3 detector supports excavators, wheel loaders and dump trucks. It reports a provisional candidate, a box in image pixels, and a detection score for a single supported category, **Ambiguous Equipment** when several categories pass the threshold, and **Unknown Equipment** when none pass. Confirm candidates visually. A labeled Grader example produced a Wheel Loader candidate at 86.4%, and a dump-truck detection does not establish mining haul-truck provenance. Use **Component fault** for supported sensor files and laboratory component images.
+Choose **Whole-machine photo** in the task menu and upload a site photo. The optional BuildVision v0.3 detector supports excavators, wheel loaders and dump trucks. A single detection returns **Unknown Equipment** with an unverified suggestion, a box in image pixels, and a detector score. Several supported categories return **Ambiguous Equipment**. With no detections above the threshold, the notebook returns **Unknown Equipment** without a suggestion. A labeled Grader example produced a Wheel Loader candidate at 86.4%, and a dump-truck detection does not establish mining haul-truck provenance. Use **Component fault** for supported sensor files and laboratory component images.
 
-Install `onnxruntime` in the notebook environment and put the publisher’s [ONNX model and config](https://huggingface.co/constructelligence/construction-site-safety-hazards/tree/79673cff5a8bb249fc8ec9cca3daa19e2ef95191) in `Processed_Data/models/whole_machine/`. The optional model is published under AGPL-3.0 and runs locally. Photo mode returns equipment identity only. Motor Grader slewing-bearing image diagnosis still requires appropriate labeled data.
+Install `onnxruntime` in the notebook environment and put the publisher’s [ONNX model and config](https://huggingface.co/constructelligence/construction-site-safety-hazards/tree/79673cff5a8bb249fc8ec9cca3daa19e2ef95191) in `Processed_Data/models/whole_machine/`. The optional model is published under AGPL-3.0 and runs locally. Photo mode never routes detections to a fault model. Motor Grader slewing-bearing image diagnosis still requires appropriate labeled data.
 
 ## Commands
 
@@ -123,13 +123,13 @@ From the project folder (Windows: `.venv\Scripts\python.exe`, Mac/Linux: `.venv/
 | `python Notebook/pdm.py <machine> images --time-split` | image model, time split | minutes to an hour |
 | `python Notebook/pdm.py <machine> train-final` | sensor model on all data, for `predict` | minutes |
 | `python Notebook/pdm.py <machine> train-final-images` | save a supported ResNet18 deployment checkpoint from exported frames | minutes to hours |
-| `python Notebook/pdm.py predict <file>` | identify the file's dataset format, then the machine's model gives the condition; if several machines share the format, the condition under each | seconds |
+| `python Notebook/pdm.py predict <file>` | identify the file's dataset format, then the machine's model gives the condition; shared formats return ambiguity unless a mapping is supplied | seconds |
 | `python Notebook/pdm.py serve` | upload page at http://localhost:8613 (this computer only): drop in a file, get machine, condition and confidence | – |
 | `python Notebook/pdm.py data-check` | list missing raw files | seconds |
 
 Machines: `pump`, `haul_truck`, `belt_conveyor`, `excavator`, `dozer`, `wheel_loader`, `drill_rig`, `grader`.
 
-`predict` first checks which dataset format the file matches (columns, variable names, image size and colours). This is a format check, not machine learning. For shared formats the command lists predictions for the compatible mappings. Use `--machine` when the source mapping is known. The integrated notebook reports ambiguity by default.
+`predict` first checks which dataset format the file matches (columns, variable names, image size and colours). This is a format check, not machine learning. Shared formats return **Ambiguous Equipment**. Use `--machine` when the source mapping is known. Drill Rig renders must match the trusted local export index.
 
 ## Folders
 
