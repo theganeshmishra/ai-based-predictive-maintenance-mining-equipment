@@ -106,7 +106,7 @@ The fair tests above hold out complete recordings, speeds, bearings or designs. 
 
 ### Whole-machine photo identification
 
-Choose **Whole-machine photo** in the task menu and upload a site photo. The optional BuildVision v0.3 detector supports excavators, wheel loaders and dump trucks. It reports a detection score for a single supported category, **Ambiguous Equipment** when several categories pass the threshold, and **Unknown Equipment** when none pass. A dump-truck detection does not establish mining haul-truck provenance. Use **Component fault** for supported sensor files and laboratory component images.
+Choose **Whole-machine photo** in the task menu and upload a site photo. The optional BuildVision v0.3 detector supports excavators, wheel loaders and dump trucks. It reports a provisional candidate, a box in image pixels, and a detection score for a single supported category, **Ambiguous Equipment** when several categories pass the threshold, and **Unknown Equipment** when none pass. Confirm candidates visually. A labeled Grader example produced a Wheel Loader candidate at 86.4%, and a dump-truck detection does not establish mining haul-truck provenance. Use **Component fault** for supported sensor files and laboratory component images.
 
 Install `onnxruntime` in the notebook environment and put the publisher’s [ONNX model and config](https://huggingface.co/constructelligence/construction-site-safety-hazards/tree/79673cff5a8bb249fc8ec9cca3daa19e2ef95191) in `Processed_Data/models/whole_machine/`. The optional model is published under AGPL-3.0 and runs locally. Photo mode returns equipment identity only. Motor Grader slewing-bearing image diagnosis still requires appropriate labeled data.
 
