@@ -11,7 +11,7 @@ Verified locally on November 5, 2026. PASS means the route loaded its saved mode
 | Excavator | PASS · `BD_F50_S_Vx.csv` → `bearing`, 98.7% | PASS · 4/4 sample labels matched | NOT AVAILABLE · Shared CORA format |
 | Wheel Loader | PASS · `HB_F50_S_Vx.csv` → `half_broken_bar`, 98.6% | PASS · 4/4 sample labels matched | NOT AVAILABLE · Shared CORA format |
 | Drill Rig | PASS · `gear_pitting_H_torque_circulation_2000rpm_10Nm.csv` → `gear_pitting`, 92.9% | PASS · 2/4 sample labels matched | PASS · Supported source format |
-| Motor Grader | PASS · `20221208-O-2rpm-0N-1.csv` → `outer_ring`, 79.6% | NOT AVAILABLE | PASS · Supported source format |
+| Motor Grader | PASS · `20221208-O-2rpm-0N-1.csv` → `outer_ring`, 79.6% | PASS · Separate gear-tooth model, selected manually | PASS · Supported sensor source format |
 
 The Pump and Haul Truck CSVs preserve the samples and channels of their source MAT recordings. Their reported predictions matched the MAT routes. The four CORA mappings required explicit source confirmation. Exact local image fingerprints also resolved the Pump and Haul Truck event-camera exports and Drill Rig CAD renders. Filenames or a confirmed mapping describe a laboratory data source.
 
@@ -19,7 +19,7 @@ The notebook ran in a Jupyter kernel and exercised the upload widget callbacks w
 
 The Haul Truck CNN predicted outer-race fault for one ball-fault frame. The Drill Rig CNN predicted healthy for one wear render and one pitting render. The deployment checks included training samples. Confidence is a model output. For generalization, use the existing fair tests, which hold out recordings, speeds, bearings or designs. The existing time-split scores use later segments from recordings seen during training. CORA unseen-speed performance is weak in the saved results even when time-split scores are high.
 
-Motor Grader image fault inference remains unavailable. The [JUST slewing-bearing dataset](https://data.mendeley.com/datasets/hwg8v5j8t6/1) supplies sensor signals. The separate [gear-tooth image dataset](https://universe.roboflow.com/vjs-jek7v/gearbox_adddingimg) labels a different component and task. All component routes classify current condition using laboratory analogues. Future failure and remaining useful life are outside the demonstrated scope.
+Motor Grader slewing-bearing image diagnosis remains unavailable. The [JUST slewing-bearing dataset](https://data.mendeley.com/datasets/hwg8v5j8t6/1) supplies sensor signals. The separate [gear-tooth image dataset](https://universe.roboflow.com/vjs-jek7v/gearbox_adddingimg) labels a different component and task. Its deployment checkpoint was built after this verification and smoke-tested on a labeled tooth crop; this does not add a slewing-bearing image route. All component routes classify current condition using laboratory analogues. Future failure and remaining useful life are outside the demonstrated scope.
 
 Local test outputs are stored in `Processed_Data/final_deployment_verification.json` and `Processed_Data/whole_machine_verification.json`. Keep the trusted checkpoints and indexed image exports locally when running the demo.
 
@@ -48,3 +48,12 @@ The existing BuildVision photo detector was checked on four labeled ACID publish
 The additional photo regression outputs are local at `Processed_Data/photo_routing_verification.json`.
 
 The shared input parser was also verified directly through `pdm.predict`. Pump and Haul Truck CSVs returned inner-race and ball faults respectively, matching the notebook. A CSV matching two different sensor schemas remained ambiguous even with a selected mapping. A blank image was rejected before scoring, including when Pump was selected.
+
+The [Motor Grader image investigation](motor_grader_image_investigation.md) records source provenance, access and licensing evidence, the bearing-level data requirements, and the scope proposed for professor approval.
+
+
+## Motor Grader gear-tooth deployment verification
+
+The version 1 COCO export dated November 5 contains 838 images. Its archive SHA-256 matches the local checkpoint metadata. The fixed ResNet18 feature and logistic regression deployment fit uses 2,879 labeled tooth crops from 55 source groups. The earlier 82.6% balanced accuracy belongs to the saved source-group-held-out experiment.
+
+The integrated notebook upload callback, command line, and local multipart HTTP upload each returned `good_tooth` for one labeled good crop and `damaged_tooth` for one labeled damaged crop. These two training-sample checks establish inference behavior. Local outputs are saved in `Processed_Data/grader_gear_tooth_verification.json`. The Grader sensor checkpoint retained its SHA-256 throughout verification.

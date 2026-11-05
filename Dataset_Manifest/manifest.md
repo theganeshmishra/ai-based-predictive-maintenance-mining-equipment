@@ -13,7 +13,7 @@ All data are public laboratory datasets. None was recorded on mining equipment. 
 | Drill Rig | sensor | MCC5-THU gearbox fault diagnosis datasets (Chen et al., Tsinghua University) | [Mendeley Data p92gj2732w v2](https://data.mendeley.com/datasets/p92gj2732w/2), doi 10.17632/p92gj2732w.2 | CC BY 4.0 | `Raw_Data/mcc5_thu_gearbox/` |
 | Drill Rig | images | MFGNet-Gear synthetic CAD gear meshes (Mei and Shao, University of Michigan) | [Deep Blue Data doi 10.7302/qrdj-n812](https://doi.org/10.7302/qrdj-n812) | CC BY 4.0 | `Raw_Data/mfgnet_gear/mesh_ply.zip` |
 | Grader | sensor | JUST Slewing bearing datasets-1, six accelerometers at 50 kHz (Xiaodie Ren, Jiangsu University of Science and Technology) | [Mendeley Data hwg8v5j8t6 v1](https://data.mendeley.com/datasets/hwg8v5j8t6/1), doi 10.17632/hwg8v5j8t6.1 | CC BY 4.0 | `Raw_Data/just_slewing/condition1.zip` … `condition6.zip` |
-| Grader | images | GearBox_adddingImg v1 by Vjs, real photos of small gears with labelled teeth (COCO export of 2026-11-02) | [Roboflow Universe](https://universe.roboflow.com/vjs-jek7v/gearbox_adddingimg) | CC BY 4.0 | `Raw_Data/roboflow_gear_photos/GearBox_adddingImg.v1i.coco.zip` |
+| Grader | images | GearBox_adddingImg v1 by Vjs, real photos of small gears with labelled teeth (Roboflow COCO export of 2026-11-05; 838 images) | [Roboflow Universe](https://universe.roboflow.com/vjs-jek7v/gearbox_adddingimg) | CC BY 4.0 | `Raw_Data/roboflow_gear_photos/GearBox_adddingImg.v1i.coco.zip` |
 
 ## Points to keep in mind
 

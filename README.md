@@ -85,10 +85,10 @@ Open [Integrated Equipment Fault Prediction](Notebook/Integrated_Equipment_Fault
 - **Automatic** uses recognized sensor schemas or an exact match to a trusted local image export. Keep the `Images/` indexes and frames locally for automatic image matching. The separate **Whole-machine photo** mode described below provides unverified visual suggestions.
 - Shared CORA inputs and event-camera frames with unresolved provenance return **Ambiguous Equipment**. Choose a compatible mapping only when you know the source. The display identifies this as a user-confirmed laboratory mapping.
 - Keep trusted deployment checkpoints in `Processed_Data/models/`. They contain the estimator or weights, the class order, and preprocessing metadata. The notebook displays availability and loads the models for inference.
-- Motor Grader’s gear-tooth image experiment measures visible damage on a separate set of small gears. The integrated Grader sensor model classifies slewing-bearing conditions. A Grader photograph has no supported fault inference route.
+- Motor Grader’s gear-tooth image experiment measures visible damage on a separate set of small gears. Its local deployment checkpoint is now built from the verified Roboflow v1 export. The integrated Grader sensor model classifies slewing-bearing conditions; gear-tooth predictions do not diagnose the slewing bearing.
 - Drill Rig images come from synthetic CAD gear renders. The Drill Rig and Grader sensor deployment fits use two-second excerpts per publisher recording. The Drill Rig image checkpoint uses a bounded mesh subset. Those deployment fits are separate from the published experiments.
 
-Local verification on November 5, 2026 loaded eight sensor checkpoints and seven CNN checkpoints and ran them on real recordings, infrared or event-camera frames, and synthetic CAD renders as applicable. The Grader image route remains unavailable. The local log at `Processed_Data/final_deployment_verification.json` records the inputs, predictions, confidence, and upload error checks. In the four-frame checks, the Haul Truck CNN mislabeled one ball-fault frame and the Drill Rig CNN mislabeled one wear and one pitting render.
+Local verification on November 5, 2026 loaded eight sensor checkpoints and seven CNN checkpoints and ran them on real recordings, infrared or event-camera frames, and synthetic CAD renders as applicable. That verification predates the separately trained Grader gear-tooth checkpoint, which was subsequently tested on one labeled good crop and one labeled damaged crop through the notebook, CLI, and local upload page. The local log at `Processed_Data/final_deployment_verification.json` records the original inputs, predictions, confidence, and upload error checks. In the four-frame checks, the Haul Truck CNN mislabeled one ball-fault frame and the Drill Rig CNN mislabeled one wear and one pitting render.
 
 For raw sensor CSV uploads, use these schemas. The header identifies the expected source format and rate. Prepare the CSV from the corresponding recording without resampling or substituting channels.
 
@@ -103,6 +103,12 @@ For raw sensor CSV uploads, use these schemas. The header identifies the expecte
 See the [deployment verification report](Documentation/deployment_verification.md) for the per-equipment results and demonstration limits.
 
 The fair tests above hold out complete recordings, speeds, bearings or designs. The time-split experiments use later segments of recordings also seen in training. Inference smoke tests check routing and output on known local samples. Model confidence is a class probability, and the task is current laboratory component condition classification.
+
+### Motor Grader gear-tooth deployment
+
+The saved 82.6% balanced accuracy comes from the separate gear-tooth experiment with held-out source groups. The local `Processed_Data/models/grader_gear_tooth.joblib` checkpoint was trained from the Roboflow v1 COCO export and verified through all three interfaces on labeled example crops. To rebuild it, place the verified export at `Raw_Data/roboflow_gear_photos/GearBox_adddingImg.v1i.coco.zip` and run `python Notebook/pdm.py grader train-final-images`. Download the [GearBox_adddingImg v1 COCO export](https://universe.roboflow.com/vjs-jek7v/gearbox_adddingimg) with authorized Roboflow access. The verified deployment archive SHA-256 is `dd01bcb3dd90ea5ba0cf390022103fc6f78aa2fd9279cd75da5a1dbec8fabae8`. Keep a backup of the archive or fitted checkpoint for future demonstrations. The command verifies the archive SHA-256 and fits the fixed ResNet18 feature extractor plus logistic regression configuration.
+
+Select **Motor Grader** in the notebook or **Grader** in the local upload page, or run `python Notebook/pdm.py predict tooth_crop.jpg --machine grader`. Supply a manually verified crop of one gear tooth with a small margin. The output classifies visible gear-tooth condition. The Grader sensor model covers slewing-bearing conditions separately. The gear-tooth route reports model unavailable when the fitted checkpoint is absent.
 
 ### Whole-machine photo identification
 
