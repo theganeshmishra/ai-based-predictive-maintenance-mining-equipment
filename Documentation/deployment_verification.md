@@ -46,3 +46,5 @@ The existing BuildVision photo detector was checked on four labeled ACID publish
 - **NOT AVAILABLE** · The Grader image fault model still requires independently labeled visual inspections of relevant slewing bearings, including healthy, inner-ring, outer-ring and rolling-element conditions, with bearing IDs to keep units separate across training and testing. [JUST part 2](https://data.mendeley.com/datasets/rcxgmdxhbr/1) continues the sensor dataset. The [CITEF bearing benchmark](https://zenodo.org/records/8241764) also supplies vibration records.
 
 The additional photo regression outputs are local at `Processed_Data/photo_routing_verification.json`.
+
+The shared input parser was also verified directly through `pdm.predict`. Pump and Haul Truck CSVs returned inner-race and ball faults respectively, matching the notebook. A CSV matching two different sensor schemas remained ambiguous even with a selected mapping. A blank image was rejected before scoring, including when Pump was selected.

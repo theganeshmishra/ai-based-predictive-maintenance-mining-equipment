@@ -1718,26 +1718,37 @@ def identify(path):
         if path.stem in variables and len(variables[path.stem]) == 2 and variables[path.stem][1] >= 2:
             return "UODS bearing rig recording", ["haul_truck"], {}
     elif suffix == ".csv":
-        first = path.open(encoding="utf-8", errors="replace").readline()
-        if "gearbox_vibration_x" in first:
-            return "MCC5-THU gearbox recording", ["drill_rig"], {}
-        if all(channel in first for channel in JUST_CHANNELS):
-            return "JUST slewing-bearing recording", ["grader"], {}
-        speed = re.search(r"_(F5|F15|F50|F60)_", path.name)
-        try:
-            float(first.strip())
-            one_column = True
-        except ValueError:
-            one_column = False
-        if one_column and speed:
-            return "CORA rig vibration (Vx) recording", CORA, {"speed": speed.group(1)}
-        if one_column:
-            raise ValueError("CORA vibration file without its speed (F5/F15/F50/F60) in the name")
+        with path.open(encoding="utf-8-sig", errors="replace") as stream:
+            header = next(csv.reader([stream.readline(8192)]), [])
+        schemas = [
+            ("Ottawa bearing CSV", "pump", [OTTAWA_CSV_CHANNEL]),
+            ("UODS bearing CSV", "haul_truck", UODS_CSV_CHANNELS),
+            ("MCC5-THU gearbox", "drill_rig", MCC5_CHANNELS),
+            ("JUST slewing bearing", "grader", JUST_CHANNELS),
+        ]
+        matches = [(source, machine) for source, machine, channels in schemas
+                   if set(channels).issubset(header)]
+        if matches:
+            return " / ".join(source for source, _ in matches), [key for _, key in matches], {
+                "mixed_schema": len(matches) > 1,
+            }
+        speed = re.fullmatch(r"[A-Za-z0-9]+_(F5|F15|F50|F60)_S_Vx\.csv", path.name, re.IGNORECASE)
+        if speed and len(header) == 1:
+            try:
+                value = float(header[0])
+            except ValueError:
+                pass
+            else:
+                if np.isfinite(value):
+                    return "CORA rig vibration (Vx)", CORA, {"speed": speed.group(1).upper()}
+        raise ValueError("Unrecognized CSV schema")
     elif suffix in (".png", ".jpg", ".jpeg"):
         import cv2
 
         image = cv2.imread(str(path), cv2.IMREAD_COLOR)
         if image is not None:
+            if not np.any(image != image[0, 0]):
+                raise ValueError("Image contains no spatial detail.")
             if image.shape[:2] == (224, 224):
                 try:
                     known_render = hashlib.sha256(path.read_bytes()).digest() in indexed_image_hashes(IMAGES / "drill_rig")
@@ -1747,7 +1758,17 @@ def identify(path):
                     return "rendered gear image (MFGNet-Gear style)", ["drill_rig"], {"indexed_image": True}
                 raise ValueError("Unknown Equipment: image provenance could not be verified.")
             if image.shape[:2] == (96, 128) and not image[:, :, 0].any():
-                return "event-camera frame (XJTU-DV style)", ["pump", "haul_truck"], {}
+                source = "event-camera frame (XJTU-DV style)"
+                machines = ["pump", "haul_truck"]
+                folders = {key: IMAGES / f"{key}_denseframes" for key in machines}
+                digest = hashlib.sha256(path.read_bytes()).digest()
+                try:
+                    matches = [key for key, folder in folders.items() if digest in indexed_image_hashes(folder)]
+                except OSError:
+                    matches = []
+                if len(matches) == 1:
+                    return source, matches, {"indexed_image": True}
+                return source, machines, {}
             if image.shape[:2] == (96, 128) and (image[:, :, 0] == image[:, :, 2]).all():
                 return "infrared frame (CORA style)", CORA, {}
     raise ValueError(f"{path.name} matches none of the known dataset formats; no prediction made")
@@ -1804,7 +1825,7 @@ def predict(path, machine=None):
     source, machines, details = identify(path)
     if machine is not None and machine not in machines:
         raise ValueError(f"{source} does not belong to {machine} (it matches {', '.join(machines)})")
-    if machine is None and len(machines) > 1:
+    if details.get("mixed_schema") or (machine is None and len(machines) > 1):
         return {"file format": source, "status": "Ambiguous Equipment",
                 "candidates": [MACHINES[name].title for name in machines]}
     machine = machine or machines[0]
