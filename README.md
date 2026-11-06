@@ -14,7 +14,13 @@ The [eight-equipment evidence matrix](Documentation/equipment_evidence_matrix.md
 - **Motor Grader** reports separate results for slewing-bearing vibration and gear-tooth photo inspection. Its image headline is balanced accuracy per tooth crop.
 - **Local deployment checks** verify routing and prediction output. They use saved deployment checkpoints and may include training samples. See the [deployment verification report](Documentation/deployment_verification.md) for the test cases.
 
-The [20-day audit and plan](Documentation/proj613_20_day_audit.md) ranks the remaining evidence gaps and gives acceptance criteria.
+The [20-day audit and plan](Documentation/proj613_20_day_audit.md) ranks the remaining evidence gaps and gives acceptance criteria. The [follow-up experiments](Documentation/followup_experiments.md) (November 6) carry out priorities 2 to 6:
+
+- **CORA healthy vs worn** (Belt Conveyor and Dozer runs, unseen speed, 16 runs): sensor balanced accuracy 45.8% and images 75.0%, against 50.0% for the majority control. The image result beats the four-class model read the same way (58.3%) by two runs, which is promising but not defensible evidence (exact p = 0.05). No model is replaced, and CORA modelling stops here.
+- **Haul Truck:** the ball class is confirmed load-confounded (no load in all 5 ball recordings, 400 N in the rest). Without it, the sensor model scores 84.0% accuracy (73.3% balanced) on 25 unseen-bearing recordings.
+- **Drill Rig and Pump:** the crack mapping stays a qualified analogue; the Pump test is an unseen-speed-profile test, because the source gives no bearing IDs.
+- **Grader:** the sensor and image experiments stay separate tasks.
+- **Demo routes:** 15 of 16 routes rerun on 6 November with checkpoint hashes recorded (the Grader photo route needs its checkpoint on the demo computer).
 
 ## How it works
 
@@ -119,6 +125,9 @@ From the project folder (Windows: `.venv\Scripts\python.exe`, Mac/Linux: `.venv/
 | `python Notebook/pdm.py <machine> train-final-images` | save a supported ResNet18 deployment checkpoint from exported frames | minutes to hours |
 | `python Notebook/pdm.py predict <file>` | identify the file's dataset format, then the machine's model gives the condition; shared formats return ambiguity unless a mapping is supplied | seconds |
 | `python Notebook/pdm.py serve` | upload page at http://localhost:8613 (this computer only): drop in a file, get machine, condition and confidence | – |
+| `python Notebook/pdm.py cora-binary verify\|sensor\|images` | CORA healthy vs worn follow-up → `Results/experiments/cora_binary/` | 1 minute / 1 minute / about 2 hours |
+| `python Notebook/pdm.py haul-truck-load-check` | Haul Truck sensor fair test without the unloaded ball class | about 15 minutes |
+| `python Notebook/pdm.py route-check` | run every predict route once, record checkpoint SHA-256 → `Results/deployment/route_check.json` | about 1 minute |
 | `python Notebook/pdm.py data-check` | list missing raw files | seconds |
 
 Machines: `pump`, `haul_truck`, `belt_conveyor`, `excavator`, `dozer`, `wheel_loader`, `drill_rig`, `grader`.

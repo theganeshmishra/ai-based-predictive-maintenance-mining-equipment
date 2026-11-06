@@ -1,0 +1,373 @@
+{
+  "note": "samples are training data: this checks the routes, not accuracy",
+  "checkpoint_sha256": {
+    "pump_sensor.joblib": "8c01aeea53a6db5d5181018c6a2242a2a3a4dcff0584547a26739ab73667953c",
+    "pump_images.pt": "d733a3f9b286525bc912b0b1c2e039e5b987eaf615d9ab711aed086b31b8dc98",
+    "haul_truck_sensor.joblib": "7c056abd4b1a3e68273b734c22523c08d58c457ce288e25948338335deeaafea",
+    "haul_truck_images.pt": "78e721c738e68467724b220b76aaf8e65c3b61fd4c5d837c8b11cd81cdeb6f3f",
+    "belt_conveyor_sensor.joblib": "577143890f5b16701a5f85e4d4ed040a994ca644a2521713c1d3ce756eda44c3",
+    "belt_conveyor_images.pt": "6a58960cf426b95168bed4dafdcda2fe1145b22863597a2904771e0b047cbd6c",
+    "excavator_sensor.joblib": "4b940e739961ca9ac8dd7ecd36b3a3f25542aceaf02d64f56f985fca36970493",
+    "excavator_images.pt": "cf2a8d8b1252508a14211330801a33ba253cbdbe3363928b9b16b852904cc7ad",
+    "dozer_sensor.joblib": "577143890f5b16701a5f85e4d4ed040a994ca644a2521713c1d3ce756eda44c3",
+    "dozer_images.pt": "153935467903f15d4d31b729dd52e5c2fd8b0945480c62564ab7b393f6837662",
+    "wheel_loader_sensor.joblib": "280e4808997e19bf7a6d2eec63ce033dbb3a9b046bef123a0354149f3f2d7ba2",
+    "wheel_loader_images.pt": "305b750fdd686a2dd4b0c7dd76aa6035cdbf544573f3d00b725c7029f46791ca",
+    "drill_rig_sensor.joblib": "3e94767a62b43e7e2e2375dfcb5fbf5de017f7b2be4394034773cbd0ed0a8c03",
+    "drill_rig_images.pt": "ea7e87ebeefe117ce874f1a5aeb65d69622cff970546d942e8bab83463a27eec",
+    "grader_sensor.joblib": "df0e73f23137ca32109fc625cdb1b028b58d2b48ff977fde902c5978cffe9c7e",
+    "grader_gear_tooth.joblib": null
+  },
+  "routes": [
+    {
+      "machine": "pump",
+      "modality": "sensor",
+      "file": "I-C-1.mat",
+      "status": "PASS",
+      "expected": "inner",
+      "predicted": "inner",
+      "probability": 0.999
+    },
+    {
+      "machine": "pump",
+      "modality": "image",
+      "file": "pump_healthy_20Hz_15_-30_t000.png",
+      "status": "PASS",
+      "expected": "healthy",
+      "predicted": "healthy",
+      "probability": 1.0
+    },
+    {
+      "machine": "pump",
+      "modality": "image",
+      "file": "pump_inner_20Hz_15_-30_t000.png",
+      "status": "PASS",
+      "expected": "inner",
+      "predicted": "inner",
+      "probability": 1.0
+    },
+    {
+      "machine": "pump",
+      "modality": "image",
+      "file": "pump_outer_20Hz_15_-30_t000.png",
+      "status": "PASS",
+      "expected": "outer",
+      "predicted": "outer",
+      "probability": 1.0
+    },
+    {
+      "machine": "pump",
+      "modality": "image",
+      "file": "pump_ball_20Hz_15_-30_t000.png",
+      "status": "PASS",
+      "expected": "ball",
+      "predicted": "ball",
+      "probability": 0.997
+    },
+    {
+      "machine": "haul_truck",
+      "modality": "sensor",
+      "file": "B_11_2.mat",
+      "status": "PASS",
+      "expected": "ball",
+      "predicted": "ball",
+      "probability": 0.99
+    },
+    {
+      "machine": "haul_truck",
+      "modality": "image",
+      "file": "haul_truck_healthy_1000rpm_angle1_t000.png",
+      "status": "PASS",
+      "expected": "healthy",
+      "predicted": "healthy",
+      "probability": 1.0
+    },
+    {
+      "machine": "haul_truck",
+      "modality": "image",
+      "file": "haul_truck_inner_1000rpm_angle1_t000.png",
+      "status": "PASS",
+      "expected": "inner",
+      "predicted": "inner",
+      "probability": 0.998
+    },
+    {
+      "machine": "haul_truck",
+      "modality": "image",
+      "file": "haul_truck_outer_1000rpm_angle1_t000.png",
+      "status": "PASS",
+      "expected": "outer",
+      "predicted": "outer",
+      "probability": 0.995
+    },
+    {
+      "machine": "haul_truck",
+      "modality": "image",
+      "file": "haul_truck_ball_1000rpm_angle1_t000.png",
+      "status": "PASS",
+      "expected": "ball",
+      "predicted": "ball",
+      "probability": 0.99
+    },
+    {
+      "machine": "belt_conveyor",
+      "modality": "sensor",
+      "file": "W50_F50_S_Vx.csv",
+      "status": "PASS",
+      "expected": "wear50",
+      "predicted": "wear50",
+      "probability": 1.0
+    },
+    {
+      "machine": "belt_conveyor",
+      "modality": "image",
+      "file": "belt_conveyor_healthy_F5_f000.png",
+      "status": "PASS",
+      "expected": "healthy",
+      "predicted": "healthy",
+      "probability": 0.999
+    },
+    {
+      "machine": "belt_conveyor",
+      "modality": "image",
+      "file": "belt_conveyor_wear25_F5_f000.png",
+      "status": "PASS",
+      "expected": "wear25",
+      "predicted": "wear25",
+      "probability": 1.0
+    },
+    {
+      "machine": "belt_conveyor",
+      "modality": "image",
+      "file": "belt_conveyor_wear50_F5_f000.png",
+      "status": "PASS",
+      "expected": "wear50",
+      "predicted": "wear50",
+      "probability": 1.0
+    },
+    {
+      "machine": "belt_conveyor",
+      "modality": "image",
+      "file": "belt_conveyor_wear75_F5_f000.png",
+      "status": "PASS",
+      "expected": "wear75",
+      "predicted": "wear75",
+      "probability": 0.999
+    },
+    {
+      "machine": "excavator",
+      "modality": "sensor",
+      "file": "BD_F50_S_Vx.csv",
+      "status": "PASS",
+      "expected": "bearing",
+      "predicted": "bearing",
+      "probability": 0.94
+    },
+    {
+      "machine": "excavator",
+      "modality": "image",
+      "file": "excavator_healthy_F5_f000.png",
+      "status": "PASS",
+      "expected": "healthy",
+      "predicted": "healthy",
+      "probability": 0.925
+    },
+    {
+      "machine": "excavator",
+      "modality": "image",
+      "file": "excavator_bearing_F5_f000.png",
+      "status": "PASS",
+      "expected": "bearing",
+      "predicted": "bearing",
+      "probability": 1.0
+    },
+    {
+      "machine": "excavator",
+      "modality": "image",
+      "file": "excavator_unbalance_F5_f000.png",
+      "status": "PASS",
+      "expected": "unbalance",
+      "predicted": "unbalance",
+      "probability": 1.0
+    },
+    {
+      "machine": "excavator",
+      "modality": "image",
+      "file": "excavator_misalignment_F5_f000.png",
+      "status": "PASS",
+      "expected": "misalignment",
+      "predicted": "bearing",
+      "probability": 0.852
+    },
+    {
+      "machine": "dozer",
+      "modality": "sensor",
+      "file": "W50_F50_S_Vx.csv",
+      "status": "PASS",
+      "expected": "wear50",
+      "predicted": "wear50",
+      "probability": 1.0
+    },
+    {
+      "machine": "dozer",
+      "modality": "image",
+      "file": "dozer_healthy_F5_f000.png",
+      "status": "PASS",
+      "expected": "healthy",
+      "predicted": "healthy",
+      "probability": 1.0
+    },
+    {
+      "machine": "dozer",
+      "modality": "image",
+      "file": "dozer_wear25_F5_f000.png",
+      "status": "PASS",
+      "expected": "wear25",
+      "predicted": "wear25",
+      "probability": 1.0
+    },
+    {
+      "machine": "dozer",
+      "modality": "image",
+      "file": "dozer_wear50_F5_f000.png",
+      "status": "PASS",
+      "expected": "wear50",
+      "predicted": "wear50",
+      "probability": 0.999
+    },
+    {
+      "machine": "dozer",
+      "modality": "image",
+      "file": "dozer_wear75_F5_f000.png",
+      "status": "PASS",
+      "expected": "wear75",
+      "predicted": "wear75",
+      "probability": 0.999
+    },
+    {
+      "machine": "wheel_loader",
+      "modality": "sensor",
+      "file": "HB_F50_S_Vx.csv",
+      "status": "PASS",
+      "expected": "half_broken_bar",
+      "predicted": "half_broken_bar",
+      "probability": 0.421
+    },
+    {
+      "machine": "wheel_loader",
+      "modality": "image",
+      "file": "wheel_loader_healthy_F5_f000.png",
+      "status": "PASS",
+      "expected": "healthy",
+      "predicted": "healthy",
+      "probability": 1.0
+    },
+    {
+      "machine": "wheel_loader",
+      "modality": "image",
+      "file": "wheel_loader_bearing_F5_f000.png",
+      "status": "PASS",
+      "expected": "bearing",
+      "predicted": "bearing",
+      "probability": 0.997
+    },
+    {
+      "machine": "wheel_loader",
+      "modality": "image",
+      "file": "wheel_loader_half_broken_bar_F5_f000.png",
+      "status": "PASS",
+      "expected": "half_broken_bar",
+      "predicted": "half_broken_bar",
+      "probability": 0.998
+    },
+    {
+      "machine": "wheel_loader",
+      "modality": "image",
+      "file": "wheel_loader_broken_bar_F5_f000.png",
+      "status": "PASS",
+      "expected": "broken_bar",
+      "predicted": "broken_bar",
+      "probability": 1.0
+    },
+    {
+      "machine": "drill_rig",
+      "modality": "sensor",
+      "file": "gear_pitting_2000rpm_20Nm.csv",
+      "status": "PASS",
+      "expected": "gear_pitting",
+      "predicted": "gear_pitting",
+      "probability": 0.977
+    },
+    {
+      "machine": "drill_rig",
+      "modality": "image",
+      "file": "T20ID10_healthy_00005_v0.png",
+      "status": "PASS",
+      "expected": "healthy",
+      "predicted": "healthy",
+      "probability": 0.778
+    },
+    {
+      "machine": "drill_rig",
+      "modality": "image",
+      "file": "T20ID10_gear_wear_00001_v0.png",
+      "status": "PASS",
+      "expected": "gear_wear",
+      "predicted": "gear_wear",
+      "probability": 0.997
+    },
+    {
+      "machine": "drill_rig",
+      "modality": "image",
+      "file": "T20ID10_gear_pitting_00002_v0.png",
+      "status": "PASS",
+      "expected": "gear_pitting",
+      "predicted": "healthy",
+      "probability": 0.687
+    },
+    {
+      "machine": "drill_rig",
+      "modality": "image",
+      "file": "T20ID10_tooth_crack_00003_v0.png",
+      "status": "PASS",
+      "expected": "tooth_crack",
+      "predicted": "tooth_crack",
+      "probability": 1.0
+    },
+    {
+      "machine": "grader",
+      "modality": "sensor",
+      "file": "just_outer_ring_condition3.csv",
+      "status": "PASS",
+      "expected": "outer_ring",
+      "predicted": "outer_ring",
+      "probability": 0.941
+    },
+    {
+      "machine": "grader",
+      "modality": "image",
+      "status": "no local sample"
+    }
+  ],
+  "input_checks": [
+    {
+      "input": "unsupported file",
+      "status": "PASS: rejected",
+      "message": "README.md matches none of the known dataset formats; no prediction made"
+    },
+    {
+      "input": "CORA file without a mapping",
+      "status": "PASS",
+      "answer": {
+        "file format": "CORA rig vibration (Vx)",
+        "status": "Ambiguous Equipment",
+        "candidates": [
+          "Belt Conveyor",
+          "Excavator",
+          "Dozer",
+          "Wheel Loader"
+        ]
+      }
+    }
+  ]
+}

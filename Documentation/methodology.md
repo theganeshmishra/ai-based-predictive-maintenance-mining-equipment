@@ -50,10 +50,16 @@ Every choice (model, feature set, number of epochs) is made inside the training 
 
 The upload routes use locally fitted checkpoints. Some fits use different inputs from the archived evaluations. For example, Belt Conveyor and Dozer uploads use vibration alone, while some evaluation folds selected temperature features. Deployment smoke tests check successful inference and error handling. Consult the [deployment verification report](deployment_verification.md) for those tests.
 
+## Follow-up experiments (November 6)
+
+The [follow-up record](followup_experiments.md) uses the same folds and methods with a changed target or subset, saves to `Results/experiments/` and leaves the four-class results and checkpoints unchanged: CORA healthy vs worn (one prediction per held-out run, majority control, four-class model read as healthy vs worn), the Haul Truck fair test without the load-confounded ball class, and a route check with checkpoint hashes.
+
 ## Limits
 
 - No data comes from mining equipment. Each machine maps a mining component onto a laboratory component.
 - Test sets are small. One recording is worth 6 points of accuracy on a 16-run test and 8 points on the Haul Truck's 12 image recordings.
-- The CORA rig has one run per class and speed. The Dozer reuses the Belt Conveyor's runs, so it is not separate evidence.
+- The CORA rig has one run per class and speed. The Dozer reuses the Belt Conveyor's runs, so it is not separate evidence. Merging the wear levels into healthy vs worn did not give defensible improvement (see the follow-up record).
+- The Haul Truck ball faults were recorded without load and the other classes at 400 N, so ball recall may partly measure load.
+- The Pump source gives no bearing IDs, so its test holds out speed profiles, not bearings.
 - Drill Rig image performance applies to CAD renders. Camera generalization remains untested. The code maps CAD root breakage to sensor root crack. Keep this label qualification visible.
 - The Grader images use a different method: frozen ImageNet ResNet-18 features and a logistic regression, with settings fixed in advance (choosing them inside the training sources is saved as a check). They show real photos of small gears, not the slewing ring, and are scored by balanced accuracy because 94% of the tooth crops are good teeth.

@@ -1,0 +1,797 @@
+{
+  "experiment": "CORA gear wear, healthy vs worn (W25/W50/W75 merged), Belt Conveyor runs",
+  "test": "leave one speed out (F5, F15, F50, F60); 4 runs per round (1 healthy, 3 worn); one prediction per run from the mean of its window or frame probabilities; every choice made inside the training speeds only",
+  "modality": "sensor",
+  "feature_sets": {
+    "vibration": [
+      "log_rms",
+      "kurtosis",
+      "skewness",
+      "crest_factor",
+      "peak_order",
+      "log_ratio_2x_1x",
+      "order_power_0.5_1.5",
+      "order_power_1.5_2.5",
+      "order_power_2.5_3.5",
+      "order_power_3.5_5.5",
+      "order_power_5.5_8.5",
+      "order_power_8.5_12.5",
+      "order_power_12.5_20.5"
+    ],
+    "vibration+temperature": [
+      "log_rms",
+      "kurtosis",
+      "skewness",
+      "crest_factor",
+      "peak_order",
+      "log_ratio_2x_1x",
+      "order_power_0.5_1.5",
+      "order_power_1.5_2.5",
+      "order_power_2.5_3.5",
+      "order_power_3.5_5.5",
+      "order_power_5.5_8.5",
+      "order_power_8.5_12.5",
+      "order_power_12.5_20.5",
+      "t1_mean",
+      "t1_std",
+      "t1_slope"
+    ]
+  },
+  "windows": 4800,
+  "chosen_per_round": [
+    {
+      "held_out_speed": "F5",
+      "feature_set": "vibration",
+      "model": "Extra trees",
+      "validation_macro_f1": 0.8333
+    },
+    {
+      "held_out_speed": "F15",
+      "feature_set": "vibration",
+      "model": "Extra trees",
+      "validation_macro_f1": 0.7333
+    },
+    {
+      "held_out_speed": "F50",
+      "feature_set": "vibration+temperature",
+      "model": "Extra trees",
+      "validation_macro_f1": 0.6317
+    },
+    {
+      "held_out_speed": "F60",
+      "feature_set": "vibration+temperature",
+      "model": "SVM (RBF)",
+      "validation_macro_f1": 0.5873
+    }
+  ],
+  "runs": [
+    {
+      "run": "H_F5_S",
+      "speed": "F5",
+      "actual": "healthy",
+      "predicted": "healthy",
+      "probabilities": {
+        "healthy": 0.555,
+        "worn": 0.445
+      }
+    },
+    {
+      "run": "W25_F5_S",
+      "speed": "F5",
+      "actual": "worn",
+      "predicted": "healthy",
+      "probabilities": {
+        "healthy": 0.5588,
+        "worn": 0.4412
+      }
+    },
+    {
+      "run": "W50_F5_S",
+      "speed": "F5",
+      "actual": "worn",
+      "predicted": "healthy",
+      "probabilities": {
+        "healthy": 0.5642,
+        "worn": 0.4358
+      }
+    },
+    {
+      "run": "W75_F5_S",
+      "speed": "F5",
+      "actual": "worn",
+      "predicted": "healthy",
+      "probabilities": {
+        "healthy": 0.5447,
+        "worn": 0.4553
+      }
+    },
+    {
+      "run": "H_F15_S",
+      "speed": "F15",
+      "actual": "healthy",
+      "predicted": "worn",
+      "probabilities": {
+        "healthy": 0.258,
+        "worn": 0.742
+      }
+    },
+    {
+      "run": "W25_F15_S",
+      "speed": "F15",
+      "actual": "worn",
+      "predicted": "worn",
+      "probabilities": {
+        "healthy": 0.3639,
+        "worn": 0.6361
+      }
+    },
+    {
+      "run": "W50_F15_S",
+      "speed": "F15",
+      "actual": "worn",
+      "predicted": "worn",
+      "probabilities": {
+        "healthy": 0.3444,
+        "worn": 0.6556
+      }
+    },
+    {
+      "run": "W75_F15_S",
+      "speed": "F15",
+      "actual": "worn",
+      "predicted": "worn",
+      "probabilities": {
+        "healthy": 0.2028,
+        "worn": 0.7972
+      }
+    },
+    {
+      "run": "H_F50_S",
+      "speed": "F50",
+      "actual": "healthy",
+      "predicted": "worn",
+      "probabilities": {
+        "healthy": 0.3363,
+        "worn": 0.6637
+      }
+    },
+    {
+      "run": "W25_F50_S",
+      "speed": "F50",
+      "actual": "worn",
+      "predicted": "healthy",
+      "probabilities": {
+        "healthy": 0.5907,
+        "worn": 0.4093
+      }
+    },
+    {
+      "run": "W50_F50_S",
+      "speed": "F50",
+      "actual": "worn",
+      "predicted": "worn",
+      "probabilities": {
+        "healthy": 0.3462,
+        "worn": 0.6538
+      }
+    },
+    {
+      "run": "W75_F50_S",
+      "speed": "F50",
+      "actual": "worn",
+      "predicted": "worn",
+      "probabilities": {
+        "healthy": 0.106,
+        "worn": 0.894
+      }
+    },
+    {
+      "run": "H_F60_S",
+      "speed": "F60",
+      "actual": "healthy",
+      "predicted": "worn",
+      "probabilities": {
+        "healthy": 0.3413,
+        "worn": 0.6587
+      }
+    },
+    {
+      "run": "W25_F60_S",
+      "speed": "F60",
+      "actual": "worn",
+      "predicted": "worn",
+      "probabilities": {
+        "healthy": 0.0,
+        "worn": 1.0
+      }
+    },
+    {
+      "run": "W50_F60_S",
+      "speed": "F60",
+      "actual": "worn",
+      "predicted": "worn",
+      "probabilities": {
+        "healthy": 0.0,
+        "worn": 1.0
+      }
+    },
+    {
+      "run": "W75_F60_S",
+      "speed": "F60",
+      "actual": "worn",
+      "predicted": "worn",
+      "probabilities": {
+        "healthy": 0.0041,
+        "worn": 0.9959
+      }
+    }
+  ],
+  "majority_runs": [
+    {
+      "run": "H_F5_S",
+      "speed": "F5",
+      "actual": "healthy",
+      "predicted": "worn",
+      "probabilities": {
+        "healthy": 0.0,
+        "worn": 1.0
+      }
+    },
+    {
+      "run": "W25_F5_S",
+      "speed": "F5",
+      "actual": "worn",
+      "predicted": "worn",
+      "probabilities": {
+        "healthy": 0.0,
+        "worn": 1.0
+      }
+    },
+    {
+      "run": "W50_F5_S",
+      "speed": "F5",
+      "actual": "worn",
+      "predicted": "worn",
+      "probabilities": {
+        "healthy": 0.0,
+        "worn": 1.0
+      }
+    },
+    {
+      "run": "W75_F5_S",
+      "speed": "F5",
+      "actual": "worn",
+      "predicted": "worn",
+      "probabilities": {
+        "healthy": 0.0,
+        "worn": 1.0
+      }
+    },
+    {
+      "run": "H_F15_S",
+      "speed": "F15",
+      "actual": "healthy",
+      "predicted": "worn",
+      "probabilities": {
+        "healthy": 0.0,
+        "worn": 1.0
+      }
+    },
+    {
+      "run": "W25_F15_S",
+      "speed": "F15",
+      "actual": "worn",
+      "predicted": "worn",
+      "probabilities": {
+        "healthy": 0.0,
+        "worn": 1.0
+      }
+    },
+    {
+      "run": "W50_F15_S",
+      "speed": "F15",
+      "actual": "worn",
+      "predicted": "worn",
+      "probabilities": {
+        "healthy": 0.0,
+        "worn": 1.0
+      }
+    },
+    {
+      "run": "W75_F15_S",
+      "speed": "F15",
+      "actual": "worn",
+      "predicted": "worn",
+      "probabilities": {
+        "healthy": 0.0,
+        "worn": 1.0
+      }
+    },
+    {
+      "run": "H_F50_S",
+      "speed": "F50",
+      "actual": "healthy",
+      "predicted": "worn",
+      "probabilities": {
+        "healthy": 0.0,
+        "worn": 1.0
+      }
+    },
+    {
+      "run": "W25_F50_S",
+      "speed": "F50",
+      "actual": "worn",
+      "predicted": "worn",
+      "probabilities": {
+        "healthy": 0.0,
+        "worn": 1.0
+      }
+    },
+    {
+      "run": "W50_F50_S",
+      "speed": "F50",
+      "actual": "worn",
+      "predicted": "worn",
+      "probabilities": {
+        "healthy": 0.0,
+        "worn": 1.0
+      }
+    },
+    {
+      "run": "W75_F50_S",
+      "speed": "F50",
+      "actual": "worn",
+      "predicted": "worn",
+      "probabilities": {
+        "healthy": 0.0,
+        "worn": 1.0
+      }
+    },
+    {
+      "run": "H_F60_S",
+      "speed": "F60",
+      "actual": "healthy",
+      "predicted": "worn",
+      "probabilities": {
+        "healthy": 0.0,
+        "worn": 1.0
+      }
+    },
+    {
+      "run": "W25_F60_S",
+      "speed": "F60",
+      "actual": "worn",
+      "predicted": "worn",
+      "probabilities": {
+        "healthy": 0.0,
+        "worn": 1.0
+      }
+    },
+    {
+      "run": "W50_F60_S",
+      "speed": "F60",
+      "actual": "worn",
+      "predicted": "worn",
+      "probabilities": {
+        "healthy": 0.0,
+        "worn": 1.0
+      }
+    },
+    {
+      "run": "W75_F60_S",
+      "speed": "F60",
+      "actual": "worn",
+      "predicted": "worn",
+      "probabilities": {
+        "healthy": 0.0,
+        "worn": 1.0
+      }
+    }
+  ],
+  "score": {
+    "overall": {
+      "test_units": 16,
+      "accuracy": 0.5625,
+      "balanced_accuracy": 0.4583,
+      "macro_precision": 0.4636,
+      "macro_recall": 0.4583,
+      "macro_f1": 0.4589,
+      "confusion_matrix": [
+        [
+          1,
+          3
+        ],
+        [
+          4,
+          8
+        ]
+      ],
+      "per_class_recall": {
+        "healthy": 0.25,
+        "worn": 0.6667
+      },
+      "per_class": {
+        "healthy": {
+          "precision": 0.2,
+          "recall": 0.25,
+          "f1": 0.2222,
+          "support": 4
+        },
+        "worn": {
+          "precision": 0.7273,
+          "recall": 0.6667,
+          "f1": 0.6957,
+          "support": 12
+        }
+      }
+    },
+    "per_speed": {
+      "F5": {
+        "test_units": 4,
+        "accuracy": 0.25,
+        "balanced_accuracy": 0.5,
+        "macro_precision": 0.125,
+        "macro_recall": 0.5,
+        "macro_f1": 0.2,
+        "confusion_matrix": [
+          [
+            1,
+            0
+          ],
+          [
+            3,
+            0
+          ]
+        ],
+        "per_class_recall": {
+          "healthy": 1.0,
+          "worn": 0.0
+        },
+        "per_class": {
+          "healthy": {
+            "precision": 0.25,
+            "recall": 1.0,
+            "f1": 0.4,
+            "support": 1
+          },
+          "worn": {
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1": 0.0,
+            "support": 3
+          }
+        }
+      },
+      "F15": {
+        "test_units": 4,
+        "accuracy": 0.75,
+        "balanced_accuracy": 0.5,
+        "macro_precision": 0.375,
+        "macro_recall": 0.5,
+        "macro_f1": 0.4286,
+        "confusion_matrix": [
+          [
+            0,
+            1
+          ],
+          [
+            0,
+            3
+          ]
+        ],
+        "per_class_recall": {
+          "healthy": 0.0,
+          "worn": 1.0
+        },
+        "per_class": {
+          "healthy": {
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1": 0.0,
+            "support": 1
+          },
+          "worn": {
+            "precision": 0.75,
+            "recall": 1.0,
+            "f1": 0.8571,
+            "support": 3
+          }
+        }
+      },
+      "F50": {
+        "test_units": 4,
+        "accuracy": 0.5,
+        "balanced_accuracy": 0.3333,
+        "macro_precision": 0.3333,
+        "macro_recall": 0.3333,
+        "macro_f1": 0.3333,
+        "confusion_matrix": [
+          [
+            0,
+            1
+          ],
+          [
+            1,
+            2
+          ]
+        ],
+        "per_class_recall": {
+          "healthy": 0.0,
+          "worn": 0.6667
+        },
+        "per_class": {
+          "healthy": {
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1": 0.0,
+            "support": 1
+          },
+          "worn": {
+            "precision": 0.6667,
+            "recall": 0.6667,
+            "f1": 0.6667,
+            "support": 3
+          }
+        }
+      },
+      "F60": {
+        "test_units": 4,
+        "accuracy": 0.75,
+        "balanced_accuracy": 0.5,
+        "macro_precision": 0.375,
+        "macro_recall": 0.5,
+        "macro_f1": 0.4286,
+        "confusion_matrix": [
+          [
+            0,
+            1
+          ],
+          [
+            0,
+            3
+          ]
+        ],
+        "per_class_recall": {
+          "healthy": 0.0,
+          "worn": 1.0
+        },
+        "per_class": {
+          "healthy": {
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1": 0.0,
+            "support": 1
+          },
+          "worn": {
+            "precision": 0.75,
+            "recall": 1.0,
+            "f1": 0.8571,
+            "support": 3
+          }
+        }
+      }
+    }
+  },
+  "majority_control": {
+    "overall": {
+      "test_units": 16,
+      "accuracy": 0.75,
+      "balanced_accuracy": 0.5,
+      "macro_precision": 0.375,
+      "macro_recall": 0.5,
+      "macro_f1": 0.4286,
+      "confusion_matrix": [
+        [
+          0,
+          4
+        ],
+        [
+          0,
+          12
+        ]
+      ],
+      "per_class_recall": {
+        "healthy": 0.0,
+        "worn": 1.0
+      },
+      "per_class": {
+        "healthy": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 4
+        },
+        "worn": {
+          "precision": 0.75,
+          "recall": 1.0,
+          "f1": 0.8571,
+          "support": 12
+        }
+      }
+    },
+    "per_speed": {
+      "F5": {
+        "test_units": 4,
+        "accuracy": 0.75,
+        "balanced_accuracy": 0.5,
+        "macro_precision": 0.375,
+        "macro_recall": 0.5,
+        "macro_f1": 0.4286,
+        "confusion_matrix": [
+          [
+            0,
+            1
+          ],
+          [
+            0,
+            3
+          ]
+        ],
+        "per_class_recall": {
+          "healthy": 0.0,
+          "worn": 1.0
+        },
+        "per_class": {
+          "healthy": {
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1": 0.0,
+            "support": 1
+          },
+          "worn": {
+            "precision": 0.75,
+            "recall": 1.0,
+            "f1": 0.8571,
+            "support": 3
+          }
+        }
+      },
+      "F15": {
+        "test_units": 4,
+        "accuracy": 0.75,
+        "balanced_accuracy": 0.5,
+        "macro_precision": 0.375,
+        "macro_recall": 0.5,
+        "macro_f1": 0.4286,
+        "confusion_matrix": [
+          [
+            0,
+            1
+          ],
+          [
+            0,
+            3
+          ]
+        ],
+        "per_class_recall": {
+          "healthy": 0.0,
+          "worn": 1.0
+        },
+        "per_class": {
+          "healthy": {
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1": 0.0,
+            "support": 1
+          },
+          "worn": {
+            "precision": 0.75,
+            "recall": 1.0,
+            "f1": 0.8571,
+            "support": 3
+          }
+        }
+      },
+      "F50": {
+        "test_units": 4,
+        "accuracy": 0.75,
+        "balanced_accuracy": 0.5,
+        "macro_precision": 0.375,
+        "macro_recall": 0.5,
+        "macro_f1": 0.4286,
+        "confusion_matrix": [
+          [
+            0,
+            1
+          ],
+          [
+            0,
+            3
+          ]
+        ],
+        "per_class_recall": {
+          "healthy": 0.0,
+          "worn": 1.0
+        },
+        "per_class": {
+          "healthy": {
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1": 0.0,
+            "support": 1
+          },
+          "worn": {
+            "precision": 0.75,
+            "recall": 1.0,
+            "f1": 0.8571,
+            "support": 3
+          }
+        }
+      },
+      "F60": {
+        "test_units": 4,
+        "accuracy": 0.75,
+        "balanced_accuracy": 0.5,
+        "macro_precision": 0.375,
+        "macro_recall": 0.5,
+        "macro_f1": 0.4286,
+        "confusion_matrix": [
+          [
+            0,
+            1
+          ],
+          [
+            0,
+            3
+          ]
+        ],
+        "per_class_recall": {
+          "healthy": 0.0,
+          "worn": 1.0
+        },
+        "per_class": {
+          "healthy": {
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1": 0.0,
+            "support": 1
+          },
+          "worn": {
+            "precision": 0.75,
+            "recall": 1.0,
+            "f1": 0.8571,
+            "support": 3
+          }
+        }
+      }
+    }
+  },
+  "four_class_benchmark_collapsed": {
+    "note": "the saved four-class fair-test confusion matrix (same 16 runs and folds) read as healthy vs any wear; this is the like-for-like comparison, not the four-class accuracy",
+    "four_class_accuracy": 0.4375,
+    "test_units": 16,
+    "accuracy": 0.625,
+    "balanced_accuracy": 0.5833,
+    "macro_precision": 0.5667,
+    "macro_recall": 0.5833,
+    "macro_f1": 0.5636,
+    "confusion_matrix": [
+      [
+        2,
+        2
+      ],
+      [
+        4,
+        8
+      ]
+    ],
+    "per_class_recall": {
+      "healthy": 0.5,
+      "worn": 0.6667
+    },
+    "per_class": {
+      "healthy": {
+        "precision": 0.3333,
+        "recall": 0.5,
+        "f1": 0.4,
+        "support": 4
+      },
+      "worn": {
+        "precision": 0.8,
+        "recall": 0.6667,
+        "f1": 0.7273,
+        "support": 12
+      }
+    }
+  }
+}
