@@ -22,7 +22,6 @@ __pycache__/
 **/Processed_Data/
 data/
 *.csv
-!Examples/grader_sensor_synthetic_demo.csv
 *.csv.gz
 *.tsv
 *.parquet

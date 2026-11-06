@@ -12,15 +12,12 @@ The project uses public laboratory benchmarks, synthetic CAD renders, and small-
 | Excavator, Wheel Loader | both | CORA: drive-fault runs (bearing, unbalance, misalignment, rotor bars) | same as above | CC BY 4.0 | `Raw_Data/cora_drive_faults/`, `Raw_Data/cora_vibration/` |
 | Drill Rig | sensor | MCC5-THU gearbox fault diagnosis datasets (Chen et al., Tsinghua University) | [Mendeley Data p92gj2732w v2](https://data.mendeley.com/datasets/p92gj2732w/2), doi 10.17632/p92gj2732w.2 | CC BY 4.0 | `Raw_Data/mcc5_thu_gearbox/` |
 | Drill Rig | images | MFGNet-Gear synthetic CAD gear meshes (Mei and Shao, University of Michigan) | [Deep Blue Data doi 10.7302/qrdj-n812](https://doi.org/10.7302/qrdj-n812) | CC BY 4.0 | `Raw_Data/mfgnet_gear/mesh_ply.zip` |
-| Grader | sensor | JUST Slewing bearing datasets-1, six accelerometers at 50 kHz (Xiaodie Ren, Jiangsu University of Science and Technology) | [Mendeley Data hwg8v5j8t6 v1](https://data.mendeley.com/datasets/hwg8v5j8t6/1), doi 10.17632/hwg8v5j8t6.1 | CC BY 4.0 | `Raw_Data/just_slewing/condition1.zip` … `condition6.zip` |
-| Grader | images | GearBox_adddingImg v1 by Vjs, real photos of small gears with labelled teeth (Roboflow COCO export of 2026-11-05; 838 images) | [Roboflow Universe](https://universe.roboflow.com/vjs-jek7v/gearbox_adddingimg) | CC BY 4.0 | `Raw_Data/roboflow_gear_photos/GearBox_adddingImg.v1i.coco.zip` |
 
 ## Points to keep in mind
 
-- Pump and Haul Truck use separate sensor and event-camera rigs. CORA sensor and infrared data share run IDs. Synchronization below run level was not verified. Drill Rig uses CAD renders and Grader compares separate tasks.
+- Pump and Haul Truck use separate sensor and event-camera rigs. CORA sensor and infrared data share run IDs. Synchronization below run level was not verified. Drill Rig uses CAD renders.
 - The CORA rig has one run per class and speed. The Dozer reuses the Belt Conveyor's runs, and the Wheel Loader shares the healthy and bearing runs with the Excavator, so these mappings are not independent evidence.
 - The CORA T1 temperature was downloaded as a bounded sample (8 short ranges of 6,000 readings per run), not the full stream.
 - UODS ball faults were recorded without load while the other classes ran at about 400 N, so the Haul Truck ball class may partly reflect load.
-- The Grader has one slewing support per class, so its sensor model may partly learn the individual ring. Its images are a separate task (good vs damaged teeth of small manufactured gears, uploader unknown, many frames from 15 short videos), not the slewing ring.
 - The Drill Rig images are noise-free renders of CAD meshes, not photographs, and not of the MCC5-THU gears.
 - The earlier, longer dataset survey (candidate datasets that were not used) is in the Git history of this file.
