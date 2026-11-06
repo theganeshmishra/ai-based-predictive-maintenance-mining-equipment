@@ -26,6 +26,7 @@ Use it from the notebook (import pdm) or from a terminal in the project folder:
     python Notebook/pdm.py cora-binary verify|sensor|images     healthy vs worn follow-up experiment
     python Notebook/pdm.py haul-truck-load-check               Haul Truck sensor without the unloaded ball class
     python Notebook/pdm.py route-check                         run every predict route once, record checkpoint hashes
+    python Notebook/pdm.py attempt drill-orders|haul-frames|cora-transient   planned improvement attempts
     python Notebook/pdm.py data-check                          list missing or changed raw files
 
 Machines: pump, haul_truck, belt_conveyor, excavator, dozer, wheel_loader, drill_rig, grader
@@ -490,8 +491,9 @@ def event_png(frame):
     return np.dstack([np.zeros_like(scaled[0]), scaled[1], scaled[0]])
 
 
-def event_camera(machine, out):
-    """Pump: XJTU-DV-Pump at 20 Hz and 30 Hz. Haul Truck: XJTU-DV-Rotor at 1000 and 2000 rpm."""
+def event_camera(machine, out, bin_us_by_group=None):
+    """Pump: XJTU-DV-Pump at 20 Hz and 30 Hz. Haul Truck: XJTU-DV-Rotor at 1000 and 2000 rpm.
+    bin_us_by_group: frame length per group (default 125 ms everywhere)."""
     import zipfile
 
     import cv2
@@ -521,7 +523,7 @@ def event_camera(machine, out):
     rows = []
     for archive, member, label, unit, group, stem in recordings:
         with zipfile.ZipFile(archive) as z, z.open(member) as stream:
-            counts = event_counts(stream)
+            counts = event_counts(stream, bin_us=(bin_us_by_group or {}).get(group, 125_000))
         (out / label).mkdir(exist_ok=True)
         for k, frame in enumerate(counts):
             if frame.sum() > 0:  # skip empty frames after the recording ends
@@ -2027,6 +2029,208 @@ def run_haul_truck_load_check():
     return result
 
 
+# --- Planned attempt A (Documentation/improvement_plan_2026-11-06.md): Drill Rig order features -------
+# The MCC5-THU `speed` column is a tachometer with one pulse per revolution. The shaft rate of each
+# 1 s window is interpolated from the times between pulses, and each vibration channel's spectrum is
+# summed in bands of shaft orders. The shaft rate itself is not a feature.
+
+MCC5_ORDER_EDGES = (0.5, 1.5, 2.5, 4.5, 8.5, 16.5, 32.5, 64.5, 120.5)
+MCC5_ORDER_FEATURES = [f"{c}_order_{lo}_{hi}" for c in MCC5_CHANNELS
+                       for lo, hi in zip(MCC5_ORDER_EDGES[:-1], MCC5_ORDER_EDGES[1:])]
+
+
+def mcc5_order_recording(frame, rate=12_800):
+    """Order-band features of every 1 s window of one MCC5-THU recording (a DataFrame with `speed`)."""
+    pulse = frame["speed"].to_numpy() > 1.8
+    edges = np.flatnonzero(~pulse[:-1] & pulse[1:]) / rate          # pulse times in seconds
+    n = len(frame) // rate
+    centres = np.arange(n) + 0.5
+    if len(edges) >= 2:
+        shaft = np.interp(centres, (edges[1:] + edges[:-1]) / 2, 1 / np.diff(edges))
+    else:
+        shaft = np.full(n, np.nan)
+    signal = frame[MCC5_CHANNELS].to_numpy(np.float64)[: n * rate].reshape(n, rate, len(MCC5_CHANNELS))
+    centered = signal - signal.mean(axis=1, keepdims=True)
+    power = np.abs(np.fft.rfft(centered * np.hanning(rate)[None, :, None], axis=1)) ** 2
+    freq = np.fft.rfftfreq(rate, d=1 / rate)
+    rows = np.empty((n, len(MCC5_ORDER_FEATURES)))
+    for w in range(n):
+        order = freq / max(shaft[w], 1e-6)
+        usable = (order >= MCC5_ORDER_EDGES[0]) & (order < MCC5_ORDER_EDGES[-1])
+        total = power[w, usable].sum(axis=0) + 1e-12
+        bands = [power[w, (order >= lo) & (order < hi)].sum(axis=0) / total
+                 for lo, hi in zip(MCC5_ORDER_EDGES[:-1], MCC5_ORDER_EDGES[1:])]
+        rows[w] = np.log(np.stack(bands, axis=1) + 1e-12).ravel()     # channel-major, like MCC5_FEATURES
+    return pd.DataFrame(rows, columns=MCC5_ORDER_FEATURES)
+
+
+def run_drill_rig_orders():
+    import io
+    import zipfile
+
+    m = MACHINES["drill_rig"]
+    frames = []
+    with zipfile.ZipFile(MCC5_ZIP) as archive:
+        for r in mcc5_recordings():
+            data = archive.read(r["file"])
+            hz = mcc5_recording(io.BytesIO(data))
+            orders = mcc5_order_recording(pd.read_csv(io.BytesIO(data), usecols=["speed", *MCC5_CHANNELS]))
+            frame = pd.concat([hz, orders.iloc[: len(hz)].reset_index(drop=True)], axis=1)
+            frame.insert(0, "window", np.arange(len(frame)))
+            frame.insert(0, "class", r["class"])
+            frame.insert(0, "rpm", r["rpm"])
+            frame.insert(0, "unit", r["unit"])
+            frames.append(frame)
+    table = pd.concat(frames, ignore_index=True)
+    feature_sets = {"vibration": MCC5_FEATURES, "orders": MCC5_ORDER_FEATURES,
+                    "vibration+orders": MCC5_FEATURES + MCC5_ORDER_FEATURES}
+    folds = fair_test_folds(table[m.sensor_group], m.sensor_held_out)
+    scores = sensor_fair_test(table, feature_sets, m.labels, folds, m.inner_group)
+    archived = json.loads((RESULTS / "drill_rig" / "sensor.json").read_text(encoding="utf-8"))["score"]
+    result = {"attempt": "A: Drill Rig sensor with tachometer-order features (planned in "
+                         "Documentation/improvement_plan_2026-11-06.md)",
+              "test": "same fair test as the archived result: hold out 1000 / 2000 / 3000 rpm in turn; feature "
+                      "set and model chosen inside the training speeds",
+              "windows": int(len(table)), "recordings": int(table["unit"].nunique()), **scores,
+              "archived_fair_test": {k: archived[k] for k in ("accuracy", "balanced_accuracy", "macro_f1",
+                                                              "confusion_matrix")}}
+    out = RESULTS / "experiments" / "improvement"
+    out.mkdir(parents=True, exist_ok=True)
+    (out / "drill_rig_sensor_orders.json").write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
+    save_confusion_figure([("order features offered", scores["score"]), ("archived", archived)], m.labels,
+                          "Drill Rig sensor, unseen speed: with tachometer-order features",
+                          FIGURES / "experiments" / "improvement" / "drill_rig_sensor_orders.png")
+    s = scores["score"]
+    print(f"Drill Rig orders: accuracy {s['accuracy']:.3f}, balanced {s['balanced_accuracy']:.3f}, "
+          f"macro F1 {s['macro_f1']:.3f}; chosen {[c['feature_set'] + '/' + c['model'] for c in scores['chosen_per_round']]}")
+    return result
+
+
+# --- Planned attempt B: Haul Truck images, frames covering the same number of shaft turns -----------
+
+def run_haul_truck_speed_frames():
+    """Rerun the archived image test with the current code (125 ms frames everywhere), then with the
+    2000 rpm test recordings cut into 62.5 ms frames. Same recordings, folds and ResNet-18 settings."""
+    m = MACHINES["haul_truck"]
+    scaled = IMAGES / "haul_truck_speedscaled"
+    if not (scaled / "index.csv").is_file():
+        event_camera("haul_truck", scaled, {"1000rpm": 125_000, "2000rpm": 62_500})
+    runs = {}
+    for name, folder in (("baseline_125ms", IMAGES / "haul_truck"), ("speed_scaled", scaled)):
+        rows = read_index(folder)
+        folds = fair_test_folds(np.asarray([r["group"] for r in rows]), m.image_held_out)
+        settings = dict(m.image_settings)
+        scores = evaluate_images(folder, rows, m.labels, folds, settings,
+                                 one_recording_per_class(settings["seed"]), segments=None)
+        runs[name] = {"images": len(rows), **scores}
+        u = scores["unit_level"]
+        print(f"{name}: accuracy {u['accuracy']:.3f}, macro F1 {u['macro_f1']:.3f} on {u['test_units']} recordings",
+              flush=True)
+    archived = json.loads((RESULTS / "haul_truck" / "images.json").read_text(encoding="utf-8"))["unit_level"]
+    result = {"attempt": "B: Haul Truck images, 2000 rpm test recordings cut into 62.5 ms frames (planned in "
+                         "Documentation/improvement_plan_2026-11-06.md)",
+              "test": "same fair test as the archived result: train on the 12 recordings at 1000 rpm, test the 12 "
+                      "recordings at 2000 rpm; ResNet-18 epochs chosen on one training recording per class",
+              **runs, "archived_fair_test": {k: archived[k] for k in ("accuracy", "macro_f1", "confusion_matrix")}}
+    out = RESULTS / "experiments" / "improvement"
+    out.mkdir(parents=True, exist_ok=True)
+    (out / "haul_truck_images_speed_frames.json").write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
+    save_confusion_figure([("125 ms frames (rerun)", runs["baseline_125ms"]["unit_level"]),
+                           ("speed-scaled frames", runs["speed_scaled"]["unit_level"])], m.labels,
+                          "Haul Truck images, unseen 2000 rpm recordings",
+                          FIGURES / "experiments" / "improvement" / "haul_truck_images_speed_frames.png")
+    return result
+
+
+# --- Planned attempt C: CORA transient runs, unseen repetition at a known speed ----------------------
+# Each transient file is a 30 s start-up (3 kHz Vx; the RPM file samples speed at about 100 Hz). Each 1 s
+# window gets its own shaft rate: nominal set point x (measured speed / steady speed of the last 10 s).
+# Windows below half the steady speed (the start of the ramp) are dropped, because order bands are not
+# defined there. Features are the same CORA order features as the stationary runs.
+
+CORA_TRANSIENT = RAW / "cora_transient"
+
+
+def cora_transient_windows(values, nominal_hz, rpm):
+    rate = 3000
+    n = len(values) // rate
+    speed_t = np.linspace(0, n, len(rpm), endpoint=False)
+    steady = float(np.median(rpm[speed_t >= n - 10])) or 1.0
+    relative = np.interp(np.arange(n) + 0.5, speed_t, rpm) / steady
+    windows = values[: n * rate].reshape(n, rate)
+    keep = relative >= 0.5
+    centered = windows - windows.mean(axis=1, keepdims=True)
+    std = np.maximum(centered.std(axis=1), 1e-12)
+    freq = np.fft.rfftfreq(rate, d=1 / rate)
+    power = np.abs(np.fft.rfft(centered * np.hanning(rate), axis=1)) ** 2
+    rows = []
+    for w in np.flatnonzero(keep):
+        order = freq / (nominal_hz * relative[w])
+        usable = (order >= 0.5) & (order < 20.5)
+        share = power[w, usable] / max(power[w, usable].sum(), 1e-12)
+        o = order[usable]
+        bands = [share[(o >= lo) & (o < hi)].sum() for lo, hi in CORA_ORDERS]
+        c = centered[w]
+        rows.append([np.log(std[w]), (c**4).mean() / std[w]**4, (c**3).mean() / std[w]**3,
+                     np.abs(c).max() / std[w], o[np.argmax(share)],
+                     np.log((bands[1] + 1e-9) / (bands[0] + 1e-9)), *bands])
+    return pd.DataFrame(rows, columns=CORA_FEATURES)
+
+
+def cora_transient_table(classes):
+    frames = []
+    for code, label in classes.items():
+        for (speed,) in CORA_SPEEDS:
+            for k in range(1, 6):
+                run = f"{code}_{speed}_T"
+                vx = CORA_TRANSIENT / f"{run}_Vx_{k}.csv"
+                rpm = CORA_TRANSIENT / f"{run}_RPM_{k}.csv"
+                if not (vx.is_file() and rpm.is_file()):
+                    raise FileNotFoundError(f"missing {vx.name} or {rpm.name}")
+                frame = cora_transient_windows(pd.read_csv(vx, header=None).iloc[:, 0].to_numpy(np.float64),
+                                               float(speed[1:]), np.loadtxt(rpm))
+                frame.insert(0, "window", np.arange(len(frame)))
+                frame.insert(0, "class", label)
+                frame.insert(0, "repetition", k)
+                frame.insert(0, "speed", speed)
+                frame.insert(0, "unit", f"{run}_{k}")
+                frames.append(frame)
+    return pd.concat(frames, ignore_index=True)
+
+
+def run_cora_transient():
+    codes = {"belt_conveyor": GEAR_WEAR_CODES,
+             "excavator": {"H": "healthy", "BD": "bearing", "U": "unbalance", "M": "misalignment"},
+             "wheel_loader": {"H": "healthy", "BD": "bearing", "HB": "half_broken_bar", "OB": "broken_bar"}}
+    results = {}
+    for machine, classes in codes.items():
+        m = MACHINES[machine]
+        table = cora_transient_table(classes)
+        folds = fair_test_folds(table["repetition"], [[k] for k in range(1, 6)])
+        scores = sensor_fair_test(table, {"vibration": CORA_FEATURES}, m.labels, folds, "repetition")
+        results[machine] = {"windows": int(len(table)), "runs": int(table["unit"].nunique()), **scores}
+        s = scores["score"]
+        print(f"{m.title} transient: accuracy {s['accuracy']:.3f}, balanced {s['balanced_accuracy']:.3f}, "
+              f"macro F1 {s['macro_f1']:.3f} on {s['test_units']} runs "
+              f"(majority {scores['majority_control']['accuracy']:.3f})", flush=True)
+        save_confusion_figure([("unseen repetition", s), ("majority control", scores["majority_control"])],
+                              m.labels, f"{m.title}: CORA transient runs, unseen repetition at a trained speed",
+                              FIGURES / "experiments" / "improvement" / f"{machine}_cora_transient.png")
+    result = {"attempt": "C: CORA transient runs, unseen repetition at a known speed (planned in "
+                         "Documentation/improvement_plan_2026-11-06.md)",
+              "source": "CORA, CSUC Dataverse doi 10.34810/DATA2500 (CC BY 4.0): transient start-up runs, 5 "
+                        "repetitions per class and speed, Vx at 3 kHz for 30 s, RPM at about 100 Hz",
+              "test": "five rounds, each holding out repetition k at all four speeds (16 runs); model chosen "
+                      "inside the training repetitions; one prediction per run. NOT the unseen-speed fair test; "
+                      "repetitions share the same physical fault or gear set",
+              "dozer": "uses the Belt Conveyor runs, so its result is the Belt Conveyor's",
+              **results}
+    out = RESULTS / "experiments" / "improvement"
+    out.mkdir(parents=True, exist_ok=True)
+    (out / "cora_transient_repetition.json").write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
+    return result
+
+
 # ==================================================================================================
 # 6. Predict a new file
 # 1. Sensor recording or image?  2. Which dataset format (a format check, not machine learning)?
@@ -2430,6 +2634,37 @@ def followup_overview():
     return pd.DataFrame(rows)
 
 
+def improvement_overview():
+    """The three planned improvement attempts next to the archived results, from Results/experiments/."""
+    out = RESULTS / "experiments" / "improvement"
+    rows = []
+
+    def add(machine, test, name, s):
+        rows.append({"Machine": machine, "Test": test, "Model": name, "Accuracy": s["accuracy"],
+                     "Balanced accuracy": s.get("balanced_accuracy"), "Macro F1": s["macro_f1"]})
+
+    path = out / "drill_rig_sensor_orders.json"
+    if path.is_file():
+        r = json.loads(path.read_text(encoding="utf-8"))
+        add("Drill Rig sensor", "unseen speed", "archived", r["archived_fair_test"])
+        add("Drill Rig sensor", "unseen speed", "A: order features offered", r["score"])
+        add("Drill Rig sensor", "unseen speed", "majority control", r["majority_control"])
+    path = out / "haul_truck_images_speed_frames.json"
+    if path.is_file():
+        r = json.loads(path.read_text(encoding="utf-8"))
+        archived = json.loads((RESULTS / "haul_truck" / "images.json").read_text(encoding="utf-8"))
+        add("Haul Truck images", "unseen speed", "archived", archived["unit_level"])
+        add("Haul Truck images", "unseen speed", "B: baseline rerun, 125 ms", r["baseline_125ms"]["unit_level"])
+        add("Haul Truck images", "unseen speed", "B: speed-scaled frames", r["speed_scaled"]["unit_level"])
+    path = out / "cora_transient_repetition.json"
+    if path.is_file():
+        r = json.loads(path.read_text(encoding="utf-8"))
+        for machine in ("belt_conveyor", "excavator", "wheel_loader"):
+            add(MACHINES[machine].title + " sensor", "unseen repetition, known speed", "C: transient runs",
+                r[machine]["score"])
+    return pd.DataFrame(rows)
+
+
 # ==================================================================================================
 # 8. Command line
 # ==================================================================================================
@@ -2459,6 +2694,12 @@ def main():
         return run_haul_truck_load_check()
     if args.target == "route-check":
         return verify_routes()
+    if args.target == "attempt":
+        steps = {"drill-orders": run_drill_rig_orders, "haul-frames": run_haul_truck_speed_frames,
+                 "cora-transient": run_cora_transient}
+        if args.command not in steps:
+            parser.error(f"attempt takes one of {', '.join(steps)}")
+        return steps[args.command]()
     if args.target == "predict":
         if not args.command:
             parser.error("give the file to predict")

@@ -58,7 +58,7 @@ The [follow-up record](followup_experiments.md) uses the same folds and methods 
 
 - No data comes from mining equipment. Each machine maps a mining component onto a laboratory component.
 - Test sets are small. One recording is worth 6 points of accuracy on a 16-run test and 8 points on the Haul Truck's 12 image recordings.
-- The CORA rig has one run per class and speed. The Dozer reuses the Belt Conveyor's runs, so it is not separate evidence. Merging the wear levels into healthy vs worn did not give defensible improvement (see the follow-up record).
+- The CORA rig has one run per class and speed. The Dozer reuses the Belt Conveyor's runs, so it is not separate evidence. Merging the wear levels into healthy vs worn did not give defensible improvement (see the follow-up record). On the CORA transient runs, a held-out repetition at a trained speed scores 97.5–100%, so the fair-test failure comes from the change of speed ([improvement results](improvement_results.md)).
 - The Haul Truck ball faults were recorded without load and the other classes at 400 N, so ball recall may partly measure load.
 - The Pump source gives no bearing IDs, so its test holds out speed profiles, not bearings.
 - Drill Rig image performance applies to CAD renders. Camera generalization remains untested. The code maps CAD root breakage to sensor root crack. Keep this label qualification visible.

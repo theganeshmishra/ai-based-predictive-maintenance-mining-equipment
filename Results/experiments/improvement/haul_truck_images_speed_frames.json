@@ -1,0 +1,516 @@
+{
+  "attempt": "B: Haul Truck images, 2000 rpm test recordings cut into 62.5 ms frames (planned in Documentation/improvement_plan_2026-11-06.md)",
+  "test": "same fair test as the archived result: train on the 12 recordings at 1000 rpm, test the 12 recordings at 2000 rpm; ResNet-18 epochs chosen on one training recording per class",
+  "baseline_125ms": {
+    "images": 2691,
+    "unit_level": {
+      "test_units": 12,
+      "accuracy": 0.6667,
+      "balanced_accuracy": 0.6667,
+      "macro_precision": 0.7083,
+      "macro_recall": 0.6667,
+      "macro_f1": 0.6762,
+      "confusion_matrix": [
+        [
+          3,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          2,
+          1,
+          0
+        ],
+        [
+          0,
+          2,
+          1,
+          0
+        ],
+        [
+          0,
+          0,
+          1,
+          2
+        ]
+      ],
+      "per_class_recall": {
+        "healthy": 1.0,
+        "inner": 0.6667,
+        "outer": 0.3333,
+        "ball": 0.6667
+      }
+    },
+    "image_level": {
+      "test_units": 1392,
+      "accuracy": 0.607,
+      "balanced_accuracy": 0.5831,
+      "macro_precision": 0.6487,
+      "macro_recall": 0.5831,
+      "macro_f1": 0.5924,
+      "confusion_matrix": [
+        [
+          380,
+          27,
+          1,
+          0
+        ],
+        [
+          104,
+          219,
+          103,
+          0
+        ],
+        [
+          29,
+          148,
+          112,
+          2
+        ],
+        [
+          13,
+          6,
+          114,
+          134
+        ]
+      ],
+      "per_class_recall": {
+        "healthy": 0.9314,
+        "inner": 0.5141,
+        "outer": 0.3849,
+        "ball": 0.5019
+      }
+    },
+    "rounds": [
+      {
+        "epochs": 1,
+        "validation_macro_f1_by_epoch": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "test_images": 1392
+      }
+    ],
+    "unit_predictions": [
+      {
+        "unit": "2000rpm_ball_angle1",
+        "actual": "ball",
+        "predicted": "ball",
+        "probabilities": {
+          "healthy": 0.18,
+          "inner": 0.1326,
+          "outer": 0.2535,
+          "ball": 0.4338
+        }
+      },
+      {
+        "unit": "2000rpm_ball_angle2",
+        "actual": "ball",
+        "predicted": "outer",
+        "probabilities": {
+          "healthy": 0.0196,
+          "inner": 0.0003,
+          "outer": 0.9752,
+          "ball": 0.0048
+        }
+      },
+      {
+        "unit": "2000rpm_ball_angle3",
+        "actual": "ball",
+        "predicted": "ball",
+        "probabilities": {
+          "healthy": 0.0118,
+          "inner": 0.0016,
+          "outer": 0.0056,
+          "ball": 0.981
+        }
+      },
+      {
+        "unit": "2000rpm_healthy_angle1",
+        "actual": "healthy",
+        "predicted": "healthy",
+        "probabilities": {
+          "healthy": 0.6473,
+          "inner": 0.3051,
+          "outer": 0.0465,
+          "ball": 0.0011
+        }
+      },
+      {
+        "unit": "2000rpm_healthy_angle2",
+        "actual": "healthy",
+        "predicted": "healthy",
+        "probabilities": {
+          "healthy": 0.9963,
+          "inner": 0.0001,
+          "outer": 0.0033,
+          "ball": 0.0003
+        }
+      },
+      {
+        "unit": "2000rpm_healthy_angle3",
+        "actual": "healthy",
+        "predicted": "healthy",
+        "probabilities": {
+          "healthy": 0.8894,
+          "inner": 0.0729,
+          "outer": 0.031,
+          "ball": 0.0067
+        }
+      },
+      {
+        "unit": "2000rpm_inner_angle1",
+        "actual": "inner",
+        "predicted": "inner",
+        "probabilities": {
+          "healthy": 0.4574,
+          "inner": 0.488,
+          "outer": 0.0534,
+          "ball": 0.0011
+        }
+      },
+      {
+        "unit": "2000rpm_inner_angle2",
+        "actual": "inner",
+        "predicted": "outer",
+        "probabilities": {
+          "healthy": 0.3519,
+          "inner": 0.0008,
+          "outer": 0.6457,
+          "ball": 0.0016
+        }
+      },
+      {
+        "unit": "2000rpm_inner_angle3",
+        "actual": "inner",
+        "predicted": "inner",
+        "probabilities": {
+          "healthy": 0.0348,
+          "inner": 0.9381,
+          "outer": 0.0141,
+          "ball": 0.013
+        }
+      },
+      {
+        "unit": "2000rpm_outer_angle1",
+        "actual": "outer",
+        "predicted": "inner",
+        "probabilities": {
+          "healthy": 0.3737,
+          "inner": 0.4707,
+          "outer": 0.1494,
+          "ball": 0.0063
+        }
+      },
+      {
+        "unit": "2000rpm_outer_angle2",
+        "actual": "outer",
+        "predicted": "outer",
+        "probabilities": {
+          "healthy": 0.0313,
+          "inner": 0.0006,
+          "outer": 0.968,
+          "ball": 0.0001
+        }
+      },
+      {
+        "unit": "2000rpm_outer_angle3",
+        "actual": "outer",
+        "predicted": "inner",
+        "probabilities": {
+          "healthy": 0.0224,
+          "inner": 0.9313,
+          "outer": 0.0121,
+          "ball": 0.0342
+        }
+      }
+    ],
+    "device": "cpu"
+  },
+  "speed_scaled": {
+    "images": 4075,
+    "unit_level": {
+      "test_units": 12,
+      "accuracy": 0.5,
+      "balanced_accuracy": 0.5,
+      "macro_precision": 0.6071,
+      "macro_recall": 0.5,
+      "macro_f1": 0.475,
+      "confusion_matrix": [
+        [
+          3,
+          0,
+          0,
+          0
+        ],
+        [
+          2,
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          0,
+          1,
+          1
+        ]
+      ],
+      "per_class_recall": {
+        "healthy": 1.0,
+        "inner": 0.3333,
+        "outer": 0.3333,
+        "ball": 0.3333
+      }
+    },
+    "image_level": {
+      "test_units": 2776,
+      "accuracy": 0.5177,
+      "balanced_accuracy": 0.4801,
+      "macro_precision": 0.6096,
+      "macro_recall": 0.4801,
+      "macro_f1": 0.4664,
+      "confusion_matrix": [
+        [
+          804,
+          10,
+          0,
+          0
+        ],
+        [
+          460,
+          332,
+          59,
+          0
+        ],
+        [
+          204,
+          224,
+          152,
+          0
+        ],
+        [
+          176,
+          25,
+          181,
+          149
+        ]
+      ],
+      "per_class_recall": {
+        "healthy": 0.9877,
+        "inner": 0.3901,
+        "outer": 0.2621,
+        "ball": 0.2806
+      }
+    },
+    "rounds": [
+      {
+        "epochs": 1,
+        "validation_macro_f1_by_epoch": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "test_images": 2776
+      }
+    ],
+    "unit_predictions": [
+      {
+        "unit": "2000rpm_ball_angle1",
+        "actual": "ball",
+        "predicted": "healthy",
+        "probabilities": {
+          "healthy": 0.6252,
+          "inner": 0.2943,
+          "outer": 0.0691,
+          "ball": 0.0114
+        }
+      },
+      {
+        "unit": "2000rpm_ball_angle2",
+        "actual": "ball",
+        "predicted": "outer",
+        "probabilities": {
+          "healthy": 0.1591,
+          "inner": 0.0025,
+          "outer": 0.8379,
+          "ball": 0.0005
+        }
+      },
+      {
+        "unit": "2000rpm_ball_angle3",
+        "actual": "ball",
+        "predicted": "ball",
+        "probabilities": {
+          "healthy": 0.0973,
+          "inner": 0.0471,
+          "outer": 0.0393,
+          "ball": 0.8162
+        }
+      },
+      {
+        "unit": "2000rpm_healthy_angle1",
+        "actual": "healthy",
+        "predicted": "healthy",
+        "probabilities": {
+          "healthy": 0.787,
+          "inner": 0.1885,
+          "outer": 0.0239,
+          "ball": 0.0006
+        }
+      },
+      {
+        "unit": "2000rpm_healthy_angle2",
+        "actual": "healthy",
+        "predicted": "healthy",
+        "probabilities": {
+          "healthy": 0.9991,
+          "inner": 0.0001,
+          "outer": 0.0008,
+          "ball": 0.0
+        }
+      },
+      {
+        "unit": "2000rpm_healthy_angle3",
+        "actual": "healthy",
+        "predicted": "healthy",
+        "probabilities": {
+          "healthy": 0.9312,
+          "inner": 0.053,
+          "outer": 0.014,
+          "ball": 0.0017
+        }
+      },
+      {
+        "unit": "2000rpm_inner_angle1",
+        "actual": "inner",
+        "predicted": "healthy",
+        "probabilities": {
+          "healthy": 0.6758,
+          "inner": 0.3002,
+          "outer": 0.0235,
+          "ball": 0.0005
+        }
+      },
+      {
+        "unit": "2000rpm_inner_angle2",
+        "actual": "inner",
+        "predicted": "healthy",
+        "probabilities": {
+          "healthy": 0.7158,
+          "inner": 0.0046,
+          "outer": 0.2794,
+          "ball": 0.0002
+        }
+      },
+      {
+        "unit": "2000rpm_inner_angle3",
+        "actual": "inner",
+        "predicted": "inner",
+        "probabilities": {
+          "healthy": 0.0356,
+          "inner": 0.9543,
+          "outer": 0.009,
+          "ball": 0.0011
+        }
+      },
+      {
+        "unit": "2000rpm_outer_angle1",
+        "actual": "outer",
+        "predicted": "healthy",
+        "probabilities": {
+          "healthy": 0.6468,
+          "inner": 0.3017,
+          "outer": 0.0503,
+          "ball": 0.0012
+        }
+      },
+      {
+        "unit": "2000rpm_outer_angle2",
+        "actual": "outer",
+        "predicted": "outer",
+        "probabilities": {
+          "healthy": 0.3424,
+          "inner": 0.0032,
+          "outer": 0.6543,
+          "ball": 0.0001
+        }
+      },
+      {
+        "unit": "2000rpm_outer_angle3",
+        "actual": "outer",
+        "predicted": "inner",
+        "probabilities": {
+          "healthy": 0.0267,
+          "inner": 0.966,
+          "outer": 0.0049,
+          "ball": 0.0024
+        }
+      }
+    ],
+    "device": "cpu"
+  },
+  "archived_fair_test": {
+    "accuracy": 0.5833,
+    "macro_f1": 0.5655,
+    "confusion_matrix": [
+      [
+        3,
+        0,
+        0,
+        0
+      ],
+      [
+        1,
+        2,
+        0,
+        0
+      ],
+      [
+        0,
+        2,
+        1,
+        0
+      ],
+      [
+        0,
+        0,
+        2,
+        1
+      ]
+    ]
+  }
+}
