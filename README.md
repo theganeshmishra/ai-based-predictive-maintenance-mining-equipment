@@ -2,16 +2,15 @@
 
 Saskatchewan Polytechnic PROJ 613 capstone · Group 9 · Ganesh Mishra, Lakshya Sharma and Sagar Patel
 
-This capstone demonstrates sensor and visual classification of current component condition across eight mining equipment mappings. The sources include laboratory analogues, small-gear inspection photos, and synthetic CAD renders. The eight mappings have working local prediction routes. The strength and comparability of the archived experiments vary by equipment.
+This capstone demonstrates sensor and visual classification of current component condition across seven mining equipment mappings, from Pump to Drill Rig. The sources include laboratory analogues and synthetic CAD renders. The seven mappings have working local prediction routes. The strength and comparability of the archived experiments vary by equipment.
 
 ## Results
 
-The [eight-equipment evidence matrix](Documentation/equipment_evidence_matrix.md) records each component, fault label, source, test group, accuracy, balanced accuracy, and macro F1. The [results index](Results/README.md) explains how to read the saved score files.
+The [equipment evidence matrix](Documentation/equipment_evidence_matrix.md) records each component, fault label, source, test group, accuracy, balanced accuracy, and macro F1. The [results index](Results/README.md) explains how to read the saved score files.
 
 - **Pump** has the strongest aligned held-out benchmark. Its sensor and event-camera results use different laboratory rigs and holdout protocols.
 - **CORA** shares run IDs across sensor and infrared recordings. The four mappings scored 18.75%–56.25% when whole speeds were held out. The 93.75%–100% time-split scores measure later segments of the same recordings. **Dozer reuses all Belt Conveyor runs**, and Excavator and Wheel Loader share eight run IDs.
 - **Drill Rig** uses CAD renders. The source labels CAD R0 as root breakage, while the sensor class describes a root crack. The full four-class comparison needs that qualification.
-- **Motor Grader** reports separate results for slewing-bearing vibration and gear-tooth photo inspection. Its image headline is balanced accuracy per tooth crop.
 - **Local deployment checks** verify routing and prediction output. They use saved deployment checkpoints and may include training samples. See the [deployment verification report](Documentation/deployment_verification.md) for the test cases.
 
 The [20-day audit and plan](Documentation/proj613_20_day_audit.md) ranks the remaining evidence gaps and gives acceptance criteria.
@@ -38,7 +37,7 @@ Raw_Data/ ─► 1a load sensor data ─► one feature row per time window ─�
 | 1 | load data: raw sensor files → feature rows (1a); raw camera files → PNG images (1b); data check (1c) |
 | 2 | the fair test and the time split |
 | 3 | one answer per recording and metrics (3a); sensor model (3b); ImageNet ResNet-18 image model (3c) |
-| 4 | the eight machines: datasets, classes, what each fair test holds out |
+| 4 | the seven machines: datasets, classes, what each fair test holds out |
 | 5 | run the steps for one machine; writes `Results/` and `Figures/` |
 | 6 | classify a new file |
 | 7 | tables and figures for the notebook |
@@ -73,10 +72,9 @@ Open [Integrated Equipment Fault Prediction](Notebook/Integrated_Equipment_Fault
 - **Automatic** uses recognized sensor schemas or an exact match to a trusted local image export. Keep the `Images/` indexes and frames locally for automatic image matching. The separate **Whole-machine photo** mode described below provides unverified visual suggestions.
 - Shared CORA inputs and event-camera frames with unresolved provenance return **Ambiguous Equipment**. Choose a compatible mapping only when you know the source. The display identifies this as a user-confirmed laboratory mapping.
 - Keep trusted deployment checkpoints in `Processed_Data/models/`. They contain the estimator or weights, the class order, and preprocessing metadata. The notebook displays availability and loads the models for inference.
-- Motor Grader’s gear-tooth image experiment measures visible damage on a separate set of small gears. Its local deployment checkpoint is now built from the verified Roboflow v1 export. The integrated Grader sensor model classifies slewing-bearing conditions; gear-tooth predictions do not diagnose the slewing bearing.
-- Drill Rig images come from synthetic CAD gear renders. The Drill Rig and Grader sensor deployment fits use two-second excerpts per publisher recording. The Drill Rig image checkpoint uses a bounded mesh subset. Those deployment fits are separate from the published experiments.
+- Drill Rig images come from synthetic CAD gear renders. The Drill Rig sensor deployment fit uses two-second excerpts per publisher recording. The Drill Rig image checkpoint uses a bounded mesh subset. Those deployment fits are separate from the published experiments.
 
-The November 5 post-push smoke test ran all eight sensor routes and all eight image routes and passed 19 upload and error checks. The local record is `Processed_Data/pushed_deployment_verification.json`.
+The November 5 post-push smoke test (run before the Grader moved to its branch) ran all eight sensor and image routes, including the seven kept here, and passed 19 upload and error checks. The local record is `Processed_Data/pushed_deployment_verification.json`.
 
 For raw sensor CSV uploads, use these schemas. The header identifies the expected source format and rate. Prepare the CSV from the corresponding recording without resampling or substituting channels.
 
@@ -86,23 +84,16 @@ For raw sensor CSV uploads, use these schemas. The header identifies the expecte
 | Haul Truck, UODS | `uods_accel_42khz,uods_mic_42khz` from the first two MAT columns. At least 21,000 samples at 42 kHz. The upload uses complete half-second blocks. |
 | CORA mappings | Original one-column, headerless Vx CSV with the published speed in the filename. Confirm the laboratory mapping when prompted. |
 | Drill Rig, MCC5-THU | Original motor and gearbox vibration channel headers at 12.8 kHz. |
-| Motor Grader, JUST | Original six accelerometer channel headers at 50 kHz. |
 
 See the [deployment verification report](Documentation/deployment_verification.md) for the per-equipment results and demonstration limits.
 
 The fair tests above hold out complete recordings, speeds, bearings or designs. The time-split experiments use later segments of recordings also seen in training. Inference smoke tests check routing and output on known local samples. Model confidence is a class probability, and the task is current laboratory component condition classification.
 
-### Motor Grader gear-tooth deployment
-
-The saved 82.6% balanced accuracy comes from the separate gear-tooth experiment with held-out source groups. The local `Processed_Data/models/grader_gear_tooth.joblib` checkpoint was trained from the Roboflow v1 COCO export and verified through all three interfaces on labeled example crops. To rebuild it, place the verified export at `Raw_Data/roboflow_gear_photos/GearBox_adddingImg.v1i.coco.zip` and run `python Notebook/pdm.py grader train-final-images`. The command verifies the archive SHA-256 and fits the fixed ResNet18 feature extractor plus logistic regression configuration.
-
-Select **Motor Grader** in the notebook or **Grader** in the local upload page, or run `python Notebook/pdm.py predict tooth_crop.jpg --machine grader`. Supply a manually verified crop of one gear tooth with a small margin. The output classifies visible gear-tooth condition. The Grader sensor model covers slewing-bearing conditions separately. The gear-tooth route reports model unavailable when the fitted checkpoint is absent.
-
 ### Whole-machine photo identification
 
 Choose **Whole-machine photo** in the task menu and upload a site photo. The optional BuildVision v0.3 detector supports excavators, wheel loaders and dump trucks. A single detection returns **Unknown Equipment** with an unverified suggestion, a box in image pixels, and a detector score. Several supported categories return **Ambiguous Equipment**. With no detections above the threshold, the notebook returns **Unknown Equipment** without a suggestion. A labeled Grader example produced a Wheel Loader candidate at 86.4%, and a dump-truck detection does not establish mining haul-truck provenance. Use **Component fault** for supported sensor files and laboratory component images.
 
-Install `onnxruntime` in the notebook environment and put the publisher’s [ONNX model and config](https://huggingface.co/constructelligence/construction-site-safety-hazards/tree/79673cff5a8bb249fc8ec9cca3daa19e2ef95191) in `Processed_Data/models/whole_machine/`. The optional model is published under AGPL-3.0 and runs locally. Photo mode never routes detections to a fault model. Motor Grader slewing-bearing image diagnosis still requires appropriate labeled data.
+Install `onnxruntime` in the notebook environment and put the publisher’s [ONNX model and config](https://huggingface.co/constructelligence/construction-site-safety-hazards/tree/79673cff5a8bb249fc8ec9cca3daa19e2ef95191) in `Processed_Data/models/whole_machine/`. The optional model is published under AGPL-3.0 and runs locally. Photo mode never routes detections to a fault model.
 
 ## Commands
 
@@ -121,7 +112,7 @@ From the project folder (Windows: `.venv\Scripts\python.exe`, Mac/Linux: `.venv/
 | `python Notebook/pdm.py serve` | upload page at http://localhost:8613 (this computer only): drop in a file, get machine, condition and confidence | – |
 | `python Notebook/pdm.py data-check` | list missing raw files | seconds |
 
-Machines: `pump`, `haul_truck`, `belt_conveyor`, `excavator`, `dozer`, `wheel_loader`, `drill_rig`, `grader`.
+Machines: `pump`, `haul_truck`, `belt_conveyor`, `excavator`, `dozer`, `wheel_loader`, `drill_rig`.
 
 `predict` first checks which dataset format the file matches (columns, variable names, image size and colours). This is a format check, not machine learning. Shared formats return **Ambiguous Equipment**. Use `--machine` when the source mapping is known. The notebook, command line, and upload server use the same source checks. Drill Rig renders must match the trusted local export index. Blank images are rejected before fault inference.
 
@@ -139,7 +130,8 @@ Local only (git-ignored): `Raw_Data/`, `Processed_Data/` (feature tables and tra
 
 ## Notes
 
-- The fair-test image scores of the first seven machines were produced before this code was reorganised (commit c7d8d25) and carried over, because each run takes hours to a day on a CPU. The reorganised code gave identical results on a Dozer test subset (single CPU thread). On a Drill Rig subset it gave the same per-gear accuracy (0.271) but chose different epochs in one round, so the gear-image path is not confirmed identical. The Grader images and all image time splits were run with the reorganised code. PyTorch training on a multi-core CPU is not bit-for-bit repeatable, so a rerun can differ slightly.
+- **Grader.** The Grader (machine 8) was moved off `main` on 2026-11-06. Its code, results, figures and documents are on branch [`grader/full-pipeline`](https://github.com/theganeshmishra/ai-based-predictive-maintenance-mining-equipment/tree/grader/full-pipeline).
+- The fair-test image scores were produced before this code was reorganised (commit c7d8d25) and carried over, because each run takes hours to a day on a CPU. The reorganised code gave identical results on a Dozer test subset (single CPU thread). On a Drill Rig subset it gave the same per-gear accuracy (0.271) but chose different epochs in one round, so the gear-image path is not confirmed identical. All image time splits were run with the reorganised code. PyTorch training on a multi-core CPU is not bit-for-bit repeatable, so a rerun can differ slightly.
 - **GPU (optional).** `requirements.txt` installs the CPU build of PyTorch, which works everywhere. With an NVIDIA GPU, run `.venv\Scripts\python.exe -m pip install --force-reinstall --no-deps torch==2.14.1 torchvision==0.29.1 --index-url https://download.pytorch.org/whl/cu130`. The image model then uses the GPU by itself (set `PDM_DEVICE=cpu` to force the CPU). Each image result records the device it was trained on, because GPU and CPU runs can differ slightly.
 - These models classify the current condition of a component. They do not predict remaining useful life.
 - Project code and documentation are under the [MIT License](LICENSE). Datasets keep their publishers' licences (all CC BY 4.0) and are not redistributed here.
