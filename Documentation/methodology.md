@@ -2,7 +2,7 @@
 
 ## Task
 
-The project classifies current component condition using seven equipment mappings. Pump and Haul Truck compare aligned bearing labels on separate laboratory rigs. The four CORA mappings use one laboratory rig with shared run IDs between sensor and infrared modalities. The scores are reported independently at run level. Frame-to-window synchronization was not verified. Drill Rig combines vibration with synthetic gear renders and needs a root-crack versus root-breakage qualification. See the [evidence matrix](equipment_evidence_matrix.md) for the source and test unit of each result.
+The project classifies current component condition using eight equipment mappings. Pump and Haul Truck compare aligned bearing labels on separate laboratory rigs. The four CORA mappings use one laboratory rig with shared run IDs between sensor and infrared modalities. The scores are reported independently at run level. Frame-to-window synchronization was not verified. Drill Rig combines vibration with synthetic gear renders and needs a root-crack versus root-breakage qualification. Motor Grader sensor and visual results describe separate components and labels. See the [evidence matrix](equipment_evidence_matrix.md) for the source and test unit of each result.
 
 ## Workflow (the same for every machine)
 
@@ -33,6 +33,7 @@ raw files ──► 1a load sensor data ──► feature table (one row per tim
 | Haul Truck | 5 rounds, each holding out 3 whole bearings (30 recordings) | train 1000 rpm, test 2000 rpm (12 recordings) |
 | Belt Conveyor, Excavator, Dozer, Wheel Loader | 4 rounds, each holding out one speed (16 runs) | same |
 | Drill Rig | 3 rounds, each holding out one speed (120 recordings) | 4 rounds, each holding out 3 gear designs (4,800 gears) |
+| Grader | 6 rounds, each holding out one working condition (120 recordings) | each filename-derived video/photo group held out in turn (tooth crops, separate binary task) |
 
 Every choice (model, feature set, number of epochs) is made inside the training data only.
 
@@ -55,3 +56,4 @@ The upload routes use locally fitted checkpoints. Some fits use different inputs
 - Test sets are small. One recording is worth 6 points of accuracy on a 16-run test and 8 points on the Haul Truck's 12 image recordings.
 - The CORA rig has one run per class and speed. The Dozer reuses the Belt Conveyor's runs, so it is not separate evidence.
 - Drill Rig image performance applies to CAD renders. Camera generalization remains untested. The code maps CAD root breakage to sensor root crack. Keep this label qualification visible.
+- The Grader images use a different method: frozen ImageNet ResNet-18 features and a logistic regression, with settings fixed in advance (choosing them inside the training sources is saved as a check). They show real photos of small gears, not the slewing ring, and are scored by balanced accuracy because 94% of the tooth crops are good teeth.

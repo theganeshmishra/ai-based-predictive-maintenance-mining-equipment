@@ -1,0 +1,218 @@
+{
+  "machine": "grader",
+  "source": "JUST Slewing bearing datasets-1, Xiaodie Ren, Mendeley Data hwg8v5j8t6 v1 (doi 10.17632/hwg8v5j8t6.1), CC BY 4.0",
+  "classes": [
+    "healthy",
+    "inner_ring",
+    "outer_ring",
+    "rolling_element"
+  ],
+  "rows": 7331,
+  "recordings": 120,
+  "notes": [
+    "sensor: six rounds, each holding out one working condition (2 or 6 rpm, 0/30/60 N); one slewing support per class, so the model may partly learn the individual ring",
+    "images: a SEPARATE two-class task (good vs damaged tooth crops of small gears), not the slewing ring; scored by balanced accuracy because 94% of crops are good teeth",
+    "images: frozen ResNet-18 features + logistic regression, settings fixed in advance; choosing them inside the training sources is saved as a check"
+  ],
+  "test": "fair test: hold out condition [['condition1'], ['condition2'], ['condition3'], ['condition4'], ['condition5'], ['condition6']], one round each; model and feature set chosen on validation groups inside the training data",
+  "feature_sets": {
+    "vibration": [
+      "AI1_rms",
+      "AI1_std",
+      "AI1_peak",
+      "AI1_crest",
+      "AI1_skew",
+      "AI1_kurtosis",
+      "AI1_band0",
+      "AI1_band1",
+      "AI1_band2",
+      "AI1_band3",
+      "AI1_band4",
+      "AI1_band5",
+      "AI1_band6",
+      "AI1_band7",
+      "AI2_rms",
+      "AI2_std",
+      "AI2_peak",
+      "AI2_crest",
+      "AI2_skew",
+      "AI2_kurtosis",
+      "AI2_band0",
+      "AI2_band1",
+      "AI2_band2",
+      "AI2_band3",
+      "AI2_band4",
+      "AI2_band5",
+      "AI2_band6",
+      "AI2_band7",
+      "AI3_rms",
+      "AI3_std",
+      "AI3_peak",
+      "AI3_crest",
+      "AI3_skew",
+      "AI3_kurtosis",
+      "AI3_band0",
+      "AI3_band1",
+      "AI3_band2",
+      "AI3_band3",
+      "AI3_band4",
+      "AI3_band5",
+      "AI3_band6",
+      "AI3_band7",
+      "AI4_rms",
+      "AI4_std",
+      "AI4_peak",
+      "AI4_crest",
+      "AI4_skew",
+      "AI4_kurtosis",
+      "AI4_band0",
+      "AI4_band1",
+      "AI4_band2",
+      "AI4_band3",
+      "AI4_band4",
+      "AI4_band5",
+      "AI4_band6",
+      "AI4_band7",
+      "AI5_rms",
+      "AI5_std",
+      "AI5_peak",
+      "AI5_crest",
+      "AI5_skew",
+      "AI5_kurtosis",
+      "AI5_band0",
+      "AI5_band1",
+      "AI5_band2",
+      "AI5_band3",
+      "AI5_band4",
+      "AI5_band5",
+      "AI5_band6",
+      "AI5_band7",
+      "AI6_rms",
+      "AI6_std",
+      "AI6_peak",
+      "AI6_crest",
+      "AI6_skew",
+      "AI6_kurtosis",
+      "AI6_band0",
+      "AI6_band1",
+      "AI6_band2",
+      "AI6_band3",
+      "AI6_band4",
+      "AI6_band5",
+      "AI6_band6",
+      "AI6_band7"
+    ]
+  },
+  "score": {
+    "test_units": 120,
+    "accuracy": 0.8417,
+    "balanced_accuracy": 0.8417,
+    "macro_precision": 0.8624,
+    "macro_recall": 0.8417,
+    "macro_f1": 0.847,
+    "confusion_matrix": [
+      [
+        25,
+        0,
+        0,
+        5
+      ],
+      [
+        0,
+        25,
+        0,
+        5
+      ],
+      [
+        0,
+        4,
+        26,
+        0
+      ],
+      [
+        0,
+        5,
+        0,
+        25
+      ]
+    ],
+    "per_class_recall": {
+      "healthy": 0.8333,
+      "inner_ring": 0.8333,
+      "outer_ring": 0.8667,
+      "rolling_element": 0.8333
+    }
+  },
+  "chosen_per_round": [
+    {
+      "feature_set": "vibration",
+      "model": "Logistic regression",
+      "validation_macro_f1": 0.8833
+    },
+    {
+      "feature_set": "vibration",
+      "model": "Logistic regression",
+      "validation_macro_f1": 0.7792
+    },
+    {
+      "feature_set": "vibration",
+      "model": "Logistic regression",
+      "validation_macro_f1": 0.4953
+    },
+    {
+      "feature_set": "vibration",
+      "model": "Logistic regression",
+      "validation_macro_f1": 0.7708
+    },
+    {
+      "feature_set": "vibration",
+      "model": "Logistic regression",
+      "validation_macro_f1": 0.6669
+    },
+    {
+      "feature_set": "vibration",
+      "model": "Logistic regression",
+      "validation_macro_f1": 0.7687
+    }
+  ],
+  "majority_control": {
+    "test_units": 120,
+    "accuracy": 0.25,
+    "balanced_accuracy": 0.25,
+    "macro_precision": 0.0625,
+    "macro_recall": 0.25,
+    "macro_f1": 0.1,
+    "confusion_matrix": [
+      [
+        0,
+        30,
+        0,
+        0
+      ],
+      [
+        0,
+        30,
+        0,
+        0
+      ],
+      [
+        0,
+        30,
+        0,
+        0
+      ],
+      [
+        0,
+        30,
+        0,
+        0
+      ]
+    ],
+    "per_class_recall": {
+      "healthy": 0.0,
+      "inner_ring": 1.0,
+      "outer_ring": 0.0,
+      "rolling_element": 0.0
+    }
+  }
+}
