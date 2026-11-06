@@ -1,0 +1,134 @@
+{
+  "attempt": "A: Drill Rig sensor with tachometer-order features (planned in Documentation/improvement_plan_2026-11-06.md)",
+  "test": "same fair test as the archived result: hold out 1000 / 2000 / 3000 rpm in turn; feature set and model chosen inside the training speeds",
+  "windows": 7080,
+  "recordings": 120,
+  "score": {
+    "test_units": 120,
+    "accuracy": 0.775,
+    "balanced_accuracy": 0.7569,
+    "macro_precision": 0.8658,
+    "macro_recall": 0.7569,
+    "macro_f1": 0.7815,
+    "confusion_matrix": [
+      [
+        8,
+        4,
+        0,
+        0
+      ],
+      [
+        0,
+        36,
+        0,
+        0
+      ],
+      [
+        0,
+        9,
+        24,
+        3
+      ],
+      [
+        0,
+        10,
+        1,
+        25
+      ]
+    ],
+    "per_class_recall": {
+      "healthy": 0.6667,
+      "gear_wear": 1.0,
+      "gear_pitting": 0.6667,
+      "tooth_crack": 0.6944
+    }
+  },
+  "chosen_per_round": [
+    {
+      "feature_set": "vibration+orders",
+      "model": "Gradient boosting",
+      "validation_macro_f1": 0.6638
+    },
+    {
+      "feature_set": "vibration+orders",
+      "model": "Logistic regression",
+      "validation_macro_f1": 0.5367
+    },
+    {
+      "feature_set": "vibration",
+      "model": "Gradient boosting",
+      "validation_macro_f1": 0.7194
+    }
+  ],
+  "majority_control": {
+    "test_units": 120,
+    "accuracy": 0.3,
+    "balanced_accuracy": 0.25,
+    "macro_precision": 0.075,
+    "macro_recall": 0.25,
+    "macro_f1": 0.1154,
+    "confusion_matrix": [
+      [
+        0,
+        0,
+        12,
+        0
+      ],
+      [
+        0,
+        0,
+        36,
+        0
+      ],
+      [
+        0,
+        0,
+        36,
+        0
+      ],
+      [
+        0,
+        0,
+        36,
+        0
+      ]
+    ],
+    "per_class_recall": {
+      "healthy": 0.0,
+      "gear_wear": 0.0,
+      "gear_pitting": 1.0,
+      "tooth_crack": 0.0
+    }
+  },
+  "archived_fair_test": {
+    "accuracy": 0.7333,
+    "balanced_accuracy": 0.6806,
+    "macro_f1": 0.7054,
+    "confusion_matrix": [
+      [
+        5,
+        7,
+        0,
+        0
+      ],
+      [
+        0,
+        36,
+        0,
+        0
+      ],
+      [
+        0,
+        9,
+        25,
+        2
+      ],
+      [
+        1,
+        13,
+        0,
+        22
+      ]
+    ]
+  }
+}
