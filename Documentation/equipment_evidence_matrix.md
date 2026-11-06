@@ -1,8 +1,8 @@
-# Equipment evidence matrix
+# Eight-equipment evidence matrix
 
 PROJ 613 · Group 9 · November 5, 2026
 
-The matrix describes seven equipment application mappings, Pump to Drill Rig. The Grader is on branch `grader/full-pipeline`. The measurements come from laboratory analogues or component datasets, and the Drill Rig image benchmark uses synthetic CAD renders. Shared CORA run IDs support a comparison at run level. Frame-to-window synchronization was not verified. The Pump and Haul Truck modalities use separate rigs. Source links, licenses and paths are recorded in the [dataset manifest](../Dataset_Manifest/manifest.md).
+The matrix describes eight equipment application mappings. The measurements come from laboratory analogues or component datasets, and the Drill Rig image benchmark uses synthetic CAD renders. Shared CORA run IDs support a comparison at run level. Frame-to-window synchronization was not verified. The Pump and Haul Truck modalities use separate rigs. Source links, licenses and paths are recorded in the [dataset manifest](../Dataset_Manifest/manifest.md).
 
 ## Components, labels and held-out groups
 
@@ -15,12 +15,13 @@ The matrix describes seven equipment application mappings, Pump to Drill Rig. Th
 | Excavator | Drivetrain analogue. CORA Vx vibration. | Drivetrain analogue. CORA infrared frames from the same runs. | Healthy, bearing fault, unbalance, misalignment. | Four whole-speed folds. | Same held-out speeds and run IDs as sensor. | Both accuracies are at the 25% uniform four-class reference. Local binary follow-ups answer a different question. |
 | Wheel Loader | Electric-drive analogue. CORA Vx vibration. | Electric-drive analogue. CORA infrared frames from the same runs. | Healthy, bearing fault, half-broken rotor bar, broken rotor bar. | Four whole-speed folds. | Same held-out speeds and run IDs as sensor. | Eight healthy or bearing runs overlap Excavator. Image accuracy is below the 25% uniform reference and broken-bar recall is zero. |
 | Drill Rig | Rotary-head reduction gear analogue. MCC5-THU gearbox vibration. | Reduction gear analogue. MFGNet-Gear synthetic CAD renders. | Healthy, wear and pitting align broadly. The sensor root-crack class is mapped in code to CAD R0 root breakage. | Hold out 1,000, 2,000 or 3,000 rpm in turn. | Four folds holding out three CAD designs each. | Root crack and root breakage require qualification. Synthetic render performance has no established transfer to camera photographs. |
+| Motor Grader | Circle-drive slewing-bearing analogue. JUST vibration. | Small gear teeth from GearBox_adddingImg v1 real photographs. | Sensor: healthy, inner ring, outer ring, rolling element. Image: good tooth or damaged tooth. | Hold out one working condition across six folds. The same four supports recur across conditions. | Hold out filename-derived video/photo groups. Score tooth crops. | Different components, labels and evaluation units. One physical support per sensor class. Image damaged-tooth recall was 66.1%. |
 
-The Drill Rig crosswalk follows the source definitions in [MCC5-THU](https://pmc.ncbi.nlm.nih.gov/articles/PMC11070670/) and [MFGNet-Gear](https://huggingface.co/datasets/rsmei/MFGNet-Gear).
+The Drill Rig crosswalk follows the source definitions in [MCC5-THU](https://pmc.ncbi.nlm.nih.gov/articles/PMC11070670/) and [MFGNet-Gear](https://huggingface.co/datasets/rsmei/MFGNet-Gear). The Motor Grader acquisition and labeling evidence is detailed in the [bearing image investigation](motor_grader_image_investigation.md) and [gear comparison review](motor_grader_gear_comparison.md).
 
 ## Archived primary held-out results
 
-Values are copied from the saved score blocks at baseline `05476ba`, rounded to two decimals. Accuracy is the fraction of correct evaluation units, balanced accuracy is the mean class recall, and macro F1 averages class F1 scores equally. A test unit is a scored record, run, or render design instance, depending on the row. The count does not imply that many independent physical specimens.
+Values are copied from the saved score blocks at baseline `05476ba`, rounded to two decimals. Accuracy is the fraction of correct evaluation units, balanced accuracy is the mean class recall, and macro F1 averages class F1 scores equally. A test unit is a scored record, run, render design instance or tooth crop, depending on the row. The count does not imply that many independent physical specimens.
 
 | Equipment | Sensor test units | Sensor accuracy | Sensor balanced accuracy | Sensor macro F1 | Image test units | Image accuracy | Image balanced accuracy | Image macro F1 |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
@@ -31,8 +32,9 @@ Values are copied from the saved score blocks at baseline `05476ba`, rounded to 
 | [Excavator](../Results/excavator/) | 16 | 25.00% | 25.00% | 18.33% | 16 | 25.00% | 25.00% | 21.67% |
 | [Wheel Loader](../Results/wheel_loader/) | 16 | 31.25% | 31.25% | 32.54% | 16 | 18.75% | 18.75% | 20.56% |
 | [Drill Rig](../Results/drill_rig/) | 120 | 73.33% | 68.06% | 70.54% | 4,800 | 88.94% | 88.94% | 88.81% |
+| [Motor Grader](../Results/grader/) | 120 | 84.17% | 84.17% | 84.70% | 2,879 | 97.22% | 82.59% | 85.84% |
 
-The 4,800 Drill Rig synthetic gears represent 12 design groups. CORA has 16 test runs per row, so one changed decision moves pooled accuracy by 6.25 percentage points.
+The Grader image experiment uses balanced accuracy as its headline metric because 2,714 of 2,879 crops are labeled good. Its 97.22% raw accuracy is sensitive to that imbalance. The 4,800 Drill Rig synthetic gears represent 12 design groups. CORA has 16 test runs per row, so one changed decision moves pooled accuracy by 6.25 percentage points.
 
 ## Secondary time-split accuracy
 
@@ -48,4 +50,4 @@ These experiments use early segments for training and later segments from the sa
 
 ## Local deployment checks
 
-The [deployment report](deployment_verification.md) records successful inference for eight sensor and eight image routes, run before the Grader moved to its branch. Its sample predictions and confidence values verify that the interface routes files and loads checkpoints. The smoke samples may have been included in a deployment fit. Some checkpoint training scopes also differ from the archived experiments. For example, the Belt Conveyor and Dozer upload models accept vibration alone, and the Drill Rig deployment fits use bounded training inputs. See the [20-day audit](proj613_20_day_audit.md) for the next experiment and its acceptance criteria.
+The [deployment report](deployment_verification.md) records successful inference for eight sensor and eight image routes. Its sample predictions and confidence values verify that the interface routes files and loads checkpoints. The smoke samples may have been included in a deployment fit. Some checkpoint training scopes also differ from the archived experiments. For example, the Belt Conveyor and Dozer upload models accept vibration alone, and the Drill Rig and Grader deployment fits use bounded training inputs. See the [20-day audit](proj613_20_day_audit.md) for the next experiment and its acceptance criteria.
