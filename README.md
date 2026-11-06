@@ -22,6 +22,14 @@ The [20-day audit and plan](Documentation/proj613_20_day_audit.md) ranks the rem
 - **Grader:** the sensor and image experiments stay separate tasks.
 - **Demo routes:** 15 of 16 routes rerun on 6 November with checkpoint hashes recorded (the Grader photo route needs its checkpoint on the demo computer).
 
+Three [improvement attempts](Documentation/improvement_results.md), each [planned in advance](Documentation/improvement_plan_2026-11-06.md) and run once:
+
+- **Drill Rig sensor with tachometer-order features:** 77.5% accuracy (75.7% balanced) on the same unseen-speed test, up from 73.3%. Recommended for retraining; the checkpoint is not replaced.
+- **Haul Truck images with speed-scaled frames:** 50.0%, no gain over the archived 58.3%. The image model mostly recognises the camera angle.
+- **CORA transient runs, unseen repetition at a trained speed:** 100% Belt Conveyor, 100% Excavator, 97.5% Wheel Loader. This is a narrower test than the fair test and does not replace it.
+
+Under the fair test, Pump, Grader, Drill Rig (images) and Haul Truck (sensor accuracy, exactly 80%) reach 80%; the four CORA machines do not.
+
 ## How it works
 
 The project uses one Python module and two notebooks.
@@ -127,6 +135,7 @@ From the project folder (Windows: `.venv\Scripts\python.exe`, Mac/Linux: `.venv/
 | `python Notebook/pdm.py serve` | upload page at http://localhost:8613 (this computer only): drop in a file, get machine, condition and confidence | – |
 | `python Notebook/pdm.py cora-binary verify\|sensor\|images` | CORA healthy vs worn follow-up → `Results/experiments/cora_binary/` | 1 minute / 1 minute / about 2 hours |
 | `python Notebook/pdm.py haul-truck-load-check` | Haul Truck sensor fair test without the unloaded ball class | about 15 minutes |
+| `python Notebook/pdm.py attempt drill-orders\|haul-frames\|cora-transient` | the three planned improvement attempts → `Results/experiments/improvement/` (cora-transient needs `Raw_Data/cora_transient/`) | minutes / hours on CPU / minutes |
 | `python Notebook/pdm.py route-check` | run every predict route once, record checkpoint SHA-256 → `Results/deployment/route_check.json` | about 1 minute |
 | `python Notebook/pdm.py data-check` | list missing raw files | seconds |
 

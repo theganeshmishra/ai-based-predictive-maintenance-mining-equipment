@@ -1,0 +1,339 @@
+{
+  "attempt": "C: CORA transient runs, unseen repetition at a known speed (planned in Documentation/improvement_plan_2026-11-06.md)",
+  "source": "CORA, CSUC Dataverse doi 10.34810/DATA2500 (CC BY 4.0): transient start-up runs, 5 repetitions per class and speed, Vx at 3 kHz for 30 s, RPM at about 100 Hz",
+  "test": "five rounds, each holding out repetition k at all four speeds (16 runs); model chosen inside the training repetitions; one prediction per run. NOT the unseen-speed fair test; repetitions share the same physical fault or gear set",
+  "dozer": "uses the Belt Conveyor runs, so its result is the Belt Conveyor's",
+  "belt_conveyor": {
+    "windows": 2002,
+    "runs": 80,
+    "score": {
+      "test_units": 80,
+      "accuracy": 1.0,
+      "balanced_accuracy": 1.0,
+      "macro_precision": 1.0,
+      "macro_recall": 1.0,
+      "macro_f1": 1.0,
+      "confusion_matrix": [
+        [
+          20,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          20,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          20,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          20
+        ]
+      ],
+      "per_class_recall": {
+        "healthy": 1.0,
+        "wear25": 1.0,
+        "wear50": 1.0,
+        "wear75": 1.0
+      }
+    },
+    "chosen_per_round": [
+      {
+        "feature_set": "vibration",
+        "model": "Random forest",
+        "validation_macro_f1": 1.0
+      },
+      {
+        "feature_set": "vibration",
+        "model": "Random forest",
+        "validation_macro_f1": 1.0
+      },
+      {
+        "feature_set": "vibration",
+        "model": "Random forest",
+        "validation_macro_f1": 1.0
+      },
+      {
+        "feature_set": "vibration",
+        "model": "Random forest",
+        "validation_macro_f1": 1.0
+      },
+      {
+        "feature_set": "vibration",
+        "model": "Random forest",
+        "validation_macro_f1": 1.0
+      }
+    ],
+    "majority_control": {
+      "test_units": 80,
+      "accuracy": 0.25,
+      "balanced_accuracy": 0.25,
+      "macro_precision": 0.125,
+      "macro_recall": 0.25,
+      "macro_f1": 0.1508,
+      "confusion_matrix": [
+        [
+          4,
+          16,
+          0,
+          0
+        ],
+        [
+          4,
+          16,
+          0,
+          0
+        ],
+        [
+          4,
+          16,
+          0,
+          0
+        ],
+        [
+          4,
+          16,
+          0,
+          0
+        ]
+      ],
+      "per_class_recall": {
+        "healthy": 0.2,
+        "wear25": 0.8,
+        "wear50": 0.0,
+        "wear75": 0.0
+      }
+    }
+  },
+  "excavator": {
+    "windows": 2000,
+    "runs": 80,
+    "score": {
+      "test_units": 80,
+      "accuracy": 1.0,
+      "balanced_accuracy": 1.0,
+      "macro_precision": 1.0,
+      "macro_recall": 1.0,
+      "macro_f1": 1.0,
+      "confusion_matrix": [
+        [
+          20,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          20,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          20,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          20
+        ]
+      ],
+      "per_class_recall": {
+        "healthy": 1.0,
+        "bearing": 1.0,
+        "unbalance": 1.0,
+        "misalignment": 1.0
+      }
+    },
+    "chosen_per_round": [
+      {
+        "feature_set": "vibration",
+        "model": "Random forest",
+        "validation_macro_f1": 0.9841
+      },
+      {
+        "feature_set": "vibration",
+        "model": "Random forest",
+        "validation_macro_f1": 0.9841
+      },
+      {
+        "feature_set": "vibration",
+        "model": "Random forest",
+        "validation_macro_f1": 1.0
+      },
+      {
+        "feature_set": "vibration",
+        "model": "Random forest",
+        "validation_macro_f1": 1.0
+      },
+      {
+        "feature_set": "vibration",
+        "model": "Random forest",
+        "validation_macro_f1": 1.0
+      }
+    ],
+    "majority_control": {
+      "test_units": 80,
+      "accuracy": 0.25,
+      "balanced_accuracy": 0.25,
+      "macro_precision": 0.0625,
+      "macro_recall": 0.25,
+      "macro_f1": 0.1,
+      "confusion_matrix": [
+        [
+          0,
+          20,
+          0,
+          0
+        ],
+        [
+          0,
+          20,
+          0,
+          0
+        ],
+        [
+          0,
+          20,
+          0,
+          0
+        ],
+        [
+          0,
+          20,
+          0,
+          0
+        ]
+      ],
+      "per_class_recall": {
+        "healthy": 0.0,
+        "bearing": 1.0,
+        "unbalance": 0.0,
+        "misalignment": 0.0
+      }
+    }
+  },
+  "wheel_loader": {
+    "windows": 2000,
+    "runs": 80,
+    "score": {
+      "test_units": 80,
+      "accuracy": 0.975,
+      "balanced_accuracy": 0.975,
+      "macro_precision": 0.9773,
+      "macro_recall": 0.975,
+      "macro_f1": 0.9749,
+      "confusion_matrix": [
+        [
+          20,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          20,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          18,
+          2
+        ],
+        [
+          0,
+          0,
+          0,
+          20
+        ]
+      ],
+      "per_class_recall": {
+        "healthy": 1.0,
+        "bearing": 1.0,
+        "half_broken_bar": 0.9,
+        "broken_bar": 1.0
+      }
+    },
+    "chosen_per_round": [
+      {
+        "feature_set": "vibration",
+        "model": "Gradient boosting",
+        "validation_macro_f1": 1.0
+      },
+      {
+        "feature_set": "vibration",
+        "model": "Random forest",
+        "validation_macro_f1": 1.0
+      },
+      {
+        "feature_set": "vibration",
+        "model": "Random forest",
+        "validation_macro_f1": 0.9841
+      },
+      {
+        "feature_set": "vibration",
+        "model": "Random forest",
+        "validation_macro_f1": 1.0
+      },
+      {
+        "feature_set": "vibration",
+        "model": "Random forest",
+        "validation_macro_f1": 1.0
+      }
+    ],
+    "majority_control": {
+      "test_units": 80,
+      "accuracy": 0.25,
+      "balanced_accuracy": 0.25,
+      "macro_precision": 0.0625,
+      "macro_recall": 0.25,
+      "macro_f1": 0.1,
+      "confusion_matrix": [
+        [
+          0,
+          20,
+          0,
+          0
+        ],
+        [
+          0,
+          20,
+          0,
+          0
+        ],
+        [
+          0,
+          20,
+          0,
+          0
+        ],
+        [
+          0,
+          20,
+          0,
+          0
+        ]
+      ],
+      "per_class_recall": {
+        "healthy": 0.0,
+        "bearing": 1.0,
+        "half_broken_bar": 0.0,
+        "broken_bar": 0.0
+      }
+    }
+  }
+}
