@@ -72,6 +72,7 @@ work/
 *.bmp
 *.png
 !/Figures/*/*.png
+!/Figures/experiments/*/*.png
 /Figures/machine_images/
 
 # Named camera images for the CNN (recreated by "python Notebook/pdm.py <machine> export-images"; dataset owners' images)

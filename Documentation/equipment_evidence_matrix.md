@@ -48,6 +48,10 @@ These experiments use early segments for training and later segments from the sa
 | Excavator | 93.75% | 100.00% |
 | Wheel Loader | 93.75% | 100.00% |
 
+## Follow-up results
+
+The [follow-up record](followup_experiments.md) adds the CORA healthy vs worn comparison, the Haul Truck result without the load-confounded ball class, the Drill Rig and Pump source checks, and a route check from November 6. The archived results above are unchanged.
+
 ## Local deployment checks
 
 The [deployment report](deployment_verification.md) records successful inference for eight sensor and eight image routes. Its sample predictions and confidence values verify that the interface routes files and loads checkpoints. The smoke samples may have been included in a deployment fit. Some checkpoint training scopes also differ from the archived experiments. For example, the Belt Conveyor and Dozer upload models accept vibration alone, and the Drill Rig and Grader deployment fits use bounded training inputs. See the [20-day audit](proj613_20_day_audit.md) for the next experiment and its acceptance criteria.

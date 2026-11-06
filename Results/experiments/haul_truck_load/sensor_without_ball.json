@@ -1,0 +1,348 @@
+{
+  "check": "Haul Truck sensor: load confounding of the ball class",
+  "source": "UODS-VAFDC, Mendeley Data y2px5tg92h v1 (CC BY 4.0): healthy/inner/outer/cage at a nominal 400 N load; ball faults at no load; column 4 = load",
+  "load_by_recording": [
+    {
+      "recording": "H_1_0",
+      "class_code": "H",
+      "bearing": 1,
+      "load_column_std": 0.6172,
+      "load_column_flat": false
+    },
+    {
+      "recording": "I_1_2",
+      "class_code": "I",
+      "bearing": 1,
+      "load_column_std": 0.6172,
+      "load_column_flat": false
+    },
+    {
+      "recording": "H_2_0",
+      "class_code": "H",
+      "bearing": 2,
+      "load_column_std": 0.6172,
+      "load_column_flat": false
+    },
+    {
+      "recording": "I_2_2",
+      "class_code": "I",
+      "bearing": 2,
+      "load_column_std": 0.6172,
+      "load_column_flat": false
+    },
+    {
+      "recording": "H_3_0",
+      "class_code": "H",
+      "bearing": 3,
+      "load_column_std": 0.6172,
+      "load_column_flat": false
+    },
+    {
+      "recording": "I_3_2",
+      "class_code": "I",
+      "bearing": 3,
+      "load_column_std": 0.6172,
+      "load_column_flat": false
+    },
+    {
+      "recording": "H_4_0",
+      "class_code": "H",
+      "bearing": 4,
+      "load_column_std": 0.6172,
+      "load_column_flat": false
+    },
+    {
+      "recording": "I_4_2",
+      "class_code": "I",
+      "bearing": 4,
+      "load_column_std": 0.6172,
+      "load_column_flat": false
+    },
+    {
+      "recording": "H_5_0",
+      "class_code": "H",
+      "bearing": 5,
+      "load_column_std": 0.6172,
+      "load_column_flat": false
+    },
+    {
+      "recording": "I_5_2",
+      "class_code": "I",
+      "bearing": 5,
+      "load_column_std": 0.6172,
+      "load_column_flat": false
+    },
+    {
+      "recording": "H_6_0",
+      "class_code": "H",
+      "bearing": 6,
+      "load_column_std": 0.6172,
+      "load_column_flat": false
+    },
+    {
+      "recording": "O_6_2",
+      "class_code": "O",
+      "bearing": 6,
+      "load_column_std": 0.6172,
+      "load_column_flat": false
+    },
+    {
+      "recording": "H_7_0",
+      "class_code": "H",
+      "bearing": 7,
+      "load_column_std": 0.6172,
+      "load_column_flat": false
+    },
+    {
+      "recording": "O_7_2",
+      "class_code": "O",
+      "bearing": 7,
+      "load_column_std": 0.6172,
+      "load_column_flat": false
+    },
+    {
+      "recording": "H_8_0",
+      "class_code": "H",
+      "bearing": 8,
+      "load_column_std": 0.6172,
+      "load_column_flat": false
+    },
+    {
+      "recording": "O_8_2",
+      "class_code": "O",
+      "bearing": 8,
+      "load_column_std": 0.6172,
+      "load_column_flat": false
+    },
+    {
+      "recording": "H_9_0",
+      "class_code": "H",
+      "bearing": 9,
+      "load_column_std": 0.6172,
+      "load_column_flat": false
+    },
+    {
+      "recording": "O_9_2",
+      "class_code": "O",
+      "bearing": 9,
+      "load_column_std": 0.6172,
+      "load_column_flat": false
+    },
+    {
+      "recording": "H_10_0",
+      "class_code": "H",
+      "bearing": 10,
+      "load_column_std": 0.6172,
+      "load_column_flat": false
+    },
+    {
+      "recording": "O_10_2",
+      "class_code": "O",
+      "bearing": 10,
+      "load_column_std": 0.6172,
+      "load_column_flat": false
+    },
+    {
+      "recording": "H_11_0",
+      "class_code": "H",
+      "bearing": 11,
+      "load_column_std": 0.6172,
+      "load_column_flat": false
+    },
+    {
+      "recording": "B_11_2",
+      "class_code": "B",
+      "bearing": 11,
+      "load_column_std": 0.0,
+      "load_column_flat": true
+    },
+    {
+      "recording": "H_12_0",
+      "class_code": "H",
+      "bearing": 12,
+      "load_column_std": 0.6172,
+      "load_column_flat": false
+    },
+    {
+      "recording": "B_12_2",
+      "class_code": "B",
+      "bearing": 12,
+      "load_column_std": 0.0,
+      "load_column_flat": true
+    },
+    {
+      "recording": "H_13_0",
+      "class_code": "H",
+      "bearing": 13,
+      "load_column_std": 0.6172,
+      "load_column_flat": false
+    },
+    {
+      "recording": "B_13_2",
+      "class_code": "B",
+      "bearing": 13,
+      "load_column_std": 0.0,
+      "load_column_flat": true
+    },
+    {
+      "recording": "H_14_0",
+      "class_code": "H",
+      "bearing": 14,
+      "load_column_std": 0.6172,
+      "load_column_flat": false
+    },
+    {
+      "recording": "B_14_2",
+      "class_code": "B",
+      "bearing": 14,
+      "load_column_std": 0.0,
+      "load_column_flat": true
+    },
+    {
+      "recording": "H_15_0",
+      "class_code": "H",
+      "bearing": 15,
+      "load_column_std": 0.6172,
+      "load_column_flat": false
+    },
+    {
+      "recording": "B_15_2",
+      "class_code": "B",
+      "bearing": 15,
+      "load_column_std": 0.0,
+      "load_column_flat": true
+    }
+  ],
+  "recordings_with_flat_load_column_by_class": {
+    "H": "0/15",
+    "I": "0/5",
+    "O": "0/5",
+    "B": "5/5"
+  },
+  "test": "same fair test as the four-class result (hold out 3 whole bearings per round, model chosen inside the training bearings) on the three loaded classes only",
+  "recordings": 25,
+  "score": {
+    "test_units": 25,
+    "accuracy": 0.84,
+    "balanced_accuracy": 0.7333,
+    "macro_precision": 0.8497,
+    "macro_recall": 0.7333,
+    "macro_f1": 0.7454,
+    "confusion_matrix": [
+      [
+        15,
+        0,
+        0
+      ],
+      [
+        1,
+        4,
+        0
+      ],
+      [
+        1,
+        2,
+        2
+      ]
+    ],
+    "per_class_recall": {
+      "healthy": 1.0,
+      "inner": 0.8,
+      "outer": 0.4
+    }
+  },
+  "chosen_per_round": [
+    {
+      "feature_set": "vibration+microphone",
+      "model": "Extra trees",
+      "validation_macro_f1": 0.9048
+    },
+    {
+      "feature_set": "vibration+long envelope",
+      "model": "Random forest",
+      "validation_macro_f1": 0.8095
+    },
+    {
+      "feature_set": "vibration+long envelope",
+      "model": "Extra trees",
+      "validation_macro_f1": 0.9048
+    },
+    {
+      "feature_set": "vibration+long envelope",
+      "model": "Logistic regression",
+      "validation_macro_f1": 0.777
+    },
+    {
+      "feature_set": "vibration",
+      "model": "Random forest",
+      "validation_macro_f1": 0.8611
+    }
+  ],
+  "majority_control": {
+    "test_units": 25,
+    "accuracy": 0.6,
+    "balanced_accuracy": 0.3333,
+    "macro_precision": 0.2,
+    "macro_recall": 0.3333,
+    "macro_f1": 0.25,
+    "confusion_matrix": [
+      [
+        15,
+        0,
+        0
+      ],
+      [
+        5,
+        0,
+        0
+      ],
+      [
+        5,
+        0,
+        0
+      ]
+    ],
+    "per_class_recall": {
+      "healthy": 1.0,
+      "inner": 0.0,
+      "outer": 0.0
+    }
+  },
+  "four_class_reference": {
+    "accuracy": 0.8,
+    "balanced_accuracy": 0.7333,
+    "macro_f1": 0.741,
+    "per_class_recall": {
+      "healthy": 0.9333,
+      "inner": 0.6,
+      "outer": 0.6,
+      "ball": 0.8
+    },
+    "confusion_matrix": [
+      [
+        14,
+        1,
+        0,
+        0
+      ],
+      [
+        1,
+        3,
+        0,
+        1
+      ],
+      [
+        1,
+        0,
+        3,
+        1
+      ],
+      [
+        0,
+        0,
+        1,
+        4
+      ]
+    ]
+  }
+}

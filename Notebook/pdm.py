@@ -9,6 +9,7 @@ The sections follow the workflow, top to bottom:
     3   train and score: one answer per recording (3a), sensor model (3b), image model (3c)
     4   the eight machines: their datasets, classes and what each fair test holds out
     5   run the workflow for one machine and save Results/ and Figures/
+    5b  follow-up experiments and checks (CORA healthy vs worn, Haul Truck load, demo routes)
     6   predict a new file (6b: an upload page for it)
     7   tables and figures for the notebook
     8   command line
@@ -22,6 +23,9 @@ Use it from the notebook (import pdm) or from a terminal in the project folder:
     python Notebook/pdm.py <machine> train-final-images        image model on all images, for predict
     python Notebook/pdm.py predict <file> [--machine <name>]   classify one new recording or image
     python Notebook/pdm.py serve                               upload page at http://localhost:8613
+    python Notebook/pdm.py cora-binary verify|sensor|images     healthy vs worn follow-up experiment
+    python Notebook/pdm.py haul-truck-load-check               Haul Truck sensor without the unloaded ball class
+    python Notebook/pdm.py route-check                         run every predict route once, record checkpoint hashes
     python Notebook/pdm.py data-check                          list missing or changed raw files
 
 Machines: pump, haul_truck, belt_conveyor, excavator, dozer, wheel_loader, drill_rig, grader
@@ -1225,7 +1229,7 @@ def evaluate_images(folder, rows, labels, folds, settings, choose_validation, tr
         x = load_images(folder, rows, settings["normalise"])
     train_mask = np.ones(len(rows), bool) if train_mask is None else train_mask
     unit_actual, unit_predicted, image_actual, image_predicted = [], [], [], []
-    segment_actual, segment_predicted, rounds = [], [], []
+    segment_actual, segment_predicted, rounds, unit_rows = [], [], [], []
     for number, test in enumerate(folds):
         check_no_overlap(units, test)
         train = ~test & train_mask
@@ -1239,6 +1243,11 @@ def evaluate_images(folder, rows, labels, folds, settings, choose_validation, tr
         a, q = predict_recordings(p, np.asarray(labels), names[test], units[test])
         unit_actual += a
         unit_predicted += q
+        for unit in sorted(set(units[test])):
+            mean = p[units[test] == unit].mean(axis=0)
+            unit_rows.append({"unit": unit, "actual": str(names[test][units[test] == unit][0]),
+                              "predicted": labels[int(mean.argmax())],
+                              "probabilities": {l: round(float(v), 4) for l, v in zip(labels, mean)}})
         image_actual += list(names[test])
         image_predicted += [labels[i] for i in p.argmax(axis=1)]
         if segments:
@@ -1256,6 +1265,7 @@ def evaluate_images(folder, rows, labels, folds, settings, choose_validation, tr
         "unit_level": classification_metrics(unit_actual, unit_predicted, labels),
         "image_level": classification_metrics(image_actual, image_predicted, labels),
         "rounds": rounds,
+        "unit_predictions": unit_rows,
         "device": str(device()),
     }
     if segments:
@@ -1389,7 +1399,7 @@ def evaluate_tooth_photos(seed=613):
         check_no_overlap(sources, test)
         train = np.flatnonzero(~test)
         fixed[test] = fit_tooth_classifier(views[0.15][train], labels[train], 0.1).predict(views[0.15][test])
-        control[test] = fit(colour[train], labels[train], 0.1).predict(colour[test])
+        control[test] = fit_tooth_classifier(colour[train], labels[train], 0.1).predict(colour[test])
         inner = StratifiedGroupKFold(4, shuffle=True, random_state=seed)
         splits = [(train[a], train[b]) for a, b in inner.split(train, labels[train], sources[train])
                   if len(set(labels[train[b]])) == 2]
@@ -1761,6 +1771,263 @@ def run_train_final_images(machine):
 
 
 # ==================================================================================================
+# 5b. Follow-up experiment (Priority 2): CORA gear wear as healthy vs worn, Belt Conveyor runs
+# Same 16 runs, same leave-one-speed-out folds and the same sensor and image methods as the four-class
+# test; only the labels change (wear25/50/75 -> worn). One prediction per held-out run. Results go to
+# Results/experiments/cora_binary/; the four-class results and the saved checkpoints are not touched.
+# ==================================================================================================
+
+BINARY_LABELS = ["healthy", "worn"]
+TO_BINARY = {"healthy": "healthy", "wear25": "worn", "wear50": "worn", "wear75": "worn"}
+GEAR_WEAR_CODES = {"H": "healthy", "W25": "wear25", "W50": "wear50", "W75": "wear75"}
+EXPERIMENT = RESULTS / "experiments" / "cora_binary"
+EXPERIMENT_FIGURES = FIGURES / "experiments" / "cora_binary"
+
+
+def binary_metrics(actual, predicted):
+    """classification_metrics plus precision, recall and F1 for each class."""
+    from sklearn.metrics import precision_recall_fscore_support
+
+    block = classification_metrics(actual, predicted, BINARY_LABELS)
+    precision, recall, f1, support = precision_recall_fscore_support(
+        actual, predicted, labels=BINARY_LABELS, zero_division=0)
+    block["per_class"] = {label: {"precision": round(float(p), 4), "recall": round(float(r), 4),
+                                  "f1": round(float(f), 4), "support": int(n)}
+                          for label, p, r, f, n in zip(BINARY_LABELS, precision, recall, f1, support)}
+    return block
+
+
+def run_metrics(runs):
+    """Overall and per-held-out-speed metrics from one row per run."""
+    return {"overall": binary_metrics([r["actual"] for r in runs], [r["predicted"] for r in runs]),
+            "per_speed": {speed: binary_metrics([r["actual"] for r in runs if r["speed"] == speed],
+                                                [r["predicted"] for r in runs if r["speed"] == speed])
+                          for (speed,) in CORA_SPEEDS}}
+
+
+def collapse_to_binary(matrix):
+    """A four-class confusion matrix (healthy first) read as healthy vs any wear."""
+    m = np.asarray(matrix)
+    counts = {("healthy", "healthy"): m[0, 0], ("healthy", "worn"): m[0, 1:].sum(),
+              ("worn", "healthy"): m[1:, 0].sum(), ("worn", "worn"): m[1:, 1:].sum()}
+    actual = [a for (a, _), n in counts.items() for _ in range(int(n))]
+    predicted = [p for (_, p), n in counts.items() for _ in range(int(n))]
+    return binary_metrics(actual, predicted)
+
+
+def within_speed_ranking(runs):
+    """Diagnostic added after the main test: at each held-out speed, the share of (healthy, worn) run
+    pairs where the worn run gets the higher worn probability. 0.5 is chance; a constant shift of all
+    runs at one speed does not change it."""
+    pairs = {}
+    for (speed,) in CORA_SPEEDS:
+        at = [r for r in runs if r["speed"] == speed]
+        healthy = [r["probabilities"]["worn"] for r in at if r["actual"] == "healthy"]
+        worn = [r["probabilities"]["worn"] for r in at if r["actual"] == "worn"]
+        pairs[speed] = float(np.mean([(w > h) + 0.5 * (w == h) for h in healthy for w in worn]))
+    return {"per_speed": pairs, "mean": round(float(np.mean(list(pairs.values()))), 4)}
+
+
+def verify_cora_runs():
+    """Check the 16 gear-wear run IDs, their labels, both modalities, and the Dozer reuse."""
+    from scipy.io import whosmat
+
+    runs = []
+    for code, label in GEAR_WEAR_CODES.items():
+        for (speed,) in CORA_SPEEDS:
+            run = f"{code}_{speed}_S"
+            vibration = RAW / "cora_vibration" / f"{run}_Vx.csv"
+            infrared = RAW / "cora_gear_wear" / f"{run}.mat"
+            with vibration.open() as handle:
+                samples = sum(1 for _ in handle)
+            shape = {name: shape for name, shape, _ in whosmat(infrared)}["imagenes_celda"]
+            runs.append({"run": run, "code": code, "four_class_label": label,
+                         "binary_label": TO_BINARY[label], "speed": speed, "vibration_samples": samples,
+                         "vibration_seconds_at_3khz": round(samples / 3000, 1),
+                         "infrared_frames": int(np.prod(shape))})
+    ids = {r["run"] for r in runs}
+    label_of = {r["run"]: r["four_class_label"] for r in runs}
+    belt, dozer = read_index(IMAGES / "belt_conveyor"), read_index(IMAGES / "dozer")
+    image_check = {}
+    for name, rows, per_run in (("belt_conveyor", belt, 450), ("dozer", dozer, 150)):
+        by_run = {}
+        for row in rows:
+            by_run.setdefault(row["unit"], []).append(row["class"])
+        image_check[name] = {
+            "same_16_run_ids": set(by_run) == ids,
+            "every_frame_label_matches_file_code": all(set(c) == {label_of[u]} for u, c in by_run.items()),
+            "frames_per_run": sorted({len(c) for c in by_run.values()}), "expected_frames_per_run": per_run}
+    # The Dozer exports every 3rd frame of the same .mat files: compare those pixels with the Belt Conveyor's.
+    belt_files = {(row["unit"], int(row["order"])): row["file"] for row in belt}
+    identical = sum((IMAGES / "dozer" / row["file"]).read_bytes()
+                    == (IMAGES / "belt_conveyor" / belt_files[(row["unit"], int(row["order"]))]).read_bytes()
+                    for row in dozer)
+    belt_table, _ = MACHINES["belt_conveyor"].load_sensor()
+    dozer_table, _ = MACHINES["dozer"].load_sensor()
+    result = {
+        "source": "CORA, CSUC Dataverse doi 10.34810/DATA2500 (CC BY 4.0). Codes per the data descriptor "
+                  "(PMC13254333): H healthy, W25/W50/W75 tooth wear 25/50/75%; F5/F15/F50/F60 drive set "
+                  "points 5/15/50/60 Hz; S stationary 45-minute runs with 450 infrared frames each.",
+        "runs": runs,
+        "all_16_runs_have_vibration_and_450_infrared_frames": all(
+            r["vibration_samples"] > 0 and r["infrared_frames"] == 450 for r in runs),
+        "binary_class_counts": {label: sum(r["binary_label"] == label for r in runs) for label in BINARY_LABELS},
+        "image_exports": image_check,
+        "dozer_reuses_belt_conveyor": {
+            "identical_sensor_feature_table": bool(belt_table.equals(dozer_table)),
+            "same_class_labels": MACHINES["dozer"].labels == MACHINES["belt_conveyor"].labels,
+            "dozer_frames_byte_identical_to_belt_conveyor_frames": f"{identical}/{len(dozer)}"},
+        "four_class_results_sha256": {f"{m}/{n}.json": sha256(RESULTS / m / f"{n}.json")
+                                      for m in ("belt_conveyor", "dozer") for n in ("sensor", "images")},
+    }
+    EXPERIMENT.mkdir(parents=True, exist_ok=True)
+    (EXPERIMENT / "verification.json").write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
+    print(json.dumps({k: v for k, v in result.items() if k not in ("runs", "source")}, indent=1))
+    return result
+
+
+def run_cora_binary_sensor():
+    """Sensor side: same features and five candidate models, chosen inside each training set."""
+    table, feature_sets = MACHINES["belt_conveyor"].load_sensor()
+    table["class"] = table["class"].map(TO_BINARY)
+    y, units = table["class"].to_numpy(), table["unit"].to_numpy()
+    first_set = table[next(iter(feature_sets.values()))].to_numpy(dtype=np.float64)
+    runs, control_runs, chosen = [], [], []
+    for (speed,), test in zip(CORA_SPEEDS, fair_test_folds(table["speed"], CORA_SPEEDS)):
+        check_no_overlap(units, test)
+        train_idx = np.flatnonzero(~test)
+        (set_name, model_name), score = choose_model(table, train_idx, feature_sets, BINARY_LABELS, "speed")
+        x = table[feature_sets[set_name]].to_numpy(dtype=np.float64)
+        model = sensor_candidates()[model_name]().fit(x[train_idx], y[train_idx])
+        control = majority_control().fit(first_set[train_idx], y[train_idx])
+        chosen.append({"held_out_speed": speed, "feature_set": set_name, "model": model_name,
+                       "validation_macro_f1": round(score, 4)})
+        for fitted, rows, data in ((model, runs, x), (control, control_runs, first_set)):
+            probabilities = fitted.predict_proba(data[test])
+            for unit in sorted(set(units[test])):
+                mean = probabilities[units[test] == unit].mean(axis=0)
+                rows.append({"run": unit, "speed": speed, "actual": str(y[test][units[test] == unit][0]),
+                             "predicted": str(fitted.classes_[int(mean.argmax())]),
+                             "probabilities": {str(c): round(float(v), 4) for c, v in zip(fitted.classes_, mean)}})
+        print(f"held out {speed}: chose {model_name} on {set_name} (validation macro F1 {score:.3f})", flush=True)
+    return {"modality": "sensor", "feature_sets": feature_sets, "windows": int(len(table)),
+            "chosen_per_round": chosen, "runs": runs, "majority_runs": control_runs,
+            "score": run_metrics(runs), "majority_control": run_metrics(control_runs)}
+
+
+def run_cora_binary_images():
+    """Image side: the Belt Conveyor's fine-tuned ResNet-18 settings, all 450 frames per run."""
+    rows = [dict(r, **{"class": TO_BINARY[r["class"]]}) for r in read_index(IMAGES / "belt_conveyor")]
+    settings = dict(FRAME_IMAGES)
+    groups = np.asarray([r["group"] for r in rows])
+    folds = fair_test_folds(groups, CORA_SPEEDS)
+    scores = evaluate_images(IMAGES / "belt_conveyor", rows, BINARY_LABELS, folds, settings,
+                             one_recording_per_class(settings["seed"]), segments=None)
+    speed_of = {r["unit"]: r["group"] for r in rows}
+    runs = [{"run": u["unit"], "speed": speed_of[u["unit"]], "actual": u["actual"], "predicted": u["predicted"],
+             "probabilities": u["probabilities"]} for u in scores["unit_predictions"]]
+    # majority control: the most common class among the training frames of each round
+    control_runs = []
+    for (speed,), test in zip(CORA_SPEEDS, folds):
+        train_labels = [r["class"] for r, t in zip(rows, test) if not t]
+        majority = max(BINARY_LABELS, key=train_labels.count)
+        control_runs += [dict(r, predicted=majority, probabilities=None) for r in runs if r["speed"] == speed]
+    return {"modality": "images", "images": len(rows),
+            "settings": {k: (v.__name__ if callable(v) else v) for k, v in settings.items() if k != "segments"},
+            "rounds": scores["rounds"], "image_level": scores["image_level"], "device": scores["device"],
+            "runs": runs, "majority_runs": control_runs,
+            "score": run_metrics(runs), "majority_control": run_metrics(control_runs)}
+
+
+def run_cora_binary(modality):
+    result = run_cora_binary_sensor() if modality == "sensor" else run_cora_binary_images()
+    four = json.loads((RESULTS / "belt_conveyor" / f"{modality}.json").read_text(encoding="utf-8"))
+    four_block = four["score"] if modality == "sensor" else four["unit_level"]
+    result = {
+        "experiment": "CORA gear wear, healthy vs worn (W25/W50/W75 merged), Belt Conveyor runs",
+        "test": "leave one speed out (F5, F15, F50, F60); 4 runs per round (1 healthy, 3 worn); one prediction "
+                "per run from the mean of its window or frame probabilities; every choice made inside the "
+                "training speeds only",
+        **result,
+        "four_class_benchmark_collapsed": {
+            "note": "the saved four-class fair-test confusion matrix (same 16 runs and folds) read as healthy "
+                    "vs any wear; this is the like-for-like comparison, not the four-class accuracy",
+            "four_class_accuracy": four_block["accuracy"], **collapse_to_binary(four_block["confusion_matrix"])},
+    }
+    EXPERIMENT.mkdir(parents=True, exist_ok=True)
+    (EXPERIMENT / f"{modality}.json").write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
+    save_confusion_figure([("binary model", result["score"]["overall"]),
+                           ("majority control", result["majority_control"]["overall"]),
+                           ("four-class model, collapsed", result["four_class_benchmark_collapsed"])],
+                          BINARY_LABELS, f"Belt Conveyor runs, {modality}: healthy vs worn at an unseen speed",
+                          EXPERIMENT_FIGURES / f"{modality}.png")
+    o = result["score"]["overall"]
+    print(f"{modality}: accuracy {o['accuracy']:.3f}, balanced accuracy {o['balanced_accuracy']:.3f}, "
+          f"macro F1 {o['macro_f1']:.3f}; majority balanced accuracy "
+          f"{result['majority_control']['overall']['balanced_accuracy']:.3f}")
+    return result
+
+
+# --- Follow-up check (Priority 3): Haul Truck load confounding -------------------------------------
+# UODS-VAFDC (Mendeley y2px5tg92h v1): healthy, inner and outer runs at a nominal 400 N load, ball
+# faults at no load; column 4 of each file is the load signal. The check reads that column per class,
+# then reruns the same fair test (same bearing folds, same candidates) without the ball class, so
+# every remaining recording was loaded.
+
+def uods_load_by_recording():
+    from scipy.io import loadmat
+
+    rows = []
+    for item in json.loads((MANIFEST / "haul_truck_uods_files.json").read_text("utf-8")):
+        name = item["name"][:-4]
+        load = loadmat(RAW / "uods_vafdc" / item["name"])[name][:, 3]
+        rows.append({"recording": name, "class_code": item["class_code"], "bearing": item["bearing"],
+                     "load_column_std": round(float(load.std()), 4),
+                     "load_column_flat": bool(load.std() < 1e-6)})
+    return rows
+
+
+def run_haul_truck_load_check():
+    m = MACHINES["haul_truck"]
+    loads = uods_load_by_recording()
+    by_class = {}
+    for row in loads:
+        by_class.setdefault(row["class_code"], []).append(row["load_column_flat"])
+    table, feature_sets = m.load_sensor()
+    labels = ["healthy", "inner", "outer"]
+    table = table[table["class"].isin(labels)].reset_index(drop=True)
+    folds = fair_test_folds(table[m.sensor_group], m.sensor_held_out)
+    scores = sensor_fair_test(table, feature_sets, labels, folds, m.inner_group)
+    four = json.loads((RESULTS / "haul_truck" / "sensor.json").read_text(encoding="utf-8"))["score"]
+    result = {
+        "check": "Haul Truck sensor: load confounding of the ball class",
+        "source": "UODS-VAFDC, Mendeley Data y2px5tg92h v1 (CC BY 4.0): healthy/inner/outer/cage at a "
+                  "nominal 400 N load; ball faults at no load; column 4 = load",
+        "load_by_recording": loads,
+        "recordings_with_flat_load_column_by_class": {c: f"{sum(v)}/{len(v)}" for c, v in by_class.items()},
+        "test": "same fair test as the four-class result (hold out 3 whole bearings per round, model chosen "
+                "inside the training bearings) on the three loaded classes only",
+        "recordings": int(table["unit"].nunique()),
+        **scores,
+        "four_class_reference": {k: four[k] for k in ("accuracy", "balanced_accuracy", "macro_f1",
+                                                      "per_class_recall", "confusion_matrix")},
+    }
+    out = RESULTS / "experiments" / "haul_truck_load"
+    out.mkdir(parents=True, exist_ok=True)
+    (out / "sensor_without_ball.json").write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
+    save_confusion_figure([("three loaded classes", scores["score"]),
+                           ("majority control", scores["majority_control"])], labels,
+                          "Haul Truck sensor without the unloaded ball class (unseen bearings)",
+                          FIGURES / "experiments" / "haul_truck_load" / "sensor_without_ball.png")
+    s = scores["score"]
+    print(f"flat load column by class: {result['recordings_with_flat_load_column_by_class']}")
+    print(f"without ball: accuracy {s['accuracy']:.3f}, balanced accuracy {s['balanced_accuracy']:.3f}, "
+          f"macro F1 {s['macro_f1']:.3f} on {s['test_units']} recordings "
+          f"(majority {scores['majority_control']['accuracy']:.3f})")
+    return result
+
+
+# ==================================================================================================
 # 6. Predict a new file
 # 1. Sensor recording or image?  2. Which dataset format (a format check, not machine learning)?
 # Machines mapped onto one rig share a format; then --machine picks one.  3. Run that machine's model
@@ -1931,6 +2198,79 @@ def image_probability(path, machine):
     return dict(zip(labels, image_probabilities(model, x)[0]))
 
 
+# --- Demo route check (Priority 6) -----------------------------------------------------------------
+# Runs predict() on one sensor file per machine and one image per class per machine, and records the
+# SHA-256 of every checkpoint it used. All samples come from the training data, so this checks that
+# the routes load and answer; it is not an accuracy test. Shared formats are given their machine
+# (a user-confirmed mapping), as in the notebook.
+
+def route_samples():
+    sensor = {"pump": RAW / "uottawa_bearing" / "I-C-1.mat",
+              "haul_truck": RAW / "uods_vafdc" / "B_11_2.mat",
+              "belt_conveyor": RAW / "cora_vibration" / "W50_F50_S_Vx.csv",
+              "dozer": RAW / "cora_vibration" / "W50_F50_S_Vx.csv",
+              "excavator": RAW / "cora_vibration" / "BD_F50_S_Vx.csv",
+              "wheel_loader": RAW / "cora_vibration" / "HB_F50_S_Vx.csv",
+              "drill_rig": PROCESSED / "predict_examples" / "gear_pitting_2000rpm_20Nm.csv",
+              "grader": PROCESSED / "predict_examples" / "just_outer_ring_condition3.csv"}
+    expected = {"pump": "inner", "haul_truck": "ball", "belt_conveyor": "wear50", "dozer": "wear50",
+                "excavator": "bearing", "wheel_loader": "half_broken_bar", "drill_rig": "gear_pitting",
+                "grader": "outer_ring"}
+    images = {}
+    for machine in MACHINES:
+        folder = IMAGES / machine
+        if (folder / "index.csv").is_file():
+            first = {}
+            for row in read_index(folder):
+                first.setdefault(row["class"], folder / row["file"])
+            images[machine] = first
+    return sensor, expected, images
+
+
+def verify_routes():
+    sensor, expected, images = route_samples()
+    checks, hashes = [], {}
+    for machine in MACHINES:
+        for modality, cases in (("sensor", [(sensor[machine], expected[machine])]),
+                                ("image", list((p, c) for c, p in images.get(machine, {}).items()))):
+            model = MODELS / (f"{machine}_sensor.joblib" if modality == "sensor" else
+                              "grader_gear_tooth.joblib" if machine == "grader" else f"{machine}_images.pt")
+            hashes[model.name] = sha256(model) if model.is_file() else None
+            if not cases:
+                checks.append({"machine": machine, "modality": modality, "status": "no local sample"})
+            for path, truth in cases:
+                try:
+                    answer = predict(path, machine)
+                    label = answer.get("condition") or answer.get("Predicted tooth condition")
+                    checks.append({"machine": machine, "modality": modality, "file": path.name, "status": "PASS",
+                                   "expected": truth, "predicted": label,
+                                   "probability": answer.get("model probability")})
+                except (ValueError, FileNotFoundError) as problem:
+                    checks.append({"machine": machine, "modality": modality, "file": path.name,
+                                   "status": "FAIL", "error": str(problem)})
+    errors = []
+    for path, name in ((ROOT / "README.md", "unsupported file"),):
+        try:
+            predict(path)
+            errors.append({"input": name, "status": "FAIL: accepted"})
+        except ValueError as problem:
+            errors.append({"input": name, "status": "PASS: rejected", "message": str(problem)})
+    shared = predict(RAW / "cora_vibration" / "W50_F50_S_Vx.csv")
+    errors.append({"input": "CORA file without a mapping", "status": "PASS" if shared.get("status") ==
+                   "Ambiguous Equipment" else "FAIL", "answer": shared})
+    result = {"note": "samples are training data: this checks the routes, not accuracy",
+              "checkpoint_sha256": hashes, "routes": checks, "input_checks": errors}
+    out = RESULTS / "deployment"
+    out.mkdir(parents=True, exist_ok=True)
+    (out / "route_check.json").write_text(json.dumps(result, indent=2, default=str) + "\n", encoding="utf-8")
+    for c in checks:
+        print(f"{c['machine']:14} {c['modality']:6} {c['status']:4} {c.get('file', '')} "
+              f"{c.get('expected', '')} -> {c.get('predicted', c.get('error', ''))} {c.get('probability') or ''}")
+    for e in errors:
+        print(e["input"], e["status"])
+    return result
+
+
 # ==================================================================================================
 # 6b. Upload page: predict() behind a web form, this computer only (http://localhost:8613)
 # ==================================================================================================
@@ -2072,6 +2412,24 @@ def show_machine(machine):
             display(Image(data=jpeg.tobytes(), format="jpeg"))
 
 
+def followup_overview():
+    """The CORA healthy-vs-worn results next to their controls, read from Results/experiments/."""
+    rows = []
+    for modality in ("sensor", "images"):
+        path = EXPERIMENT / f"{modality}.json"
+        if not path.is_file():
+            continue
+        r = json.loads(path.read_text(encoding="utf-8"))
+        for name, block in (("binary model", r["score"]["overall"]),
+                            ("majority control", r["majority_control"]["overall"]),
+                            ("four-class model, read as healthy vs worn", r["four_class_benchmark_collapsed"])):
+            rows.append({"Modality": modality, "Model": name, "Accuracy": block["accuracy"],
+                         "Balanced accuracy": block["balanced_accuracy"], "Macro F1": block["macro_f1"],
+                         "Healthy recall": block["per_class"]["healthy"]["recall"],
+                         "Worn recall": block["per_class"]["worn"]["recall"]})
+    return pd.DataFrame(rows)
+
+
 # ==================================================================================================
 # 8. Command line
 # ==================================================================================================
@@ -2091,6 +2449,16 @@ def main():
         raise SystemExit(check_data())
     if args.target == "serve":
         return serve()
+    if args.target == "cora-binary":
+        if args.command == "verify":
+            return verify_cora_runs()
+        if args.command not in ("sensor", "images"):
+            parser.error("cora-binary takes verify, sensor or images")
+        return run_cora_binary(args.command)
+    if args.target == "haul-truck-load-check":
+        return run_haul_truck_load_check()
+    if args.target == "route-check":
+        return verify_routes()
     if args.target == "predict":
         if not args.command:
             parser.error("give the file to predict")
