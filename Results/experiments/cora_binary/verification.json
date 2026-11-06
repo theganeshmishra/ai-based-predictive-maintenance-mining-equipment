@@ -1,0 +1,199 @@
+{
+  "source": "CORA, CSUC Dataverse doi 10.34810/DATA2500 (CC BY 4.0). Codes per the data descriptor (PMC13254333): H healthy, W25/W50/W75 tooth wear 25/50/75%; F5/F15/F50/F60 drive set points 5/15/50/60 Hz; S stationary 45-minute runs with 450 infrared frames each.",
+  "runs": [
+    {
+      "run": "H_F5_S",
+      "code": "H",
+      "four_class_label": "healthy",
+      "binary_label": "healthy",
+      "speed": "F5",
+      "vibration_samples": 9000000,
+      "vibration_seconds_at_3khz": 3000.0,
+      "infrared_frames": 450
+    },
+    {
+      "run": "H_F15_S",
+      "code": "H",
+      "four_class_label": "healthy",
+      "binary_label": "healthy",
+      "speed": "F15",
+      "vibration_samples": 9000000,
+      "vibration_seconds_at_3khz": 3000.0,
+      "infrared_frames": 450
+    },
+    {
+      "run": "H_F50_S",
+      "code": "H",
+      "four_class_label": "healthy",
+      "binary_label": "healthy",
+      "speed": "F50",
+      "vibration_samples": 9000000,
+      "vibration_seconds_at_3khz": 3000.0,
+      "infrared_frames": 450
+    },
+    {
+      "run": "H_F60_S",
+      "code": "H",
+      "four_class_label": "healthy",
+      "binary_label": "healthy",
+      "speed": "F60",
+      "vibration_samples": 9000000,
+      "vibration_seconds_at_3khz": 3000.0,
+      "infrared_frames": 450
+    },
+    {
+      "run": "W25_F5_S",
+      "code": "W25",
+      "four_class_label": "wear25",
+      "binary_label": "worn",
+      "speed": "F5",
+      "vibration_samples": 9000000,
+      "vibration_seconds_at_3khz": 3000.0,
+      "infrared_frames": 450
+    },
+    {
+      "run": "W25_F15_S",
+      "code": "W25",
+      "four_class_label": "wear25",
+      "binary_label": "worn",
+      "speed": "F15",
+      "vibration_samples": 9000000,
+      "vibration_seconds_at_3khz": 3000.0,
+      "infrared_frames": 450
+    },
+    {
+      "run": "W25_F50_S",
+      "code": "W25",
+      "four_class_label": "wear25",
+      "binary_label": "worn",
+      "speed": "F50",
+      "vibration_samples": 9000000,
+      "vibration_seconds_at_3khz": 3000.0,
+      "infrared_frames": 450
+    },
+    {
+      "run": "W25_F60_S",
+      "code": "W25",
+      "four_class_label": "wear25",
+      "binary_label": "worn",
+      "speed": "F60",
+      "vibration_samples": 9000000,
+      "vibration_seconds_at_3khz": 3000.0,
+      "infrared_frames": 450
+    },
+    {
+      "run": "W50_F5_S",
+      "code": "W50",
+      "four_class_label": "wear50",
+      "binary_label": "worn",
+      "speed": "F5",
+      "vibration_samples": 9000000,
+      "vibration_seconds_at_3khz": 3000.0,
+      "infrared_frames": 450
+    },
+    {
+      "run": "W50_F15_S",
+      "code": "W50",
+      "four_class_label": "wear50",
+      "binary_label": "worn",
+      "speed": "F15",
+      "vibration_samples": 9000000,
+      "vibration_seconds_at_3khz": 3000.0,
+      "infrared_frames": 450
+    },
+    {
+      "run": "W50_F50_S",
+      "code": "W50",
+      "four_class_label": "wear50",
+      "binary_label": "worn",
+      "speed": "F50",
+      "vibration_samples": 9000000,
+      "vibration_seconds_at_3khz": 3000.0,
+      "infrared_frames": 450
+    },
+    {
+      "run": "W50_F60_S",
+      "code": "W50",
+      "four_class_label": "wear50",
+      "binary_label": "worn",
+      "speed": "F60",
+      "vibration_samples": 9000000,
+      "vibration_seconds_at_3khz": 3000.0,
+      "infrared_frames": 450
+    },
+    {
+      "run": "W75_F5_S",
+      "code": "W75",
+      "four_class_label": "wear75",
+      "binary_label": "worn",
+      "speed": "F5",
+      "vibration_samples": 9000000,
+      "vibration_seconds_at_3khz": 3000.0,
+      "infrared_frames": 450
+    },
+    {
+      "run": "W75_F15_S",
+      "code": "W75",
+      "four_class_label": "wear75",
+      "binary_label": "worn",
+      "speed": "F15",
+      "vibration_samples": 9000000,
+      "vibration_seconds_at_3khz": 3000.0,
+      "infrared_frames": 450
+    },
+    {
+      "run": "W75_F50_S",
+      "code": "W75",
+      "four_class_label": "wear75",
+      "binary_label": "worn",
+      "speed": "F50",
+      "vibration_samples": 9000000,
+      "vibration_seconds_at_3khz": 3000.0,
+      "infrared_frames": 450
+    },
+    {
+      "run": "W75_F60_S",
+      "code": "W75",
+      "four_class_label": "wear75",
+      "binary_label": "worn",
+      "speed": "F60",
+      "vibration_samples": 9000000,
+      "vibration_seconds_at_3khz": 3000.0,
+      "infrared_frames": 450
+    }
+  ],
+  "all_16_runs_have_vibration_and_450_infrared_frames": true,
+  "binary_class_counts": {
+    "healthy": 4,
+    "worn": 12
+  },
+  "image_exports": {
+    "belt_conveyor": {
+      "same_16_run_ids": true,
+      "every_frame_label_matches_file_code": true,
+      "frames_per_run": [
+        450
+      ],
+      "expected_frames_per_run": 450
+    },
+    "dozer": {
+      "same_16_run_ids": true,
+      "every_frame_label_matches_file_code": true,
+      "frames_per_run": [
+        150
+      ],
+      "expected_frames_per_run": 150
+    }
+  },
+  "dozer_reuses_belt_conveyor": {
+    "identical_sensor_feature_table": true,
+    "same_class_labels": true,
+    "dozer_frames_byte_identical_to_belt_conveyor_frames": "2400/2400"
+  },
+  "four_class_results_sha256": {
+    "belt_conveyor/sensor.json": "44eeb84158ffec9a62597802ed5b0f5de3c45ce10e588bbdd52c0e651211546b",
+    "belt_conveyor/images.json": "061d35d6c83a25fa116f5bf45f62ef871d8872445ad901fd93c51d0280dd172e",
+    "dozer/sensor.json": "f7586b6820e9001039fa792fa23639a01180da32aa3f74dbb9bdb87ec2ab9e5a",
+    "dozer/images.json": "170979561e2598dd8df82c0b86799dc92c5279c3474fb1f69018a601b36510d9"
+  }
+}

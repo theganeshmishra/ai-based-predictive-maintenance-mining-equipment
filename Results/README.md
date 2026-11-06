@@ -7,4 +7,6 @@ The [eight-equipment evidence matrix](../Documentation/equipment_evidence_matrix
 - Dozer and Belt Conveyor reuse the same CORA runs. The Drill Rig image results apply to CAD renders and map root breakage to the sensor root-crack class. The Motor Grader image result measures tooth condition, with balanced accuracy as the headline, and the sensor result measures slewing-bearing condition.
 - The [deployment verification report](../Documentation/deployment_verification.md) records local inference smoke tests. Their confidence values belong to individual predictions from the saved deployment checkpoints.
 
+- `experiments/` holds the November 6 follow-ups (CORA healthy vs worn, Haul Truck without ball) and `deployment/route_check.json` the route check; see the [follow-up record](../Documentation/followup_experiments.md).
+
 See the [20-day audit](../Documentation/proj613_20_day_audit.md) for evidence gaps and follow-up criteria.
