@@ -1,13 +1,13 @@
 """All the code of the project in one file (PROJ 613, Group 9).
 
-Sensor-vs-image fault classification for eight mining-machine mappings, using public laboratory data.
+Sensor-vs-image fault classification for seven mining-machine mappings, using public laboratory data.
 The sections follow the workflow, top to bottom:
 
     0   project folders
     1   load data: raw sensor files -> feature rows (1a), raw camera files -> PNG images (1b), data check (1c)
     2   split: the fair test and the time split
     3   train and score: one answer per recording (3a), sensor model (3b), image model (3c)
-    4   the eight machines: their datasets, classes and what each fair test holds out
+    4   the seven machines: their datasets, classes and what each fair test holds out
     5   run the workflow for one machine and save Results/ and Figures/
     6   predict a new file (6b: an upload page for it)
     7   tables and figures for the notebook
@@ -24,7 +24,7 @@ Use it from the notebook (import pdm) or from a terminal in the project folder:
     python Notebook/pdm.py serve                               upload page at http://localhost:8613
     python Notebook/pdm.py data-check                          list missing or changed raw files
 
-Machines: pump, haul_truck, belt_conveyor, excavator, dozer, wheel_loader, drill_rig, grader
+Machines: pump, haul_truck, belt_conveyor, excavator, dozer, wheel_loader, drill_rig
 """
 
 from dataclasses import dataclass, field
@@ -60,7 +60,7 @@ MANIFEST = ROOT / "Dataset_Manifest"  # file lists (with SHA-256) of the Pump an
 # Columns: unit (recording), class, window (position, for the time split), the group the fair test
 # holds out, and features computed from the signal only, never from a label.
 # Sources: Ottawa (Pump), UODS (Haul Truck), CORA (Belt Conveyor, Excavator, Dozer, Wheel Loader),
-# MCC5-THU (Drill Rig), JUST (Grader).
+# MCC5-THU (Drill Rig).
 # ==================================================================================================
 
 def window_statistics(windows, rate, bands_hz):
@@ -340,88 +340,11 @@ def mcc5_gearbox():
     return pd.concat(frames, ignore_index=True), {"vibration": MCC5_FEATURES}
 
 
-# Grader: JUST slewing-bearing rig, six accelerometers at 50 kHz, 1 s windows.
-JUST_DIR = RAW / "just_slewing"
-JUST_SHA256 = {
-    "condition1": "27b6add40a742668c52bfe683a23d33de398aaa59dbbd5fa9ec756c576de36e3",
-    "condition2": "3692e2173577e0df08bc823702debfbee81a9756892d304f5b9ac9a1d3e46878",
-    "condition3": "f31e147bdc9ed657604bab9c8cb114531777aa38d3b7a28257974611f7caa2ef",
-    "condition4": "74ccb0d69c0f24b35a5823ed4ace5ffa597a201950489e201340f52f3e098e48",
-    "condition5": "f94ec5334a33a84d908c9675a1d1acd4ad0c3d2f94ae75740af53dbd240caa7f",
-    "condition6": "7c30f4bc7cae20669ae0337183ead3eaafb2dd72965d5c63ef28d5da3a696a86",
-}
-JUST_CLASS = {"N": "healthy", "I": "inner_ring", "O": "outer_ring", "B1": "rolling_element"}
-JUST_CHANNELS = [f"AI {n} (m/s2)" for n in range(1, 7)]  # AI 7 is a microphone: not used
-JUST_FEATURES = [f"AI{n}_{k}" for n in range(1, 7)
-                 for k in ("rms", "std", "peak", "crest", "skew", "kurtosis", *(f"band{b}" for b in range(8)))]
-
-
-def just_recordings():
-    """The 120 recordings: 4 classes x 5 repeats x 6 working conditions (2 or 6 rpm, 0/30/60 N)."""
-    import zipfile
-
-    rows = []
-    for n in range(1, 7):
-        with zipfile.ZipFile(JUST_DIR / f"condition{n}.zip") as archive:
-            for name in archive.namelist():
-                match = re.search(r"(\d{8})-(N|I|O|B1)-(\d+)rpm-(\d+)N-(\d+)\.csv$", name)
-                if match:
-                    code, rpm, force, repeat = match.group(2), *map(int, match.groups()[2:])
-                    rows.append({"zip": f"condition{n}", "file": name, "unit": f"condition{n}_{code}_{repeat}",
-                                 "class": JUST_CLASS[code], "condition": f"condition{n}", "rpm": rpm,
-                                 "force_n": force})
-    return rows
-
-
-def just_recording(handle, rate=50_000):
-    """Every whole 1 s window of one recording: per channel 6 statistics and 8 relative log band energies."""
-    signal = pd.read_csv(handle, usecols=JUST_CHANNELS, dtype="float32")[JUST_CHANNELS].to_numpy(np.float64)
-    rows = []
-    for w in range(len(signal) // rate):
-        x = signal[w * rate:(w + 1) * rate]
-        spectrum = np.abs(np.fft.rfft(x - x.mean(axis=0), axis=0)) ** 2
-        edges = np.linspace(0, spectrum.shape[0], 9).astype(int)
-        row = []
-        for c in range(x.shape[1]):
-            v = x[:, c]
-            rms, centred = np.sqrt(np.mean(v ** 2)), v - v.mean()
-            sd = centred.std() + 1e-12
-            row += [rms, sd, np.abs(v).max(), np.abs(v).max() / (rms + 1e-12),
-                    np.mean(centred ** 3) / sd ** 3, np.mean(centred ** 4) / sd ** 4]
-            total = spectrum[:, c].sum() + 1e-12
-            row += [np.log(spectrum[a:b, c].sum() / total + 1e-12) for a, b in zip(edges[:-1], edges[1:])]
-        rows.append(row)
-    return pd.DataFrame(rows, columns=JUST_FEATURES)
-
-
-def _just_worker(r):
-    """One recording -> its window rows (module level, so that Windows worker processes can run it)."""
-    import zipfile
-
-    with zipfile.ZipFile(JUST_DIR / f"{r['zip']}.zip") as archive, archive.open(r["file"]) as handle:
-        frame = just_recording(handle)
-    frame.insert(0, "window", np.arange(len(frame)))
-    for key in ("force_n", "rpm", "condition", "class", "unit"):
-        frame.insert(0, key, r[key])
-    return frame
-
-
-def just_slewing(workers=6):
-    """The fair test holds out one working condition at a time (six rounds of 20 recordings)."""
-    from concurrent.futures import ProcessPoolExecutor
-
-    recordings = just_recordings()
-    with ProcessPoolExecutor(workers) as pool:
-        frames = list(pool.map(_just_worker, recordings))
-    print(f"  {len(recordings)} recordings, {sum(len(f) for f in frames)} windows", flush=True)
-    return pd.concat(frames, ignore_index=True), {"vibration": JUST_FEATURES}
-
-
 # ==================================================================================================
 # 1b. Camera data: PNG images and index.csv in Images/<machine>/ (rebuilt from the raw files)
 # index.csv columns: file, class, unit, group, order (frame number, for the time split).
 # Sources: XJTU-DV event camera (Pump, Haul Truck), CORA infrared (the four CORA machines),
-# MFGNet-Gear renders (Drill Rig), Roboflow gear photos (Grader).
+# MFGNet-Gear renders (Drill Rig).
 # ==================================================================================================
 
 INDEX_COLUMNS = ["file", "class", "unit", "group", "order"]
@@ -724,52 +647,6 @@ def gear_renders(out, workers=10):
     write_index(out, rows)
 
 
-# Grader images: real photos of small gears (Roboflow), cut into one 224 px crop per labelled tooth.
-TOOTH_ZIP = RAW / "roboflow_gear_photos" / "GearBox_adddingImg.v1i.coco.zip"
-TOOTH_ZIP_SHA256 = "dd01bcb3dd90ea5ba0cf390022103fc6f78aa2fd9279cd75da5a1dbec8fabae8"
-TOOTH_LABELS = ["good_tooth", "damaged_tooth"]
-DAMAGED_TOOTH = {"badTeeth", "tooth failure", "teethCrack", "Gear tooth breakage", "Breakage",
-                 "damage", "Wear and Tear", "pitting"}
-
-
-def tooth_source(original):
-    """The video or photo set an image came from, e.g. dot_on_top_1 from dot_on_top_1_front_frame_30_jpg."""
-    match = re.match(r"(.+?_\d+)_(front|back)_frame_\d+", original)
-    return match.group(1) if match else re.sub(r"[-_ ]?\d+(_jpe?g|_png)?$|_jpg$", "", original)
-
-
-def tooth_crops(margin=0.15):
-    """(crops (N, 224, 224, 3) BGR, rows) for every good or damaged tooth box; margin is a share of the box."""
-    import zipfile
-
-    import cv2
-
-    crops, rows = [], []
-    with zipfile.ZipFile(TOOTH_ZIP) as archive:
-        for split in ("train", "valid", "test"):
-            document = json.loads(archive.read(f"{split}/_annotations.coco.json"))
-            names = {c["id"]: c["name"] for c in document["categories"]}
-            images = {i["id"]: i for i in document["images"]}
-            for box in document["annotations"]:
-                name = names[box["category_id"]]
-                if name != "goodTeeth" and name not in DAMAGED_TOOTH:
-                    continue
-                info = images[box["image_id"]]
-                picture = cv2.imdecode(np.frombuffer(archive.read(f"{split}/{info['file_name']}"), np.uint8),
-                                       cv2.IMREAD_COLOR)
-                x, y, w, h = box["bbox"]
-                pad = margin * max(w, h)
-                x0, y0 = int(max(0, x - pad)), int(max(0, y - pad))
-                x1, y1 = int(min(picture.shape[1], x + w + pad)), int(min(picture.shape[0], y + h + pad))
-                if x1 - x0 < 4 or y1 - y0 < 4:
-                    continue
-                original = info["file_name"].split(".rf.")[0]
-                crops.append(cv2.resize(picture[y0:y1, x0:x1], (224, 224), interpolation=cv2.INTER_AREA))
-                rows.append({"unit": tooth_source(original), "frame": original, "box_label": name,
-                             "class": "good_tooth" if name == "goodTeeth" else "damaged_tooth"})
-    return np.stack(crops), rows
-
-
 # ==================================================================================================
 # 1c. Data check: raw files present in Raw_Data/ with the right SHA-256 (python Notebook/pdm.py data-check)
 # Download by hand from the sources in Dataset_Manifest/manifest.md.
@@ -798,9 +675,7 @@ def required_files():
               (RAW / "xjtu_dv_rotor" / "XJTU-DV-Rotor.zip", None),
               (RAW / "mcc5_thu_gearbox" / "MCC5-THU gearbox fault diagnosis datasets.zip",
                "dcf7ba4b2d375c951ea57baf9bf90db4b3196982b324a13d85b187f286116b86"),
-              (RAW / "mfgnet_gear" / "mesh_ply.zip", None),
-              (TOOTH_ZIP, TOOTH_ZIP_SHA256)]
-    files += [(JUST_DIR / f"{name}.zip", digest) for name, digest in JUST_SHA256.items()]
+              (RAW / "mfgnet_gear" / "mesh_ply.zip", None)]
     return files
 
 
@@ -1263,152 +1138,8 @@ def evaluate_images(folder, rows, labels, folds, settings, choose_validation, tr
     return result
 
 
-def tooth_encoder(pretrained):
-    import torch
-    from torchvision.models import ResNet18_Weights, resnet18
-
-    network = resnet18(weights=ResNet18_Weights.IMAGENET1K_V1 if pretrained else None)
-    return torch.nn.Sequential(*list(network.children())[:-1]).eval()
-
-
-def resnet18_features(crops, batch_size=64, encoder=None):
-    """Frozen ImageNet ResNet-18: 512 numbers per BGR crop."""
-    import torch
-
-    if encoder is None:
-        encoder = tooth_encoder(pretrained=True)
-    mean = torch.tensor(IMAGENET_MEAN).view(1, 3, 1, 1)
-    std = torch.tensor(IMAGENET_STD).view(1, 3, 1, 1)
-    out = []
-    with torch.no_grad():
-        for start in range(0, len(crops), batch_size):
-            batch = torch.from_numpy(crops[start:start + batch_size][..., ::-1].copy()).permute(0, 3, 1, 2)
-            out.append(encoder((batch.float() / 255 - mean) / std).flatten(1).numpy())
-    return np.concatenate(out)
-
-
-def fit_tooth_classifier(x, y, c=0.1):
-    from sklearn.linear_model import LogisticRegression
-    from sklearn.pipeline import make_pipeline
-    from sklearn.preprocessing import StandardScaler
-
-    return make_pipeline(StandardScaler(), LogisticRegression(max_iter=5000, C=c,
-                                                               class_weight="balanced")).fit(x, y)
-
-
-def run_train_grader_images():
-    """Fit the published fixed gear-tooth configuration for local deployment."""
-    import joblib
-
-    if not TOOTH_ZIP.is_file():
-        raise FileNotFoundError(f"Original Grader image export required: {TOOTH_ZIP.name}")
-    if sha256(TOOTH_ZIP) != TOOTH_ZIP_SHA256:
-        raise ValueError("The Grader archive does not match the evaluated version's SHA-256.")
-    crops, rows = tooth_crops(margin=0.15)
-    labels = [row["class"] for row in rows]
-    if set(labels) != set(TOOTH_LABELS):
-        raise ValueError("The Grader export must contain both gear-tooth labels.")
-    encoder = tooth_encoder(pretrained=True)
-    classifier = fit_tooth_classifier(resnet18_features(crops, encoder=encoder), labels)
-    checkpoint = {
-        "classifier": classifier,
-        "encoder": {key: tensor.detach().numpy() for key, tensor in encoder.state_dict().items()},
-        "metadata": {
-            "task": "Gear-tooth visual inspection",
-            "classes": classifier.classes_.tolist(),
-            "crop_size": 224,
-            "crop_margin": 0.15,
-            "image_normalization": "ImageNet",
-            "source_archive_sha256": TOOTH_ZIP_SHA256,
-            "source_groups": len({row["unit"] for row in rows}),
-        },
-    }
-    MODELS.mkdir(parents=True, exist_ok=True)
-    target = MODELS / "grader_gear_tooth.joblib"
-    partial = target.with_suffix(".part")
-    joblib.dump(checkpoint, partial)
-    partial.replace(target)
-    print(f"Motor Grader: saved gear-tooth deployment model on {len(crops)} labeled crops")
-
-
-def predict_grader_tooth(path):
-    """Score a user-confirmed crop of one gear tooth with the local checkpoint."""
-    import cv2
-    import joblib
-    import torch
-
-    model_file = MODELS / "grader_gear_tooth.joblib"
-    if not model_file.is_file():
-        raise FileNotFoundError("Motor Grader gear-tooth model unavailable. Build it from the original Roboflow export.")
-    crop = cv2.imread(str(path))
-    if crop is None or min(crop.shape[:2]) < 4 or not np.any(crop != crop[0, 0]):
-        raise ValueError("Upload a valid, nonblank crop of one gear tooth.")
-    saved = joblib.load(model_file)
-    encoder = tooth_encoder(pretrained=False)
-    encoder.load_state_dict({key: torch.from_numpy(value) for key, value in saved["encoder"].items()})
-    size = saved["metadata"]["crop_size"]
-    pixels = cv2.resize(crop, (size, size), interpolation=cv2.INTER_AREA)
-    classifier = saved["classifier"]
-    scores = classifier.predict_proba(resnet18_features(pixels[None], encoder=encoder))[0]
-    best = int(np.argmax(scores))
-    return {"Equipment": "Motor Grader", "Task": "Gear-tooth visual inspection",
-            "Status": "Prediction", "Predicted tooth condition": str(classifier.classes_[best]),
-            "Model confidence": f"{scores[best]:.1%}", "Model used": "ResNet18 features + logistic regression"}
-
-
-def evaluate_tooth_photos(seed=613):
-    """Grader images: good vs damaged tooth crops, each video or photo set held out in turn.
-
-    Main result: frozen ResNet-18 features + balanced logistic regression (C 0.1, crop margin 0.15),
-    fixed in advance. Check: margin and C chosen inside the training sources only. Control: colour and
-    brightness statistics only. 94% of crops are good teeth, so balanced accuracy is the headline number.
-    """
-    from sklearn.metrics import balanced_accuracy_score, recall_score
-    from sklearn.model_selection import StratifiedGroupKFold
-
-    def score(actual, predicted):
-        block = classification_metrics(list(actual), list(predicted), TOOTH_LABELS)
-        block["damaged_tooth_recall"] = round(float(recall_score(actual, predicted, pos_label="damaged_tooth")), 4)
-        return block
-
-    crops, rows = tooth_crops(0.15)
-    labels = np.asarray([r["class"] for r in rows])
-    sources = np.asarray([r["unit"] for r in rows])
-    wide, wide_rows = tooth_crops(0.5)
-    if [r["frame"] for r in wide_rows] != [r["frame"] for r in rows]:
-        raise ValueError("Crop order differs between margins")
-    views = {0.15: resnet18_features(crops), 0.5: resnet18_features(wide)}
-    x = crops.reshape(len(crops), -1, 3).astype(np.float32) / 255
-    colour = np.concatenate([x.mean(1), x.std(1),
-                             np.percentile(x, [5, 50, 95], axis=1).transpose(1, 0, 2).reshape(len(x), -1)], 1)
-    settings = [(margin, c) for margin in views for c in (0.01, 0.1, 1.0)]
-    fixed, control, selected = (np.empty(len(rows), dtype=object) for _ in range(3))
-    choices = []
-    for source in sorted(set(sources)):
-        test = sources == source
-        check_no_overlap(sources, test)
-        train = np.flatnonzero(~test)
-        fixed[test] = fit_tooth_classifier(views[0.15][train], labels[train], 0.1).predict(views[0.15][test])
-        control[test] = fit(colour[train], labels[train], 0.1).predict(colour[test])
-        inner = StratifiedGroupKFold(4, shuffle=True, random_state=seed)
-        splits = [(train[a], train[b]) for a, b in inner.split(train, labels[train], sources[train])
-                  if len(set(labels[train[b]])) == 2]
-        best = max(settings, key=lambda s: np.mean([
-            balanced_accuracy_score(labels[b], fit_tooth_classifier(views[s[0]][a], labels[a], s[1]).predict(views[s[0]][b]))
-            for a, b in splits]))
-        choices.append(best)
-        selected[test] = fit_tooth_classifier(views[best[0]][train], labels[train], best[1]).predict(views[best[0]][test])
-    counts = {label: int((labels == label).sum()) for label in TOOTH_LABELS}
-    print(f"{len(rows)} tooth crops {counts} from {len(set(sources))} videos or photo sets", flush=True)
-    return {"unit_level": score(labels, fixed), "settings_chosen_inside": {
-                **score(labels, selected),
-                "choices": {f"margin {m}, C {c}": choices.count((m, c)) for m, c in sorted(set(choices))}},
-            "colour_statistics_control": score(labels, control), "crops": len(rows), "crops_by_class": counts,
-            "sources": len(set(sources)), "headline_metric": "balanced_accuracy"}
-
-
 # ==================================================================================================
-# 4. The eight machines: data sources, classes and fair-test hold-outs
+# 4. The seven machines: data sources, classes and fair-test hold-outs
 # All data is laboratory data, not mining equipment. A machine's sensor and image data come from
 # different rigs, so its two scores are not a matched pair.
 # ==================================================================================================
@@ -1441,7 +1172,6 @@ class Machine:
     image_settings: dict = field(default_factory=lambda: dict(FRAME_IMAGES))
     time_split: bool = True         # also report the easier time split
     notes: list = field(default_factory=list)
-    image_labels: list = None       # image classes when they differ from the sensor classes (Grader)
 
 
 MACHINES = {
@@ -1540,28 +1270,6 @@ MACHINES = {
                "images: four rounds, each holding out three whole gear designs; one answer per gear",
                "images are noise-free renders, so the image score is an upper bound, not a field result"],
     ),
-    "grader": Machine(
-        title="Grader", component="circle-drive slewing bearing",
-        labels=["healthy", "inner_ring", "outer_ring", "rolling_element"],
-        sensor_source="JUST Slewing bearing datasets-1, Xiaodie Ren, Mendeley Data hwg8v5j8t6 v1 "
-                      "(doi 10.17632/hwg8v5j8t6.1), CC BY 4.0",
-        load_sensor=just_slewing,
-        sensor_group="condition", sensor_held_out=[[f"condition{n}"] for n in range(1, 7)],
-        inner_group="condition",
-        image_source="GearBox_adddingImg v1 by Vjs, Roboflow Universe "
-                     "(https://universe.roboflow.com/vjs-jek7v/gearbox_adddingimg), CC BY 4.0; real photos",
-        export_images=None,
-        image_held_out=None,        # each video or photo set held out in turn
-        image_settings={"method": "frozen_resnet18_features", "seed": 613},
-        image_labels=TOOTH_LABELS,
-        time_split=False,
-        notes=["sensor: six rounds, each holding out one working condition (2 or 6 rpm, 0/30/60 N); "
-               "one slewing support per class, so the model may partly learn the individual ring",
-               "images: a SEPARATE two-class task (good vs damaged tooth crops of small gears), not the "
-               "slewing ring; scored by balanced accuracy because 94% of crops are good teeth",
-               "images: frozen ResNet-18 features + logistic regression, settings fixed in advance; "
-               "choosing them inside the training sources is saved as a check"],
-    ),
 }
 
 
@@ -1626,22 +1334,6 @@ def run_export_images(machine):
 def run_images(machine, split="fair"):
     m = MACHINES[machine]
     settings = m.image_settings
-    if settings.get("method") == "frozen_resnet18_features":  # Grader: tooth crops, own test
-        scores = evaluate_tooth_photos(settings["seed"])
-        result = {"machine": machine, "source": m.image_source, "classes": m.image_labels, "notes": m.notes,
-                  "test": "fair test: hold out each video or photo set in turn (frames of one video never on "
-                          "both sides); frozen ImageNet ResNet-18 features + logistic regression", **scores}
-        for title, block in (("fixed settings (main)", scores["unit_level"]),
-                             ("settings chosen inside (check)", scores["settings_chosen_inside"]),
-                             ("colour statistics (control)", scores["colour_statistics_control"])):
-            print(f"{m.title} images, {title}: balanced accuracy {block['balanced_accuracy']:.3f}, "
-                  f"damaged-tooth recall {block['damaged_tooth_recall']:.3f}")
-        save_result(machine, "images", result,
-                    [("ResNet-18 features, fixed settings", scores["unit_level"]),
-                     ("settings chosen inside", scores["settings_chosen_inside"]),
-                     ("colour statistics (control)", scores["colour_statistics_control"])],
-                    f"{m.title}: tooth crops of real gear photos, unseen video or photo set", m.image_labels)
-        return result
     folder = IMAGES / machine
     rows = read_index(folder)
     groups = np.asarray([r["group"] for r in rows])
@@ -1723,8 +1415,6 @@ def run_train_final_images(machine):
     import torch
 
     m = MACHINES[machine]
-    if machine == "grader":
-        return run_train_grader_images()
     rounds = json.loads((RESULTS / machine / "images.json").read_text(encoding="utf-8"))["rounds"]
     epochs = int(np.median([r["epochs"] for r in rounds]))
     folder = IMAGES / machine
@@ -1794,7 +1484,6 @@ def identify(path):
             ("Ottawa bearing CSV", "pump", [OTTAWA_CSV_CHANNEL]),
             ("UODS bearing CSV", "haul_truck", UODS_CSV_CHANNELS),
             ("MCC5-THU gearbox", "drill_rig", MCC5_CHANNELS),
-            ("JUST slewing bearing", "grader", JUST_CHANNELS),
         ]
         matches = [(source, machine) for source, machine, channels in schemas
                    if set(channels).issubset(header)]
@@ -1870,8 +1559,6 @@ def sensor_features(path, source, details):
     if source.startswith("MCC5"):
         with open(path, "rb") as handle:
             return mcc5_recording(handle)
-    if source.startswith("JUST"):
-        return just_recording(path)
     values = pd.read_csv(path, header=None, dtype=np.float64).iloc[:, 0].to_numpy()
     return cora_windows(values, details["speed"])
 
@@ -1892,8 +1579,6 @@ def predict_one(path, machine, source, details):
 
 def predict(path, machine=None):
     """Return one condition prediction when the source mapping is known."""
-    if machine == "grader" and Path(path).suffix.lower() in {".png", ".jpg", ".jpeg"}:
-        return predict_grader_tooth(path)
     source, machines, details = identify(path)
     if machine is not None and machine not in machines:
         raise ValueError(f"{source} does not belong to {machine} (it matches {', '.join(machines)})")
@@ -2032,7 +1717,7 @@ def results_overview():
                                   ("Sensor, time split", "sensor_timesplit", "score"),
                                   ("Images, time split", "images_timesplit", "unit_level")):
             result = load_result(machine, name)
-            row[column] = result[key][result.get("headline_metric", "accuracy")] if result else None
+            row[column] = result[key]["accuracy"] if result else None
             if name == "sensor" and result:
                 row["Majority control"] = result["majority_control"]["accuracy"]
                 row["Test recordings (sensor)"] = result[key]["test_units"]
