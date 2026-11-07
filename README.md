@@ -30,6 +30,8 @@ Three [improvement attempts](Documentation/improvement_results.md), each [planne
 
 Under the fair test, Pump, Grader, Drill Rig (images) and Haul Truck (sensor accuracy, exactly 80%) reach 80%; the four CORA machines do not.
 
+**Grader with matched classes** ([results](Documentation/grader_matched_classes_results.md), [plan](Documentation/grader_matched_classes_plan.md)): no public image data with the four slewing-bearing classes exists, so the sensor side was given the image side's task, healthy gear vs damaged tooth. On the independent Aalto thruster rig, holding out whole gear pairs, the sensor model scores 77.8% balanced accuracy on 425 runs (majority 50%). MCC5-THU scores 70.8% at an unseen speed. The gear-tooth photos score 82.6%. The slewing-bearing route is unchanged.
+
 ## How it works
 
 The project uses one Python module and two notebooks.
@@ -136,6 +138,7 @@ From the project folder (Windows: `.venv\Scripts\python.exe`, Mac/Linux: `.venv/
 | `python Notebook/pdm.py cora-binary verify\|sensor\|images` | CORA healthy vs worn follow-up → `Results/experiments/cora_binary/` | 1 minute / 1 minute / about 2 hours |
 | `python Notebook/pdm.py haul-truck-load-check` | Haul Truck sensor fair test without the unloaded ball class | about 15 minutes |
 | `python Notebook/pdm.py attempt drill-orders\|haul-frames\|cora-transient` | the three planned improvement attempts → `Results/experiments/improvement/` (cora-transient needs `Raw_Data/cora_transient/`) | minutes / hours on CPU / minutes |
+| `python Notebook/pdm.py grader-gear mcc5\|aalto` | Grader healthy gear vs damaged tooth, sensor side → `Results/experiments/grader_gear/` (aalto needs `Raw_Data/aalto_gear/3012Hz/`) | minutes / under an hour on CPU (first run reads 29 GB) |
 | `python Notebook/pdm.py route-check` | run every predict route once, record checkpoint SHA-256 → `Results/deployment/route_check.json` | about 1 minute |
 | `python Notebook/pdm.py data-check` | list missing raw files | seconds |
 

@@ -27,6 +27,7 @@ Use it from the notebook (import pdm) or from a terminal in the project folder:
     python Notebook/pdm.py haul-truck-load-check               Haul Truck sensor without the unloaded ball class
     python Notebook/pdm.py route-check                         run every predict route once, record checkpoint hashes
     python Notebook/pdm.py attempt drill-orders|haul-frames|cora-transient   planned improvement attempts
+    python Notebook/pdm.py grader-gear mcc5|aalto              Grader healthy gear vs damaged tooth (sensor side)
     python Notebook/pdm.py data-check                          list missing or changed raw files
 
 Machines: pump, haul_truck, belt_conveyor, excavator, dozer, wheel_loader, drill_rig, grader
@@ -2231,6 +2232,253 @@ def run_cora_transient():
     return result
 
 
+# --- Grader with matched classes (Documentation/grader_matched_classes_plan.md) -----------------------
+# The Grader images are good vs damaged gear teeth. Here the sensor side gets the same task: healthy gear
+# vs damaged tooth (tooth break or missing tooth) on MCC5-THU, leave one speed out.
+
+GRADER_GEAR_LABELS = ["healthy", "tooth_damage"]
+GRADER_GEAR = RESULTS / "experiments" / "grader_gear"
+
+
+def mcc5_tooth_recordings():
+    """Healthy, tooth-break (L/M/H) and missing-tooth single-fault recordings of MCC5-THU."""
+    import re
+    import zipfile
+
+    rows = []
+    with zipfile.ZipFile(MCC5_ZIP) as archive:
+        for name in archive.namelist():
+            base = name.rsplit("/", 1)[-1][:-4]
+            if "__MACOSX" in name or not name.endswith(".csv") or "bearing" in base:
+                continue
+            if base.startswith("health_"):
+                label, kind = "healthy", "healthy"
+            elif re.match(r"teeth_break_[LMH]_", base):
+                label, kind = "tooth_damage", "teeth_break_" + base.split("_")[2]
+            elif base.startswith("miss_teeth_"):
+                label, kind = "tooth_damage", "miss_teeth"
+            else:
+                continue
+            rows.append({"file": name, "unit": base, "class": label, "kind": kind,
+                         "rpm": int(re.search(r"(\d+)rpm", base).group(1))})
+    return rows
+
+
+def run_grader_gear_mcc5():
+    import io
+    import zipfile
+
+    frames, recordings = [], mcc5_tooth_recordings()
+    with zipfile.ZipFile(MCC5_ZIP) as archive:
+        for r in recordings:
+            data = archive.read(r["file"])
+            hz = mcc5_recording(io.BytesIO(data))
+            orders = mcc5_order_recording(pd.read_csv(io.BytesIO(data), usecols=["speed", *MCC5_CHANNELS]))
+            frame = pd.concat([hz, orders.iloc[: len(hz)].reset_index(drop=True)], axis=1)
+            frame.insert(0, "window", np.arange(len(frame)))
+            frame.insert(0, "class", r["class"])
+            frame.insert(0, "rpm", r["rpm"])
+            frame.insert(0, "unit", r["unit"])
+            frames.append(frame)
+    table = pd.concat(frames, ignore_index=True)
+    feature_sets = {"vibration": MCC5_FEATURES, "orders": MCC5_ORDER_FEATURES,
+                    "vibration+orders": MCC5_FEATURES + MCC5_ORDER_FEATURES}
+    folds = fair_test_folds(table["rpm"], [[1000], [2000], [3000]])
+    scores = sensor_fair_test(table, feature_sets, GRADER_GEAR_LABELS, folds, "rpm")
+    images = json.loads((RESULTS / "grader" / "images.json").read_text(encoding="utf-8"))
+    kinds = pd.Series([r["kind"] for r in recordings]).value_counts().sort_index()
+    result = {"experiment": "Grader with matched classes, sensor side on MCC5-THU (planned in "
+                            "Documentation/grader_matched_classes_plan.md)",
+              "classes": GRADER_GEAR_LABELS,
+              "test": "leave one speed out (1000 / 2000 / 3000 rpm); feature set and model chosen inside the "
+                      "training speeds; one prediction per recording",
+              "recordings_by_kind": {k: int(v) for k, v in kinds.items()},
+              "windows": int(len(table)), "recordings": int(table["unit"].nunique()), **scores,
+              "images_same_task": {"source": "Results/grader/images.json (existing, not retrained)",
+                                   "classes": images["classes"], "headline_metric": images["headline_metric"],
+                                   **{k: images["unit_level"][k] for k in
+                                      ("test_units", "accuracy", "balanced_accuracy", "macro_f1",
+                                       "confusion_matrix", "per_class_recall")}},
+              "caveat": "MCC5-THU shares its rig and healthy recordings with the Drill Rig; sensor and image "
+                        "sides are different gears and rigs, not paired samples"}
+    GRADER_GEAR.mkdir(parents=True, exist_ok=True)
+    (GRADER_GEAR / "mcc5_sensor.json").write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
+    save_confusion_figure([("unseen speed", scores["score"]), ("majority control", scores["majority_control"])],
+                          GRADER_GEAR_LABELS, "Grader gear task, MCC5-THU sensor, unseen speed",
+                          FIGURES / "experiments" / "grader_gear" / "mcc5_sensor.png")
+    s = scores["score"]
+    print(f"Grader gear (MCC5-THU): accuracy {s['accuracy']:.3f}, balanced {s['balanced_accuracy']:.3f}, "
+          f"macro F1 {s['macro_f1']:.3f} on {s['test_units']} recordings; majority "
+          f"{scores['majority_control']['balanced_accuracy']:.3f} balanced; chosen "
+          f"{[c['feature_set'] + '/' + c['model'] for c in scores['chosen_per_round']]}", flush=True)
+    return result
+
+
+# Aalto Gear Failure Dataset 3012 Hz v2 (Dahl et al., Mendeley fywnj597d8, CC BY 4.0): a 9:1 azimuth-thruster
+# rig. 8 gear pairs (GP1-7, GP9); each has healthy runs and one replicated tooth fault (two installations),
+# at 6 drive speeds x 3 loads. Files: 3012Hz/<rpm>RPM/<load>Nm/Healthy/GP<n>.csv and .../Inst_<k>/<fault>_GP<n>.csv.
+AALTO = RAW / "aalto_gear" / "3012Hz"
+AALTO_RATE = 3012
+AALTO_ACC = ["acc1", "acc2", "acc3", "acc4"]
+AALTO_TORQUE = ["Torq1", "Torq2"]
+AALTO_ORDER_EDGES = (0.5, 1.5, 2.5, 4.5, 8.5, 16.5, 32.5, 60.5)
+AALTO_WINDOWS_PER_RUN = 30
+AALTO_SKIP_SECONDS = 10
+
+
+def aalto_window_statistics(windows, names):
+    """Per channel: log RMS, std, peak, crest, skewness, kurtosis and 8 relative log band energies.
+    windows: (n, size, channels), mean removed per window."""
+    sd = windows.std(axis=1) + 1e-12
+    peak = np.abs(windows).max(axis=1)
+    skew = (windows**3).mean(axis=1) / sd**3
+    kurt = (windows**4).mean(axis=1) / sd**4
+    spectrum = np.abs(np.fft.rfft(windows * np.hanning(windows.shape[1])[None, :, None], axis=1)) ** 2
+    edges = np.linspace(0, spectrum.shape[1], 9).astype(int)
+    total = spectrum.sum(axis=1) + 1e-12
+    bands = [np.log(spectrum[:, a:b].sum(axis=1) / total + 1e-12) for a, b in zip(edges[:-1], edges[1:])]
+    parts = {"log_rms": np.log(sd), "crest": peak / sd, "skew": skew, "kurtosis": kurt}
+    columns, values = [], []
+    for c, name in enumerate(names):
+        for key, v in parts.items():
+            columns.append(f"{name}_{key}")
+            values.append(v[:, c])
+        for b, v in enumerate(bands):
+            columns.append(f"{name}_band{b}")
+            values.append(v[:, c])
+    return pd.DataFrame(np.column_stack(values), columns=columns)
+
+
+def aalto_run_features(path):
+    """Features of AALTO_WINDOWS_PER_RUN evenly spaced 1 s windows of one run, after the first 10 s."""
+    data = pd.read_csv(path, usecols=["enc1_ang", *AALTO_ACC, *AALTO_TORQUE], dtype=np.float64)
+    size = AALTO_RATE
+    start = AALTO_SKIP_SECONDS * size
+    n = (len(data) - start) // size
+    if n < 1:
+        raise ValueError(f"{path} is shorter than {AALTO_SKIP_SECONDS + 1} s")
+    pick = np.unique(np.linspace(0, n - 1, min(AALTO_WINDOWS_PER_RUN, n)).astype(int))
+    index = start + pick[:, None] * size + np.arange(size)[None, :]
+    acc = data[AALTO_ACC].to_numpy()[index]
+    acc = acc - acc.mean(axis=1, keepdims=True)
+    torque = data[AALTO_TORQUE].to_numpy()[index]
+    torque = torque - torque.mean(axis=1, keepdims=True)
+    angle = data["enc1_ang"].to_numpy()[index]
+    shaft = np.abs(angle[:, -1] - angle[:, 0]) / 360 / ((size - 1) / AALTO_RATE)   # revolutions per second
+    freq = np.fft.rfftfreq(size, d=1 / AALTO_RATE)
+    power = np.abs(np.fft.rfft(acc * np.hanning(size)[None, :, None], axis=1)) ** 2
+    orders = []
+    for w in range(len(pick)):
+        order = freq / max(shaft[w], 1e-6)
+        usable = (order >= AALTO_ORDER_EDGES[0]) & (order < AALTO_ORDER_EDGES[-1])
+        total = power[w, usable].sum(axis=0) + 1e-12
+        orders.append(np.log(np.stack([power[w, (order >= lo) & (order < hi)].sum(axis=0) / total
+                                       for lo, hi in zip(AALTO_ORDER_EDGES[:-1], AALTO_ORDER_EDGES[1:])],
+                                      axis=1) + 1e-12).ravel())
+    order_names = [f"{c}_order_{lo}_{hi}" for c in AALTO_ACC
+                   for lo, hi in zip(AALTO_ORDER_EDGES[:-1], AALTO_ORDER_EDGES[1:])]
+    return pd.concat([aalto_window_statistics(acc, AALTO_ACC), pd.DataFrame(np.asarray(orders), columns=order_names),
+                      aalto_window_statistics(torque, AALTO_TORQUE)], axis=1), order_names
+
+
+def aalto_runs():
+    import re
+
+    rows = []
+    for path in sorted(AALTO.rglob("*.csv")):
+        parts = path.relative_to(AALTO).parts
+        rpm, load, name = int(parts[0][:-3]), parts[1], path.stem
+        pair = re.search(r"GP(\d+)$", name).group(1)
+        healthy = parts[-2] == "Healthy"
+        installation = "healthy" if healthy else parts[-2]
+        rows.append({"path": path, "unit": f"{rpm}rpm_{load}_{installation}_{name}", "gear_pair": f"GP{pair}",
+                     "class": "healthy" if healthy else "tooth_damage",
+                     "fault": "healthy" if healthy else name.rsplit("_GP", 1)[0],
+                     "installation": installation, "rpm": rpm, "load": load})
+    return rows
+
+
+def aalto_table():
+    """Window features of every run, cached in Processed_Data/aalto_gear/ (computed from the raw CSVs)."""
+    cache = PROCESSED / "aalto_gear" / "window_features.csv.gz"
+    if cache.is_file():
+        return pd.read_csv(cache)
+    frames = []
+    runs = aalto_runs()
+    for k, r in enumerate(runs):
+        features, _ = aalto_run_features(r["path"])
+        for key in ("installation", "load", "fault", "rpm", "class", "gear_pair", "unit"):
+            features.insert(0, key, r[key])
+        frames.append(features)
+        if k % 50 == 0:
+            print(f"  features: {k + 1} of {len(runs)} runs", flush=True)
+    table = pd.concat(frames, ignore_index=True)
+    cache.parent.mkdir(parents=True, exist_ok=True)
+    table.to_csv(cache, index=False)
+    return table
+
+
+def run_grader_gear_aalto():
+    table = aalto_table()
+    meta = {"unit", "gear_pair", "class", "fault", "installation", "rpm", "load"}
+    acc = [c for c in table.columns if c.startswith("acc") and "_order_" not in c]
+    orders = [c for c in table.columns if "_order_" in c]
+    torque = [c for c in table.columns if c.startswith("Torq")]
+    assert set(table.columns) == meta | set(acc) | set(orders) | set(torque)
+    feature_sets = {"acceleration": acc, "acceleration+orders": acc + orders,
+                    "acceleration+orders+torque": acc + orders + torque}
+    pairs = sorted(table["gear_pair"].unique(), key=lambda p: int(p[2:]))
+    folds = fair_test_folds(table["gear_pair"], [[p] for p in pairs])
+    scores = sensor_fair_test(table, feature_sets, GRADER_GEAR_LABELS, folds, "gear_pair")
+    runs = table.drop_duplicates("unit")
+    # recall per fault type and per held-out gear pair, from the per-run predictions
+    by_pair = []
+    for p, test in zip(pairs, folds):
+        sub = runs[runs["gear_pair"] == p]
+        by_pair.append({"gear_pair": p, "fault": sorted(set(sub["fault"]) - {"healthy"}),
+                        "healthy_runs": int((sub["class"] == "healthy").sum()),
+                        "damaged_runs": int((sub["class"] == "tooth_damage").sum())})
+    images = json.loads((RESULTS / "grader" / "images.json").read_text(encoding="utf-8"))
+    result = {"experiment": "Grader with matched classes, sensor side on the Aalto Gear Failure Dataset 3012 Hz v2 "
+                            "(planned in Documentation/grader_matched_classes_plan.md)",
+              "source": "Dahl et al., Aalto Gear Failure Dataset 3012Hz v2, Mendeley Data doi 10.17632/fywnj597d8.2, "
+                        "CC BY 4.0; data paper doi 10.1016/j.dib.2024.111171",
+              "classes": GRADER_GEAR_LABELS,
+              "plan_details_fixed_before_modelling": [
+                  "held-out group: gear pair (8 rounds, GP1-7 and GP9); healthy and both fault installations of a "
+                  "pair are always on the same side",
+                  "tooth_damage = all replicated faults (tooth flank fracture, pitting, micropitting, wear; mild and "
+                  "severe), as the image class mixes broken, damaged, pitting and wear teeth",
+                  f"{AALTO_WINDOWS_PER_RUN} evenly spaced 1 s windows per run after the first {AALTO_SKIP_SECONDS} s",
+                  "feature sets offered: acceleration; acceleration+orders (encoder-1 shaft orders); "
+                  "acceleration+orders+torque (the README lists many torque glitches, so torque is only an option "
+                  "chosen inside the training pairs)"],
+              "test": "leave one gear pair out; feature set and model chosen inside the training pairs; one prediction "
+                      "per run",
+              "runs": int(runs.shape[0]), "windows": int(len(table)),
+              "runs_by_class": {k: int(v) for k, v in runs["class"].value_counts().items()},
+              "pairs": by_pair, **scores,
+              "images_same_task": {"source": "Results/grader/images.json (existing, not retrained)",
+                                   "classes": images["classes"], "headline_metric": images["headline_metric"],
+                                   **{k: images["unit_level"][k] for k in
+                                      ("test_units", "accuracy", "balanced_accuracy", "macro_f1",
+                                       "confusion_matrix", "per_class_recall")}},
+              "caveat": "healthy and faulty runs of a pair are different installations, and the data paper notes "
+                        "installation-dependent amplitude; sensor and image sides are different gears and rigs, not "
+                        "paired samples"}
+    GRADER_GEAR.mkdir(parents=True, exist_ok=True)
+    (GRADER_GEAR / "aalto_sensor.json").write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
+    save_confusion_figure([("unseen gear pair", scores["score"]), ("majority control", scores["majority_control"])],
+                          GRADER_GEAR_LABELS, "Grader gear task, Aalto thruster rig, unseen gear pair",
+                          FIGURES / "experiments" / "grader_gear" / "aalto_sensor.png")
+    s = scores["score"]
+    print(f"Grader gear (Aalto): accuracy {s['accuracy']:.3f}, balanced {s['balanced_accuracy']:.3f}, "
+          f"macro F1 {s['macro_f1']:.3f} on {s['test_units']} runs; majority "
+          f"{scores['majority_control']['balanced_accuracy']:.3f} balanced; chosen "
+          f"{[c['feature_set'] + '/' + c['model'] for c in scores['chosen_per_round']]}", flush=True)
+    return result
+
+
 # ==================================================================================================
 # 6. Predict a new file
 # 1. Sensor recording or image?  2. Which dataset format (a format check, not machine learning)?
@@ -2699,6 +2947,11 @@ def main():
                  "cora-transient": run_cora_transient}
         if args.command not in steps:
             parser.error(f"attempt takes one of {', '.join(steps)}")
+        return steps[args.command]()
+    if args.target == "grader-gear":
+        steps = {"mcc5": run_grader_gear_mcc5, "aalto": run_grader_gear_aalto}
+        if args.command not in steps:
+            parser.error(f"grader-gear takes one of {', '.join(steps)}")
         return steps[args.command]()
     if args.target == "predict":
         if not args.command:
