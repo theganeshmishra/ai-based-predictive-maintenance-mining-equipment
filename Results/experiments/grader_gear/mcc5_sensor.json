@@ -1,0 +1,105 @@
+{
+  "experiment": "Grader with matched classes, sensor side on MCC5-THU (planned in Documentation/grader_matched_classes_plan.md)",
+  "classes": [
+    "healthy",
+    "tooth_damage"
+  ],
+  "test": "leave one speed out (1000 / 2000 / 3000 rpm); feature set and model chosen inside the training speeds; one prediction per recording",
+  "recordings_by_kind": {
+    "healthy": 12,
+    "miss_teeth": 12,
+    "teeth_break_H": 12,
+    "teeth_break_L": 12,
+    "teeth_break_M": 12
+  },
+  "windows": 3540,
+  "recordings": 60,
+  "score": {
+    "test_units": 60,
+    "accuracy": 0.8833,
+    "balanced_accuracy": 0.7083,
+    "macro_precision": 0.9364,
+    "macro_recall": 0.7083,
+    "macro_f1": 0.7601,
+    "confusion_matrix": [
+      [
+        5,
+        7
+      ],
+      [
+        0,
+        48
+      ]
+    ],
+    "per_class_recall": {
+      "healthy": 0.4167,
+      "tooth_damage": 1.0
+    }
+  },
+  "chosen_per_round": [
+    {
+      "feature_set": "vibration",
+      "model": "Logistic regression",
+      "validation_macro_f1": 0.7222
+    },
+    {
+      "feature_set": "vibration",
+      "model": "Gradient boosting",
+      "validation_macro_f1": 0.6242
+    },
+    {
+      "feature_set": "vibration+orders",
+      "model": "Logistic regression",
+      "validation_macro_f1": 0.9567
+    }
+  ],
+  "majority_control": {
+    "test_units": 60,
+    "accuracy": 0.8,
+    "balanced_accuracy": 0.5,
+    "macro_precision": 0.4,
+    "macro_recall": 0.5,
+    "macro_f1": 0.4444,
+    "confusion_matrix": [
+      [
+        0,
+        12
+      ],
+      [
+        0,
+        48
+      ]
+    ],
+    "per_class_recall": {
+      "healthy": 0.0,
+      "tooth_damage": 1.0
+    }
+  },
+  "images_same_task": {
+    "source": "Results/grader/images.json (existing, not retrained)",
+    "classes": [
+      "good_tooth",
+      "damaged_tooth"
+    ],
+    "headline_metric": "balanced_accuracy",
+    "test_units": 2879,
+    "accuracy": 0.9722,
+    "balanced_accuracy": 0.8259,
+    "macro_f1": 0.8584,
+    "confusion_matrix": [
+      [
+        2690,
+        24
+      ],
+      [
+        56,
+        109
+      ]
+    ],
+    "per_class_recall": {
+      "good_tooth": 0.9912,
+      "damaged_tooth": 0.6606
+    }
+  },
+  "caveat": "MCC5-THU shares its rig and healthy recordings with the Drill Rig; sensor and image sides are different gears and rigs, not paired samples"
+}

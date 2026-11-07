@@ -50,7 +50,7 @@ These experiments use early segments for training and later segments from the sa
 
 ## Follow-up results
 
-The [follow-up record](followup_experiments.md) adds the CORA healthy vs worn comparison, the Haul Truck result without the load-confounded ball class, the Drill Rig and Pump source checks, and a route check from November 6. The [improvement results](improvement_results.md) add three attempts planned in advance (Drill Rig order features 77.5%, Haul Truck speed-scaled frames 50.0%, CORA transient repetitions 97.5–100% at trained speeds). The archived results above are unchanged.
+The [follow-up record](followup_experiments.md) adds the CORA healthy vs worn comparison, the Haul Truck result without the load-confounded ball class, the Drill Rig and Pump source checks, and a route check from November 6. The [improvement results](improvement_results.md) add three attempts planned in advance (Drill Rig order features 77.5%, Haul Truck speed-scaled frames 50.0%, CORA transient repetitions 97.5–100% at trained speeds). The [Grader matched-class results](grader_matched_classes_results.md) give the Grader sensor side the image side's task (healthy gear vs damaged tooth): 77.8% balanced on unseen Aalto gear pairs, 70.8% on MCC5-THU at an unseen speed, against 82.6% for the tooth photos. The archived results above are unchanged.
 
 ## Local deployment checks
 
