@@ -37,9 +37,17 @@ Confusion matrices (rows actual, columns predicted; healthy, damaged):
 
 ## What this shows, and what it does not
 
-- Both sides now answer the same question: is a gear tooth damaged? The two sensor results come from different rigs, and both beat the majority control by a clear margin on held-out gears (Aalto) or speeds (MCC5-THU).
+- Both sides address tooth damage at different scales. A sensor run describes the gear pair, while a photo crop describes only the visible tooth. The two sensor results come from different rigs, and both beat the majority control by a clear margin on held-out gears (Aalto) or speeds (MCC5-THU).
 - **Aalto is the stronger sensor test.** It holds out whole physical gear pairs, has 425 runs, covers four fault types, and is independent of every other machine in the project. Its 77.8% balanced accuracy is close to the image side's 82.6%, but under 80%.
 - **MCC5-THU** shares its rig and healthy recordings with the Drill Rig, so it is not independent. Healthy gears at an unseen speed are its weak spot, as in the Drill Rig result.
 - On Aalto, each pair's healthy runs and fault runs are separate installations, and the data paper notes installation-dependent amplitude. The model may partly detect a re-installation rather than the damage. Holding out whole pairs prevents memorising a pair, but it does not remove this effect.
 - The sensor and image sides use different gears and rigs. They are not paired samples, so there is no fusion. An image unit is one tooth crop; a sensor unit is one recording. The numbers sit side by side, not as one combined score.
 - The Grader's slewing-bearing route and its checkpoints are not replaced. None of this is a field result from a motor grader.
+
+## Deployment decision · November 8, 2026
+
+Aalto is the primary gear-sensor candidate. The saved confusion matrices reproduce the published accuracy, balanced accuracy and macro F1, and the implementation groups outer and inner folds by physical gear pair. Each outer fold fits its own model. The experiment exports scores and figures without exporting a final inference estimator or its selected feature configuration. Neither the extracted Aalto data nor the cached features were available in the verification checkout. The MCC5-THU archive was also absent. The evaluations were reviewed from saved artifacts and were not rerun.
+
+The next step is to obtain the verified Aalto archive or its provenance-checked feature cache and representative raw CSVs. Select the final feature set and estimator using grouped validation, fit the deployment artifact separately, and save its class order, feature order, channel schema, sampling rate and window configuration. Verify predictions using the exact Aalto preprocessing before adding a source-confirmed route. Treat the existing outer-fold score as an estimate for the model-selection procedure. A separate unseen gear pair would be needed to independently validate the final all-data artifact. Keep the JUST bearing route available as a separate diagnostic task.
+
+The binary crosswalk is `healthy` to `good_tooth` and `tooth_damage` to `damaged_tooth` at the condition-category level. A good tooth does not certify the full gear as healthy. Aalto and the image dataset contain different physical gears. Same-grader field evidence remains an open requirement. See the [eight-equipment evidence matrix](equipment_evidence_matrix.md).

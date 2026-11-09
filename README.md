@@ -92,7 +92,7 @@ Open [Integrated Equipment Fault Prediction](Notebook/Integrated_Equipment_Fault
 - Motor Grader’s gear-tooth image experiment measures visible damage on a separate set of small gears. Its local deployment checkpoint is now built from the verified Roboflow v1 export. The integrated Grader sensor model classifies slewing-bearing conditions; gear-tooth predictions do not diagnose the slewing bearing.
 - Drill Rig images come from synthetic CAD gear renders. The Drill Rig and Grader sensor deployment fits use two-second excerpts per publisher recording. The Drill Rig image checkpoint uses a bounded mesh subset. Those deployment fits are separate from the published experiments.
 
-The November 5 post-push smoke test ran all eight sensor routes and all eight image routes and passed 19 upload and error checks. The local record is `Processed_Data/pushed_deployment_verification.json`.
+The November 8 notebook and CLI smoke tests each passed all eight sensor and eight image routes. The notebook passed 19 upload checks. See the [regression check](Documentation/deployment_verification.md#november-8-regression-check) for local records and sample prediction errors.
 
 For raw sensor CSV uploads, use these schemas. The header identifies the expected source format and rate. Prepare the CSV from the corresponding recording without resampling or substituting channels.
 
@@ -112,7 +112,7 @@ The fair tests above hold out complete recordings, speeds, bearings or designs. 
 
 The saved 82.6% balanced accuracy comes from the separate gear-tooth experiment with held-out source groups. The local `Processed_Data/models/grader_gear_tooth.joblib` checkpoint was trained from the Roboflow v1 COCO export and verified through all three interfaces on labeled example crops. To rebuild it, place the verified export at `Raw_Data/roboflow_gear_photos/GearBox_adddingImg.v1i.coco.zip` and run `python Notebook/pdm.py grader train-final-images`. The command verifies the archive SHA-256 and fits the fixed ResNet18 feature extractor plus logistic regression configuration.
 
-Select **Motor Grader** in the notebook or **Grader** in the local upload page, or run `python Notebook/pdm.py predict tooth_crop.jpg --machine grader`. Supply a manually verified crop of one gear tooth with a small margin. The output classifies visible gear-tooth condition. The Grader sensor model covers slewing-bearing conditions separately. The gear-tooth route reports model unavailable when the fitted checkpoint is absent.
+Select **Motor Grader** in the notebook or **Grader** in the local upload page, or run `python Notebook/pdm.py predict tooth_crop.jpg --machine grader`. Supply a manually verified crop of one gear tooth with a small margin. The output classifies visible gear-tooth condition. The Grader sensor model covers slewing-bearing conditions separately. The gear-tooth route reports model unavailable when the fitted checkpoint is absent. Aalto is the preferred **experimental** gear-vibration candidate (78.35% accuracy, 77.78% balanced accuracy on unseen gear pairs). It has no verified deployment checkpoint in this checkout. The photo and vibration experiments use different gears and evaluation units. See the [matched-class results and deployment decision](Documentation/grader_matched_classes_results.md).
 
 ### Whole-machine photo identification
 
