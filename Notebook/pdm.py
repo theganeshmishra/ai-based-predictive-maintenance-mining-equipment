@@ -28,6 +28,7 @@ Use it from the notebook (import pdm) or from a terminal in the project folder:
     python Notebook/pdm.py route-check                         run every predict route once, record checkpoint hashes
     python Notebook/pdm.py attempt drill-orders|haul-frames|cora-transient   planned improvement attempts
     python Notebook/pdm.py grader-gear mcc5|aalto              Grader healthy gear vs damaged tooth (sensor side)
+    python Notebook/pdm.py trust-models                        mark this computer's own saved .joblib models as trusted
     python Notebook/pdm.py data-check                          list missing or changed raw files
 
 Machines: pump, haul_truck, belt_conveyor, excavator, dozer, wheel_loader, drill_rig, grader
@@ -819,6 +820,48 @@ def sha256(path):
     return digest.hexdigest()
 
 
+# Saved scikit-learn models are joblib (pickle) files, and loading one can run code stored inside it.
+# So a .joblib model is loaded only if its SHA-256 is in a local trust list, which is written when this
+# computer trains the model (or by `trust-models` after you have checked the files are your own builds).
+# Never trust a .joblib file that someone sent you. Image models (.pt) load with weights_only=True instead.
+TRUSTED_MODELS = MODELS / "trusted_sha256.json"
+
+
+def trusted_hashes():
+    return json.loads(TRUSTED_MODELS.read_text(encoding="utf-8")) if TRUSTED_MODELS.is_file() else {}
+
+
+def trust_model(path):
+    hashes = trusted_hashes()
+    hashes[Path(path).name] = sha256(Path(path))
+    TRUSTED_MODELS.parent.mkdir(parents=True, exist_ok=True)
+    TRUSTED_MODELS.write_text(json.dumps(hashes, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+
+
+def load_trusted_joblib(path):
+    """Load a saved .joblib model only if its SHA-256 matches the local trust list."""
+    import joblib
+
+    path = Path(path)
+    expected = trusted_hashes().get(path.name)
+    if expected is None:
+        raise ValueError(f"{path.name} is not in the trusted model list. If this computer built it, run "
+                         "python Notebook/pdm.py trust-models; never trust a model file from someone else.")
+    if sha256(path) != expected:
+        raise ValueError(f"{path.name} has changed since it was trusted, so it was not loaded.")
+    return joblib.load(path)
+
+
+def trust_models():
+    """Record the SHA-256 of the .joblib models that predict uses (if present) as trusted."""
+    names = [f"{machine}_sensor.joblib" for machine in MACHINES] + ["grader_gear_tooth.joblib"]
+    for path in (MODELS / name for name in names):
+        if not path.is_file():
+            continue
+        trust_model(path)
+        print(f"trusted {path.name}  {trusted_hashes()[path.name]}")
+
+
 def check_data():
     missing, wrong = [], []
     for path, expected in required_files():
@@ -1341,13 +1384,13 @@ def run_train_grader_images():
     partial = target.with_suffix(".part")
     joblib.dump(checkpoint, partial)
     partial.replace(target)
+    trust_model(target)
     print(f"Motor Grader: saved gear-tooth deployment model on {len(crops)} labeled crops")
 
 
 def predict_grader_tooth(path):
     """Score a user-confirmed crop of one gear tooth with the local checkpoint."""
     import cv2
-    import joblib
     import torch
 
     model_file = MODELS / "grader_gear_tooth.joblib"
@@ -1356,7 +1399,7 @@ def predict_grader_tooth(path):
     crop = cv2.imread(str(path))
     if crop is None or min(crop.shape[:2]) < 4 or not np.any(crop != crop[0, 0]):
         raise ValueError("Upload a valid, nonblank crop of one gear tooth.")
-    saved = joblib.load(model_file)
+    saved = load_trusted_joblib(model_file)
     encoder = tooth_encoder(pretrained=False)
     encoder.load_state_dict({key: torch.from_numpy(value) for key, value in saved["encoder"].items()})
     size = saved["metadata"]["crop_size"]
@@ -1728,6 +1771,7 @@ def run_train_final(machine, random_forest=False):
     }
     MODELS.mkdir(parents=True, exist_ok=True)
     joblib.dump(final, MODELS / f"{machine}_sensor.joblib")
+    trust_model(MODELS / f"{machine}_sensor.joblib")
     print(f"{m.title}: saved {final['model_name']} on '{final['feature_set']}' to {MODELS / f'{machine}_sensor.joblib'}")
 
 
@@ -2605,12 +2649,10 @@ def predict_one(path, machine, source, details):
     """Step 3: run one machine's trained model on the file; class probabilities averaged over its windows."""
     if "image" in source or "frame" in source:
         return image_probability(path, machine)
-    import joblib
-
     model_file = MODELS / f"{machine}_sensor.joblib"
     if not model_file.is_file():
         raise FileNotFoundError(f"No trained sensor model: run  python Notebook/pdm.py {machine} train-final")
-    final = joblib.load(model_file)
+    final = load_trusted_joblib(model_file)
     features = sensor_features(path, source, details)[final["features"]].to_numpy(dtype=np.float64)
     return dict(zip(final["model"].classes_, final["model"].predict_proba(features).mean(axis=0)))
 
@@ -2769,7 +2811,11 @@ def serve(port=8613):
     import email
     import html
     import tempfile
-    from http.server import BaseHTTPRequestHandler, HTTPServer
+    from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+
+    # Accept requests only from this page itself, so another website open in the browser cannot post files
+    # here (Origin check) or reach the page through a look-alike domain name (Host check).
+    allowed_hosts = {f"localhost:{port}", f"127.0.0.1:{port}"}
 
     options = "".join(f'<option value="{k}">{m.title}</option>' for k, m in MACHINES.items())
 
@@ -2789,23 +2835,43 @@ def serve(port=8613):
         return "<table>" + "".join(rows) + "</table>"
 
     class Handler(BaseHTTPRequestHandler):
-        def send(self, body):
-            self.send_response(200)
+        timeout = 60  # seconds: drop a connection that stops sending
+
+        def send(self, body, status=200):
+            self.send_response(status)
             self.send_header("Content-Type", "text/html; charset=utf-8")
             self.end_headers()
             self.wfile.write(body)
 
+        def refuse(self, status, reason):
+            self.close_connection = True
+            self.send(page(f'<p class="error">{html.escape(reason)}</p>'), status)
+
         def do_GET(self):
+            if self.headers.get("Host") not in allowed_hosts:
+                return self.refuse(403, "Open this page at http://localhost:%d." % port)
             self.send(page())
 
         def do_POST(self):
-            length = int(self.headers.get("Content-Length", 0))
+            origin = self.headers.get("Origin")
+            if self.headers.get("Host") not in allowed_hosts or (
+                    origin is not None and origin.removeprefix("http://") not in allowed_hosts):
+                return self.refuse(403, "Uploads are accepted only from this page.")
+            try:
+                length = int(self.headers.get("Content-Length", ""))
+            except ValueError:
+                return self.refuse(411, "The upload had no valid length.")
+            if length < 0:
+                return self.refuse(400, "The upload had an invalid length.")
             if length > 300_000_000:
-                return self.send(page('<p class="error">File too large (limit 300 MB).</p>'))
+                return self.refuse(413, "File too large (limit 300 MB).")
+            if not self.headers.get("Content-Type", "").startswith("multipart/form-data"):
+                return self.refuse(400, "Send the file with the form on this page.")
             body = self.rfile.read(length)
             message = email.message_from_bytes(
                 f"Content-Type: {self.headers['Content-Type']}\r\n\r\n".encode() + body)
-            fields = {part.get_param("name", header="content-disposition"): part for part in message.get_payload()}
+            parts = message.get_payload() if message.is_multipart() else []
+            fields = {part.get_param("name", header="content-disposition"): part for part in parts}
             upload, choice = fields.get("file"), fields.get("machine")
             machine = (choice.get_payload(decode=True) or b"").decode().strip() if choice else ""
             name = Path(upload.get_filename() or "upload").name if upload else ""
@@ -2825,7 +2891,9 @@ def serve(port=8613):
             pass
 
     print(f"Upload page: http://localhost:{port}  (this computer only; Ctrl-C to stop)")
-    HTTPServer(("127.0.0.1", port), Handler).serve_forever()
+    server = ThreadingHTTPServer(("127.0.0.1", port), Handler)
+    server.daemon_threads = True
+    server.serve_forever()
 
 
 # ==================================================================================================
@@ -2955,6 +3023,8 @@ def main():
         raise SystemExit(check_data())
     if args.target == "serve":
         return serve()
+    if args.target == "trust-models":
+        return trust_models()
     if args.target == "cora-binary":
         if args.command == "verify":
             return verify_cora_runs()
