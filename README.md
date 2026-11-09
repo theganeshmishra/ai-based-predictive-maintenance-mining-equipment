@@ -89,6 +89,7 @@ Open [Integrated Equipment Fault Prediction](Notebook/Integrated_Equipment_Fault
 - **Automatic** uses recognized sensor schemas or an exact match to a trusted local image export. Keep the `Images/` indexes and frames locally for automatic image matching. The separate **Whole-machine photo** mode described below provides unverified visual suggestions.
 - Shared CORA inputs and event-camera frames with unresolved provenance return **Ambiguous Equipment**. Choose a compatible mapping only when you know the source. The display identifies this as a user-confirmed laboratory mapping.
 - Keep trusted deployment checkpoints in `Processed_Data/models/`. They contain the estimator or weights, the class order, and preprocessing metadata. The notebook displays availability and loads the models for inference.
+- Sensor and gear-tooth models are `.joblib` files, and loading one can run code stored inside it. They load only if their SHA-256 is in the local list `Processed_Data/models/trusted_sha256.json`. `train-final` adds each model it saves. For models already on your computer, run `python Notebook/pdm.py trust-models` once, and only for models you built yourself. Never load a `.joblib` file someone sends you. Image models (`.pt`) load as weights only.
 - Motor Grader’s gear-tooth image experiment measures visible damage on a separate set of small gears. Its local deployment checkpoint is now built from the verified Roboflow v1 export. The integrated Grader sensor model classifies slewing-bearing conditions; gear-tooth predictions do not diagnose the slewing bearing.
 - Drill Rig images come from synthetic CAD gear renders. The Drill Rig and Grader sensor deployment fits use two-second excerpts per publisher recording. The Drill Rig image checkpoint uses a bounded mesh subset. Those deployment fits are separate from the published experiments.
 
@@ -134,7 +135,8 @@ From the project folder (Windows: `.venv\Scripts\python.exe`, Mac/Linux: `.venv/
 | `python Notebook/pdm.py <machine> train-final` | sensor model on all data, for `predict` | minutes |
 | `python Notebook/pdm.py <machine> train-final-images` | save a supported ResNet18 deployment checkpoint from exported frames | minutes to hours |
 | `python Notebook/pdm.py predict <file>` | identify the file's dataset format, then the machine's model gives the condition; shared formats return ambiguity unless a mapping is supplied | seconds |
-| `python Notebook/pdm.py serve` | upload page at http://localhost:8613 (this computer only): drop in a file, get machine, condition and confidence | – |
+| `python Notebook/pdm.py serve` | upload page at http://localhost:8613 (this computer only): drop in a file, get machine, condition and confidence. It refuses uploads sent by other websites and malformed requests. Stop it with Ctrl-C when you are done | – |
+| `python Notebook/pdm.py trust-models` | record the SHA-256 of the `.joblib` models on this computer as trusted (run once, for your own builds only) | seconds |
 | `python Notebook/pdm.py cora-binary verify\|sensor\|images` | CORA healthy vs worn follow-up → `Results/experiments/cora_binary/` | 1 minute / 1 minute / about 2 hours |
 | `python Notebook/pdm.py haul-truck-load-check` | Haul Truck sensor fair test without the unloaded ball class | about 15 minutes |
 | `python Notebook/pdm.py attempt drill-orders\|haul-frames\|cora-transient` | the three planned improvement attempts → `Results/experiments/improvement/` (cora-transient needs `Raw_Data/cora_transient/`) | minutes / hours on CPU / minutes |
