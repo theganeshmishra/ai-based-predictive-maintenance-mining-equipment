@@ -2405,6 +2405,12 @@ def aalto_table():
         return pd.read_csv(cache)
     frames = []
     runs = aalto_runs()
+    if not runs:
+        raise FileNotFoundError(
+            "Aalto recordings unavailable. Extract the verified 3012 Hz archive to "
+            "Raw_Data/aalto_gear/3012Hz/ or restore the local feature cache at "
+            "Processed_Data/aalto_gear/window_features.csv.gz. See Dataset_Manifest/manifest.md."
+        )
     for k, r in enumerate(runs):
         features, _ = aalto_run_features(r["path"])
         for key in ("installation", "load", "fault", "rpm", "class", "gear_pair", "unit"):
@@ -2431,9 +2437,9 @@ def run_grader_gear_aalto():
     folds = fair_test_folds(table["gear_pair"], [[p] for p in pairs])
     scores = sensor_fair_test(table, feature_sets, GRADER_GEAR_LABELS, folds, "gear_pair")
     runs = table.drop_duplicates("unit")
-    # recall per fault type and per held-out gear pair, from the per-run predictions
+    # Class support and fault types for each held-out gear pair.
     by_pair = []
-    for p, test in zip(pairs, folds):
+    for p in pairs:
         sub = runs[runs["gear_pair"] == p]
         by_pair.append({"gear_pair": p, "fault": sorted(set(sub["fault"]) - {"healthy"}),
                         "healthy_runs": int((sub["class"] == "healthy").sum()),
@@ -2668,9 +2674,20 @@ def route_samples():
     expected = {"pump": "inner", "haul_truck": "ball", "belt_conveyor": "wear50", "dozer": "wear50",
                 "excavator": "bearing", "wheel_loader": "half_broken_bar", "drill_rig": "gear_pitting",
                 "grader": "outer_ring"}
+    local_samples = PROCESSED / "deployment_samples"
+    for machine, pattern in (("drill_rig", "gear_pitting*.csv"), ("grader", "*-O-*.csv")):
+        if not sensor[machine].is_file():
+            sensor[machine] = next(iter(sorted((local_samples / machine).glob(pattern))), sensor[machine])
     images = {}
     for machine in MACHINES:
+        if machine == "grader":
+            crops = local_samples / "grader_gear_tooth"
+            images[machine] = {label: crops / f"{label}.png" for label in TOOTH_LABELS
+                               if (crops / f"{label}.png").is_file()}
+            continue
         folder = IMAGES / machine
+        if machine == "pump" and not (folder / "index.csv").is_file():
+            folder = IMAGES / "pump_denseframes"
         if (folder / "index.csv").is_file():
             first = {}
             for row in read_index(folder):
@@ -2694,9 +2711,11 @@ def verify_routes():
                 try:
                     answer = predict(path, machine)
                     label = answer.get("condition") or answer.get("Predicted tooth condition")
+                    if label is None:
+                        raise ValueError(f"No prediction returned: {answer.get('status', 'missing fault class')}")
                     checks.append({"machine": machine, "modality": modality, "file": path.name, "status": "PASS",
                                    "expected": truth, "predicted": label,
-                                   "probability": answer.get("model probability")})
+                                   "probability": answer.get("model probability", answer.get("Model confidence"))})
                 except (ValueError, FileNotFoundError) as problem:
                     checks.append({"machine": machine, "modality": modality, "file": path.name,
                                    "status": "FAIL", "error": str(problem)})
@@ -2707,9 +2726,13 @@ def verify_routes():
             errors.append({"input": name, "status": "FAIL: accepted"})
         except ValueError as problem:
             errors.append({"input": name, "status": "PASS: rejected", "message": str(problem)})
-    shared = predict(RAW / "cora_vibration" / "W50_F50_S_Vx.csv")
-    errors.append({"input": "CORA file without a mapping", "status": "PASS" if shared.get("status") ==
-                   "Ambiguous Equipment" else "FAIL", "answer": shared})
+    shared_sample = sensor["belt_conveyor"]
+    if shared_sample.is_file():
+        shared = predict(shared_sample)
+        errors.append({"input": "CORA file without a mapping", "status": "PASS" if shared.get("status") ==
+                       "Ambiguous Equipment" else "FAIL", "answer": shared})
+    else:
+        errors.append({"input": "CORA file without a mapping", "status": "no local sample"})
     result = {"note": "samples are training data: this checks the routes, not accuracy",
               "checkpoint_sha256": hashes, "routes": checks, "input_checks": errors}
     out = RESULTS / "deployment"

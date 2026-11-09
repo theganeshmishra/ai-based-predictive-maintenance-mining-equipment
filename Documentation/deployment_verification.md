@@ -19,10 +19,16 @@ The notebook ran in a Jupyter kernel and exercised the upload widget callbacks w
 
 The Haul Truck CNN predicted outer-race fault for one ball-fault frame. The Drill Rig CNN predicted healthy for one wear render and one pitting render. The deployment checks included training samples. Confidence is a model output. For generalization, use the existing fair tests, which hold out recordings, speeds, bearings or designs. The existing time-split scores use later segments from recordings seen during training. CORA unseen-speed performance is weak in the saved results even when time-split scores are high.
 
-Motor Grader slewing-bearing image diagnosis remains unavailable. The [JUST slewing-bearing dataset](https://data.mendeley.com/datasets/hwg8v5j8t6/1) supplies sensor signals. The separate [gear-tooth image dataset](https://universe.roboflow.com/vjs-jek7v/gearbox_adddingimg) labels a different component and task. Its deployment checkpoint was built after this verification and smoke-tested on a labeled tooth crop; this does not add a slewing-bearing image route. All component routes classify current condition using laboratory analogues. Future failure and remaining useful life are outside the demonstrated scope.
+Motor Grader slewing-bearing image diagnosis remains unavailable. The [JUST slewing-bearing dataset](https://data.mendeley.com/datasets/hwg8v5j8t6/1) supplies sensor signals. The separate [gear-tooth image dataset](https://universe.roboflow.com/vjs-jek7v/gearbox_adddingimg) labels a different component and task. Its deployment checkpoint predicts visible tooth condition from a manually confirmed crop. The Grader gear vibration candidate is evaluated separately and is not deployed. All component routes classify current condition using laboratory analogues. Future failure and remaining useful life are outside the demonstrated scope.
 
 The post-push record is `Processed_Data/pushed_deployment_verification.json`. Earlier route and photo checks are stored separately in `Processed_Data/final_deployment_verification.json` and `Processed_Data/whole_machine_verification.json`. The [evidence matrix](equipment_evidence_matrix.md) contains the archived held-out scores. Keep the trusted checkpoints and indexed image exports locally when running the demo.
 
+
+## November 8 regression check
+
+The integrated notebook passed all 16 routes and 19 upload checks on real local samples after updating to `abd1d5d`. The repaired command-line verifier also passed all 16 routes across 38 prediction calls and checked 16 checkpoint hashes. The unsupported-file and unresolved-CORA checks passed. The verifier now finds the local Pump dense frame export, the Drill Rig and JUST deployment CSVs, and both Grader tooth crops. A route passes when it returns a prediction. Two Drill Rig image examples (wear and pitting) were predicted healthy in the CLI check. These are smoke tests, and their sample matches are not estimates of generalization.
+
+The local rerun records are `Processed_Data/abd1d5d_notebook_verification.json` and `Processed_Data/nov8_cli_route_check.json`. The archived results were preserved. See the [Grader deployment decision](grader_matched_classes_results.md#deployment-decision--november-8-2026) for the Aalto checkpoint and data requirements.
 
 ## Grader image data and equipment photo follow-up
 

@@ -1,6 +1,6 @@
 # Eight-equipment evidence matrix
 
-PROJ 613 · Group 9 · November 5, 2026
+PROJ 613 · Group 9 · Updated November 8, 2026
 
 The matrix describes eight equipment application mappings. The measurements come from laboratory analogues or component datasets, and the Drill Rig image benchmark uses synthetic CAD renders. Shared CORA run IDs support a comparison at run level. Frame-to-window synchronization was not verified. The Pump and Haul Truck modalities use separate rigs. Source links, licenses and paths are recorded in the [dataset manifest](../Dataset_Manifest/manifest.md).
 
@@ -15,7 +15,7 @@ The matrix describes eight equipment application mappings. The measurements come
 | Excavator | Drivetrain analogue. CORA Vx vibration. | Drivetrain analogue. CORA infrared frames from the same runs. | Healthy, bearing fault, unbalance, misalignment. | Four whole-speed folds. | Same held-out speeds and run IDs as sensor. | Both accuracies are at the 25% uniform four-class reference. Local binary follow-ups answer a different question. |
 | Wheel Loader | Electric-drive analogue. CORA Vx vibration. | Electric-drive analogue. CORA infrared frames from the same runs. | Healthy, bearing fault, half-broken rotor bar, broken rotor bar. | Four whole-speed folds. | Same held-out speeds and run IDs as sensor. | Eight healthy or bearing runs overlap Excavator. Image accuracy is below the 25% uniform reference and broken-bar recall is zero. |
 | Drill Rig | Rotary-head reduction gear analogue. MCC5-THU gearbox vibration. | Reduction gear analogue. MFGNet-Gear synthetic CAD renders. | Healthy, wear and pitting align broadly. The sensor root-crack class is mapped in code to CAD R0 root breakage. | Hold out 1,000, 2,000 or 3,000 rpm in turn. | Four folds holding out three CAD designs each. | Root crack and root breakage require qualification. Synthetic render performance has no established transfer to camera photographs. |
-| Motor Grader | Circle-drive slewing-bearing analogue. JUST vibration. | Small gear teeth from GearBox_adddingImg v1 real photographs. | Sensor: healthy, inner ring, outer ring, rolling element. Image: good tooth or damaged tooth. | Hold out one working condition across six folds. The same four supports recur across conditions. | Hold out filename-derived video/photo groups. Score tooth crops. | Different components, labels and evaluation units. One physical support per sensor class. Image damaged-tooth recall was 66.1%. |
+| Motor Grader | Primary gear candidate: Aalto thruster gearbox vibration. Secondary: MCC5-THU gearbox vibration. Deployed legacy route: JUST slewing-bearing vibration. | Small gear teeth from GearBox_adddingImg v1 real photographs. | Gear candidates distinguish healthy gear from tooth damage. Images distinguish good from damaged individual teeth. JUST diagnoses four bearing conditions separately. | Aalto holds out whole gear pairs. MCC5-THU holds out speeds. JUST holds out operating conditions on four reused supports. | Hold out filename-derived video/photo groups. Score tooth crops. | Different physical gears and evaluation units. Image groups lack verified gear IDs. Aalto has installation confounding, MCC5-THU overlaps Drill Rig, and neither gear sensor result is field validation. |
 
 The Drill Rig crosswalk follows the source definitions in [MCC5-THU](https://pmc.ncbi.nlm.nih.gov/articles/PMC11070670/) and [MFGNet-Gear](https://huggingface.co/datasets/rsmei/MFGNet-Gear). The Motor Grader acquisition and labeling evidence is detailed in the [bearing image investigation](motor_grader_image_investigation.md) and [gear comparison review](motor_grader_gear_comparison.md).
 
@@ -50,7 +50,15 @@ These experiments use early segments for training and later segments from the sa
 
 ## Follow-up results
 
-The [follow-up record](followup_experiments.md) adds the CORA healthy vs worn comparison, the Haul Truck result without the load-confounded ball class, the Drill Rig and Pump source checks, and a route check from November 6. The [improvement results](improvement_results.md) add three attempts planned in advance (Drill Rig order features 77.5%, Haul Truck speed-scaled frames 50.0%, CORA transient repetitions 97.5–100% at trained speeds). The [Grader matched-class results](grader_matched_classes_results.md) give the Grader sensor side the image side's task (healthy gear vs damaged tooth): 77.8% balanced on unseen Aalto gear pairs, 70.8% on MCC5-THU at an unseen speed, against 82.6% for the tooth photos. The archived results above are unchanged.
+The [follow-up record](followup_experiments.md) adds the CORA healthy vs worn comparison, the Haul Truck result without the load-confounded ball class, the Drill Rig and Pump source checks, and a route check from November 6. The [improvement results](improvement_results.md) add three attempts planned in advance (Drill Rig order features 77.5%, Haul Truck speed-scaled frames 50.0%, CORA transient repetitions 97.5–100% at trained speeds). The [Grader matched-class results](grader_matched_classes_results.md) cover related binary gear tasks. The archived results above are unchanged.
+
+| Gear evidence | Held-out grouping | Scored units | Accuracy | Balanced accuracy | Macro F1 |
+|---|---|---:|---:|---:|---:|
+| Aalto sensor candidate | 8 physical gear pairs | 425 runs | 78.35% | 77.78% | 76.58% |
+| MCC5-THU sensor follow-up | 3 speeds | 60 recordings | 88.33% | 70.83% | 76.01% |
+| GearBox_adddingImg image experiment | 55 filename-derived source groups | 2,879 crops | 97.22% | 82.59% | 85.84% |
+
+Aalto is preferred for future deployment because its test groups are physical gear pairs and its data are independent of Drill Rig. The sensor labels describe whole gear runs, while the image labels describe visible condition at a single tooth. No sample-level pairing, same-grader inference, or combined score is supported.
 
 ## Local deployment checks
 
