@@ -41,3 +41,13 @@ def test_missing_gear_model_gives_a_clear_message(isolated_models, tmp_path):
     path.write_text(",".join(header) + "\n" + ",".join(["0"] * len(header)) + "\n", encoding="utf-8")
     with pytest.raises(FileNotFoundError, match="grader-gear train-final"):
         pdm.predict(path, "grader")
+
+
+def test_other_grader_photo_export_needs_its_hash_typed(isolated_models, tmp_path, monkeypatch):
+    archive = tmp_path / "export.zip"
+    archive.write_bytes(b"not the evaluated export")
+    monkeypatch.setattr(pdm, "TOOTH_ZIP", archive)
+    with pytest.raises(ValueError, match="--accept-archive"):
+        pdm.run_train_grader_images()
+    with pytest.raises(ValueError, match="--accept-archive"):
+        pdm.run_train_grader_images(accept_archive="0" * 64)

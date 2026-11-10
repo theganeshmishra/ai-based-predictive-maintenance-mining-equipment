@@ -82,7 +82,7 @@ We did not change tests, merge test data into training, or select results after 
 ## 7. Working prediction system
 
 - **Three ways to use it:** the integrated notebook (upload a file, see the machine, fault class and confidence), a command-line `predict`, and a local upload page.
-- **Routes:** eight sensor routes, eight image routes and the Grader gear-vibration route. The November 10 route check passed all 37 routes that had a local sample, and correctly rejected an unsupported file and returned "Ambiguous Equipment" for a CORA file shared by four machines.
+- **Routes:** eight sensor routes, eight image routes and the Grader gear-vibration route. The November 10 route check passed all 39 routes, and correctly rejected an unsupported file and returned "Ambiguous Equipment" for a CORA file shared by four machines.
 - **Grader gear model:** built from all 425 Aalto runs (logistic regression on vibration, shaft orders and torque). Its accuracy estimate is the 77.8% held-out result; the final fit has no extra gear pair left to test it on.
 - **The route check uses training samples.** It shows that each route loads and answers. It is not an accuracy test. On those samples one Excavator misalignment image was called bearing and one Drill Rig pitting render was called healthy.
 - **Safety and reproducibility:** saved models load only if their SHA-256 is on the local trust list; the upload page accepts files only from itself and only on this computer; downloaded data is checked against published hashes; package versions are pinned in `requirements-lock.txt`, and pip-audit found no known vulnerabilities in them on November 10, 2026.
