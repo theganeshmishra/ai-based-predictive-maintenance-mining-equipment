@@ -48,7 +48,7 @@ Every choice (model, feature set, number of epochs) is made inside the training 
 
 ## Deployment verification
 
-The upload routes use locally fitted checkpoints. Some fits use different inputs from the archived evaluations. For example, Belt Conveyor and Dozer uploads use vibration alone, while some evaluation folds selected temperature features. Deployment smoke tests check successful inference and error handling. Consult the [deployment verification report](deployment_verification.md) for those tests.
+The upload routes use locally fitted checkpoints. Some fits use different inputs from the archived evaluations. For example, Belt Conveyor and Dozer uploads use vibration alone, while some evaluation folds selected temperature features. Deployment smoke tests check successful inference and error handling. Consult the [deployment verification report](deployment_verification.md) for those tests. Saved `.joblib` models load only when their SHA-256 is on the local trust list. The Grader gear-vibration model (Aalto, healthy vs tooth damage) is chosen with grouped validation over gear pairs and fitted on all 425 runs; its accuracy estimate is the leave-one-gear-pair-out result. The [final report](final_report.md) summarises the whole method with a [diagram](../Figures/methodology_flow.png).
 
 ## Follow-up experiments (November 6)
 

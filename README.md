@@ -4,6 +4,8 @@ Saskatchewan Polytechnic PROJ 613 capstone · Group 9 · Ganesh Mishra, Lakshya 
 
 This capstone demonstrates sensor and visual classification of current component condition across eight mining equipment mappings. The sources include laboratory analogues, small-gear inspection photos, and synthetic CAD renders. The eight mappings have working local prediction routes. The strength and comparability of the archived experiments vary by equipment.
 
+**Start here:** the [final report](Documentation/final_report.md) brings the question, data, method, results, limits and data credits into one document, and the [demo script](Documentation/demo_script.md) lists the files and expected answers for a 10-minute demonstration.
+
 ## Results
 
 The [eight-equipment evidence matrix](Documentation/equipment_evidence_matrix.md) records each component, fault label, source, test group, accuracy, balanced accuracy, and macro F1. The [results index](Results/README.md) explains how to read the saved score files.
