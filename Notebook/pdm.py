@@ -2879,8 +2879,8 @@ not tested on real mining machines.</p>
 <p><button type="submit">Check condition</button></p></form>{result}</body></html>"""
 
 
-def serve(port=8613):
-    """Start the upload page; stop it with Ctrl-C."""
+def upload_server(port=8613):
+    """The upload page's HTTP server on 127.0.0.1:port (not started; serve() runs it)."""
     import email
     import html
     import tempfile
@@ -2946,26 +2946,42 @@ def serve(port=8613):
             parts = message.get_payload() if message.is_multipart() else []
             fields = {part.get_param("name", header="content-disposition"): part for part in parts}
             upload, choice = fields.get("file"), fields.get("machine")
-            machine = (choice.get_payload(decode=True) or b"").decode().strip() if choice else ""
             name = Path(upload.get_filename() or "upload").name if upload else ""
             try:
+                machine = (choice.get_payload(decode=True) or b"").decode().strip() if choice else ""
                 if not name:
                     raise ValueError("no file was uploaded")
+                if name in (".", "..") or not upload_name_ok(name):
+                    raise ValueError("rename the file to letters, digits, '-', '_' and '.' only")
                 with tempfile.TemporaryDirectory() as folder:
                     path = Path(folder) / name  # keep the name: CORA files carry their speed in it
-                    path.write_bytes(upload.get_payload(decode=True))
+                    path.write_bytes(upload.get_payload(decode=True) or b"")
                     answer = predict(path, machine or None)
                 result = f"<h2>{html.escape(name)}</h2>" + table(answer)
             except (ValueError, FileNotFoundError) as problem:
                 result = f'<p class="error">No prediction for {html.escape(name)}: {html.escape(str(problem))}</p>'
+            except Exception as problem:  # a damaged file must give an answer, not a dropped connection
+                result = (f'<p class="error">No prediction for {html.escape(name)}: the file could not be read '
+                          f'({html.escape(type(problem).__name__)}).</p>')
             self.send(page(result))
 
         def log_message(self, *args):
             pass
 
-    print(f"Upload page: http://localhost:{port}  (this computer only; Ctrl-C to stop)")
     server = ThreadingHTTPServer(("127.0.0.1", port), Handler)
     server.daemon_threads = True
+    return server
+
+
+def upload_name_ok(name):
+    """A plain file name: letters, digits, '-', '_', '.', spaces and parentheses, at most 200 characters."""
+    return bool(re.fullmatch(r"[A-Za-z0-9 _().-]{1,200}", name)) and not name.startswith(".")
+
+
+def serve(port=8613):
+    """Start the upload page; stop it with Ctrl-C."""
+    server = upload_server(port)
+    print(f"Upload page: http://localhost:{port}  (this computer only; Ctrl-C to stop)")
     server.serve_forever()
 
 
