@@ -4,7 +4,9 @@ PROJ 613 · Group 9 · November 6, 2026
 
 The team asked whether more machines can reach 80% accuracy. The three attempts were fixed in advance in the [improvement plan](improvement_plan_2026-11-06.md) (committed before any were run), and each was run once. All three results are reported below. The archived fair-test results and the deployment checkpoints are unchanged. The new results are in `Results/experiments/improvement/` and the figures in `Figures/experiments/improvement/`.
 
-Rerun commands: `python Notebook/pdm.py attempt drill-orders`, `attempt haul-frames`, `attempt cora-transient`.
+Attempt D was added on November 10, 2026, planned in a [second plan](improvement_plan_2026-11-10.md) committed before it ran.
+
+Rerun commands: `python Notebook/pdm.py attempt drill-orders`, `attempt drill-envelope`, `attempt haul-frames`, `attempt cora-transient`.
 
 ## Summary
 
@@ -13,6 +15,7 @@ Rerun commands: `python Notebook/pdm.py attempt drill-orders`, `attempt haul-fra
 | A. Drill Rig sensor, tachometer-order features | unseen speed (same fair test) | 73.3% acc, 68.1% bal | **77.5% acc, 75.7% bal**, macro F1 78.2% | no | better under the same protocol; recommended, checkpoint not replaced |
 | B. Haul Truck images, speed-scaled frames | unseen speed (same fair test) | 58.3% archived; 66.7% rerun | 50.0% | no | no gain; archived 58.3% stays official |
 | C. CORA transient runs | unseen repetition at a trained speed (narrower test) | n/a | Belt Conveyor 100%, Excavator 100%, Wheel Loader 97.5% | yes, under this narrower test only | reported separately; does not replace the fair test |
+| D. Drill Rig sensor, envelope order features | unseen speed (same fair test) | 73.3% archived; 77.5% attempt A | 75.0% acc, 72.2% bal, macro F1 74.7% | no | not deployed; no further Drill Rig sensor attempts on this data |
 
 ## A. Drill Rig sensor: tachometer-order features
 
@@ -23,6 +26,14 @@ Rerun commands: `python Notebook/pdm.py attempt drill-orders`, `attempt haul-fra
 - **Chosen per round:** vibration+orders with gradient boosting, vibration+orders with logistic regression, and vibration with gradient boosting. So the order features were picked in two of the three rounds.
 - **Decision:** a real improvement under the same protocol (+4.2 points accuracy, +7.6 points balanced), but still under 80%, and on only 120 recordings. Under the team's no-retrain rule, the deployment checkpoint is not replaced. We recommend order features for any future retraining.
 - **Retraining check (November 10, 2026):** we fitted a deployment model on all 120 recordings with the same selection (feature set and model chosen by grouped validation over speeds, order features offered). It chose logistic regression on the **vibration** features only (validation macro F1 0.758), the same choice as the existing checkpoint. The order features help in two of the three held-out rounds but not when all speeds are used to choose. So retraining with order features offered gives no different model, and nothing was deployed. Using the order features anyway would mean choosing after seeing the test results, so we did not.
+
+## D. Drill Rig sensor: envelope order features
+
+- **Plan:** [improvement_plan_2026-11-10.md](improvement_plan_2026-11-10.md), committed before running. Motivated by attempt A's errors: 19 of 72 pitting and tooth-crack recordings were called gear wear.
+- **Features added:** per channel and 1 s window, the Hilbert envelope of the 1 kHz high-passed vibration, summed in attempt A's shaft-order bands, plus the high-passed kurtosis (54 features). Offered sets: `vibration`, `vibration+orders`, `vibration+orders+envelope`.
+- **Result (unseen speed, 120 recordings):** 75.0% accuracy (90 of 120), 72.2% balanced, macro F1 74.7%; majority control 30%. Recall: healthy 7/12, gear wear 36/36, pitting 24/36, tooth crack 23/36.
+- **Chosen per round:** vibration+orders+envelope with gradient boosting, vibration+orders+envelope with logistic regression, vibration with gradient boosting.
+- **Decision (fixed in the plan):** under 80%, so nothing is deployed and no further Drill Rig sensor attempts are made with this data. It is 2.5 points below attempt A (3 recordings); the same 19 pitting and crack recordings are still mostly called gear wear, so the envelope features did not fix that confusion.
 
 ## B. Haul Truck images: frames covering the same number of turns
 

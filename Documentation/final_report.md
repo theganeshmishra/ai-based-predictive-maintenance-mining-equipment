@@ -68,6 +68,7 @@ All were planned in advance, saved separately, and left the main results and dep
 | CORA healthy vs worn (Belt Conveyor runs) | unseen speed, 16 runs | sensor 45.8%, images 75.0% balanced (control 50%) | image gain is 2 runs, not defensible (p = 0.05); CORA modelling stopped |
 | Haul Truck sensor without the load-confounded ball class | unseen bearing, 25 recordings | 84.0% accuracy, 73.3% balanced | confirms the load confound; reported separately |
 | A. Drill Rig sensor with shaft-order features | unseen speed, 120 recordings | 77.5% accuracy, 75.7% balanced (was 73.3 / 68.1%) | real gain under the same test, still below 80% |
+| D. Drill Rig sensor with envelope order features | unseen speed, 120 recordings | 75.0% accuracy, 72.2% balanced | under 80% and below attempt A; not deployed, no further attempts |
 | B. Haul Truck images with speed-scaled frames | unseen speed, 12 recordings | 50.0% (archived 58.3%) | no gain; the image model mostly learns the camera angle |
 | C. CORA transient runs | unseen repetition at a **trained** speed, 80 runs | 100% Belt Conveyor, 100% Excavator, 97.5% Wheel Loader | features carry fault information; the CORA failure is the change of speed |
 | Grader with matched classes, Aalto rig | unseen gear pair, 425 runs | 78.4% accuracy, **77.8% balanced** (control 50%) | the sensor side now answers the image side's question (healthy gear vs damaged tooth) |
