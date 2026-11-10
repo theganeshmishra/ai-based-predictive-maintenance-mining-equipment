@@ -104,6 +104,7 @@ For raw sensor CSV uploads, use these schemas. The header identifies the expecte
 | CORA mappings | Original one-column, headerless Vx CSV with the published speed in the filename. Confirm the laboratory mapping when prompted. |
 | Drill Rig, MCC5-THU | Original motor and gearbox vibration channel headers at 12.8 kHz. |
 | Motor Grader, JUST | Original six accelerometer channel headers at 50 kHz. |
+| Motor Grader gear task, Aalto | Original Aalto CSV: `time,enc1_ang,acc1,acc2,acc3,acc4,Torq1,Torq2` (other encoder columns allowed) at 3012 Hz, at least 11 s. |
 
 See the [deployment verification report](Documentation/deployment_verification.md) for the per-equipment results and demonstration limits.
 
@@ -113,7 +114,7 @@ The fair tests above hold out complete recordings, speeds, bearings or designs. 
 
 The saved 82.6% balanced accuracy comes from the separate gear-tooth experiment with held-out source groups. The local `Processed_Data/models/grader_gear_tooth.joblib` checkpoint was trained from the Roboflow v1 COCO export and verified through all three interfaces on labeled example crops. To rebuild it, place the verified export at `Raw_Data/roboflow_gear_photos/GearBox_adddingImg.v1i.coco.zip` and run `python Notebook/pdm.py grader train-final-images`. The command verifies the archive SHA-256 and fits the fixed ResNet18 feature extractor plus logistic regression configuration.
 
-Select **Motor Grader** in the notebook or **Grader** in the local upload page, or run `python Notebook/pdm.py predict tooth_crop.jpg --machine grader`. Supply a manually verified crop of one gear tooth with a small margin. The output classifies visible gear-tooth condition. The Grader sensor model covers slewing-bearing conditions separately. The gear-tooth route reports model unavailable when the fitted checkpoint is absent. Aalto is the preferred **experimental** gear-vibration candidate (78.35% accuracy, 77.78% balanced accuracy on unseen gear pairs). It has no verified deployment checkpoint in this checkout. The photo and vibration experiments use different gears and evaluation units. See the [matched-class results and deployment decision](Documentation/grader_matched_classes_results.md).
+Select **Motor Grader** in the notebook or **Grader** in the local upload page, or run `python Notebook/pdm.py predict tooth_crop.jpg --machine grader`. Supply a manually verified crop of one gear tooth with a small margin. The output classifies visible gear-tooth condition. The Grader sensor model covers slewing-bearing conditions separately. The gear-tooth route reports model unavailable when the fitted checkpoint is absent. For gear vibration, upload an original Aalto 3012 Hz CSV: `predict` recognises its columns and uses `Processed_Data/models/grader_gear_sensor.joblib` (healthy vs tooth damage; 78.35% accuracy, 77.78% balanced accuracy on unseen gear pairs). Build it with `python Notebook/pdm.py grader-gear train-final` (needs the Aalto data or its feature cache). It is a laboratory gear-pair analogue and does not replace the slewing-bearing model. The photo and vibration experiments use different gears and evaluation units. See the [matched-class results and deployment decision](Documentation/grader_matched_classes_results.md).
 
 ### Whole-machine photo identification
 
@@ -123,7 +124,7 @@ Install `onnxruntime` in the notebook environment and put the publisher’s [ONN
 
 ## Commands
 
-From the project folder (Windows: `.venv\Scripts\python.exe`, Mac/Linux: `.venv/bin/python`):
+From the project folder (Windows: `.venv\Scripts\python.exe`, Mac/Linux: `.venv/bin/python`). `requirements-lock.txt` lists the exact package versions last tested (pip-audit found no known vulnerabilities in them on November 10, 2026):
 
 | Command | What it does | Time on a laptop CPU |
 |---|---|---|
@@ -141,6 +142,7 @@ From the project folder (Windows: `.venv\Scripts\python.exe`, Mac/Linux: `.venv/
 | `python Notebook/pdm.py haul-truck-load-check` | Haul Truck sensor fair test without the unloaded ball class | about 15 minutes |
 | `python Notebook/pdm.py attempt drill-orders\|haul-frames\|cora-transient` | the three planned improvement attempts → `Results/experiments/improvement/` (cora-transient needs `Raw_Data/cora_transient/`) | minutes / hours on CPU / minutes |
 | `python Notebook/pdm.py grader-gear mcc5\|aalto` | Grader healthy gear vs damaged tooth, sensor side → `Results/experiments/grader_gear/` (aalto needs `Raw_Data/aalto_gear/3012Hz/`) | minutes / under an hour on CPU (first run reads 29 GB) |
+| `python Notebook/pdm.py grader-gear train-final` | Grader gear sensor model on all Aalto runs, for `predict` → `Processed_Data/models/grader_gear_sensor.joblib` | minutes (with the feature cache) |
 | `python Notebook/pdm.py route-check` | run every predict route once, record checkpoint SHA-256 → `Results/deployment/route_check.json` | about 1 minute |
 | `python Notebook/pdm.py data-check` | list missing raw files | seconds |
 

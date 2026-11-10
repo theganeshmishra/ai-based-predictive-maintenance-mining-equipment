@@ -28,6 +28,7 @@ Use it from the notebook (import pdm) or from a terminal in the project folder:
     python Notebook/pdm.py route-check                         run every predict route once, record checkpoint hashes
     python Notebook/pdm.py attempt drill-orders|haul-frames|cora-transient   planned improvement attempts
     python Notebook/pdm.py grader-gear mcc5|aalto              Grader healthy gear vs damaged tooth (sensor side)
+    python Notebook/pdm.py grader-gear train-final             Grader gear sensor model on all Aalto runs, for predict
     python Notebook/pdm.py trust-models                        mark this computer's own saved .joblib models as trusted
     python Notebook/pdm.py data-check                          list missing or changed raw files
 
@@ -854,7 +855,8 @@ def load_trusted_joblib(path):
 
 def trust_models():
     """Record the SHA-256 of the .joblib models that predict uses (if present) as trusted."""
-    names = [f"{machine}_sensor.joblib" for machine in MACHINES] + ["grader_gear_tooth.joblib"]
+    names = [f"{machine}_sensor.joblib" for machine in MACHINES] + ["grader_gear_tooth.joblib",
+                                                                     GRADER_GEAR_MODEL.name]
     for path in (MODELS / name for name in names):
         if not path.is_file():
             continue
@@ -2468,15 +2470,19 @@ def aalto_table():
     return table
 
 
-def run_grader_gear_aalto():
-    table = aalto_table()
+def aalto_feature_sets(table):
     meta = {"unit", "gear_pair", "class", "fault", "installation", "rpm", "load"}
     acc = [c for c in table.columns if c.startswith("acc") and "_order_" not in c]
     orders = [c for c in table.columns if "_order_" in c]
     torque = [c for c in table.columns if c.startswith("Torq")]
     assert set(table.columns) == meta | set(acc) | set(orders) | set(torque)
-    feature_sets = {"acceleration": acc, "acceleration+orders": acc + orders,
-                    "acceleration+orders+torque": acc + orders + torque}
+    return {"acceleration": acc, "acceleration+orders": acc + orders,
+            "acceleration+orders+torque": acc + orders + torque}
+
+
+def run_grader_gear_aalto():
+    table = aalto_table()
+    feature_sets = aalto_feature_sets(table)
     pairs = sorted(table["gear_pair"].unique(), key=lambda p: int(p[2:]))
     folds = fair_test_folds(table["gear_pair"], [[p] for p in pairs])
     scores = sensor_fair_test(table, feature_sets, GRADER_GEAR_LABELS, folds, "gear_pair")
@@ -2529,6 +2535,48 @@ def run_grader_gear_aalto():
     return result
 
 
+GRADER_GEAR_MODEL = MODELS / "grader_gear_sensor.joblib"
+AALTO_COLUMNS = ["time", "enc1_ang", *AALTO_ACC, *AALTO_TORQUE]
+
+
+def run_train_grader_gear_sensor():
+    """Deployment model for the Grader gear task (healthy vs tooth damage) from all 8 Aalto gear pairs.
+
+    The feature set and model are chosen with grouped validation over gear pairs (4 inner splits), then
+    fitted on all runs. It is saved next to, and does not replace, the Grader slewing-bearing model. Its
+    accuracy estimate is the leave-one-gear-pair-out result of run_grader_gear_aalto; no gear pair is left
+    to test this final fit independently."""
+    import joblib
+
+    table = aalto_table()
+    final = fit_final_sensor_model(table, aalto_feature_sets(table), GRADER_GEAR_LABELS, "gear_pair")
+    evaluation = json.loads((GRADER_GEAR / "aalto_sensor.json").read_text(encoding="utf-8"))["score"]
+    final["metadata"] = {
+        "version": 1, "machine": "grader", "modality": "sensor", "task": "gear tooth: healthy vs tooth_damage",
+        "component": "gear pair (analogue for the circle-drive pinion)",
+        "source": "Aalto Gear Failure Dataset 3012 Hz v2, Mendeley doi 10.17632/fywnj597d8.2, CC BY 4.0",
+        "training_scope": f"all {table['unit'].nunique()} runs of 8 gear pairs; separate from the held-out evaluation",
+        "classes": final["model"].classes_.tolist(),
+        "input": {"format": "original Aalto 3012 Hz CSV", "columns": AALTO_COLUMNS, "sampling_rate_hz": AALTO_RATE,
+                  "enc1_ang": "drive-shaft angle in degrees", "minimum_seconds": AALTO_SKIP_SECONDS + 1},
+        "preprocessing": {"extractor": "pdm.aalto_run_features", "features": final["features"],
+                          "feature_set": final["feature_set"], "window_seconds": 1,
+                          "windows_per_run": AALTO_WINDOWS_PER_RUN, "skip_seconds": AALTO_SKIP_SECONDS,
+                          "aggregation": "mean window probability"},
+        "evaluation_leave_one_gear_pair_out": {k: evaluation[k] for k in ("accuracy", "balanced_accuracy", "macro_f1")},
+        "caveat": "healthy and faulty runs of a pair are different installations; laboratory thruster rig, not a "
+                  "motor grader; the final fit has no independent test pair",
+    }
+    MODELS.mkdir(parents=True, exist_ok=True)
+    partial = GRADER_GEAR_MODEL.with_suffix(".part")
+    joblib.dump(final, partial)
+    partial.replace(GRADER_GEAR_MODEL)
+    trust_model(GRADER_GEAR_MODEL)
+    print(f"Grader gear sensor: saved {final['model_name']} on '{final['feature_set']}' (grouped validation "
+          f"macro F1 {final['validation_macro_f1']:.3f}) to {GRADER_GEAR_MODEL}")
+    return final
+
+
 # ==================================================================================================
 # 6. Predict a new file
 # 1. Sensor recording or image?  2. Which dataset format (a format check, not machine learning)?
@@ -2564,6 +2612,7 @@ def identify(path):
             ("UODS bearing CSV", "haul_truck", UODS_CSV_CHANNELS),
             ("MCC5-THU gearbox", "drill_rig", MCC5_CHANNELS),
             ("JUST slewing bearing", "grader", JUST_CHANNELS),
+            ("Aalto gear rig (3012 Hz)", "grader", AALTO_COLUMNS),
         ]
         matches = [(source, machine) for source, machine, channels in schemas
                    if set(channels).issubset(header)]
@@ -2641,6 +2690,8 @@ def sensor_features(path, source, details):
             return mcc5_recording(handle)
     if source.startswith("JUST"):
         return just_recording(path)
+    if source.startswith("Aalto"):
+        return aalto_run_features(path)[0]
     values = pd.read_csv(path, header=None, dtype=np.float64).iloc[:, 0].to_numpy()
     return cora_windows(values, details["speed"])
 
@@ -2650,6 +2701,10 @@ def predict_one(path, machine, source, details):
     if "image" in source or "frame" in source:
         return image_probability(path, machine)
     model_file = MODELS / f"{machine}_sensor.joblib"
+    if source.startswith("Aalto"):
+        model_file = GRADER_GEAR_MODEL
+        if not model_file.is_file():
+            raise FileNotFoundError("No Grader gear sensor model: run  python Notebook/pdm.py grader-gear train-final")
     if not model_file.is_file():
         raise FileNotFoundError(f"No trained sensor model: run  python Notebook/pdm.py {machine} train-final")
     final = load_trusted_joblib(model_file)
@@ -2670,9 +2725,14 @@ def predict(path, machine=None):
     machine = machine or machines[0]
     probability = predict_one(path, machine, source, details)
     best = max(probability, key=probability.get)
-    return {"file format": source, "machine": MACHINES[machine].title, "condition": best,
-            "model probability": round(float(probability[best]), 3),
-            "all classes": {label: round(float(probability[label]), 3) for label in MACHINES[machine].labels}}
+    gear = source.startswith("Aalto")
+    labels = GRADER_GEAR_LABELS if gear else MACHINES[machine].labels
+    answer = {"file format": source, "machine": MACHINES[machine].title, "condition": best,
+              "model probability": round(float(probability[best]), 3),
+              "all classes": {label: round(float(probability[label]), 3) for label in labels}}
+    if gear:
+        answer["task"] = "gear tooth condition (laboratory gear-pair analogue; not the slewing bearing)"
+    return answer
 
 
 def image_probability(path, machine):
@@ -2761,6 +2821,19 @@ def verify_routes():
                 except (ValueError, FileNotFoundError) as problem:
                     checks.append({"machine": machine, "modality": modality, "file": path.name,
                                    "status": "FAIL", "error": str(problem)})
+    gear_sample = next(iter(sorted((AALTO / "250RPM" / "0_12Nm" / "Healthy").glob("GP*.csv"))), None)
+    hashes[GRADER_GEAR_MODEL.name] = sha256(GRADER_GEAR_MODEL) if GRADER_GEAR_MODEL.is_file() else None
+    if gear_sample is None:
+        checks.append({"machine": "grader", "modality": "gear sensor", "status": "no local sample"})
+    else:
+        try:
+            answer = predict(gear_sample, "grader")
+            checks.append({"machine": "grader", "modality": "gear sensor", "file": gear_sample.name, "status": "PASS",
+                           "expected": "healthy", "predicted": answer["condition"],
+                           "probability": answer["model probability"]})
+        except (ValueError, FileNotFoundError) as problem:
+            checks.append({"machine": "grader", "modality": "gear sensor", "file": gear_sample.name,
+                           "status": "FAIL", "error": str(problem)})
     errors = []
     for path, name in ((ROOT / "README.md", "unsupported file"),):
         try:
@@ -3004,6 +3077,28 @@ def improvement_overview():
     return pd.DataFrame(rows)
 
 
+def grader_gear_overview():
+    """Grader healthy gear vs damaged tooth on both sides, from Results/experiments/grader_gear/ (no retraining)."""
+    rows = []
+
+    def add(side, test, s, units):
+        rows.append({"Side": side, "Test": test, "Units": units, "Accuracy": s["accuracy"],
+                     "Balanced accuracy": s["balanced_accuracy"], "Macro F1": s["macro_f1"]})
+
+    for name, side, test, unit in (("aalto_sensor", "Sensor: Aalto thruster rig", "unseen gear pair", "runs"),
+                                   ("mcc5_sensor", "Sensor: MCC5-THU gearbox", "unseen speed", "recordings")):
+        path = GRADER_GEAR / f"{name}.json"
+        if path.is_file():
+            r = json.loads(path.read_text(encoding="utf-8"))
+            add(side, test, r["score"], f"{r['score']['test_units']} {unit}")
+            add(side, test + " (majority control)", r["majority_control"], f"{r['score']['test_units']} {unit}")
+    path = GRADER_GEAR / "aalto_sensor.json"
+    if path.is_file():
+        images = json.loads(path.read_text(encoding="utf-8"))["images_same_task"]
+        add("Images: gear-tooth photos", "unseen video or photo set", images, f"{images['test_units']} tooth crops")
+    return pd.DataFrame(rows)
+
+
 # ==================================================================================================
 # 8. Command line
 # ==================================================================================================
@@ -3042,7 +3137,8 @@ def main():
             parser.error(f"attempt takes one of {', '.join(steps)}")
         return steps[args.command]()
     if args.target == "grader-gear":
-        steps = {"mcc5": run_grader_gear_mcc5, "aalto": run_grader_gear_aalto}
+        steps = {"mcc5": run_grader_gear_mcc5, "aalto": run_grader_gear_aalto,
+                 "train-final": run_train_grader_gear_sensor}
         if args.command not in steps:
             parser.error(f"grader-gear takes one of {', '.join(steps)}")
         return steps[args.command]()

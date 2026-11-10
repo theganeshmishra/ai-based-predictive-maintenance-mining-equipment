@@ -51,3 +51,14 @@ Aalto is the primary gear-sensor candidate. The saved confusion matrices reprodu
 The next step is to obtain the verified Aalto archive or its provenance-checked feature cache and representative raw CSVs. Select the final feature set and estimator using grouped validation, fit the deployment artifact separately, and save its class order, feature order, channel schema, sampling rate and window configuration. Verify predictions using the exact Aalto preprocessing before adding a source-confirmed route. Treat the existing outer-fold score as an estimate for the model-selection procedure. A separate unseen gear pair would be needed to independently validate the final all-data artifact. Keep the JUST bearing route available as a separate diagnostic task.
 
 The binary crosswalk is `healthy` to `good_tooth` and `tooth_damage` to `damaged_tooth` at the condition-category level. A good tooth does not certify the full gear as healthy. Aalto and the image dataset contain different physical gears. Same-grader field evidence remains an open requirement. See the [eight-equipment evidence matrix](equipment_evidence_matrix.md).
+
+## Deployment model · November 10, 2026
+
+The step above is done. `python Notebook/pdm.py grader-gear train-final` builds `Processed_Data/models/grader_gear_sensor.joblib` from all 425 Aalto runs of the 8 gear pairs. It is saved next to the Grader slewing-bearing model and does not replace it.
+
+- **Selection:** the same three feature sets and five candidate models, chosen by macro F1 with grouped validation over gear pairs (4 inner splits, 2 pairs held out each time). Chosen: logistic regression on acceleration + shaft orders + torque (100 features). Its validation macro F1 is 0.892, but this score was used to make the choice, so it is optimistic. **The accuracy estimate stays the leave-one-gear-pair-out result above (77.8% balanced, 76.6% macro F1).** No gear pair is left to test the final fit on its own.
+- **Saved with the model:** class order, feature order, the CSV columns (`time, enc1_ang, acc1..acc4, Torq1, Torq2`), 3012 Hz, 30 windows of 1 s after the first 10 s, mean window probability, the source and its licence, and the caveats.
+- **Route:** an original Aalto 3012 Hz CSV is recognised by its columns and sent to this model by `predict`, the upload page and the integrated notebook. The answer says it is the gear-tooth task, not the slewing bearing. It has its own SHA-256 in the local trust list.
+- **Smoke test (training data, so not an accuracy test):** `GP1.csv` (healthy, 250 rpm) → healthy 0.987; `Mild_Micropitting_GP4.csv` (1000 rpm) → tooth damage 1.000. `route-check` passed 37 of 37 routes it could run; the Grader tooth photo route had no local sample on this computer.
+- **Still open:** independent validation on a gear pair the final model has never seen, and any field data from a motor grader. The installation caveat above applies to this model too.
+

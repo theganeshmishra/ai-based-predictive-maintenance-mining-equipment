@@ -10,3 +10,10 @@ scikit-learn>=1.5,<2
 scipy>=1.13,<2
 torch>=2.2,<3
 torchvision>=0.17,<1
+
+# Security floors for indirect packages (versions with known vulnerabilities are excluded; checked
+# with pip-audit on 2026-11-10). See requirements-lock.txt for the exact tested versions.
+pillow>=13.0.0
+filelock>=4.2.1
+tornado>=6.6
+certifi>=2026.10.18
