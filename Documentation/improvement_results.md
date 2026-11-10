@@ -22,6 +22,7 @@ Rerun commands: `python Notebook/pdm.py attempt drill-orders`, `attempt haul-fra
 - **Confusion matrix** (rows actual, columns predicted; healthy, gear wear, gear pitting, tooth crack): `[[8,4,0,0],[0,36,0,0],[0,9,24,3],[0,10,1,25]]`. Healthy recall rose from 5 of 12 to 8 of 12. Most remaining errors are pitting or crack called gear wear.
 - **Chosen per round:** vibration+orders with gradient boosting, vibration+orders with logistic regression, and vibration with gradient boosting. So the order features were picked in two of the three rounds.
 - **Decision:** a real improvement under the same protocol (+4.2 points accuracy, +7.6 points balanced), but still under 80%, and on only 120 recordings. Under the team's no-retrain rule, the deployment checkpoint is not replaced. We recommend order features for any future retraining.
+- **Retraining check (November 10, 2026):** we fitted a deployment model on all 120 recordings with the same selection (feature set and model chosen by grouped validation over speeds, order features offered). It chose logistic regression on the **vibration** features only (validation macro F1 0.758), the same choice as the existing checkpoint. The order features help in two of the three held-out rounds but not when all speeds are used to choose. So retraining with order features offered gives no different model, and nothing was deployed. Using the order features anyway would mean choosing after seeing the test results, so we did not.
 
 ## B. Haul Truck images: frames covering the same number of turns
 

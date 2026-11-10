@@ -104,7 +104,7 @@ We did not change tests, merge test data into training, or select results after 
 2. More than one run per class and speed for the CORA-type drives, so a held-out speed is not a single run.
 3. More camera angles per class (Haul Truck) and real photographs of gears (Drill Rig).
 4. An independent gear pair to validate the final Grader gear model.
-5. Retraining the Drill Rig sensor model with the shaft-order features (attempt A), which improved the fair test.
+5. More MCC5-THU speeds for the Drill Rig. Attempt A's order features improved the fair test, but a refit on all 120 recordings with them offered chose vibration features only (the existing model), so more speeds are needed before order features can be chosen on evidence.
 
 ## 10. Data credits
 

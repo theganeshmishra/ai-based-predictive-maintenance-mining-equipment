@@ -26,7 +26,7 @@ The [20-day audit and plan](Documentation/proj613_20_day_audit.md) ranks the rem
 
 Three [improvement attempts](Documentation/improvement_results.md), each [planned in advance](Documentation/improvement_plan_2026-11-06.md) and run once:
 
-- **Drill Rig sensor with tachometer-order features:** 77.5% accuracy (75.7% balanced) on the same unseen-speed test, up from 73.3%. Recommended for retraining; the checkpoint is not replaced.
+- **Drill Rig sensor with tachometer-order features:** 77.5% accuracy (75.7% balanced) on the same unseen-speed test, up from 73.3%. A deployment refit on all 120 recordings with order features offered chose vibration features only, the same as the existing model, so nothing was deployed.
 - **Haul Truck images with speed-scaled frames:** 50.0%, no gain over the archived 58.3%. The image model mostly recognises the camera angle.
 - **CORA transient runs, unseen repetition at a trained speed:** 100% Belt Conveyor, 100% Excavator, 97.5% Wheel Loader. This is a narrower test than the fair test and does not replace it.
 
