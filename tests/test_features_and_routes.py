@@ -32,6 +32,33 @@ def test_short_aalto_run_is_rejected(tmp_path):
         pdm.aalto_run_features(synthetic_aalto_csv(tmp_path / "short.csv", seconds=10))
 
 
+def test_aalto_prediction_uses_gear_checkpoint(tmp_path, monkeypatch):
+    from sklearn.dummy import DummyClassifier
+
+    path = synthetic_aalto_csv(tmp_path / "run.csv")
+    model_path = tmp_path / "grader_gear_sensor.joblib"
+    monkeypatch.setattr(pdm, "GRADER_GEAR_MODEL", model_path)
+    monkeypatch.setattr(pdm, "TRUSTED_MODELS", tmp_path / "trusted_sha256.json")
+    with pytest.raises(FileNotFoundError, match="No Grader gear sensor model"):
+        pdm.predict(path)
+
+    features, _ = pdm.aalto_run_features(path)
+    estimator = DummyClassifier(strategy="constant", constant="healthy")
+    estimator.fit(features.to_numpy(), ["healthy", "healthy", "tooth_damage"])
+    checkpoint = {"model": estimator, "features": list(features.columns), "model_name": "Test classifier"}
+    pdm.save_trusted_joblib(checkpoint, model_path)
+
+    answer = pdm.predict(path)
+    assert answer["condition"] == "healthy"
+    assert set(answer["all classes"]) == {"healthy", "tooth_damage"}
+    assert answer["model used"] == "Test classifier"
+
+    checkpoint["features"] = ["unavailable_feature"]
+    pdm.save_trusted_joblib(checkpoint, model_path)
+    with pytest.raises(ValueError, match="Checkpoint features"):
+        pdm.predict(path)
+
+
 MODELS = ROOT / "Processed_Data" / "models"
 RAW = ROOT / "Raw_Data"
 

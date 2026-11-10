@@ -2797,10 +2797,10 @@ def sensor_features(path, source, details):
     return cora_windows(values, details["speed"])
 
 
-def predict_one(path, machine, source, details):
+def score_checkpoint(path, machine, source, details):
     """Step 3: run one machine's trained model on the file; class probabilities averaged over its windows."""
     if "image" in source or "frame" in source:
-        return image_probability(path, machine)
+        return image_probability(path, machine), "ResNet18 CNN"
     model_file = MODELS / f"{machine}_sensor.joblib"
     if source.startswith("Aalto"):
         model_file = GRADER_GEAR_MODEL
@@ -2809,8 +2809,23 @@ def predict_one(path, machine, source, details):
     if not model_file.is_file():
         raise FileNotFoundError(f"No trained sensor model: run  python Notebook/pdm.py {machine} train-final")
     final = load_trusted_joblib(model_file)
-    features = sensor_features(path, source, details)[final["features"]].to_numpy(dtype=np.float64)
-    return dict(zip(final["model"].classes_, final["model"].predict_proba(features).mean(axis=0)))
+    metadata = final.get("metadata", {})
+    if metadata and (metadata.get("machine") != machine or metadata.get("modality") != "sensor"):
+        raise ValueError("Sensor checkpoint belongs to a different equipment or modality.")
+    estimator = final["model"]
+    labels = GRADER_GEAR_LABELS if source.startswith("Aalto") else MACHINES[machine].labels
+    if set(estimator.classes_) != set(labels):
+        raise ValueError("Checkpoint fault classes do not match the selected task.")
+    features = sensor_features(path, source, details)
+    if not set(final["features"]).issubset(features.columns):
+        raise ValueError("Checkpoint features do not match the input preprocessing.")
+    features = features[final["features"]].to_numpy(dtype=np.float64)
+    if not len(features):
+        raise ValueError("The recording is too short for one complete feature window.")
+    if not np.isfinite(features).all():
+        raise ValueError("The recording produced invalid sensor features. Check the signal values.")
+    probabilities = dict(zip(estimator.classes_, estimator.predict_proba(features).mean(axis=0)))
+    return probabilities, final.get("model_name", type(estimator).__name__)
 
 
 def predict(path, machine=None):
@@ -2824,12 +2839,12 @@ def predict(path, machine=None):
         return {"file format": source, "status": "Ambiguous Equipment",
                 "candidates": [MACHINES[name].title for name in machines]}
     machine = machine or machines[0]
-    probability = predict_one(path, machine, source, details)
+    probability, model_name = score_checkpoint(path, machine, source, details)
     best = max(probability, key=probability.get)
     gear = source.startswith("Aalto")
     labels = GRADER_GEAR_LABELS if gear else MACHINES[machine].labels
     answer = {"file format": source, "machine": MACHINES[machine].title, "condition": best,
-              "model probability": round(float(probability[best]), 3),
+              "model probability": round(float(probability[best]), 3), "model used": model_name,
               "all classes": {label: round(float(probability[label]), 3) for label in labels}}
     if gear:
         answer["task"] = "gear tooth condition (laboratory gear-pair analogue; not the slewing bearing)"
@@ -2975,7 +2990,7 @@ table{border-collapse:collapse;margin-top:16px}td{border:1px solid #ccc;padding:
 not tested on real mining machines.</p>
 <form method="post" enctype="multipart/form-data">
 <p><input type="file" name="file" required></p>
-<p>Machine (only needed when several machines share a format): <select name="machine">
+<p>Equipment mapping (for shared formats and Grader tooth photos): <select name="machine">
 <option value="">find it from the file</option>{options}</select></p>
 <p><button type="submit">Check condition</button></p></form>{result}</body></html>"""
 
@@ -3052,8 +3067,9 @@ def upload_server(port=8613):
                 machine = (choice.get_payload(decode=True) or b"").decode().strip() if choice else ""
                 if not name:
                     raise ValueError("no file was uploaded")
-                if name in (".", "..") or not upload_name_ok(name):
-                    raise ValueError("rename the file to letters, digits, '-', '_' and '.' only")
+                if not upload_name_ok(name):
+                    raise ValueError("use a plain filename with letters, digits, spaces, parentheses, hyphens, "
+                                     "underscores or dots (up to 200 characters)")
                 with tempfile.TemporaryDirectory() as folder:
                     path = Path(folder) / name  # keep the name: CORA files carry their speed in it
                     path.write_bytes(upload.get_payload(decode=True) or b"")
