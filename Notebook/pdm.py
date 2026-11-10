@@ -42,10 +42,12 @@ import csv
 import hashlib
 import json
 import numpy as np
+import os
 import pandas as pd
 import random
 import re
 import shutil
+from threading import Lock
 import warnings
 
 
@@ -826,11 +828,20 @@ def sha256(path):
 # computer trains the model (or by `trust-models` after you have checked the files are your own builds).
 # Never trust a .joblib file that someone sent you. Image models (.pt) load with weights_only=True instead.
 TRUSTED_MODELS = MODELS / "trusted_sha256.json"
-_TRUSTED_LOADS = {}  # (path, size, mtime, trusted hash) -> loaded model, so an unchanged file is hashed once
+_TRUSTED_LOADS = {}
+_TRUSTED_LOAD_LOCK = Lock()
 
 
 def trusted_hashes():
-    return json.loads(TRUSTED_MODELS.read_text(encoding="utf-8")) if TRUSTED_MODELS.is_file() else {}
+    try:
+        hashes = json.loads(TRUSTED_MODELS.read_text(encoding="utf-8"))
+    except FileNotFoundError:
+        return {}
+    except ValueError as problem:
+        raise ValueError("The local trusted_sha256.json is invalid.") from problem
+    if not isinstance(hashes, dict):
+        raise ValueError("The local trusted_sha256.json must contain a mapping of filenames to hashes.")
+    return hashes
 
 
 def trust_model(path):
@@ -861,15 +872,20 @@ def load_trusted_joblib(path):
     if expected is None:
         raise ValueError(f"{path.name} is not in the trusted model list. If this computer built it, run "
                          "python Notebook/pdm.py trust-models; never trust a model file from someone else.")
-    stat = path.stat()
-    key = (str(path), stat.st_size, stat.st_mtime_ns, expected)
-    if key not in _TRUSTED_LOADS:
-        if sha256(path) != expected:
-            raise ValueError(f"{path.name} has changed since it was trusted, so it was not loaded.")
-        if len(_TRUSTED_LOADS) >= 8:  # keep at most 8 models in memory
-            _TRUSTED_LOADS.pop(next(iter(_TRUSTED_LOADS)))
-        _TRUSTED_LOADS[key] = joblib.load(path)
-    return _TRUSTED_LOADS[key]
+    with _TRUSTED_LOAD_LOCK, path.open("rb") as handle:
+        stat = os.fstat(handle.fileno())
+        key = (path, stat.st_dev, stat.st_ino, stat.st_size, stat.st_mtime_ns, stat.st_ctime_ns, expected)
+        if key not in _TRUSTED_LOADS:
+            from io import BytesIO
+
+            contents = handle.read()
+            if hashlib.sha256(contents).hexdigest() != expected:
+                raise ValueError(f"{path.name} has changed since it was trusted, so it was not loaded.")
+            model = joblib.load(BytesIO(contents))
+            if len(_TRUSTED_LOADS) >= 8:
+                _TRUSTED_LOADS.pop(next(iter(_TRUSTED_LOADS)))
+            _TRUSTED_LOADS[key] = model
+        return _TRUSTED_LOADS[key]
 
 
 def trust_models():
@@ -3012,7 +3028,6 @@ def upload_server(port=8613):
 
     # Accept requests only from this page itself, so another website open in the browser cannot post files
     # here (Origin check) or reach the page through a look-alike domain name (Host check).
-    allowed_hosts = {f"localhost:{port}", f"127.0.0.1:{port}"}
 
     options = "".join(f'<option value="{k}">{m.title}</option>' for k, m in MACHINES.items())
 
@@ -3065,10 +3080,17 @@ def upload_server(port=8613):
                 return self.refuse(413, "File too large (limit 300 MB).")
             if not self.headers.get("Content-Type", "").startswith("multipart/form-data"):
                 return self.refuse(400, "Send the file with the form on this page.")
-            body = self.rfile.read(length)
+            try:
+                body = self.rfile.read(length)
+            except TimeoutError:
+                return self.refuse(408, "The upload timed out.")
+            if len(body) != length:
+                return self.refuse(400, "The upload ended before the full file arrived.")
             message = email.message_from_bytes(
                 f"Content-Type: {self.headers['Content-Type']}\r\n\r\n".encode() + body)
-            parts = message.get_payload() if message.is_multipart() else []
+            if message.get_content_type() != "multipart/form-data" or not message.is_multipart() or message.defects:
+                return self.refuse(400, "The upload form is incomplete or malformed.")
+            parts = message.get_payload()
             fields = {part.get_param("name", header="content-disposition"): part for part in parts}
             upload, choice = fields.get("file"), fields.get("machine")
             name = Path(upload.get_filename() or "upload").name if upload else ""
@@ -3095,6 +3117,8 @@ def upload_server(port=8613):
             pass
 
     server = ThreadingHTTPServer(("127.0.0.1", port), Handler)
+    port = server.server_port
+    allowed_hosts = {f"localhost:{port}", f"127.0.0.1:{port}"}
     server.daemon_threads = True
     return server
 

@@ -1,4 +1,6 @@
 """Saved .joblib models load only when their SHA-256 is on the local trust list."""
+import os
+
 import joblib
 import pytest
 
@@ -51,3 +53,23 @@ def test_other_grader_photo_export_needs_its_hash_typed(isolated_models, tmp_pat
         pdm.run_train_grader_images()
     with pytest.raises(ValueError, match="--accept-archive"):
         pdm.run_train_grader_images(accept_archive="0" * 64)
+
+def test_cached_model_detects_replacement_with_same_size_and_mtime(isolated_models):
+    path = save(isolated_models, "pump_sensor.joblib", {"x": 1})
+    pdm.trust_model(path)
+    assert pdm.load_trusted_joblib(path) == {"x": 1}
+    stat = path.stat()
+    replacement = save(isolated_models, "replacement.joblib", {"x": 2})
+    assert replacement.stat().st_size == stat.st_size
+    os.utime(replacement, ns=(stat.st_atime_ns, stat.st_mtime_ns))
+    replacement.replace(path)
+    with pytest.raises(ValueError, match="has changed since it was trusted"):
+        pdm.load_trusted_joblib(path)
+
+
+@pytest.mark.parametrize("manifest", ["{", "[]"])
+def test_invalid_trust_manifest_is_rejected(isolated_models, manifest):
+    path = save(isolated_models, "pump_sensor.joblib", {"x": 1})
+    pdm.TRUSTED_MODELS.write_text(manifest, encoding="utf-8")
+    with pytest.raises(ValueError, match="trusted_sha256.json"):
+        pdm.load_trusted_joblib(path)
