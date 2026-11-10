@@ -16,7 +16,8 @@
     "drill_rig_sensor.joblib": "3e94767a62b43e7e2e2375dfcb5fbf5de017f7b2be4394034773cbd0ed0a8c03",
     "drill_rig_images.pt": "ea7e87ebeefe117ce874f1a5aeb65d69622cff970546d942e8bab83463a27eec",
     "grader_sensor.joblib": "df0e73f23137ca32109fc625cdb1b028b58d2b48ff977fde902c5978cffe9c7e",
-    "grader_gear_tooth.joblib": null
+    "grader_gear_tooth.joblib": null,
+    "grader_gear_sensor.joblib": "418fb49af15362f033004109561745ce14a736f7b798daeb85a5756b1d325138"
   },
   "routes": [
     {
@@ -347,6 +348,15 @@
       "machine": "grader",
       "modality": "image",
       "status": "no local sample"
+    },
+    {
+      "machine": "grader",
+      "modality": "gear sensor",
+      "file": "GP1.csv",
+      "status": "PASS",
+      "expected": "healthy",
+      "predicted": "healthy",
+      "probability": 0.987
     }
   ],
   "input_checks": [
