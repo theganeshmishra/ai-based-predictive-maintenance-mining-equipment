@@ -83,3 +83,11 @@ def test_event_frame_needs_a_mapping(tmp_path):
     cv2.imwrite(str(path), frame)
     source, machines, _ = pdm.identify(path)
     assert source.startswith("event-camera") and set(machines) == {"pump", "haul_truck"}
+
+
+@pytest.mark.parametrize("content", [b"", b"not a MAT file", b"X" * 130])
+def test_corrupt_mat_reports_a_readable_error(tmp_path, content):
+    path = tmp_path / "broken.mat"
+    path.write_bytes(content)
+    with pytest.raises(ValueError, match="Invalid or unsupported MAT recording"):
+        pdm.identify(path)

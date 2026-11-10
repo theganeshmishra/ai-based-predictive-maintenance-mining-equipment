@@ -29,7 +29,11 @@ def request(port, method="GET", body=b"", headers=None):
             connection.putheader(key, value)
     connection.endheaders(body or None)
     response = connection.getresponse()
-    text = response.read().decode("utf-8", "replace")
+    length = response.getheader("Content-Length")
+    assert length is not None
+    content = response.read()
+    assert len(content) == int(length)
+    text = content.decode("utf-8", "replace")
     connection.close()
     return response.status, text
 

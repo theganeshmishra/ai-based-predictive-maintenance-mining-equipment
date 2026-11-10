@@ -2699,8 +2699,12 @@ def identify(path):
     suffix = path.suffix.lower()
     if suffix == ".mat":
         from scipy.io import whosmat
+        from scipy.io.matlab import MatReadError
 
-        variables = {name: shape for name, shape, _ in whosmat(path)}
+        try:
+            variables = {name: shape for name, shape, _ in whosmat(path)}
+        except (MatReadError, IndexError, ValueError, NotImplementedError) as problem:
+            raise ValueError("Invalid or unsupported MAT recording.") from problem
         if "Channel_1" in variables:
             return "Ottawa bearing rig recording", ["pump"], {}
         if path.stem in variables and len(variables[path.stem]) == 2 and variables[path.stem][1] >= 2:
@@ -2926,6 +2930,10 @@ def verify_routes():
             if not cases:
                 checks.append({"machine": machine, "modality": modality, "status": "no local sample"})
             for path, truth in cases:
+                if not path.is_file():
+                    checks.append({"machine": machine, "modality": modality, "file": path.name,
+                                   "status": "no local sample"})
+                    continue
                 try:
                     answer = predict(path, machine)
                     label = answer.get("condition") or answer.get("Predicted tooth condition")
@@ -2966,9 +2974,9 @@ def verify_routes():
         errors.append({"input": "CORA file without a mapping", "status": "no local sample"})
     result = {"note": "samples are training data: this checks the routes, not accuracy",
               "checkpoint_sha256": hashes, "routes": checks, "input_checks": errors}
-    out = RESULTS / "deployment"
-    out.mkdir(parents=True, exist_ok=True)
-    (out / "route_check.json").write_text(json.dumps(result, indent=2, default=str) + "\n", encoding="utf-8")
+    out = PROCESSED / "deployment" / "route_check.json"
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(json.dumps(result, indent=2, default=str) + "\n", encoding="utf-8")
     for c in checks:
         print(f"{c['machine']:14} {c['modality']:6} {c['status']:4} {c.get('file', '')} "
               f"{c.get('expected', '')} -> {c.get('predicted', c.get('error', ''))} {c.get('probability') or ''}")
@@ -3029,6 +3037,7 @@ def upload_server(port=8613):
         def send(self, body, status=200):
             self.send_response(status)
             self.send_header("Content-Type", "text/html; charset=utf-8")
+            self.send_header("Content-Length", str(len(body)))
             self.end_headers()
             self.wfile.write(body)
 
@@ -3264,7 +3273,13 @@ def main():
     if args.target == "haul-truck-load-check":
         return run_haul_truck_load_check()
     if args.target == "route-check":
-        return verify_routes()
+        result = verify_routes()
+        statuses = [row["status"] for key in ("routes", "input_checks") for row in result[key]]
+        if any(status.startswith("FAIL") for status in statuses):
+            raise SystemExit(1)
+        if any(status == "no local sample" for status in statuses):
+            raise SystemExit(2)
+        return
     if args.target == "attempt":
         steps = {"drill-orders": run_drill_rig_orders, "drill-envelope": run_drill_rig_envelope,
                  "haul-frames": run_haul_truck_speed_frames,
