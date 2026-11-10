@@ -1,0 +1,32 @@
+name: tests
+
+# Runs the automated tests on every push and pull request. The datasets and trained models are not in git,
+# so the route tests that need them are skipped here; everything else (split, scoring, file identification,
+# trust list, upload page) runs.
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  pytest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install packages (CPU-only PyTorch)
+        run: |
+          sudo apt-get update -q && sudo apt-get install -y -q libgl1 libglib2.0-0
+          python -m pip install --upgrade pip
+          python -m pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
+          python -m pip install -r requirements.txt pytest pyflakes
+      - name: Lint
+        run: python -m pyflakes Notebook/pdm.py tests
+      - name: Tests
+        run: python -m pytest tests -q
