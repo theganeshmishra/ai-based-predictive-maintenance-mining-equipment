@@ -26,7 +26,7 @@ Use it from the notebook (import pdm) or from a terminal in the project folder:
     python Notebook/pdm.py cora-binary verify|sensor|images     healthy vs worn follow-up experiment
     python Notebook/pdm.py haul-truck-load-check               Haul Truck sensor without the unloaded ball class
     python Notebook/pdm.py route-check                         run every predict route once, record checkpoint hashes
-    python Notebook/pdm.py attempt drill-orders|haul-frames|cora-transient   planned improvement attempts
+    python Notebook/pdm.py attempt drill-orders|drill-envelope|haul-frames|cora-transient   planned attempts
     python Notebook/pdm.py grader-gear mcc5|aalto              Grader healthy gear vs damaged tooth (sensor side)
     python Notebook/pdm.py grader-gear train-final             Grader gear sensor model on all Aalto runs, for predict
     python Notebook/pdm.py trust-models                        mark this computer's own saved .joblib models as trusted
@@ -2169,6 +2169,97 @@ def run_drill_rig_orders():
     return result
 
 
+# --- Planned attempt D (Documentation/improvement_plan_2026-11-10.md): Drill Rig envelope orders ------
+# Local faults (pitting, cracks) hit once per turn of the damaged gear. The vibration is high-pass
+# filtered (1 kHz), its Hilbert envelope taken, and the envelope's spectrum summed in attempt A's shaft-
+# order bands. The kurtosis of the high-passed window is added. The shaft rate itself is not a feature.
+
+MCC5_ENVELOPE_FEATURES = [f"{c}_{k}" for c in MCC5_CHANNELS
+                          for k in (*(f"envelope_order_{lo}_{hi}" for lo, hi in
+                                      zip(MCC5_ORDER_EDGES[:-1], MCC5_ORDER_EDGES[1:])), "highpass_kurtosis")]
+
+
+def mcc5_envelope_recording(frame, rate=12_800):
+    """Envelope order-band features and high-pass kurtosis of every 1 s window (a DataFrame with `speed`)."""
+    from scipy.signal import butter, hilbert, sosfiltfilt
+
+    pulse = frame["speed"].to_numpy() > 1.8                          # same shaft rate as attempt A
+    edges = np.flatnonzero(~pulse[:-1] & pulse[1:]) / rate
+    n = len(frame) // rate
+    centres = np.arange(n) + 0.5
+    if len(edges) >= 2:
+        shaft = np.interp(centres, (edges[1:] + edges[:-1]) / 2, 1 / np.diff(edges))
+    else:
+        shaft = np.full(n, np.nan)
+    signal = frame[MCC5_CHANNELS].to_numpy(np.float64)
+    sos = butter(4, 1000, btype="highpass", fs=rate, output="sos")
+    high = sosfiltfilt(sos, signal - signal.mean(axis=0), axis=0)
+    envelope = np.abs(hilbert(high, axis=0))[: n * rate].reshape(n, rate, len(MCC5_CHANNELS))
+    high = high[: n * rate].reshape(n, rate, len(MCC5_CHANNELS))
+    centred = envelope - envelope.mean(axis=1, keepdims=True)
+    power = np.abs(np.fft.rfft(centred * np.hanning(rate)[None, :, None], axis=1)) ** 2
+    freq = np.fft.rfftfreq(rate, d=1 / rate)
+    bands_per_window = np.empty((n, len(MCC5_ORDER_EDGES) - 1, len(MCC5_CHANNELS)))
+    for w in range(n):
+        order = freq / max(shaft[w], 1e-6)
+        usable = (order >= MCC5_ORDER_EDGES[0]) & (order < MCC5_ORDER_EDGES[-1])
+        total = power[w, usable].sum(axis=0) + 1e-12
+        bands_per_window[w] = np.log(np.stack([power[w, (order >= lo) & (order < hi)].sum(axis=0) / total
+                                               for lo, hi in zip(MCC5_ORDER_EDGES[:-1], MCC5_ORDER_EDGES[1:])])
+                                     + 1e-12)
+    hc = high - high.mean(axis=1, keepdims=True)
+    kurtosis = np.mean(hc**4, axis=1) / (hc.std(axis=1) + 1e-12) ** 4  # (window, channel)
+    values = np.concatenate([bands_per_window, kurtosis[:, None, :]], axis=1)  # (window, 9, channel)
+    return pd.DataFrame(values.transpose(0, 2, 1).reshape(n, -1), columns=MCC5_ENVELOPE_FEATURES)
+
+
+def run_drill_rig_envelope():
+    import io
+    import zipfile
+
+    m = MACHINES["drill_rig"]
+    frames = []
+    with zipfile.ZipFile(MCC5_ZIP) as archive:
+        for r in mcc5_recordings():
+            data = archive.read(r["file"])
+            hz = mcc5_recording(io.BytesIO(data))
+            signals = pd.read_csv(io.BytesIO(data), usecols=["speed", *MCC5_CHANNELS])
+            orders = mcc5_order_recording(signals)
+            envelope = mcc5_envelope_recording(signals)
+            frame = pd.concat([hz, orders.iloc[: len(hz)].reset_index(drop=True),
+                               envelope.iloc[: len(hz)].reset_index(drop=True)], axis=1)
+            frame.insert(0, "window", np.arange(len(frame)))
+            frame.insert(0, "class", r["class"])
+            frame.insert(0, "rpm", r["rpm"])
+            frame.insert(0, "unit", r["unit"])
+            frames.append(frame)
+    table = pd.concat(frames, ignore_index=True)
+    feature_sets = {"vibration": MCC5_FEATURES, "vibration+orders": MCC5_FEATURES + MCC5_ORDER_FEATURES,
+                    "vibration+orders+envelope": MCC5_FEATURES + MCC5_ORDER_FEATURES + MCC5_ENVELOPE_FEATURES}
+    folds = fair_test_folds(table[m.sensor_group], m.sensor_held_out)
+    scores = sensor_fair_test(table, feature_sets, m.labels, folds, m.inner_group)
+    archived = json.loads((RESULTS / "drill_rig" / "sensor.json").read_text(encoding="utf-8"))["score"]
+    out = RESULTS / "experiments" / "improvement"
+    attempt_a = json.loads((out / "drill_rig_sensor_orders.json").read_text(encoding="utf-8"))["score"]
+    keys = ("accuracy", "balanced_accuracy", "macro_f1", "confusion_matrix")
+    result = {"attempt": "D: Drill Rig sensor with envelope order features (planned in "
+                         "Documentation/improvement_plan_2026-11-10.md)",
+              "test": "same fair test as the archived result: hold out 1000 / 2000 / 3000 rpm in turn; feature "
+                      "set and model chosen inside the training speeds",
+              "windows": int(len(table)), "recordings": int(table["unit"].nunique()), **scores,
+              "archived_fair_test": {k: archived[k] for k in keys},
+              "attempt_a_fair_test": {k: attempt_a[k] for k in keys}}
+    out.mkdir(parents=True, exist_ok=True)
+    (out / "drill_rig_sensor_envelope.json").write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
+    save_confusion_figure([("envelope features offered", scores["score"]), ("attempt A", attempt_a)], m.labels,
+                          "Drill Rig sensor, unseen speed: with envelope order features",
+                          FIGURES / "experiments" / "improvement" / "drill_rig_sensor_envelope.png")
+    s = scores["score"]
+    print(f"Drill Rig envelope: accuracy {s['accuracy']:.3f}, balanced {s['balanced_accuracy']:.3f}, "
+          f"macro F1 {s['macro_f1']:.3f}; chosen {[c['feature_set'] + '/' + c['model'] for c in scores['chosen_per_round']]}")
+    return result
+
+
 # --- Planned attempt B: Haul Truck images, frames covering the same number of shaft turns -----------
 
 def run_haul_truck_speed_frames():
@@ -3159,7 +3250,8 @@ def main():
     if args.target == "route-check":
         return verify_routes()
     if args.target == "attempt":
-        steps = {"drill-orders": run_drill_rig_orders, "haul-frames": run_haul_truck_speed_frames,
+        steps = {"drill-orders": run_drill_rig_orders, "drill-envelope": run_drill_rig_envelope,
+                 "haul-frames": run_haul_truck_speed_frames,
                  "cora-transient": run_cora_transient}
         if args.command not in steps:
             parser.error(f"attempt takes one of {', '.join(steps)}")
