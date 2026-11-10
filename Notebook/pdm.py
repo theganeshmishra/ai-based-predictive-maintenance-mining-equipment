@@ -1893,19 +1893,6 @@ def collapse_to_binary(matrix):
     return binary_metrics(actual, predicted)
 
 
-def within_speed_ranking(runs):
-    """Diagnostic added after the main test: at each held-out speed, the share of (healthy, worn) run
-    pairs where the worn run gets the higher worn probability. 0.5 is chance; a constant shift of all
-    runs at one speed does not change it."""
-    pairs = {}
-    for (speed,) in CORA_SPEEDS:
-        at = [r for r in runs if r["speed"] == speed]
-        healthy = [r["probabilities"]["worn"] for r in at if r["actual"] == "healthy"]
-        worn = [r["probabilities"]["worn"] for r in at if r["actual"] == "worn"]
-        pairs[speed] = float(np.mean([(w > h) + 0.5 * (w == h) for h in healthy for w in worn]))
-    return {"per_speed": pairs, "mean": round(float(np.mean(list(pairs.values()))), 4)}
-
-
 def verify_cora_runs():
     """Check the 16 gear-wear run IDs, their labels, both modalities, and the Dozer reuse."""
     from scipy.io import whosmat
