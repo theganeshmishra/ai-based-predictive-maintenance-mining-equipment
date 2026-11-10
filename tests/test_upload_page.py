@@ -10,10 +10,8 @@ from conftest import pdm
 
 @pytest.fixture(scope="module")
 def server():
-    with socket.socket() as probe:
-        probe.bind(("127.0.0.1", 0))
-        port = probe.getsockname()[1]
-    srv = pdm.upload_server(port)
+    srv = pdm.upload_server(0)
+    port = srv.server_port
     thread = threading.Thread(target=srv.serve_forever, daemon=True)
     thread.start()
     yield port
@@ -97,3 +95,23 @@ def test_upload_name_rule():
     assert pdm.upload_name_ok("pump_outer_20Hz_15_-30_t000.png")
     assert not pdm.upload_name_ok("..")
     assert not pdm.upload_name_ok("a/b.csv")
+
+def test_truncated_upload_is_rejected(server):
+    body, headers = form("sample.csv", b"1,2")
+    connection = http.client.HTTPConnection("127.0.0.1", server, timeout=5)
+    try:
+        connection.request("POST", "/", body, headers | {"Content-Length": str(len(body) + 10)})
+        connection.sock.shutdown(socket.SHUT_WR)
+        response = connection.getresponse()
+        assert response.status == 400
+        assert b"ended before the full file arrived" in response.read()
+    finally:
+        connection.close()
+
+
+def test_missing_multipart_closing_boundary_is_rejected(server):
+    body, headers = form("sample.csv", b"1,2")
+    body = body.rsplit(b"--testboundary613--", 1)[0]
+    status, text = request(server, "POST", body, headers | {"Content-Length": str(len(body))})
+    assert status == 400
+    assert "incomplete or malformed" in text
