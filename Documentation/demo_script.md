@@ -31,7 +31,7 @@ The files below are the local samples used by `route-check` on November 10, 2026
 
 - On the route-check samples, the Excavator misalignment image is predicted **bearing** (85.2%) and the Drill Rig pitting render is predicted **healthy** (68.7%). Both are training samples. Say so if they come up.
 - The Wheel Loader sensor sample `HB_F50_S_Vx.csv` is correct but with only 42.1% confidence.
-- The Grader tooth-photo route needs `grader_gear_tooth.joblib` on the demo computer; without it the notebook reports "Model unavailable".
+- The Grader tooth-photo route needs `grader_gear_tooth.joblib` on the demo computer; without it the notebook reports "Model unavailable". Sample crops: `Processed_Data/deployment_samples/grader_gear_tooth/good_tooth.png` and `damaged_tooth.png` (choose Grader).
 
 ## Likely questions
 

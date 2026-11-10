@@ -1354,18 +1354,34 @@ def fit_tooth_classifier(x, y, c=0.1):
                                                                class_weight="balanced")).fit(x, y)
 
 
-def run_train_grader_images():
-    """Fit the published fixed gear-tooth configuration for local deployment."""
+def run_train_grader_images(accept_archive=None):
+    """Fit the published fixed gear-tooth configuration for local deployment.
+
+    The archive must have the evaluated SHA-256. Another Roboflow export of the same dataset is accepted
+    only when accept_archive names its own SHA-256 (typed on purpose) AND its crops match the evaluated
+    result exactly (count, classes, source groups); the checkpoint then records that it is not the
+    evaluated archive."""
     import joblib
 
     if not TOOTH_ZIP.is_file():
         raise FileNotFoundError(f"Original Grader image export required: {TOOTH_ZIP.name}")
-    if sha256(TOOTH_ZIP) != TOOTH_ZIP_SHA256:
-        raise ValueError("The Grader archive does not match the evaluated version's SHA-256.")
+    archive_sha = sha256(TOOTH_ZIP)
+    matches_evaluated = archive_sha == TOOTH_ZIP_SHA256
+    if not matches_evaluated and accept_archive != archive_sha:
+        raise ValueError("The Grader archive does not match the evaluated version's SHA-256. To use this export "
+                         f"anyway, pass --accept-archive {archive_sha} (its crops must match the evaluated set).")
     crops, rows = tooth_crops(margin=0.15)
     labels = [row["class"] for row in rows]
     if set(labels) != set(TOOTH_LABELS):
         raise ValueError("The Grader export must contain both gear-tooth labels.")
+    if not matches_evaluated:
+        evaluated = json.loads((RESULTS / "grader" / "images.json").read_text(encoding="utf-8"))
+        found = {"crops": len(rows), "crops_by_class": {label: labels.count(label) for label in TOOTH_LABELS},
+                 "sources": len({row["unit"] for row in rows})}
+        expected = {"crops": evaluated["crops"], "crops_by_class": evaluated["crops_by_class"],
+                    "sources": evaluated["sources"]}
+        if found != expected:
+            raise ValueError(f"This export's crops {found} differ from the evaluated set {expected}.")
     encoder = tooth_encoder(pretrained=True)
     classifier = fit_tooth_classifier(resnet18_features(crops, encoder=encoder), labels)
     checkpoint = {
@@ -1377,7 +1393,12 @@ def run_train_grader_images():
             "crop_size": 224,
             "crop_margin": 0.15,
             "image_normalization": "ImageNet",
-            "source_archive_sha256": TOOTH_ZIP_SHA256,
+            "source_archive_sha256": archive_sha,
+            "evaluated_archive_sha256": TOOTH_ZIP_SHA256,
+            "archive_matches_evaluated": matches_evaluated,
+            "archive_check": "same SHA-256 as the evaluated export" if matches_evaluated else
+                             "different export of the same dataset; crop count, classes and source groups "
+                             "match the evaluated result exactly, image content not verified byte for byte",
             "source_groups": len({row["unit"] for row in rows}),
         },
     }
@@ -1777,13 +1798,13 @@ def run_train_final(machine, random_forest=False):
     print(f"{m.title}: saved {final['model_name']} on '{final['feature_set']}' to {MODELS / f'{machine}_sensor.joblib'}")
 
 
-def run_train_final_images(machine):
+def run_train_final_images(machine, accept_archive=None):
     """Image model for new files: all images, for the median number of epochs the fair test chose."""
     import torch
 
     m = MACHINES[machine]
     if machine == "grader":
-        return run_train_grader_images()
+        return run_train_grader_images(accept_archive)
     rounds = json.loads((RESULTS / machine / "images.json").read_text(encoding="utf-8"))["rounds"]
     epochs = int(np.median([r["epochs"] for r in rounds]))
     folder = IMAGES / machine
@@ -3128,6 +3149,8 @@ def main():
                         "train-final-images; or the file to predict")
     parser.add_argument("--time-split", action="store_true", help="the easier secondary test")
     parser.add_argument("--machine", help="predict only: which machine the file belongs to")
+    parser.add_argument("--accept-archive", metavar="SHA256",
+                        help="grader train-final-images: accept this other export of the gear photos")
     parser.add_argument("--random-forest", action="store_true", help="train-final: fit Random Forest on the first compatible feature set")
     args = parser.parse_args()
     if args.target == "data-check":
@@ -3178,7 +3201,7 @@ def main():
         "export-images": lambda: run_export_images(args.target),
         "images": lambda: run_images(args.target, split),
         "train-final": lambda: run_train_final(args.target, random_forest=args.random_forest),
-        "train-final-images": lambda: run_train_final_images(args.target),
+        "train-final-images": lambda: run_train_final_images(args.target, args.accept_archive),
     }
     if args.command not in steps:
         parser.error(f"unknown command {args.command}; choose from {', '.join(steps)}")
