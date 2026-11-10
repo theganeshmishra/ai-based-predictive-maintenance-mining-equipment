@@ -826,6 +826,7 @@ def sha256(path):
 # computer trains the model (or by `trust-models` after you have checked the files are your own builds).
 # Never trust a .joblib file that someone sent you. Image models (.pt) load with weights_only=True instead.
 TRUSTED_MODELS = MODELS / "trusted_sha256.json"
+_TRUSTED_LOADS = {}  # (path, size, mtime, trusted hash) -> loaded model, so an unchanged file is hashed once
 
 
 def trusted_hashes():
@@ -839,18 +840,36 @@ def trust_model(path):
     TRUSTED_MODELS.write_text(json.dumps(hashes, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
 
+def save_trusted_joblib(value, path):
+    """Write a model next to its final name, move it into place, then record its SHA-256 as trusted."""
+    import joblib
+
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    partial = path.with_suffix(".part")
+    joblib.dump(value, partial)
+    partial.replace(path)
+    trust_model(path)
+
+
 def load_trusted_joblib(path):
     """Load a saved .joblib model only if its SHA-256 matches the local trust list."""
     import joblib
 
-    path = Path(path)
+    path = Path(path).resolve()
     expected = trusted_hashes().get(path.name)
     if expected is None:
         raise ValueError(f"{path.name} is not in the trusted model list. If this computer built it, run "
                          "python Notebook/pdm.py trust-models; never trust a model file from someone else.")
-    if sha256(path) != expected:
-        raise ValueError(f"{path.name} has changed since it was trusted, so it was not loaded.")
-    return joblib.load(path)
+    stat = path.stat()
+    key = (str(path), stat.st_size, stat.st_mtime_ns, expected)
+    if key not in _TRUSTED_LOADS:
+        if sha256(path) != expected:
+            raise ValueError(f"{path.name} has changed since it was trusted, so it was not loaded.")
+        if len(_TRUSTED_LOADS) >= 8:  # keep at most 8 models in memory
+            _TRUSTED_LOADS.pop(next(iter(_TRUSTED_LOADS)))
+        _TRUSTED_LOADS[key] = joblib.load(path)
+    return _TRUSTED_LOADS[key]
 
 
 def trust_models():
@@ -1361,8 +1380,6 @@ def run_train_grader_images(accept_archive=None):
     only when accept_archive names its own SHA-256 (typed on purpose) AND its crops match the evaluated
     result exactly (count, classes, source groups); the checkpoint then records that it is not the
     evaluated archive."""
-    import joblib
-
     if not TOOTH_ZIP.is_file():
         raise FileNotFoundError(f"Original Grader image export required: {TOOTH_ZIP.name}")
     archive_sha = sha256(TOOTH_ZIP)
@@ -1402,12 +1419,7 @@ def run_train_grader_images(accept_archive=None):
             "source_groups": len({row["unit"] for row in rows}),
         },
     }
-    MODELS.mkdir(parents=True, exist_ok=True)
-    target = MODELS / "grader_gear_tooth.joblib"
-    partial = target.with_suffix(".part")
-    joblib.dump(checkpoint, partial)
-    partial.replace(target)
-    trust_model(target)
+    save_trusted_joblib(checkpoint, MODELS / "grader_gear_tooth.joblib")
     print(f"Motor Grader: saved gear-tooth deployment model on {len(crops)} labeled crops")
 
 
@@ -1772,8 +1784,6 @@ def deployment_metadata(machine, modality):
 
 def run_train_final(machine, random_forest=False):
     """Sensor model for new files: chosen and trained on all of this machine's data."""
-    import joblib
-
     m = MACHINES[machine]
     table, feature_sets = load_sensor_table(machine)
     # a single new file has no run-level T1 temperature sample, so only vibration sets are offered
@@ -1792,9 +1802,7 @@ def run_train_final(machine, random_forest=False):
         "preprocessing": {"extractor": "pdm.sensor_features", "features": final["features"],
                           "feature_set": final["feature_set"], "aggregation": "mean window probability"},
     }
-    MODELS.mkdir(parents=True, exist_ok=True)
-    joblib.dump(final, MODELS / f"{machine}_sensor.joblib")
-    trust_model(MODELS / f"{machine}_sensor.joblib")
+    save_trusted_joblib(final, MODELS / f"{machine}_sensor.joblib")
     print(f"{m.title}: saved {final['model_name']} on '{final['feature_set']}' to {MODELS / f'{machine}_sensor.joblib'}")
 
 
@@ -2567,8 +2575,6 @@ def run_train_grader_gear_sensor():
     fitted on all runs. It is saved next to, and does not replace, the Grader slewing-bearing model. Its
     accuracy estimate is the leave-one-gear-pair-out result of run_grader_gear_aalto; no gear pair is left
     to test this final fit independently."""
-    import joblib
-
     table = aalto_table()
     final = fit_final_sensor_model(table, aalto_feature_sets(table), GRADER_GEAR_LABELS, "gear_pair")
     evaluation = json.loads((GRADER_GEAR / "aalto_sensor.json").read_text(encoding="utf-8"))["score"]
@@ -2588,11 +2594,7 @@ def run_train_grader_gear_sensor():
         "caveat": "healthy and faulty runs of a pair are different installations; laboratory thruster rig, not a "
                   "motor grader; the final fit has no independent test pair",
     }
-    MODELS.mkdir(parents=True, exist_ok=True)
-    partial = GRADER_GEAR_MODEL.with_suffix(".part")
-    joblib.dump(final, partial)
-    partial.replace(GRADER_GEAR_MODEL)
-    trust_model(GRADER_GEAR_MODEL)
+    save_trusted_joblib(final, GRADER_GEAR_MODEL)
     print(f"Grader gear sensor: saved {final['model_name']} on '{final['feature_set']}' (grouped validation "
           f"macro F1 {final['validation_macro_f1']:.3f}) to {GRADER_GEAR_MODEL}")
     return final
