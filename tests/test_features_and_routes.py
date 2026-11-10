@@ -78,3 +78,33 @@ def test_grader_gear_route():
     assert answer["machine"] == "Grader" and answer["condition"] == "healthy"
     assert set(answer["all classes"]) == {"healthy", "tooth_damage"}
     assert "not the slewing bearing" in answer["task"]
+
+
+@pytest.mark.parametrize(("status", "exit_code"), [("PASS", None), ("FAIL", 1), ("no local sample", 2)])
+def test_route_check_exit_status(monkeypatch, status, exit_code):
+    monkeypatch.setattr("sys.argv", ["pdm.py", "route-check"])
+    monkeypatch.setattr(pdm, "verify_routes", lambda: {"routes": [{"status": status}], "input_checks": []})
+    if exit_code is None:
+        assert pdm.main() is None
+    else:
+        with pytest.raises(SystemExit) as error:
+            pdm.main()
+        assert error.value.code == exit_code
+
+
+def test_route_check_preserves_archived_results(tmp_path, monkeypatch):
+    archive = tmp_path / "archive"
+    local = tmp_path / "local"
+    archived_report = archive / "deployment" / "route_check.json"
+    archived_report.parent.mkdir(parents=True)
+    archived_report.write_text("archived")
+    monkeypatch.setattr(pdm, "RESULTS", archive)
+    monkeypatch.setattr(pdm, "PROCESSED", local)
+    monkeypatch.setattr(pdm, "MODELS", tmp_path / "models")
+    monkeypatch.setattr(pdm, "AALTO", tmp_path / "aalto")
+    samples = {machine: tmp_path / f"{machine}.csv" for machine in pdm.MACHINES}
+    monkeypatch.setattr(pdm, "route_samples", lambda: (samples, dict.fromkeys(samples, "healthy"), {}))
+    result = pdm.verify_routes()
+    assert all(row["status"] == "no local sample" for row in result["routes"])
+    assert archived_report.read_text() == "archived"
+    assert (local / "deployment" / "route_check.json").is_file()

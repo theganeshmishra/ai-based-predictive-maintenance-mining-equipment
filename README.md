@@ -146,7 +146,7 @@ From the project folder (Windows: `.venv\Scripts\python.exe`, Mac/Linux: `.venv/
 | `python Notebook/pdm.py attempt drill-orders\|haul-frames\|cora-transient` | the three planned improvement attempts → `Results/experiments/improvement/` (cora-transient needs `Raw_Data/cora_transient/`) | minutes / hours on CPU / minutes |
 | `python Notebook/pdm.py grader-gear mcc5\|aalto` | Grader healthy gear vs damaged tooth, sensor side → `Results/experiments/grader_gear/` (aalto needs `Raw_Data/aalto_gear/3012Hz/`) | minutes / under an hour on CPU (first run reads 29 GB) |
 | `python Notebook/pdm.py grader-gear train-final` | Grader gear sensor model on all Aalto runs, for `predict` → `Processed_Data/models/grader_gear_sensor.joblib` | minutes (with the feature cache) |
-| `python Notebook/pdm.py route-check` | run every predict route once, record checkpoint SHA-256 → `Results/deployment/route_check.json` | about 1 minute |
+| `python Notebook/pdm.py route-check` | check the local prediction samples and write checkpoint hashes to `Processed_Data/deployment/route_check.json`. Exit 1 means a check failed. Exit 2 means a required sample was missing. | about 1 minute |
 | `python -m pytest tests` | automated tests: fair split, scoring, file identification, model trust list, upload page; route tests skip when local data or models are missing (needs `pip install pytest`). GitHub runs the same tests and a lint check on every push (`.github/workflows/tests.yml`) | under a minute |
 | `python Notebook/pdm.py data-check` | list missing raw files | seconds |
 
