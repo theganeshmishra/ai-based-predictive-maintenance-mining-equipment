@@ -56,3 +56,19 @@ PASS means a real input reached the appropriate local checkpoint and returned a 
 - No blocking application bugs remained in the checks of the available routes. Two Drill Rig image samples labeled gear wear and gear pitting were predicted healthy. The demo probabilities are model outputs. Performance claims should use the held-out results.
 - Dozer and Belt Conveyor reuse CORA evidence. The shared schema requires a confirmed laboratory mapping. The Drill Rig image route uses synthetic CAD renders. The deployment checks establish local inference on the available component samples.
 - The [previous audit commit’s workflow](https://github.com/theganeshmishra/ai-based-predictive-maintenance-mining-equipment/actions/runs/42923427532) passed. The [main workflow runs](https://github.com/theganeshmishra/ai-based-predictive-maintenance-mining-equipment/actions?query=branch%3Amain) show CI status for the reliability fixes. CI skips real-file cases whose local fixtures are absent.
+
+## Aalto real-file recovery check
+
+A fresh local run completed with **52 passed, 0 failed, and 1 skipped**. The CLI returned 38 predictions and reported one missing Aalto sample with exit code 2. The real Aalto test remains skipped because the exact CSV and fitted checkpoint listed above are absent. The searched local project and shared folders, accessible Drive, GitHub releases and Actions artifacts contained neither file.
+
+The [original deployment record](../Results/deployment/route_check.json) records a healthy prediction of 0.987 for `GP1.csv` and the original `grader_gear_sensor.joblib` SHA-256:
+
+```text
+418fb49af15362f033004109561745ce14a736f7b798daeb85a5756b1d325138
+```
+
+Recover the original checkpoint and sample from the environment that produced that record. Verify the source and match the recorded checkpoint hash before registering it in the local trust manifest. The publisher also lists and serves the 9,256,917,062-byte source archive with the SHA-256 in the [dataset manifest](../Dataset_Manifest/manifest.md). This archive provides the recordings for an independently rebuilt checkpoint through the existing `grader-gear train-final` command. No archive or fitted model was recovered in this check. [Aalto Gear Failure Dataset 3012 Hz v2](https://data.mendeley.com/datasets/fywnj597d8/2)
+
+After restoring both files, run `python -m pytest -q tests/test_features_and_routes.py::test_grader_gear_route`, then rerun the full suite and `python Notebook/pdm.py route-check`. The prior deployment result documents the original environment. This checkout requires a fresh real-file result before the Aalto route can be signed off.
+
+The [workflow for the tested software revision](https://github.com/theganeshmishra/ai-based-predictive-maintenance-mining-equipment/actions/runs/42924394880) passed. The [main workflow runs](https://github.com/theganeshmishra/ai-based-predictive-maintenance-mining-equipment/actions?query=branch%3Amain) show CI status for this audit update.
