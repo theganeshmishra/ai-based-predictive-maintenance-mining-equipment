@@ -260,8 +260,21 @@ def uods_recording(path):
     """One .mat recording: column 0 accelerometer, column 1 microphone (speed and load unused)."""
     from scipy.io import loadmat
 
-    data = loadmat(path)[Path(path).stem]
-    signal, microphone = data[:, 0].astype(np.float64), data[:, 1].astype(np.float64)
+    return uods_array_features(loadmat(path)[Path(path).stem][:, :2])
+
+
+def uods_array_features(data):
+    """Accelerometer and microphone columns -> features of every whole 0.5 s block (21,000 samples).
+
+    Both upload formats (.mat and CSV) use this, so a recording whose length is not a whole number of
+    blocks is trimmed the same way instead of failing inside the envelope features."""
+    data = np.asarray(data, dtype=np.float64)
+    length = len(data) // 21_000 * 21_000
+    if not length:
+        raise ValueError("The recording is too short. UODS recordings need at least 21,000 samples.")
+    signal, microphone = data[:length, 0], data[:length, 1]
+    if not np.isfinite(signal).all() or not np.isfinite(microphone).all():
+        raise ValueError("The recording contains invalid UODS signal values.")
     return uods_signal_features(signal, microphone)
 
 
@@ -2876,13 +2889,7 @@ def sensor_features(path, source, details):
     if source.startswith("UODS"):
         if Path(path).suffix.lower() == ".csv":
             signals = pd.read_csv(path, usecols=UODS_CSV_CHANNELS, dtype=np.float64)
-            length = len(signals) // 21_000 * 21_000
-            if not length:
-                raise ValueError("The recording is too short. UODS CSVs need at least 21,000 samples.")
-            signal, microphone = signals[UODS_CSV_CHANNELS].to_numpy()[:length].T
-            if not np.isfinite(signal).all() or not np.isfinite(microphone).all():
-                raise ValueError("The recording contains invalid UODS signal values.")
-            return uods_signal_features(signal, microphone)
+            return uods_array_features(signals[UODS_CSV_CHANNELS].to_numpy())
         return uods_recording(path)
     if source.startswith("MCC5"):
         with open(path, "rb") as handle:
@@ -3149,6 +3156,23 @@ def upload_server(port=8613):
         def refuse(self, status, reason):
             self.close_connection = True
             self.send(page(f'<p class="error">{html.escape(reason)}</p>'), status)
+            self.discard_unread_input()
+
+        def discard_unread_input(self, limit=1 << 20):
+            """Drop up to 1 MiB the client already sent (1 s at most) before closing. Closing a socket
+            with unread data makes Windows reset the connection, and the client can lose the error page."""
+            import socket
+
+            try:
+                self.connection.shutdown(socket.SHUT_WR)
+                self.connection.settimeout(1)
+                while limit > 0:
+                    chunk = self.connection.recv(min(65_536, limit))
+                    if not chunk:
+                        break
+                    limit -= len(chunk)
+            except OSError:
+                pass
 
         def do_GET(self):
             if self.headers.get("Host") not in allowed_hosts:

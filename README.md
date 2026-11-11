@@ -8,7 +8,7 @@ This capstone demonstrates sensor and visual classification of current component
 
 ## Results
 
-The [Phase 1 enhancement report](Documentation/phase_1_enhancement_report.md) documents signal diagnostics, grouped CORA candidates, robustness probes, and CPU inference measurements.
+The [Phase 1 enhancement report](Documentation/phase_1_enhancement_report.md) documents signal diagnostics, grouped CORA candidates, robustness probes, and CPU inference measurements. Its final verification section (November 11) reproduces every archived sensor result, audits leakage, extends robustness tests and gives the verdict: Phase 1 complete with scientific limitations.
 
 The [eight-equipment evidence matrix](Documentation/equipment_evidence_matrix.md) records each component, fault label, source, test group, accuracy, balanced accuracy, and macro F1. The [results index](Results/README.md) explains how to read the saved score files. The [scientific validation](Documentation/scientific_validation.md) checks the metrics, comparisons and deployment evidence.
 
