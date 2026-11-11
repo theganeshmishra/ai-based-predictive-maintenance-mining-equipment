@@ -1,6 +1,6 @@
 # Motor Grader gear-tooth comparison feasibility
 
-November 5, 2026 · PROJ 613
+AI-Based Predictive Maintenance for Mining Equipment · November 5, 2026
 
 ## Decision
 

@@ -1,6 +1,6 @@
 # Demonstration script
 
-PROJ 613 · Group 9 · November 10, 2026 · about 10 minutes
+AI-Based Predictive Maintenance for Mining Equipment · Group 9 · November 10, 2026 · about 10 minutes
 
 The files below are the local samples used by `route-check` on November 10, 2026 (`Results/deployment/route_check.json`). They are training samples, so the demo shows that each route works; the accuracy claims come from the fair tests in the [final report](final_report.md).
 

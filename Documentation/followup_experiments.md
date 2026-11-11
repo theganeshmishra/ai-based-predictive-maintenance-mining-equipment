@@ -1,8 +1,8 @@
 # Follow-up experiments and checks (audit priorities 2 to 6)
 
-PROJ 613 · Group 9 · November 6, 2026 · starting point: `main` at `879e968` (same files as Ganesh's `dc2a8c8`)
+AI-Based Predictive Maintenance for Mining Equipment · Group 9 · November 6, 2026 · starting point: `main` at `879e968` (same files as Ganesh's `dc2a8c8`)
 
-This record follows the [20-day audit](proj613_20_day_audit.md). Every number below is read from the saved files in `Results/experiments/` and `Results/deployment/`. The four-class results in `Results/<machine>/` and the saved checkpoints in `Processed_Data/models/` were not changed: every checkpoint and every earlier result and figure file has the same SHA-256 before and after this work (the result hashes are in `Results/experiments/cora_binary/verification.json`, the checkpoint hashes in `Results/deployment/route_check.json`).
+This record follows the [20-day audit](project_20_day_audit.md). Every number below is read from the saved files in `Results/experiments/` and `Results/deployment/`. The four-class results in `Results/<machine>/` and the saved checkpoints in `Processed_Data/models/` were not changed: every checkpoint and every earlier result and figure file has the same SHA-256 before and after this work (the result hashes are in `Results/experiments/cora_binary/verification.json`, the checkpoint hashes in `Results/deployment/route_check.json`).
 
 ## Summary
 

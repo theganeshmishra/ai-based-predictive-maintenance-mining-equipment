@@ -1,4 +1,4 @@
-"""All the code of the project in one file (PROJ 613, Group 9).
+"""AI-Based Predictive Maintenance for Mining Equipment — project code (Group 9).
 
 Sensor-vs-image fault classification for eight mining-machine mappings, using public laboratory data.
 The sections follow the workflow, top to bottom:
@@ -3005,11 +3005,11 @@ def verify_routes():
 # 6b. Upload page: predict() behind a web form, this computer only (http://localhost:8613)
 # ==================================================================================================
 
-PAGE = """<!doctype html><html><head><meta charset="utf-8"><title>Condition check</title>
+PAGE = """<!doctype html><html><head><meta charset="utf-8"><title>AI-Based Predictive Maintenance for Mining Equipment</title>
 <style>body{font-family:system-ui,sans-serif;max-width:720px;margin:40px auto;padding:0 16px;color:#222}
 table{border-collapse:collapse;margin-top:16px}td{border:1px solid #ccc;padding:6px 10px;vertical-align:top}
 .note{color:#666;font-size:14px}.error{color:#b00020}</style></head><body>
-<h1>Mining equipment condition check</h1>
+<h1>AI-Based Predictive Maintenance for Mining Equipment</h1>
 <p class="note">Upload one sensor recording (.mat or .csv) or one camera image (.png or .jpg). A recognized format can narrow the laboratory mapping. Shared formats require a confirmed mapping. For Grader gear-tooth inspection, choose Grader and upload a crop of one tooth. Laboratory models only:
 not tested on real mining machines.</p>
 <form method="post" enctype="multipart/form-data">

@@ -1,6 +1,6 @@
 # Improvement attempts: results
 
-PROJ 613 · Group 9 · November 6, 2026
+AI-Based Predictive Maintenance for Mining Equipment · Group 9 · November 6, 2026
 
 The team asked whether more machines can reach 80% accuracy. The three attempts were fixed in advance in the [improvement plan](improvement_plan_2026-11-06.md) (committed before any were run), and each was run once. All three results are reported below. The archived fair-test results and the deployment checkpoints are unchanged. The new results are in `Results/experiments/improvement/` and the figures in `Figures/experiments/improvement/`.
 

@@ -9,4 +9,4 @@ The [eight-equipment evidence matrix](../Documentation/equipment_evidence_matrix
 
 - `experiments/` holds the November 6 follow-ups (CORA healthy vs worn, Haul Truck without ball) and `deployment/route_check.json` the route check; see the [follow-up record](../Documentation/followup_experiments.md). `experiments/improvement/` holds the four planned improvement attempts; see the [improvement results](../Documentation/improvement_results.md). `experiments/grader_gear/` holds the Grader healthy gear vs damaged tooth sensor results; see the [Grader matched-class results](../Documentation/grader_matched_classes_results.md).
 
-See the [20-day audit](../Documentation/proj613_20_day_audit.md) for evidence gaps and follow-up criteria.
+See the [20-day audit](../Documentation/project_20_day_audit.md) for evidence gaps and follow-up criteria.

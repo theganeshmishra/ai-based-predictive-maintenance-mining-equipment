@@ -1,6 +1,6 @@
 # Grader with matched classes: results
 
-PROJ 613 · Group 9 · November 7, 2026 · [plan](grader_matched_classes_plan.md) committed before running (c92b686)
+AI-Based Predictive Maintenance for Mining Equipment · Group 9 · November 7, 2026 · [plan](grader_matched_classes_plan.md) committed before running (c92b686)
 
 ## Why
 

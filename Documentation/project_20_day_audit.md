@@ -1,4 +1,4 @@
-# PROJ 613 audit and 20-day plan
+# Project audit and 20-day plan
 
 November 5, 2026 · Group 9 · Baseline `05476ba`
 

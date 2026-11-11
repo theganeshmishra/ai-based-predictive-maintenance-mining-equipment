@@ -1,6 +1,6 @@
 # Planned improvement attempt D (written before running)
 
-PROJ 613 · Group 9 · November 10, 2026 · committed before any result of this attempt existed
+AI-Based Predictive Maintenance for Mining Equipment · Group 9 · November 10, 2026 · committed before any result of this attempt existed
 
 The team wants at least 80% accuracy. Under the fair test, the Drill Rig sensor model is the closest miss: 73.3% archived, 77.5% with attempt A's shaft-order features. 80% means 96 of the 120 recordings correct, 3 more than attempt A. This file fixes one more attempt in advance. It runs once and is reported whatever the result. The archived results and the deployed checkpoint stay unchanged; new results go to `Results/experiments/improvement/`.
 
