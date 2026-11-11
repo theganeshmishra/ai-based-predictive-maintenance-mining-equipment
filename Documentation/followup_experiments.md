@@ -8,7 +8,7 @@ This record follows the [20-day audit](proj613_20_day_audit.md). Every number be
 
 | Priority | Question | Answer |
 |---|---|---|
-| 2 | Does a healthy vs worn target help on the CORA gear-wear runs at an unseen speed? | Sensor: no (balanced accuracy 45.8% against 50.0% for the majority control). Images: 75.0% balanced accuracy, above the control and above the four-class model read the same way (58.3%), but the difference is 2 of 4 healthy runs recognised (exact p = 0.05). Promising, not defensible. No model is replaced, and CORA modelling stops here as the audit planned. |
+| 2 | Does a healthy vs worn target help on the CORA gear-wear runs at an unseen speed? | Sensor: no (balanced accuracy 45.8% against 50.0% for the majority control). Images: 75.0% balanced accuracy, above the control and above the four-class model read the same way (58.3%), but the difference is 2 of 4 healthy runs recognised. The conditional random-assignment calculation gives p = 0.05. It does not test the difference between the two models. No model is replaced, and CORA modelling stops here as the audit planned. |
 | 3 | Is the Haul Truck ball class confounded with load? | Yes. The load channel is flat in 5/5 ball recordings and in none of the others. Without the ball class, the sensor fair test scores 84.0% accuracy (73.3% balanced) on 25 unseen-bearing recordings. |
 | 4 | Is the Drill Rig label mapping source-backed? Is the Pump split an unseen-bearing test? | Partly; no. MFGNet-Gear R0 is "fracture at tooth root" and MCC5-THU has both a crack and a break class, so the crack mapping stays a qualified analogue. The Pump test holds out speed profiles; the source does not give bearing IDs. |
 | 5 | Can the Grader be aligned around one component? | Not with the data available. The two Grader experiments stay separate and are not compared. |
@@ -119,7 +119,7 @@ The sensor data (JUST slewing bearing: healthy, inner ring, outer ring, rolling 
 
 ## Priority 6: demo route check
 
-`python Notebook/pdm.py route-check` runs `predict()` once per sensor route and once per image class per machine, and saves the SHA-256 of every checkpoint used (`Results/deployment/route_check.json`). Shared formats get their machine as a user-confirmed mapping, as in the notebook.
+`python Notebook/pdm.py route-check` runs `predict()` once per sensor route and once per image class per machine, and saves checkpoint hashes. The original November 6 record is historical. Current runs write to `Processed_Data/deployment/route_check.json`. Shared formats get their machine as a user-confirmed mapping, as in the notebook.
 
 | Machine | Sensor route | Image route |
 |---|---|---|

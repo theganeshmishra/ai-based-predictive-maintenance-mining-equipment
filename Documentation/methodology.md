@@ -2,7 +2,7 @@
 
 ## Task
 
-The project classifies current component condition using eight equipment mappings. Pump and Haul Truck compare aligned bearing labels on separate laboratory rigs. The four CORA mappings use one laboratory rig with shared run IDs between sensor and infrared modalities. The scores are reported independently at run level. Frame-to-window synchronization was not verified. Drill Rig combines vibration with synthetic gear renders and needs a root-crack versus root-breakage qualification. Motor Grader sensor and visual results describe separate components and labels. See the [evidence matrix](equipment_evidence_matrix.md) for the source and test unit of each result.
+The project classifies current component condition using eight equipment mappings. Pump and Haul Truck compare aligned bearing labels on separate laboratory rigs. The four CORA mappings use one laboratory rig with shared run IDs between sensor and infrared modalities. The scores are reported independently at run level. Frame-to-window synchronization was not verified. Drill Rig evaluates vibration and synthetic gear renders independently, with a qualified root-crack to root-breakage label mapping. Motor Grader has a JUST slewing-bearing task and two gear tasks. Aalto labels a gear-pair run and the photo model labels a tooth crop. See the [evidence matrix](equipment_evidence_matrix.md) for the source and test unit of each result.
 
 ## Workflow (the same for every machine)
 
@@ -16,7 +16,7 @@ raw files ──► 1a load sensor data ──► feature table (one row per tim
                      4  MACHINES: which groups each machine holds out              recording, metrics
 ```
 
-1. **Load.** Each raw recording is cut into fixed windows (100 ms or 1 s, depending on the dataset). Each window gets features computed from its own signal: statistics such as RMS, kurtosis and crest factor, and the share of energy in frequency bands. CORA bands are measured in shaft orders (frequency divided by shaft speed), so they line up across speeds. Images are exported from the raw camera files. No feature uses a label.
+1. **Load.** Each raw recording is cut into fixed windows (100 ms or 1 s, depending on the dataset). Each window gets features computed from its own signal: statistics such as RMS, kurtosis and crest factor, and the share of energy in frequency bands. The stationary CORA feature extractor scales frequency by the nominal drive setting. The transient follow-up uses measured RPM. Images are exported from the raw camera files. No feature uses a label.
 2. **Split.** See the two tests below. In the primary evaluations, keep all observations within the defined outer group on one side. In the secondary time split, use disjoint portions of the same recording.
 3. **Train.**
    - *Sensor:* five candidate models (random forest, extra trees, gradient boosting, RBF SVM, logistic regression) and the machine's feature sets. The best pair is chosen by macro F1 on validation groups held out inside the training data.
@@ -33,9 +33,9 @@ raw files ──► 1a load sensor data ──► feature table (one row per tim
 | Haul Truck | 5 rounds, each holding out 3 whole bearings (30 recordings) | train 1000 rpm, test 2000 rpm (12 recordings) |
 | Belt Conveyor, Excavator, Dozer, Wheel Loader | 4 rounds, each holding out one speed (16 runs) | same |
 | Drill Rig | 3 rounds, each holding out one speed (120 recordings) | 4 rounds, each holding out 3 gear designs (4,800 gears) |
-| Grader | 6 rounds, each holding out one working condition (120 recordings) | each filename-derived video/photo group held out in turn (tooth crops, separate binary task) |
+| Grader | JUST holds out six conditions (120 recordings). Aalto holds out eight gear pairs (425 runs). | Each filename-derived video/photo group held out in turn (tooth crops). |
 
-Every choice (model, feature set, number of epochs) is made inside the training data only.
+Within each evaluation, model, feature-set and epoch selection use outer training data. Later experiments motivated by results on the same benchmark remain follow-ups.
 
 **Time split (secondary, easier).** Every recording is cut in time: the first 60% trains, the last 30% tests, and the 10% gap in between is dropped. The same recordings appear on both sides. This protocol measures transfer to later portions of known recordings. Settings are fixed (random forest on the first feature set; ResNet-18 with the same epoch rule).
 
@@ -48,7 +48,7 @@ Every choice (model, feature set, number of epochs) is made inside the training 
 
 ## Deployment verification
 
-The upload routes use locally fitted checkpoints. Some fits use different inputs from the archived evaluations. For example, Belt Conveyor and Dozer uploads use vibration alone, while some evaluation folds selected temperature features. Deployment smoke tests check successful inference and error handling. Consult the [deployment verification report](deployment_verification.md) for those tests. Saved `.joblib` models load only when their SHA-256 is on the local trust list. The Grader gear-vibration model (Aalto, healthy vs tooth damage) is chosen with grouped validation over gear pairs and fitted on all 425 runs; its accuracy estimate is the leave-one-gear-pair-out result. The [final report](final_report.md) summarises the whole method with a [diagram](../Figures/methodology_flow.png).
+The upload routes use locally fitted checkpoints. Some fits use different inputs from the archived evaluations. For example, Belt Conveyor and Dozer uploads use vibration alone, while some evaluation folds selected temperature features. Deployment smoke tests check successful inference and error handling. Consult the [deployment verification report](deployment_verification.md) for those tests. Saved `.joblib` models load only when their SHA-256 is on the local trust list. The Grader gear-vibration model (Aalto, healthy vs tooth damage) is chosen with grouped validation over gear pairs and fitted on all 425 runs; the separate leave-one-gear-pair-out experiment estimates generalization of the selection procedure. The rebuilt checkpoint predicted healthy at 98.7% model probability on the 250 RPM training recording. The [final report](final_report.md) summarises the whole method with a [diagram](../Figures/methodology_flow.png).
 
 ## Follow-up experiments (November 6)
 
@@ -57,8 +57,8 @@ The [follow-up record](followup_experiments.md) uses the same folds and methods 
 ## Limits
 
 - No data comes from mining equipment. Each machine maps a mining component onto a laboratory component.
-- Test sets are small. One recording is worth 6 points of accuracy on a 16-run test and 8 points on the Haul Truck's 12 image recordings.
-- The CORA rig has one run per class and speed. The Dozer reuses the Belt Conveyor's runs, so it is not separate evidence. Merging the wear levels into healthy vs worn did not give defensible improvement (see the follow-up record). On the CORA transient runs, a held-out repetition at a trained speed scores 97.5–100%, so the fair-test failure comes from the change of speed ([improvement results](improvement_results.md)).
+- Test sets are small. One recording moves accuracy by 6.25 percentage points on a 16-run test and 8.33 points on the Haul Truck’s 12-recording image test.
+- The CORA rig has one run per class and speed. The Dozer reuses the Belt Conveyor's runs, so it is not separate evidence. Merging the wear levels into healthy vs worn did not give defensible improvement (see the follow-up record). On the CORA transient runs, a held-out repetition at a trained speed scores 97.5–100%. The transient and stationary tests differ in acquisition and preprocessing as well as speed exposure ([improvement results](improvement_results.md)).
 - The Haul Truck ball faults were recorded without load and the other classes at 400 N, so ball recall may partly measure load.
 - The Pump source gives no bearing IDs, so its test holds out speed profiles, not bearings.
 - Drill Rig image performance applies to CAD renders. Camera generalization remains untested. The code maps CAD root breakage to sensor root crack. Keep this label qualification visible.

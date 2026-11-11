@@ -1645,7 +1645,7 @@ MACHINES = {
         time_split=False,
         notes=["sensor: leave one speed out (1000 / 2000 / 3000 rpm)",
                "images: four rounds, each holding out three whole gear designs; one answer per gear",
-               "images are noise-free renders, so the image score is an upper bound, not a field result"],
+               "images are synthetic CAD renders; camera and field performance remain untested"],
     ),
     "grader": Machine(
         title="Grader", component="circle-drive slewing bearing",
