@@ -1,0 +1,6745 @@
+{
+  "sensor_pump": {
+    "reproduced": {
+      "confusion_matrix_identical": true,
+      "choices_identical": true,
+      "accuracy": 0.9583,
+      "archived_accuracy": 0.9583,
+      "balanced_accuracy": 0.9583,
+      "macro_f1": 0.958,
+      "chosen_per_round": [
+        {
+          "feature_set": "vibration",
+          "model": "Extra trees",
+          "validation_macro_f1": 1.0
+        }
+      ]
+    },
+    "accuracy_wilson_95": [
+      0.7976,
+      0.9926
+    ],
+    "calibration": {
+      "recordings": 24,
+      "brier": 0.0842,
+      "ece_top_label_5_bins": 0.0684,
+      "mean_confidence": 0.9138,
+      "accuracy": 0.9583,
+      "mean_confidence_when_correct": 0.9239,
+      "mean_confidence_when_wrong": 0.6823,
+      "wrong_with_confidence_over_0_9": 0,
+      "reliability": [
+        {
+          "bin": [
+            0.4,
+            0.6
+          ],
+          "recordings": 1,
+          "mean_confidence": 0.5315,
+          "accuracy": 1.0
+        },
+        {
+          "bin": [
+            0.6,
+            0.8
+          ],
+          "recordings": 2,
+          "mean_confidence": 0.6436,
+          "accuracy": 0.5
+        },
+        {
+          "bin": [
+            0.8,
+            1.0
+          ],
+          "recordings": 21,
+          "mean_confidence": 0.9578,
+          "accuracy": 1.0
+        }
+      ]
+    },
+    "leakage": {
+      "recordings": 48,
+      "one_class_per_recording": true,
+      "one_holdout_group_per_recording": true,
+      "one_inner_group_per_recording": true,
+      "held_out_groups_match_declared": true,
+      "no_recording_on_both_sides": true,
+      "every_recording_tested_once": true,
+      "identical_feature_rows_in_more_than_one_recording": 0,
+      "identical_feature_rows_across_train_and_test": 0,
+      "test_recordings_per_round": [
+        24
+      ],
+      "class_counts_per_round": [
+        {
+          "ball": 6,
+          "healthy": 6,
+          "inner": 6,
+          "outer": 6
+        }
+      ]
+    },
+    "recordings": [
+      {
+        "unit": "B-C-1.mat",
+        "round": 0,
+        "actual": "ball",
+        "predicted": "ball",
+        "probabilities": {
+          "ball": 0.97017,
+          "healthy": 0.007927,
+          "inner": 0.002577,
+          "outer": 0.019326
+        }
+      },
+      {
+        "unit": "B-C-2.mat",
+        "round": 0,
+        "actual": "ball",
+        "predicted": "ball",
+        "probabilities": {
+          "ball": 0.947943,
+          "healthy": 0.00933,
+          "inner": 0.013943,
+          "outer": 0.028784
+        }
+      },
+      {
+        "unit": "B-C-3.mat",
+        "round": 0,
+        "actual": "ball",
+        "predicted": "ball",
+        "probabilities": {
+          "ball": 0.96095,
+          "healthy": 0.00739,
+          "inner": 0.004351,
+          "outer": 0.02731
+        }
+      },
+      {
+        "unit": "B-D-1.mat",
+        "round": 0,
+        "actual": "ball",
+        "predicted": "ball",
+        "probabilities": {
+          "ball": 0.531533,
+          "healthy": 0.056481,
+          "inner": 0.194748,
+          "outer": 0.217238
+        }
+      },
+      {
+        "unit": "B-D-2.mat",
+        "round": 0,
+        "actual": "ball",
+        "predicted": "ball",
+        "probabilities": {
+          "ball": 0.978812,
+          "healthy": 0.006189,
+          "inner": 0.00172,
+          "outer": 0.013279
+        }
+      },
+      {
+        "unit": "B-D-3.mat",
+        "round": 0,
+        "actual": "ball",
+        "predicted": "inner",
+        "probabilities": {
+          "ball": 0.085637,
+          "healthy": 0.044442,
+          "inner": 0.682283,
+          "outer": 0.187638
+        }
+      },
+      {
+        "unit": "H-C-1.mat",
+        "round": 0,
+        "actual": "healthy",
+        "predicted": "healthy",
+        "probabilities": {
+          "ball": 0.003677,
+          "healthy": 0.980875,
+          "inner": 0.000429,
+          "outer": 0.015019
+        }
+      },
+      {
+        "unit": "H-C-2.mat",
+        "round": 0,
+        "actual": "healthy",
+        "predicted": "healthy",
+        "probabilities": {
+          "ball": 0.00239,
+          "healthy": 0.979527,
+          "inner": 0.00024,
+          "outer": 0.017843
+        }
+      },
+      {
+        "unit": "H-C-3.mat",
+        "round": 0,
+        "actual": "healthy",
+        "predicted": "healthy",
+        "probabilities": {
+          "ball": 0.001794,
+          "healthy": 0.990053,
+          "inner": 0.000287,
+          "outer": 0.007866
+        }
+      },
+      {
+        "unit": "H-D-1.mat",
+        "round": 0,
+        "actual": "healthy",
+        "predicted": "healthy",
+        "probabilities": {
+          "ball": 0.001916,
+          "healthy": 0.987975,
+          "inner": 0.000263,
+          "outer": 0.009846
+        }
+      },
+      {
+        "unit": "H-D-2.mat",
+        "round": 0,
+        "actual": "healthy",
+        "predicted": "healthy",
+        "probabilities": {
+          "ball": 0.003273,
+          "healthy": 0.988265,
+          "inner": 0.000246,
+          "outer": 0.008216
+        }
+      },
+      {
+        "unit": "H-D-3.mat",
+        "round": 0,
+        "actual": "healthy",
+        "predicted": "healthy",
+        "probabilities": {
+          "ball": 0.029455,
+          "healthy": 0.605016,
+          "inner": 0.048792,
+          "outer": 0.316737
+        }
+      },
+      {
+        "unit": "I-C-1.mat",
+        "round": 0,
+        "actual": "inner",
+        "predicted": "inner",
+        "probabilities": {
+          "ball": 0.001288,
+          "healthy": 0.00036,
+          "inner": 0.996972,
+          "outer": 0.00138
+        }
+      },
+      {
+        "unit": "I-C-2.mat",
+        "round": 0,
+        "actual": "inner",
+        "predicted": "inner",
+        "probabilities": {
+          "ball": 0.001511,
+          "healthy": 0.00091,
+          "inner": 0.995709,
+          "outer": 0.00187
+        }
+      },
+      {
+        "unit": "I-C-3.mat",
+        "round": 0,
+        "actual": "inner",
+        "predicted": "inner",
+        "probabilities": {
+          "ball": 0.002959,
+          "healthy": 0.001133,
+          "inner": 0.993247,
+          "outer": 0.002662
+        }
+      },
+      {
+        "unit": "I-D-1.mat",
+        "round": 0,
+        "actual": "inner",
+        "predicted": "inner",
+        "probabilities": {
+          "ball": 0.004614,
+          "healthy": 0.00212,
+          "inner": 0.990291,
+          "outer": 0.002975
+        }
+      },
+      {
+        "unit": "I-D-2.mat",
+        "round": 0,
+        "actual": "inner",
+        "predicted": "inner",
+        "probabilities": {
+          "ball": 0.00244,
+          "healthy": 0.001582,
+          "inner": 0.993844,
+          "outer": 0.002135
+        }
+      },
+      {
+        "unit": "I-D-3.mat",
+        "round": 0,
+        "actual": "inner",
+        "predicted": "inner",
+        "probabilities": {
+          "ball": 0.005264,
+          "healthy": 0.003299,
+          "inner": 0.989605,
+          "outer": 0.001832
+        }
+      },
+      {
+        "unit": "O-C-1.mat",
+        "round": 0,
+        "actual": "outer",
+        "predicted": "outer",
+        "probabilities": {
+          "ball": 0.022712,
+          "healthy": 0.027446,
+          "inner": 0.00391,
+          "outer": 0.945933
+        }
+      },
+      {
+        "unit": "O-C-2.mat",
+        "round": 0,
+        "actual": "outer",
+        "predicted": "outer",
+        "probabilities": {
+          "ball": 0.028861,
+          "healthy": 0.038468,
+          "inner": 0.011234,
+          "outer": 0.921436
+        }
+      },
+      {
+        "unit": "O-C-3.mat",
+        "round": 0,
+        "actual": "outer",
+        "predicted": "outer",
+        "probabilities": {
+          "ball": 0.037925,
+          "healthy": 0.042662,
+          "inner": 0.010219,
+          "outer": 0.909194
+        }
+      },
+      {
+        "unit": "O-D-1.mat",
+        "round": 0,
+        "actual": "outer",
+        "predicted": "outer",
+        "probabilities": {
+          "ball": 0.037206,
+          "healthy": 0.059997,
+          "inner": 0.021773,
+          "outer": 0.881024
+        }
+      },
+      {
+        "unit": "O-D-2.mat",
+        "round": 0,
+        "actual": "outer",
+        "predicted": "outer",
+        "probabilities": {
+          "ball": 0.052609,
+          "healthy": 0.066717,
+          "inner": 0.009076,
+          "outer": 0.871598
+        }
+      },
+      {
+        "unit": "O-D-3.mat",
+        "round": 0,
+        "actual": "outer",
+        "predicted": "outer",
+        "probabilities": {
+          "ball": 0.062634,
+          "healthy": 0.08494,
+          "inner": 0.012395,
+          "outer": 0.840031
+        }
+      }
+    ],
+    "seconds": 20.7
+  },
+  "environment": {
+    "platform": "Windows-10-10.0.26200-SP0",
+    "python": "3.11.9",
+    "numpy": "2.4.6",
+    "pandas": "2.3.3",
+    "scikit-learn": "1.9.1",
+    "seed": 613
+  },
+  "sensor_haul_truck": {
+    "reproduced": {
+      "confusion_matrix_identical": true,
+      "choices_identical": true,
+      "accuracy": 0.8,
+      "archived_accuracy": 0.8,
+      "balanced_accuracy": 0.7333,
+      "macro_f1": 0.741,
+      "chosen_per_round": [
+        {
+          "feature_set": "vibration+long envelope+microphone",
+          "model": "Extra trees",
+          "validation_macro_f1": 0.9286
+        },
+        {
+          "feature_set": "vibration+long envelope",
+          "model": "Gradient boosting",
+          "validation_macro_f1": 0.8958
+        },
+        {
+          "feature_set": "vibration",
+          "model": "Random forest",
+          "validation_macro_f1": 0.8333
+        },
+        {
+          "feature_set": "vibration+long envelope",
+          "model": "Gradient boosting",
+          "validation_macro_f1": 0.9167
+        },
+        {
+          "feature_set": "vibration+long envelope",
+          "model": "Logistic regression",
+          "validation_macro_f1": 0.8119
+        }
+      ]
+    },
+    "accuracy_wilson_95": [
+      0.6269,
+      0.905
+    ],
+    "calibration": {
+      "recordings": 30,
+      "brier": 0.2803,
+      "ece_top_label_5_bins": 0.0563,
+      "mean_confidence": 0.8158,
+      "accuracy": 0.8,
+      "mean_confidence_when_correct": 0.8854,
+      "mean_confidence_when_wrong": 0.5375,
+      "wrong_with_confidence_over_0_9": 0,
+      "reliability": [
+        {
+          "bin": [
+            0.4,
+            0.6
+          ],
+          "recordings": 8,
+          "mean_confidence": 0.4798,
+          "accuracy": 0.5
+        },
+        {
+          "bin": [
+            0.6,
+            0.8
+          ],
+          "recordings": 3,
+          "mean_confidence": 0.6937,
+          "accuracy": 0.3333
+        },
+        {
+          "bin": [
+            0.8,
+            1.0
+          ],
+          "recordings": 19,
+          "mean_confidence": 0.9766,
+          "accuracy": 1.0
+        }
+      ]
+    },
+    "leakage": {
+      "recordings": 30,
+      "one_class_per_recording": true,
+      "one_holdout_group_per_recording": true,
+      "one_inner_group_per_recording": true,
+      "held_out_groups_match_declared": true,
+      "no_recording_on_both_sides": true,
+      "every_recording_tested_once": true,
+      "identical_feature_rows_in_more_than_one_recording": 0,
+      "identical_feature_rows_across_train_and_test": 0,
+      "test_recordings_per_round": [
+        6,
+        6,
+        6,
+        6,
+        6
+      ],
+      "class_counts_per_round": [
+        {
+          "ball": 1,
+          "healthy": 3,
+          "inner": 1,
+          "outer": 1
+        },
+        {
+          "ball": 1,
+          "healthy": 3,
+          "inner": 1,
+          "outer": 1
+        },
+        {
+          "ball": 1,
+          "healthy": 3,
+          "inner": 1,
+          "outer": 1
+        },
+        {
+          "ball": 1,
+          "healthy": 3,
+          "inner": 1,
+          "outer": 1
+        },
+        {
+          "ball": 1,
+          "healthy": 3,
+          "inner": 1,
+          "outer": 1
+        }
+      ]
+    },
+    "recordings": [
+      {
+        "unit": "B_11_2",
+        "round": 0,
+        "actual": "ball",
+        "predicted": "ball",
+        "probabilities": {
+          "ball": 0.58683,
+          "healthy": 0.256358,
+          "inner": 0.102413,
+          "outer": 0.054399
+        }
+      },
+      {
+        "unit": "H_11_0",
+        "round": 0,
+        "actual": "healthy",
+        "predicted": "healthy",
+        "probabilities": {
+          "ball": 0.072406,
+          "healthy": 0.925086,
+          "inner": 2e-06,
+          "outer": 0.002506
+        }
+      },
+      {
+        "unit": "H_1_0",
+        "round": 0,
+        "actual": "healthy",
+        "predicted": "healthy",
+        "probabilities": {
+          "ball": 0.00911,
+          "healthy": 0.985601,
+          "inner": 0.003373,
+          "outer": 0.001917
+        }
+      },
+      {
+        "unit": "H_6_0",
+        "round": 0,
+        "actual": "healthy",
+        "predicted": "healthy",
+        "probabilities": {
+          "ball": 0.045192,
+          "healthy": 0.952137,
+          "inner": 0.000639,
+          "outer": 0.002033
+        }
+      },
+      {
+        "unit": "I_1_2",
+        "round": 0,
+        "actual": "inner",
+        "predicted": "healthy",
+        "probabilities": {
+          "ball": 0.413173,
+          "healthy": 0.442928,
+          "inner": 0.038474,
+          "outer": 0.105425
+        }
+      },
+      {
+        "unit": "O_6_2",
+        "round": 0,
+        "actual": "outer",
+        "predicted": "ball",
+        "probabilities": {
+          "ball": 0.429352,
+          "healthy": 0.353786,
+          "inner": 0.042523,
+          "outer": 0.17434
+        }
+      },
+      {
+        "unit": "B_12_2",
+        "round": 1,
+        "actual": "ball",
+        "predicted": "ball",
+        "probabilities": {
+          "ball": 0.998104,
+          "healthy": 0.001655,
+          "inner": 0.000145,
+          "outer": 9.6e-05
+        }
+      },
+      {
+        "unit": "H_12_0",
+        "round": 1,
+        "actual": "healthy",
+        "predicted": "healthy",
+        "probabilities": {
+          "ball": 0.010847,
+          "healthy": 0.982837,
+          "inner": 0.00452,
+          "outer": 0.001795
+        }
+      },
+      {
+        "unit": "H_2_0",
+        "round": 1,
+        "actual": "healthy",
+        "predicted": "healthy",
+        "probabilities": {
+          "ball": 0.0,
+          "healthy": 1.0,
+          "inner": 0.0,
+          "outer": 0.0
+        }
+      },
+      {
+        "unit": "H_7_0",
+        "round": 1,
+        "actual": "healthy",
+        "predicted": "healthy",
+        "probabilities": {
+          "ball": 0.0,
+          "healthy": 0.999999,
+          "inner": 0.0,
+          "outer": 0.0
+        }
+      },
+      {
+        "unit": "I_2_2",
+        "round": 1,
+        "actual": "inner",
+        "predicted": "inner",
+        "probabilities": {
+          "ball": 0.151164,
+          "healthy": 0.201446,
+          "inner": 0.46995,
+          "outer": 0.17744
+        }
+      },
+      {
+        "unit": "O_7_2",
+        "round": 1,
+        "actual": "outer",
+        "predicted": "outer",
+        "probabilities": {
+          "ball": 0.167498,
+          "healthy": 0.136707,
+          "inner": 0.288207,
+          "outer": 0.407587
+        }
+      },
+      {
+        "unit": "B_13_2",
+        "round": 2,
+        "actual": "ball",
+        "predicted": "ball",
+        "probabilities": {
+          "ball": 0.516027,
+          "healthy": 0.044217,
+          "inner": 0.371337,
+          "outer": 0.068419
+        }
+      },
+      {
+        "unit": "H_13_0",
+        "round": 2,
+        "actual": "healthy",
+        "predicted": "inner",
+        "probabilities": {
+          "ball": 0.2859,
+          "healthy": 0.028717,
+          "inner": 0.65657,
+          "outer": 0.028812
+        }
+      },
+      {
+        "unit": "H_3_0",
+        "round": 2,
+        "actual": "healthy",
+        "predicted": "healthy",
+        "probabilities": {
+          "ball": 0.00024,
+          "healthy": 0.998748,
+          "inner": 0.000972,
+          "outer": 4e-05
+        }
+      },
+      {
+        "unit": "H_8_0",
+        "round": 2,
+        "actual": "healthy",
+        "predicted": "healthy",
+        "probabilities": {
+          "ball": 0.002859,
+          "healthy": 0.954866,
+          "inner": 0.030059,
+          "outer": 0.012217
+        }
+      },
+      {
+        "unit": "I_3_2",
+        "round": 2,
+        "actual": "inner",
+        "predicted": "inner",
+        "probabilities": {
+          "ball": 0.010313,
+          "healthy": 0.01635,
+          "inner": 0.850456,
+          "outer": 0.12288
+        }
+      },
+      {
+        "unit": "O_8_2",
+        "round": 2,
+        "actual": "outer",
+        "predicted": "healthy",
+        "probabilities": {
+          "ball": 0.016265,
+          "healthy": 0.552247,
+          "inner": 0.28894,
+          "outer": 0.142548
+        }
+      },
+      {
+        "unit": "B_14_2",
+        "round": 3,
+        "actual": "ball",
+        "predicted": "outer",
+        "probabilities": {
+          "ball": 0.272077,
+          "healthy": 1e-06,
+          "inner": 0.294452,
+          "outer": 0.433469
+        }
+      },
+      {
+        "unit": "H_14_0",
+        "round": 3,
+        "actual": "healthy",
+        "predicted": "healthy",
+        "probabilities": {
+          "ball": 0.0,
+          "healthy": 0.999999,
+          "inner": 0.0,
+          "outer": 0.0
+        }
+      },
+      {
+        "unit": "H_4_0",
+        "round": 3,
+        "actual": "healthy",
+        "predicted": "healthy",
+        "probabilities": {
+          "ball": 0.0,
+          "healthy": 0.999999,
+          "inner": 0.0,
+          "outer": 0.0
+        }
+      },
+      {
+        "unit": "H_9_0",
+        "round": 3,
+        "actual": "healthy",
+        "predicted": "healthy",
+        "probabilities": {
+          "ball": 0.0,
+          "healthy": 0.714223,
+          "inner": 0.0,
+          "outer": 0.285776
+        }
+      },
+      {
+        "unit": "I_4_2",
+        "round": 3,
+        "actual": "inner",
+        "predicted": "inner",
+        "probabilities": {
+          "ball": 0.0,
+          "healthy": 0.0,
+          "inner": 0.999999,
+          "outer": 0.0
+        }
+      },
+      {
+        "unit": "O_9_2",
+        "round": 3,
+        "actual": "outer",
+        "predicted": "outer",
+        "probabilities": {
+          "ball": 0.0,
+          "healthy": 0.0,
+          "inner": 0.0,
+          "outer": 0.999999
+        }
+      },
+      {
+        "unit": "B_15_2",
+        "round": 4,
+        "actual": "ball",
+        "predicted": "ball",
+        "probabilities": {
+          "ball": 0.922488,
+          "healthy": 0.002225,
+          "inner": 0.075274,
+          "outer": 1.4e-05
+        }
+      },
+      {
+        "unit": "H_10_0",
+        "round": 4,
+        "actual": "healthy",
+        "predicted": "healthy",
+        "probabilities": {
+          "ball": 0.000701,
+          "healthy": 0.992952,
+          "inner": 0.006344,
+          "outer": 3e-06
+        }
+      },
+      {
+        "unit": "H_15_0",
+        "round": 4,
+        "actual": "healthy",
+        "predicted": "healthy",
+        "probabilities": {
+          "ball": 1e-06,
+          "healthy": 0.999891,
+          "inner": 0.000104,
+          "outer": 4e-06
+        }
+      },
+      {
+        "unit": "H_5_0",
+        "round": 4,
+        "actual": "healthy",
+        "predicted": "healthy",
+        "probabilities": {
+          "ball": 0.003975,
+          "healthy": 0.9951,
+          "inner": 0.000902,
+          "outer": 2.4e-05
+        }
+      },
+      {
+        "unit": "I_5_2",
+        "round": 4,
+        "actual": "inner",
+        "predicted": "ball",
+        "probabilities": {
+          "ball": 0.710427,
+          "healthy": 0.0,
+          "inner": 0.289182,
+          "outer": 0.000391
+        }
+      },
+      {
+        "unit": "O_10_2",
+        "round": 4,
+        "actual": "outer",
+        "predicted": "outer",
+        "probabilities": {
+          "ball": 0.002859,
+          "healthy": 0.000171,
+          "inner": 0.000152,
+          "outer": 0.996818
+        }
+      }
+    ],
+    "seconds": 413.4,
+    "robustness": {
+      "clean": {
+        "test_units": 30,
+        "accuracy": 0.8,
+        "balanced_accuracy": 0.7333,
+        "macro_f1": 0.741,
+        "confusion_matrix": [
+          [
+            14,
+            1,
+            0,
+            0
+          ],
+          [
+            1,
+            3,
+            0,
+            1
+          ],
+          [
+            1,
+            0,
+            3,
+            1
+          ],
+          [
+            0,
+            0,
+            1,
+            4
+          ]
+        ],
+        "rejected_recordings": 0,
+        "same_class_as_clean": 1.0
+      },
+      "noise": {
+        "test_units": 30,
+        "accuracy": 0.7667,
+        "balanced_accuracy": 0.7167,
+        "macro_f1": 0.7113,
+        "confusion_matrix": [
+          [
+            13,
+            1,
+            0,
+            1
+          ],
+          [
+            0,
+            3,
+            0,
+            2
+          ],
+          [
+            1,
+            0,
+            3,
+            1
+          ],
+          [
+            0,
+            0,
+            1,
+            4
+          ]
+        ],
+        "rejected_recordings": 0,
+        "same_class_as_clean": 0.9333
+      },
+      "amplitude_half": {
+        "test_units": 30,
+        "accuracy": 0.8,
+        "balanced_accuracy": 0.7333,
+        "macro_f1": 0.7677,
+        "confusion_matrix": [
+          [
+            14,
+            1,
+            0,
+            0
+          ],
+          [
+            2,
+            3,
+            0,
+            0
+          ],
+          [
+            2,
+            0,
+            3,
+            0
+          ],
+          [
+            0,
+            0,
+            1,
+            4
+          ]
+        ],
+        "rejected_recordings": 0,
+        "same_class_as_clean": 0.9
+      },
+      "amplitude_double": {
+        "test_units": 30,
+        "accuracy": 0.8,
+        "balanced_accuracy": 0.7333,
+        "macro_f1": 0.7247,
+        "confusion_matrix": [
+          [
+            14,
+            1,
+            0,
+            0
+          ],
+          [
+            0,
+            3,
+            0,
+            2
+          ],
+          [
+            0,
+            1,
+            3,
+            1
+          ],
+          [
+            0,
+            0,
+            1,
+            4
+          ]
+        ],
+        "rejected_recordings": 0,
+        "same_class_as_clean": 0.9333
+      },
+      "missing_5pct": {
+        "test_units": 30,
+        "accuracy": 0.8,
+        "balanced_accuracy": 0.7333,
+        "macro_f1": 0.7333,
+        "confusion_matrix": [
+          [
+            14,
+            1,
+            0,
+            0
+          ],
+          [
+            0,
+            3,
+            0,
+            2
+          ],
+          [
+            1,
+            0,
+            3,
+            1
+          ],
+          [
+            0,
+            0,
+            1,
+            4
+          ]
+        ],
+        "rejected_recordings": 0,
+        "same_class_as_clean": 0.9667
+      },
+      "half_length": {
+        "test_units": 30,
+        "accuracy": 0.8,
+        "balanced_accuracy": 0.7333,
+        "macro_f1": 0.741,
+        "confusion_matrix": [
+          [
+            14,
+            1,
+            0,
+            0
+          ],
+          [
+            1,
+            3,
+            0,
+            1
+          ],
+          [
+            1,
+            0,
+            3,
+            1
+          ],
+          [
+            0,
+            0,
+            1,
+            4
+          ]
+        ],
+        "rejected_recordings": 0,
+        "same_class_as_clean": 1.0
+      },
+      "rate_90pct": {
+        "test_units": 30,
+        "accuracy": 0.8,
+        "balanced_accuracy": 0.7333,
+        "macro_f1": 0.7333,
+        "confusion_matrix": [
+          [
+            14,
+            1,
+            0,
+            0
+          ],
+          [
+            0,
+            3,
+            0,
+            2
+          ],
+          [
+            1,
+            0,
+            3,
+            1
+          ],
+          [
+            0,
+            0,
+            1,
+            4
+          ]
+        ],
+        "rejected_recordings": 0,
+        "same_class_as_clean": 0.9667
+      }
+    },
+    "robustness_clean_matches_fair_test": true
+  },
+  "sensor_belt_conveyor": {
+    "reproduced": {
+      "confusion_matrix_identical": true,
+      "choices_identical": true,
+      "accuracy": 0.4375,
+      "archived_accuracy": 0.4375,
+      "balanced_accuracy": 0.4375,
+      "macro_f1": 0.35,
+      "chosen_per_round": [
+        {
+          "feature_set": "vibration+temperature",
+          "model": "Logistic regression",
+          "validation_macro_f1": 0.5972
+        },
+        {
+          "feature_set": "vibration",
+          "model": "Extra trees",
+          "validation_macro_f1": 0.4778
+        },
+        {
+          "feature_set": "vibration+temperature",
+          "model": "Random forest",
+          "validation_macro_f1": 0.4861
+        },
+        {
+          "feature_set": "vibration+temperature",
+          "model": "Extra trees",
+          "validation_macro_f1": 0.4028
+        }
+      ]
+    },
+    "accuracy_wilson_95": [
+      0.231,
+      0.6682
+    ],
+    "calibration": {
+      "recordings": 16,
+      "brier": 0.7007,
+      "ece_top_label_5_bins": 0.2265,
+      "mean_confidence": 0.6309,
+      "accuracy": 0.4375,
+      "mean_confidence_when_correct": 0.685,
+      "mean_confidence_when_wrong": 0.5888,
+      "wrong_with_confidence_over_0_9": 0,
+      "reliability": [
+        {
+          "bin": [
+            0.2,
+            0.4
+          ],
+          "recordings": 2,
+          "mean_confidence": 0.3676,
+          "accuracy": 0.5
+        },
+        {
+          "bin": [
+            0.4,
+            0.6
+          ],
+          "recordings": 7,
+          "mean_confidence": 0.5234,
+          "accuracy": 0.2857
+        },
+        {
+          "bin": [
+            0.6,
+            0.8
+          ],
+          "recordings": 3,
+          "mean_confidence": 0.704,
+          "accuracy": 0.6667
+        },
+        {
+          "bin": [
+            0.8,
+            1.0
+          ],
+          "recordings": 4,
+          "mean_confidence": 0.896,
+          "accuracy": 0.5
+        }
+      ]
+    },
+    "leakage": {
+      "recordings": 16,
+      "one_class_per_recording": true,
+      "one_holdout_group_per_recording": true,
+      "one_inner_group_per_recording": true,
+      "held_out_groups_match_declared": true,
+      "no_recording_on_both_sides": true,
+      "every_recording_tested_once": true,
+      "identical_feature_rows_in_more_than_one_recording": 0,
+      "identical_feature_rows_across_train_and_test": 0,
+      "test_recordings_per_round": [
+        4,
+        4,
+        4,
+        4
+      ],
+      "class_counts_per_round": [
+        {
+          "healthy": 1,
+          "wear25": 1,
+          "wear50": 1,
+          "wear75": 1
+        },
+        {
+          "healthy": 1,
+          "wear25": 1,
+          "wear50": 1,
+          "wear75": 1
+        },
+        {
+          "healthy": 1,
+          "wear25": 1,
+          "wear50": 1,
+          "wear75": 1
+        },
+        {
+          "healthy": 1,
+          "wear25": 1,
+          "wear50": 1,
+          "wear75": 1
+        }
+      ]
+    },
+    "recordings": [
+      {
+        "unit": "H_F5_S",
+        "round": 0,
+        "actual": "healthy",
+        "predicted": "healthy",
+        "probabilities": {
+          "healthy": 0.799193,
+          "wear25": 0.000237,
+          "wear50": 0.001198,
+          "wear75": 0.199372
+        }
+      },
+      {
+        "unit": "W25_F5_S",
+        "round": 0,
+        "actual": "wear25",
+        "predicted": "healthy",
+        "probabilities": {
+          "healthy": 0.889107,
+          "wear25": 0.005867,
+          "wear50": 0.006612,
+          "wear75": 0.098414
+        }
+      },
+      {
+        "unit": "W50_F5_S",
+        "round": 0,
+        "actual": "wear50",
+        "predicted": "healthy",
+        "probabilities": {
+          "healthy": 0.846158,
+          "wear25": 0.076448,
+          "wear50": 0.063571,
+          "wear75": 0.013824
+        }
+      },
+      {
+        "unit": "W75_F5_S",
+        "round": 0,
+        "actual": "wear75",
+        "predicted": "wear75",
+        "probabilities": {
+          "healthy": 0.070362,
+          "wear25": 2e-05,
+          "wear50": 0.000339,
+          "wear75": 0.929279
+        }
+      },
+      {
+        "unit": "H_F15_S",
+        "round": 1,
+        "actual": "healthy",
+        "predicted": "wear75",
+        "probabilities": {
+          "healthy": 0.235833,
+          "wear25": 0.141152,
+          "wear50": 0.055703,
+          "wear75": 0.567313
+        }
+      },
+      {
+        "unit": "W25_F15_S",
+        "round": 1,
+        "actual": "wear25",
+        "predicted": "wear75",
+        "probabilities": {
+          "healthy": 0.321418,
+          "wear25": 0.165351,
+          "wear50": 0.06104,
+          "wear75": 0.452191
+        }
+      },
+      {
+        "unit": "W50_F15_S",
+        "round": 1,
+        "actual": "wear50",
+        "predicted": "wear75",
+        "probabilities": {
+          "healthy": 0.327947,
+          "wear25": 0.12551,
+          "wear50": 0.043502,
+          "wear75": 0.503041
+        }
+      },
+      {
+        "unit": "W75_F15_S",
+        "round": 1,
+        "actual": "wear75",
+        "predicted": "wear75",
+        "probabilities": {
+          "healthy": 0.165142,
+          "wear25": 0.222084,
+          "wear50": 0.05243,
+          "wear75": 0.560344
+        }
+      },
+      {
+        "unit": "H_F50_S",
+        "round": 2,
+        "actual": "healthy",
+        "predicted": "wear75",
+        "probabilities": {
+          "healthy": 0.40382,
+          "wear25": 0.00956,
+          "wear50": 0.006768,
+          "wear75": 0.579853
+        }
+      },
+      {
+        "unit": "W25_F50_S",
+        "round": 2,
+        "actual": "wear25",
+        "predicted": "healthy",
+        "probabilities": {
+          "healthy": 0.435773,
+          "wear25": 0.292885,
+          "wear50": 0.193371,
+          "wear75": 0.07797
+        }
+      },
+      {
+        "unit": "W50_F50_S",
+        "round": 2,
+        "actual": "wear50",
+        "predicted": "healthy",
+        "probabilities": {
+          "healthy": 0.369632,
+          "wear25": 0.282615,
+          "wear50": 0.338755,
+          "wear75": 0.008998
+        }
+      },
+      {
+        "unit": "W75_F50_S",
+        "round": 2,
+        "actual": "wear75",
+        "predicted": "wear75",
+        "probabilities": {
+          "healthy": 0.078477,
+          "wear25": 0.001023,
+          "wear50": 0.001034,
+          "wear75": 0.919466
+        }
+      },
+      {
+        "unit": "H_F60_S",
+        "round": 3,
+        "actual": "healthy",
+        "predicted": "healthy",
+        "probabilities": {
+          "healthy": 0.36549,
+          "wear25": 0.216376,
+          "wear50": 0.224796,
+          "wear75": 0.193337
+        }
+      },
+      {
+        "unit": "W25_F60_S",
+        "round": 3,
+        "actual": "wear25",
+        "predicted": "wear50",
+        "probabilities": {
+          "healthy": 0.141838,
+          "wear25": 0.18977,
+          "wear50": 0.656558,
+          "wear75": 0.011834
+        }
+      },
+      {
+        "unit": "W50_F60_S",
+        "round": 3,
+        "actual": "wear50",
+        "predicted": "wear50",
+        "probabilities": {
+          "healthy": 0.170936,
+          "wear25": 0.123321,
+          "wear50": 0.656234,
+          "wear75": 0.049509
+        }
+      },
+      {
+        "unit": "W75_F60_S",
+        "round": 3,
+        "actual": "wear75",
+        "predicted": "wear75",
+        "probabilities": {
+          "healthy": 0.374471,
+          "wear25": 0.041761,
+          "wear50": 0.018533,
+          "wear75": 0.565236
+        }
+      }
+    ],
+    "seconds": 104.8
+  },
+  "sensor_excavator": {
+    "reproduced": {
+      "confusion_matrix_identical": true,
+      "choices_identical": true,
+      "accuracy": 0.25,
+      "archived_accuracy": 0.25,
+      "balanced_accuracy": 0.25,
+      "macro_f1": 0.1833,
+      "chosen_per_round": [
+        {
+          "feature_set": "vibration",
+          "model": "SVM (RBF)",
+          "validation_macro_f1": 0.2083
+        },
+        {
+          "feature_set": "vibration",
+          "model": "Gradient boosting",
+          "validation_macro_f1": 0.2056
+        },
+        {
+          "feature_set": "vibration",
+          "model": "Logistic regression",
+          "validation_macro_f1": 0.1917
+        },
+        {
+          "feature_set": "vibration",
+          "model": "Gradient boosting",
+          "validation_macro_f1": 0.2556
+        }
+      ]
+    },
+    "accuracy_wilson_95": [
+      0.1018,
+      0.495
+    ],
+    "calibration": {
+      "recordings": 16,
+      "brier": 1.0014,
+      "ece_top_label_5_bins": 0.4253,
+      "mean_confidence": 0.6753,
+      "accuracy": 0.25,
+      "mean_confidence_when_correct": 0.7638,
+      "mean_confidence_when_wrong": 0.6458,
+      "wrong_with_confidence_over_0_9": 1,
+      "reliability": [
+        {
+          "bin": [
+            0.2,
+            0.4
+          ],
+          "recordings": 1,
+          "mean_confidence": 0.3796,
+          "accuracy": 0.0
+        },
+        {
+          "bin": [
+            0.4,
+            0.6
+          ],
+          "recordings": 5,
+          "mean_confidence": 0.549,
+          "accuracy": 0.2
+        },
+        {
+          "bin": [
+            0.6,
+            0.8
+          ],
+          "recordings": 6,
+          "mean_confidence": 0.697,
+          "accuracy": 0.1667
+        },
+        {
+          "bin": [
+            0.8,
+            1.0
+          ],
+          "recordings": 4,
+          "mean_confidence": 0.8745,
+          "accuracy": 0.5
+        }
+      ]
+    },
+    "leakage": {
+      "recordings": 16,
+      "one_class_per_recording": true,
+      "one_holdout_group_per_recording": true,
+      "one_inner_group_per_recording": true,
+      "held_out_groups_match_declared": true,
+      "no_recording_on_both_sides": true,
+      "every_recording_tested_once": true,
+      "identical_feature_rows_in_more_than_one_recording": 0,
+      "identical_feature_rows_across_train_and_test": 0,
+      "test_recordings_per_round": [
+        4,
+        4,
+        4,
+        4
+      ],
+      "class_counts_per_round": [
+        {
+          "bearing": 1,
+          "healthy": 1,
+          "misalignment": 1,
+          "unbalance": 1
+        },
+        {
+          "bearing": 1,
+          "healthy": 1,
+          "misalignment": 1,
+          "unbalance": 1
+        },
+        {
+          "bearing": 1,
+          "healthy": 1,
+          "misalignment": 1,
+          "unbalance": 1
+        },
+        {
+          "bearing": 1,
+          "healthy": 1,
+          "misalignment": 1,
+          "unbalance": 1
+        }
+      ]
+    },
+    "recordings": [
+      {
+        "unit": "BD_F5_S",
+        "round": 0,
+        "actual": "bearing",
+        "predicted": "unbalance",
+        "probabilities": {
+          "bearing": 0.125913,
+          "healthy": 0.20642,
+          "misalignment": 0.046665,
+          "unbalance": 0.621002
+        }
+      },
+      {
+        "unit": "H_F5_S",
+        "round": 0,
+        "actual": "healthy",
+        "predicted": "unbalance",
+        "probabilities": {
+          "bearing": 0.192994,
+          "healthy": 0.165659,
+          "misalignment": 0.048246,
+          "unbalance": 0.593101
+        }
+      },
+      {
+        "unit": "M_F5_S",
+        "round": 0,
+        "actual": "misalignment",
+        "predicted": "unbalance",
+        "probabilities": {
+          "bearing": 0.188057,
+          "healthy": 0.146201,
+          "misalignment": 0.048105,
+          "unbalance": 0.617637
+        }
+      },
+      {
+        "unit": "U_F5_S",
+        "round": 0,
+        "actual": "unbalance",
+        "predicted": "unbalance",
+        "probabilities": {
+          "bearing": 0.088294,
+          "healthy": 0.284427,
+          "misalignment": 0.033964,
+          "unbalance": 0.593316
+        }
+      },
+      {
+        "unit": "BD_F15_S",
+        "round": 1,
+        "actual": "bearing",
+        "predicted": "unbalance",
+        "probabilities": {
+          "bearing": 0.079636,
+          "healthy": 0.023181,
+          "misalignment": 0.112382,
+          "unbalance": 0.784801
+        }
+      },
+      {
+        "unit": "H_F15_S",
+        "round": 1,
+        "actual": "healthy",
+        "predicted": "unbalance",
+        "probabilities": {
+          "bearing": 0.225208,
+          "healthy": 0.026782,
+          "misalignment": 0.368394,
+          "unbalance": 0.379616
+        }
+      },
+      {
+        "unit": "M_F15_S",
+        "round": 1,
+        "actual": "misalignment",
+        "predicted": "unbalance",
+        "probabilities": {
+          "bearing": 0.15479,
+          "healthy": 0.027363,
+          "misalignment": 0.318137,
+          "unbalance": 0.49971
+        }
+      },
+      {
+        "unit": "U_F15_S",
+        "round": 1,
+        "actual": "unbalance",
+        "predicted": "unbalance",
+        "probabilities": {
+          "bearing": 0.04593,
+          "healthy": 0.012868,
+          "misalignment": 0.139983,
+          "unbalance": 0.801218
+        }
+      },
+      {
+        "unit": "BD_F50_S",
+        "round": 2,
+        "actual": "bearing",
+        "predicted": "misalignment",
+        "probabilities": {
+          "bearing": 0.031243,
+          "healthy": 0.437303,
+          "misalignment": 0.474062,
+          "unbalance": 0.057392
+        }
+      },
+      {
+        "unit": "H_F50_S",
+        "round": 2,
+        "actual": "healthy",
+        "predicted": "healthy",
+        "probabilities": {
+          "bearing": 0.004684,
+          "healthy": 0.714877,
+          "misalignment": 0.165772,
+          "unbalance": 0.114667
+        }
+      },
+      {
+        "unit": "M_F50_S",
+        "round": 2,
+        "actual": "misalignment",
+        "predicted": "healthy",
+        "probabilities": {
+          "bearing": 0.006169,
+          "healthy": 0.648315,
+          "misalignment": 0.339818,
+          "unbalance": 0.005698
+        }
+      },
+      {
+        "unit": "U_F50_S",
+        "round": 2,
+        "actual": "unbalance",
+        "predicted": "healthy",
+        "probabilities": {
+          "bearing": 0.000865,
+          "healthy": 0.795127,
+          "misalignment": 0.106906,
+          "unbalance": 0.097102
+        }
+      },
+      {
+        "unit": "BD_F60_S",
+        "round": 3,
+        "actual": "bearing",
+        "predicted": "healthy",
+        "probabilities": {
+          "bearing": 0.002751,
+          "healthy": 0.840468,
+          "misalignment": 0.154893,
+          "unbalance": 0.001889
+        }
+      },
+      {
+        "unit": "H_F60_S",
+        "round": 3,
+        "actual": "healthy",
+        "predicted": "healthy",
+        "probabilities": {
+          "bearing": 0.018159,
+          "healthy": 0.945853,
+          "misalignment": 0.020466,
+          "unbalance": 0.015521
+        }
+      },
+      {
+        "unit": "M_F60_S",
+        "round": 3,
+        "actual": "misalignment",
+        "predicted": "healthy",
+        "probabilities": {
+          "bearing": 0.003575,
+          "healthy": 0.910285,
+          "misalignment": 0.085564,
+          "unbalance": 0.000576
+        }
+      },
+      {
+        "unit": "U_F60_S",
+        "round": 3,
+        "actual": "unbalance",
+        "predicted": "misalignment",
+        "probabilities": {
+          "bearing": 0.279638,
+          "healthy": 0.116801,
+          "misalignment": 0.585042,
+          "unbalance": 0.01852
+        }
+      }
+    ],
+    "seconds": 84.4
+  },
+  "sensor_dozer": {
+    "reproduced": {
+      "confusion_matrix_identical": true,
+      "choices_identical": true,
+      "accuracy": 0.4375,
+      "archived_accuracy": 0.4375,
+      "balanced_accuracy": 0.4375,
+      "macro_f1": 0.35,
+      "chosen_per_round": [
+        {
+          "feature_set": "vibration+temperature",
+          "model": "Logistic regression",
+          "validation_macro_f1": 0.5972
+        },
+        {
+          "feature_set": "vibration",
+          "model": "Extra trees",
+          "validation_macro_f1": 0.4778
+        },
+        {
+          "feature_set": "vibration+temperature",
+          "model": "Random forest",
+          "validation_macro_f1": 0.4861
+        },
+        {
+          "feature_set": "vibration+temperature",
+          "model": "Extra trees",
+          "validation_macro_f1": 0.4028
+        }
+      ]
+    },
+    "accuracy_wilson_95": [
+      0.231,
+      0.6682
+    ],
+    "calibration": {
+      "recordings": 16,
+      "brier": 0.7007,
+      "ece_top_label_5_bins": 0.2265,
+      "mean_confidence": 0.6309,
+      "accuracy": 0.4375,
+      "mean_confidence_when_correct": 0.685,
+      "mean_confidence_when_wrong": 0.5888,
+      "wrong_with_confidence_over_0_9": 0,
+      "reliability": [
+        {
+          "bin": [
+            0.2,
+            0.4
+          ],
+          "recordings": 2,
+          "mean_confidence": 0.3676,
+          "accuracy": 0.5
+        },
+        {
+          "bin": [
+            0.4,
+            0.6
+          ],
+          "recordings": 7,
+          "mean_confidence": 0.5234,
+          "accuracy": 0.2857
+        },
+        {
+          "bin": [
+            0.6,
+            0.8
+          ],
+          "recordings": 3,
+          "mean_confidence": 0.704,
+          "accuracy": 0.6667
+        },
+        {
+          "bin": [
+            0.8,
+            1.0
+          ],
+          "recordings": 4,
+          "mean_confidence": 0.896,
+          "accuracy": 0.5
+        }
+      ]
+    },
+    "leakage": {
+      "recordings": 16,
+      "one_class_per_recording": true,
+      "one_holdout_group_per_recording": true,
+      "one_inner_group_per_recording": true,
+      "held_out_groups_match_declared": true,
+      "no_recording_on_both_sides": true,
+      "every_recording_tested_once": true,
+      "identical_feature_rows_in_more_than_one_recording": 0,
+      "identical_feature_rows_across_train_and_test": 0,
+      "test_recordings_per_round": [
+        4,
+        4,
+        4,
+        4
+      ],
+      "class_counts_per_round": [
+        {
+          "healthy": 1,
+          "wear25": 1,
+          "wear50": 1,
+          "wear75": 1
+        },
+        {
+          "healthy": 1,
+          "wear25": 1,
+          "wear50": 1,
+          "wear75": 1
+        },
+        {
+          "healthy": 1,
+          "wear25": 1,
+          "wear50": 1,
+          "wear75": 1
+        },
+        {
+          "healthy": 1,
+          "wear25": 1,
+          "wear50": 1,
+          "wear75": 1
+        }
+      ]
+    },
+    "recordings": [
+      {
+        "unit": "H_F5_S",
+        "round": 0,
+        "actual": "healthy",
+        "predicted": "healthy",
+        "probabilities": {
+          "healthy": 0.799193,
+          "wear25": 0.000237,
+          "wear50": 0.001198,
+          "wear75": 0.199372
+        }
+      },
+      {
+        "unit": "W25_F5_S",
+        "round": 0,
+        "actual": "wear25",
+        "predicted": "healthy",
+        "probabilities": {
+          "healthy": 0.889107,
+          "wear25": 0.005867,
+          "wear50": 0.006612,
+          "wear75": 0.098414
+        }
+      },
+      {
+        "unit": "W50_F5_S",
+        "round": 0,
+        "actual": "wear50",
+        "predicted": "healthy",
+        "probabilities": {
+          "healthy": 0.846158,
+          "wear25": 0.076448,
+          "wear50": 0.063571,
+          "wear75": 0.013824
+        }
+      },
+      {
+        "unit": "W75_F5_S",
+        "round": 0,
+        "actual": "wear75",
+        "predicted": "wear75",
+        "probabilities": {
+          "healthy": 0.070362,
+          "wear25": 2e-05,
+          "wear50": 0.000339,
+          "wear75": 0.929279
+        }
+      },
+      {
+        "unit": "H_F15_S",
+        "round": 1,
+        "actual": "healthy",
+        "predicted": "wear75",
+        "probabilities": {
+          "healthy": 0.235833,
+          "wear25": 0.141152,
+          "wear50": 0.055703,
+          "wear75": 0.567313
+        }
+      },
+      {
+        "unit": "W25_F15_S",
+        "round": 1,
+        "actual": "wear25",
+        "predicted": "wear75",
+        "probabilities": {
+          "healthy": 0.321418,
+          "wear25": 0.165351,
+          "wear50": 0.06104,
+          "wear75": 0.452191
+        }
+      },
+      {
+        "unit": "W50_F15_S",
+        "round": 1,
+        "actual": "wear50",
+        "predicted": "wear75",
+        "probabilities": {
+          "healthy": 0.327947,
+          "wear25": 0.12551,
+          "wear50": 0.043502,
+          "wear75": 0.503041
+        }
+      },
+      {
+        "unit": "W75_F15_S",
+        "round": 1,
+        "actual": "wear75",
+        "predicted": "wear75",
+        "probabilities": {
+          "healthy": 0.165142,
+          "wear25": 0.222084,
+          "wear50": 0.05243,
+          "wear75": 0.560344
+        }
+      },
+      {
+        "unit": "H_F50_S",
+        "round": 2,
+        "actual": "healthy",
+        "predicted": "wear75",
+        "probabilities": {
+          "healthy": 0.40382,
+          "wear25": 0.00956,
+          "wear50": 0.006768,
+          "wear75": 0.579853
+        }
+      },
+      {
+        "unit": "W25_F50_S",
+        "round": 2,
+        "actual": "wear25",
+        "predicted": "healthy",
+        "probabilities": {
+          "healthy": 0.435773,
+          "wear25": 0.292885,
+          "wear50": 0.193371,
+          "wear75": 0.07797
+        }
+      },
+      {
+        "unit": "W50_F50_S",
+        "round": 2,
+        "actual": "wear50",
+        "predicted": "healthy",
+        "probabilities": {
+          "healthy": 0.369632,
+          "wear25": 0.282615,
+          "wear50": 0.338755,
+          "wear75": 0.008998
+        }
+      },
+      {
+        "unit": "W75_F50_S",
+        "round": 2,
+        "actual": "wear75",
+        "predicted": "wear75",
+        "probabilities": {
+          "healthy": 0.078477,
+          "wear25": 0.001023,
+          "wear50": 0.001034,
+          "wear75": 0.919466
+        }
+      },
+      {
+        "unit": "H_F60_S",
+        "round": 3,
+        "actual": "healthy",
+        "predicted": "healthy",
+        "probabilities": {
+          "healthy": 0.36549,
+          "wear25": 0.216376,
+          "wear50": 0.224796,
+          "wear75": 0.193337
+        }
+      },
+      {
+        "unit": "W25_F60_S",
+        "round": 3,
+        "actual": "wear25",
+        "predicted": "wear50",
+        "probabilities": {
+          "healthy": 0.141838,
+          "wear25": 0.18977,
+          "wear50": 0.656558,
+          "wear75": 0.011834
+        }
+      },
+      {
+        "unit": "W50_F60_S",
+        "round": 3,
+        "actual": "wear50",
+        "predicted": "wear50",
+        "probabilities": {
+          "healthy": 0.170936,
+          "wear25": 0.123321,
+          "wear50": 0.656234,
+          "wear75": 0.049509
+        }
+      },
+      {
+        "unit": "W75_F60_S",
+        "round": 3,
+        "actual": "wear75",
+        "predicted": "wear75",
+        "probabilities": {
+          "healthy": 0.374471,
+          "wear25": 0.041761,
+          "wear50": 0.018533,
+          "wear75": 0.565236
+        }
+      }
+    ],
+    "seconds": 123.0
+  },
+  "sensor_wheel_loader": {
+    "reproduced": {
+      "confusion_matrix_identical": true,
+      "choices_identical": true,
+      "accuracy": 0.3125,
+      "archived_accuracy": 0.3125,
+      "balanced_accuracy": 0.3125,
+      "macro_f1": 0.3254,
+      "chosen_per_round": [
+        {
+          "feature_set": "vibration",
+          "model": "Extra trees",
+          "validation_macro_f1": 0.2222
+        },
+        {
+          "feature_set": "vibration",
+          "model": "Extra trees",
+          "validation_macro_f1": 0.1306
+        },
+        {
+          "feature_set": "vibration",
+          "model": "Extra trees",
+          "validation_macro_f1": 0.1222
+        },
+        {
+          "feature_set": "vibration",
+          "model": "Logistic regression",
+          "validation_macro_f1": 0.2
+        }
+      ]
+    },
+    "accuracy_wilson_95": [
+      0.1416,
+      0.556
+    ],
+    "calibration": {
+      "recordings": 16,
+      "brier": 0.8168,
+      "ece_top_label_5_bins": 0.1659,
+      "mean_confidence": 0.4603,
+      "accuracy": 0.3125,
+      "mean_confidence_when_correct": 0.5252,
+      "mean_confidence_when_wrong": 0.4308,
+      "wrong_with_confidence_over_0_9": 0,
+      "reliability": [
+        {
+          "bin": [
+            0.2,
+            0.4
+          ],
+          "recordings": 7,
+          "mean_confidence": 0.3308,
+          "accuracy": 0.2857
+        },
+        {
+          "bin": [
+            0.4,
+            0.6
+          ],
+          "recordings": 6,
+          "mean_confidence": 0.4722,
+          "accuracy": 0.1667
+        },
+        {
+          "bin": [
+            0.6,
+            0.8
+          ],
+          "recordings": 2,
+          "mean_confidence": 0.6803,
+          "accuracy": 0.5
+        },
+        {
+          "bin": [
+            0.8,
+            1.0
+          ],
+          "recordings": 1,
+          "mean_confidence": 0.8545,
+          "accuracy": 1.0
+        }
+      ]
+    },
+    "leakage": {
+      "recordings": 16,
+      "one_class_per_recording": true,
+      "one_holdout_group_per_recording": true,
+      "one_inner_group_per_recording": true,
+      "held_out_groups_match_declared": true,
+      "no_recording_on_both_sides": true,
+      "every_recording_tested_once": true,
+      "identical_feature_rows_in_more_than_one_recording": 0,
+      "identical_feature_rows_across_train_and_test": 0,
+      "test_recordings_per_round": [
+        4,
+        4,
+        4,
+        4
+      ],
+      "class_counts_per_round": [
+        {
+          "bearing": 1,
+          "broken_bar": 1,
+          "half_broken_bar": 1,
+          "healthy": 1
+        },
+        {
+          "bearing": 1,
+          "broken_bar": 1,
+          "half_broken_bar": 1,
+          "healthy": 1
+        },
+        {
+          "bearing": 1,
+          "broken_bar": 1,
+          "half_broken_bar": 1,
+          "healthy": 1
+        },
+        {
+          "bearing": 1,
+          "broken_bar": 1,
+          "half_broken_bar": 1,
+          "healthy": 1
+        }
+      ]
+    },
+    "recordings": [
+      {
+        "unit": "BD_F5_S",
+        "round": 0,
+        "actual": "bearing",
+        "predicted": "half_broken_bar",
+        "probabilities": {
+          "bearing": 0.083702,
+          "broken_bar": 0.302379,
+          "half_broken_bar": 0.384748,
+          "healthy": 0.229171
+        }
+      },
+      {
+        "unit": "HB_F5_S",
+        "round": 0,
+        "actual": "half_broken_bar",
+        "predicted": "half_broken_bar",
+        "probabilities": {
+          "bearing": 0.091819,
+          "broken_bar": 0.281088,
+          "half_broken_bar": 0.386726,
+          "healthy": 0.240366
+        }
+      },
+      {
+        "unit": "H_F5_S",
+        "round": 0,
+        "actual": "healthy",
+        "predicted": "half_broken_bar",
+        "probabilities": {
+          "bearing": 0.100243,
+          "broken_bar": 0.257484,
+          "half_broken_bar": 0.403452,
+          "healthy": 0.238821
+        }
+      },
+      {
+        "unit": "OB_F5_S",
+        "round": 0,
+        "actual": "broken_bar",
+        "predicted": "half_broken_bar",
+        "probabilities": {
+          "bearing": 0.09629,
+          "broken_bar": 0.283695,
+          "half_broken_bar": 0.386837,
+          "healthy": 0.233178
+        }
+      },
+      {
+        "unit": "BD_F15_S",
+        "round": 1,
+        "actual": "bearing",
+        "predicted": "bearing",
+        "probabilities": {
+          "bearing": 0.306999,
+          "broken_bar": 0.204295,
+          "half_broken_bar": 0.195322,
+          "healthy": 0.293384
+        }
+      },
+      {
+        "unit": "HB_F15_S",
+        "round": 1,
+        "actual": "half_broken_bar",
+        "predicted": "healthy",
+        "probabilities": {
+          "bearing": 0.274497,
+          "broken_bar": 0.216576,
+          "half_broken_bar": 0.203569,
+          "healthy": 0.305358
+        }
+      },
+      {
+        "unit": "H_F15_S",
+        "round": 1,
+        "actual": "healthy",
+        "predicted": "half_broken_bar",
+        "probabilities": {
+          "bearing": 0.257768,
+          "broken_bar": 0.248199,
+          "half_broken_bar": 0.261923,
+          "healthy": 0.23211
+        }
+      },
+      {
+        "unit": "OB_F15_S",
+        "round": 1,
+        "actual": "broken_bar",
+        "predicted": "bearing",
+        "probabilities": {
+          "bearing": 0.28314,
+          "broken_bar": 0.219562,
+          "half_broken_bar": 0.223437,
+          "healthy": 0.273862
+        }
+      },
+      {
+        "unit": "BD_F50_S",
+        "round": 2,
+        "actual": "bearing",
+        "predicted": "healthy",
+        "probabilities": {
+          "bearing": 0.052594,
+          "broken_bar": 0.336813,
+          "half_broken_bar": 0.145228,
+          "healthy": 0.465365
+        }
+      },
+      {
+        "unit": "HB_F50_S",
+        "round": 2,
+        "actual": "half_broken_bar",
+        "predicted": "healthy",
+        "probabilities": {
+          "bearing": 0.049634,
+          "broken_bar": 0.432623,
+          "half_broken_bar": 0.044705,
+          "healthy": 0.473039
+        }
+      },
+      {
+        "unit": "H_F50_S",
+        "round": 2,
+        "actual": "healthy",
+        "predicted": "healthy",
+        "probabilities": {
+          "bearing": 0.066247,
+          "broken_bar": 0.270829,
+          "half_broken_bar": 0.050141,
+          "healthy": 0.612783
+        }
+      },
+      {
+        "unit": "OB_F50_S",
+        "round": 2,
+        "actual": "broken_bar",
+        "predicted": "healthy",
+        "probabilities": {
+          "bearing": 0.069747,
+          "broken_bar": 0.356956,
+          "half_broken_bar": 0.09655,
+          "healthy": 0.476748
+        }
+      },
+      {
+        "unit": "BD_F60_S",
+        "round": 3,
+        "actual": "bearing",
+        "predicted": "bearing",
+        "probabilities": {
+          "bearing": 0.464785,
+          "broken_bar": 0.408985,
+          "half_broken_bar": 0.004031,
+          "healthy": 0.122199
+        }
+      },
+      {
+        "unit": "HB_F60_S",
+        "round": 3,
+        "actual": "half_broken_bar",
+        "predicted": "broken_bar",
+        "probabilities": {
+          "bearing": 0.327536,
+          "broken_bar": 0.549968,
+          "half_broken_bar": 0.015556,
+          "healthy": 0.10694
+        }
+      },
+      {
+        "unit": "H_F60_S",
+        "round": 3,
+        "actual": "healthy",
+        "predicted": "broken_bar",
+        "probabilities": {
+          "bearing": 0.044843,
+          "broken_bar": 0.747792,
+          "half_broken_bar": 0.128497,
+          "healthy": 0.078867
+        }
+      },
+      {
+        "unit": "OB_F60_S",
+        "round": 3,
+        "actual": "broken_bar",
+        "predicted": "broken_bar",
+        "probabilities": {
+          "bearing": 0.043109,
+          "broken_bar": 0.854516,
+          "half_broken_bar": 0.078166,
+          "healthy": 0.024209
+        }
+      }
+    ],
+    "seconds": 84.1
+  },
+  "sensor_drill_rig": {
+    "reproduced": {
+      "confusion_matrix_identical": true,
+      "choices_identical": true,
+      "accuracy": 0.7333,
+      "archived_accuracy": 0.7333,
+      "balanced_accuracy": 0.6806,
+      "macro_f1": 0.7054,
+      "chosen_per_round": [
+        {
+          "feature_set": "vibration",
+          "model": "Logistic regression",
+          "validation_macro_f1": 0.5523
+        },
+        {
+          "feature_set": "vibration",
+          "model": "Random forest",
+          "validation_macro_f1": 0.487
+        },
+        {
+          "feature_set": "vibration",
+          "model": "Gradient boosting",
+          "validation_macro_f1": 0.7194
+        }
+      ]
+    },
+    "accuracy_wilson_95": [
+      0.6479,
+      0.8043
+    ],
+    "calibration": {
+      "recordings": 120,
+      "brier": 0.4062,
+      "ece_top_label_5_bins": 0.1395,
+      "mean_confidence": 0.6372,
+      "accuracy": 0.7333,
+      "mean_confidence_when_correct": 0.6693,
+      "mean_confidence_when_wrong": 0.5489,
+      "wrong_with_confidence_over_0_9": 0,
+      "reliability": [
+        {
+          "bin": [
+            0.2,
+            0.4
+          ],
+          "recordings": 11,
+          "mean_confidence": 0.3732,
+          "accuracy": 0.3636
+        },
+        {
+          "bin": [
+            0.4,
+            0.6
+          ],
+          "recordings": 47,
+          "mean_confidence": 0.4655,
+          "accuracy": 0.766
+        },
+        {
+          "bin": [
+            0.6,
+            0.8
+          ],
+          "recordings": 29,
+          "mean_confidence": 0.7068,
+          "accuracy": 0.6207
+        },
+        {
+          "bin": [
+            0.8,
+            1.0
+          ],
+          "recordings": 33,
+          "mean_confidence": 0.9084,
+          "accuracy": 0.9091
+        }
+      ]
+    },
+    "leakage": {
+      "recordings": 120,
+      "one_class_per_recording": true,
+      "one_holdout_group_per_recording": true,
+      "one_inner_group_per_recording": true,
+      "held_out_groups_match_declared": true,
+      "no_recording_on_both_sides": true,
+      "every_recording_tested_once": true,
+      "identical_feature_rows_in_more_than_one_recording": 0,
+      "identical_feature_rows_across_train_and_test": 0,
+      "test_recordings_per_round": [
+        40,
+        40,
+        40
+      ],
+      "class_counts_per_round": [
+        {
+          "gear_pitting": 12,
+          "gear_wear": 12,
+          "healthy": 4,
+          "tooth_crack": 12
+        },
+        {
+          "gear_pitting": 12,
+          "gear_wear": 12,
+          "healthy": 4,
+          "tooth_crack": 12
+        },
+        {
+          "gear_pitting": 12,
+          "gear_wear": 12,
+          "healthy": 4,
+          "tooth_crack": 12
+        }
+      ]
+    },
+    "recordings": [
+      {
+        "unit": "gear_pitting_H_speed_circulation_10Nm-1000rpm",
+        "round": 0,
+        "actual": "gear_pitting",
+        "predicted": "gear_pitting",
+        "probabilities": {
+          "gear_pitting": 0.96023,
+          "gear_wear": 0.000584,
+          "healthy": 0.034187,
+          "tooth_crack": 0.004999
+        }
+      },
+      {
+        "unit": "gear_pitting_H_speed_circulation_20Nm-1000rpm",
+        "round": 0,
+        "actual": "gear_pitting",
+        "predicted": "gear_pitting",
+        "probabilities": {
+          "gear_pitting": 0.94076,
+          "gear_wear": 0.003594,
+          "healthy": 0.019879,
+          "tooth_crack": 0.035767
+        }
+      },
+      {
+        "unit": "gear_pitting_H_torque_circulation_1000rpm_10Nm",
+        "round": 0,
+        "actual": "gear_pitting",
+        "predicted": "gear_pitting",
+        "probabilities": {
+          "gear_pitting": 0.978216,
+          "gear_wear": 0.002702,
+          "healthy": 0.013636,
+          "tooth_crack": 0.005446
+        }
+      },
+      {
+        "unit": "gear_pitting_H_torque_circulation_1000rpm_20Nm",
+        "round": 0,
+        "actual": "gear_pitting",
+        "predicted": "gear_pitting",
+        "probabilities": {
+          "gear_pitting": 0.977225,
+          "gear_wear": 0.000188,
+          "healthy": 0.018756,
+          "tooth_crack": 0.003831
+        }
+      },
+      {
+        "unit": "gear_pitting_L_speed_circulation_10Nm-1000rpm",
+        "round": 0,
+        "actual": "gear_pitting",
+        "predicted": "gear_pitting",
+        "probabilities": {
+          "gear_pitting": 0.959249,
+          "gear_wear": 3e-05,
+          "healthy": 0.028687,
+          "tooth_crack": 0.012034
+        }
+      },
+      {
+        "unit": "gear_pitting_L_speed_circulation_20Nm-1000rpm",
+        "round": 0,
+        "actual": "gear_pitting",
+        "predicted": "gear_pitting",
+        "probabilities": {
+          "gear_pitting": 0.901217,
+          "gear_wear": 0.001637,
+          "healthy": 0.040783,
+          "tooth_crack": 0.056363
+        }
+      },
+      {
+        "unit": "gear_pitting_L_torque_circulation_1000rpm_10Nm",
+        "round": 0,
+        "actual": "gear_pitting",
+        "predicted": "gear_pitting",
+        "probabilities": {
+          "gear_pitting": 0.983132,
+          "gear_wear": 0.000144,
+          "healthy": 0.010982,
+          "tooth_crack": 0.005741
+        }
+      },
+      {
+        "unit": "gear_pitting_L_torque_circulation_1000rpm_20Nm",
+        "round": 0,
+        "actual": "gear_pitting",
+        "predicted": "gear_pitting",
+        "probabilities": {
+          "gear_pitting": 0.978505,
+          "gear_wear": 7e-05,
+          "healthy": 0.018393,
+          "tooth_crack": 0.003033
+        }
+      },
+      {
+        "unit": "gear_pitting_M_speed_circulation_10Nm-1000rpm",
+        "round": 0,
+        "actual": "gear_pitting",
+        "predicted": "gear_pitting",
+        "probabilities": {
+          "gear_pitting": 0.946724,
+          "gear_wear": 0.000863,
+          "healthy": 0.029435,
+          "tooth_crack": 0.022977
+        }
+      },
+      {
+        "unit": "gear_pitting_M_speed_circulation_20Nm-1000rpm",
+        "round": 0,
+        "actual": "gear_pitting",
+        "predicted": "gear_pitting",
+        "probabilities": {
+          "gear_pitting": 0.909026,
+          "gear_wear": 0.018844,
+          "healthy": 0.043865,
+          "tooth_crack": 0.028265
+        }
+      },
+      {
+        "unit": "gear_pitting_M_torque_circulation_1000rpm_10Nm",
+        "round": 0,
+        "actual": "gear_pitting",
+        "predicted": "gear_pitting",
+        "probabilities": {
+          "gear_pitting": 0.965791,
+          "gear_wear": 0.000934,
+          "healthy": 0.030534,
+          "tooth_crack": 0.002741
+        }
+      },
+      {
+        "unit": "gear_pitting_M_torque_circulation_1000rpm_20Nm",
+        "round": 0,
+        "actual": "gear_pitting",
+        "predicted": "gear_pitting",
+        "probabilities": {
+          "gear_pitting": 0.980248,
+          "gear_wear": 0.000266,
+          "healthy": 0.016137,
+          "tooth_crack": 0.003348
+        }
+      },
+      {
+        "unit": "gear_wear_H_speed_circulation_10Nm-1000rpm",
+        "round": 0,
+        "actual": "gear_wear",
+        "predicted": "gear_wear",
+        "probabilities": {
+          "gear_pitting": 0.067502,
+          "gear_wear": 0.703716,
+          "healthy": 0.09008,
+          "tooth_crack": 0.138702
+        }
+      },
+      {
+        "unit": "gear_wear_H_speed_circulation_20Nm-1000rpm",
+        "round": 0,
+        "actual": "gear_wear",
+        "predicted": "gear_wear",
+        "probabilities": {
+          "gear_pitting": 0.042585,
+          "gear_wear": 0.72551,
+          "healthy": 0.098948,
+          "tooth_crack": 0.132956
+        }
+      },
+      {
+        "unit": "gear_wear_H_torque_circulation_1000rpm_10Nm",
+        "round": 0,
+        "actual": "gear_wear",
+        "predicted": "gear_wear",
+        "probabilities": {
+          "gear_pitting": 7.2e-05,
+          "gear_wear": 0.935134,
+          "healthy": 0.058414,
+          "tooth_crack": 0.00638
+        }
+      },
+      {
+        "unit": "gear_wear_H_torque_circulation_1000rpm_20Nm",
+        "round": 0,
+        "actual": "gear_wear",
+        "predicted": "gear_wear",
+        "probabilities": {
+          "gear_pitting": 0.00368,
+          "gear_wear": 0.911453,
+          "healthy": 0.060998,
+          "tooth_crack": 0.023869
+        }
+      },
+      {
+        "unit": "gear_wear_L_speed_circulation_10Nm-1000rpm",
+        "round": 0,
+        "actual": "gear_wear",
+        "predicted": "gear_wear",
+        "probabilities": {
+          "gear_pitting": 0.057198,
+          "gear_wear": 0.534379,
+          "healthy": 0.056382,
+          "tooth_crack": 0.352041
+        }
+      },
+      {
+        "unit": "gear_wear_L_speed_circulation_20Nm-1000rpm",
+        "round": 0,
+        "actual": "gear_wear",
+        "predicted": "gear_wear",
+        "probabilities": {
+          "gear_pitting": 0.018969,
+          "gear_wear": 0.516393,
+          "healthy": 0.180646,
+          "tooth_crack": 0.283992
+        }
+      },
+      {
+        "unit": "gear_wear_L_torque_circulation_1000rpm_10Nm",
+        "round": 0,
+        "actual": "gear_wear",
+        "predicted": "gear_wear",
+        "probabilities": {
+          "gear_pitting": 0.004582,
+          "gear_wear": 0.886699,
+          "healthy": 0.081833,
+          "tooth_crack": 0.026886
+        }
+      },
+      {
+        "unit": "gear_wear_L_torque_circulation_1000rpm_20Nm",
+        "round": 0,
+        "actual": "gear_wear",
+        "predicted": "gear_wear",
+        "probabilities": {
+          "gear_pitting": 0.003989,
+          "gear_wear": 0.869178,
+          "healthy": 0.095174,
+          "tooth_crack": 0.031659
+        }
+      },
+      {
+        "unit": "gear_wear_M_speed_circulation_10Nm-1000rpm",
+        "round": 0,
+        "actual": "gear_wear",
+        "predicted": "gear_wear",
+        "probabilities": {
+          "gear_pitting": 0.012713,
+          "gear_wear": 0.620815,
+          "healthy": 0.119189,
+          "tooth_crack": 0.247284
+        }
+      },
+      {
+        "unit": "gear_wear_M_speed_circulation_20Nm-1000rpm",
+        "round": 0,
+        "actual": "gear_wear",
+        "predicted": "gear_wear",
+        "probabilities": {
+          "gear_pitting": 0.01146,
+          "gear_wear": 0.56962,
+          "healthy": 0.254342,
+          "tooth_crack": 0.164579
+        }
+      },
+      {
+        "unit": "gear_wear_M_torque_circulation_1000rpm_10Nm",
+        "round": 0,
+        "actual": "gear_wear",
+        "predicted": "gear_wear",
+        "probabilities": {
+          "gear_pitting": 0.000761,
+          "gear_wear": 0.956137,
+          "healthy": 0.032993,
+          "tooth_crack": 0.010109
+        }
+      },
+      {
+        "unit": "gear_wear_M_torque_circulation_1000rpm_20Nm",
+        "round": 0,
+        "actual": "gear_wear",
+        "predicted": "gear_wear",
+        "probabilities": {
+          "gear_pitting": 0.003137,
+          "gear_wear": 0.851508,
+          "healthy": 0.126399,
+          "tooth_crack": 0.018957
+        }
+      },
+      {
+        "unit": "health_speed_circulation_10Nm-1000rpm",
+        "round": 0,
+        "actual": "healthy",
+        "predicted": "healthy",
+        "probabilities": {
+          "gear_pitting": 0.022947,
+          "gear_wear": 0.080729,
+          "healthy": 0.787803,
+          "tooth_crack": 0.108521
+        }
+      },
+      {
+        "unit": "health_speed_circulation_20Nm-1000rpm",
+        "round": 0,
+        "actual": "healthy",
+        "predicted": "healthy",
+        "probabilities": {
+          "gear_pitting": 0.031223,
+          "gear_wear": 0.056794,
+          "healthy": 0.799061,
+          "tooth_crack": 0.112922
+        }
+      },
+      {
+        "unit": "health_torque_circulation_1000rpm_10Nm",
+        "round": 0,
+        "actual": "healthy",
+        "predicted": "healthy",
+        "probabilities": {
+          "gear_pitting": 0.009771,
+          "gear_wear": 0.00174,
+          "healthy": 0.98639,
+          "tooth_crack": 0.002099
+        }
+      },
+      {
+        "unit": "health_torque_circulation_1000rpm_20Nm",
+        "round": 0,
+        "actual": "healthy",
+        "predicted": "healthy",
+        "probabilities": {
+          "gear_pitting": 0.00039,
+          "gear_wear": 0.015704,
+          "healthy": 0.982909,
+          "tooth_crack": 0.000997
+        }
+      },
+      {
+        "unit": "teeth_crack_H_speed_circulation_10Nm-1000rpm",
+        "round": 0,
+        "actual": "tooth_crack",
+        "predicted": "tooth_crack",
+        "probabilities": {
+          "gear_pitting": 0.015352,
+          "gear_wear": 0.007068,
+          "healthy": 0.143378,
+          "tooth_crack": 0.834202
+        }
+      },
+      {
+        "unit": "teeth_crack_H_speed_circulation_20Nm-1000rpm",
+        "round": 0,
+        "actual": "tooth_crack",
+        "predicted": "tooth_crack",
+        "probabilities": {
+          "gear_pitting": 0.019264,
+          "gear_wear": 0.009781,
+          "healthy": 0.342858,
+          "tooth_crack": 0.628097
+        }
+      },
+      {
+        "unit": "teeth_crack_H_torque_circulation_1000rpm_10Nm",
+        "round": 0,
+        "actual": "tooth_crack",
+        "predicted": "tooth_crack",
+        "probabilities": {
+          "gear_pitting": 0.000167,
+          "gear_wear": 0.003375,
+          "healthy": 0.472853,
+          "tooth_crack": 0.523604
+        }
+      },
+      {
+        "unit": "teeth_crack_H_torque_circulation_1000rpm_20Nm",
+        "round": 0,
+        "actual": "tooth_crack",
+        "predicted": "healthy",
+        "probabilities": {
+          "gear_pitting": 0.001351,
+          "gear_wear": 0.001201,
+          "healthy": 0.673535,
+          "tooth_crack": 0.323913
+        }
+      },
+      {
+        "unit": "teeth_crack_L_speed_circulation_10Nm-1000rpm",
+        "round": 0,
+        "actual": "tooth_crack",
+        "predicted": "tooth_crack",
+        "probabilities": {
+          "gear_pitting": 0.061057,
+          "gear_wear": 0.301139,
+          "healthy": 0.076883,
+          "tooth_crack": 0.560921
+        }
+      },
+      {
+        "unit": "teeth_crack_L_speed_circulation_20Nm-1000rpm",
+        "round": 0,
+        "actual": "tooth_crack",
+        "predicted": "tooth_crack",
+        "probabilities": {
+          "gear_pitting": 0.044064,
+          "gear_wear": 0.343592,
+          "healthy": 0.157461,
+          "tooth_crack": 0.454883
+        }
+      },
+      {
+        "unit": "teeth_crack_L_torque_circulation_1000rpm_10Nm",
+        "round": 0,
+        "actual": "tooth_crack",
+        "predicted": "gear_wear",
+        "probabilities": {
+          "gear_pitting": 0.019281,
+          "gear_wear": 0.828241,
+          "healthy": 0.129264,
+          "tooth_crack": 0.023215
+        }
+      },
+      {
+        "unit": "teeth_crack_L_torque_circulation_1000rpm_20Nm",
+        "round": 0,
+        "actual": "tooth_crack",
+        "predicted": "gear_wear",
+        "probabilities": {
+          "gear_pitting": 0.011954,
+          "gear_wear": 0.654243,
+          "healthy": 0.090833,
+          "tooth_crack": 0.242971
+        }
+      },
+      {
+        "unit": "teeth_crack_M_speed_circulation_10Nm-1000rpm",
+        "round": 0,
+        "actual": "tooth_crack",
+        "predicted": "tooth_crack",
+        "probabilities": {
+          "gear_pitting": 0.031078,
+          "gear_wear": 0.037031,
+          "healthy": 0.05186,
+          "tooth_crack": 0.88003
+        }
+      },
+      {
+        "unit": "teeth_crack_M_speed_circulation_20Nm-1000rpm",
+        "round": 0,
+        "actual": "tooth_crack",
+        "predicted": "tooth_crack",
+        "probabilities": {
+          "gear_pitting": 0.028495,
+          "gear_wear": 0.093671,
+          "healthy": 0.060272,
+          "tooth_crack": 0.817562
+        }
+      },
+      {
+        "unit": "teeth_crack_M_torque_circulation_1000rpm_10Nm",
+        "round": 0,
+        "actual": "tooth_crack",
+        "predicted": "tooth_crack",
+        "probabilities": {
+          "gear_pitting": 0.006044,
+          "gear_wear": 0.174183,
+          "healthy": 0.013776,
+          "tooth_crack": 0.805997
+        }
+      },
+      {
+        "unit": "teeth_crack_M_torque_circulation_1000rpm_20Nm",
+        "round": 0,
+        "actual": "tooth_crack",
+        "predicted": "tooth_crack",
+        "probabilities": {
+          "gear_pitting": 0.008179,
+          "gear_wear": 0.109921,
+          "healthy": 0.029824,
+          "tooth_crack": 0.852076
+        }
+      },
+      {
+        "unit": "gear_pitting_H_speed_circulation_10Nm-2000rpm",
+        "round": 1,
+        "actual": "gear_pitting",
+        "predicted": "gear_pitting",
+        "probabilities": {
+          "gear_pitting": 0.524802,
+          "gear_wear": 0.166556,
+          "healthy": 0.060941,
+          "tooth_crack": 0.247701
+        }
+      },
+      {
+        "unit": "gear_pitting_H_speed_circulation_20Nm-2000rpm",
+        "round": 1,
+        "actual": "gear_pitting",
+        "predicted": "gear_pitting",
+        "probabilities": {
+          "gear_pitting": 0.621044,
+          "gear_wear": 0.156151,
+          "healthy": 0.054675,
+          "tooth_crack": 0.16813
+        }
+      },
+      {
+        "unit": "gear_pitting_H_torque_circulation_2000rpm_10Nm",
+        "round": 1,
+        "actual": "gear_pitting",
+        "predicted": "gear_pitting",
+        "probabilities": {
+          "gear_pitting": 0.436264,
+          "gear_wear": 0.164863,
+          "healthy": 0.075653,
+          "tooth_crack": 0.32322
+        }
+      },
+      {
+        "unit": "gear_pitting_H_torque_circulation_2000rpm_20Nm",
+        "round": 1,
+        "actual": "gear_pitting",
+        "predicted": "gear_pitting",
+        "probabilities": {
+          "gear_pitting": 0.4127,
+          "gear_wear": 0.253555,
+          "healthy": 0.093508,
+          "tooth_crack": 0.240237
+        }
+      },
+      {
+        "unit": "gear_pitting_L_speed_circulation_10Nm-2000rpm",
+        "round": 1,
+        "actual": "gear_pitting",
+        "predicted": "gear_pitting",
+        "probabilities": {
+          "gear_pitting": 0.672647,
+          "gear_wear": 0.085859,
+          "healthy": 0.03842,
+          "tooth_crack": 0.203074
+        }
+      },
+      {
+        "unit": "gear_pitting_L_speed_circulation_20Nm-2000rpm",
+        "round": 1,
+        "actual": "gear_pitting",
+        "predicted": "gear_pitting",
+        "probabilities": {
+          "gear_pitting": 0.674959,
+          "gear_wear": 0.099647,
+          "healthy": 0.041292,
+          "tooth_crack": 0.184101
+        }
+      },
+      {
+        "unit": "gear_pitting_L_torque_circulation_2000rpm_10Nm",
+        "round": 1,
+        "actual": "gear_pitting",
+        "predicted": "gear_pitting",
+        "probabilities": {
+          "gear_pitting": 0.589539,
+          "gear_wear": 0.08141,
+          "healthy": 0.055594,
+          "tooth_crack": 0.273457
+        }
+      },
+      {
+        "unit": "gear_pitting_L_torque_circulation_2000rpm_20Nm",
+        "round": 1,
+        "actual": "gear_pitting",
+        "predicted": "gear_pitting",
+        "probabilities": {
+          "gear_pitting": 0.539745,
+          "gear_wear": 0.110687,
+          "healthy": 0.047956,
+          "tooth_crack": 0.301613
+        }
+      },
+      {
+        "unit": "gear_pitting_M_speed_circulation_10Nm-2000rpm",
+        "round": 1,
+        "actual": "gear_pitting",
+        "predicted": "gear_pitting",
+        "probabilities": {
+          "gear_pitting": 0.535022,
+          "gear_wear": 0.155779,
+          "healthy": 0.062335,
+          "tooth_crack": 0.246864
+        }
+      },
+      {
+        "unit": "gear_pitting_M_speed_circulation_20Nm-2000rpm",
+        "round": 1,
+        "actual": "gear_pitting",
+        "predicted": "gear_pitting",
+        "probabilities": {
+          "gear_pitting": 0.620544,
+          "gear_wear": 0.150676,
+          "healthy": 0.056836,
+          "tooth_crack": 0.171944
+        }
+      },
+      {
+        "unit": "gear_pitting_M_torque_circulation_2000rpm_10Nm",
+        "round": 1,
+        "actual": "gear_pitting",
+        "predicted": "gear_pitting",
+        "probabilities": {
+          "gear_pitting": 0.393844,
+          "gear_wear": 0.143314,
+          "healthy": 0.117654,
+          "tooth_crack": 0.345188
+        }
+      },
+      {
+        "unit": "gear_pitting_M_torque_circulation_2000rpm_20Nm",
+        "round": 1,
+        "actual": "gear_pitting",
+        "predicted": "gear_pitting",
+        "probabilities": {
+          "gear_pitting": 0.414733,
+          "gear_wear": 0.206429,
+          "healthy": 0.085079,
+          "tooth_crack": 0.293759
+        }
+      },
+      {
+        "unit": "gear_wear_H_speed_circulation_10Nm-2000rpm",
+        "round": 1,
+        "actual": "gear_wear",
+        "predicted": "gear_wear",
+        "probabilities": {
+          "gear_pitting": 0.073857,
+          "gear_wear": 0.484271,
+          "healthy": 0.139605,
+          "tooth_crack": 0.302267
+        }
+      },
+      {
+        "unit": "gear_wear_H_speed_circulation_20Nm-2000rpm",
+        "round": 1,
+        "actual": "gear_wear",
+        "predicted": "gear_wear",
+        "probabilities": {
+          "gear_pitting": 0.185426,
+          "gear_wear": 0.423263,
+          "healthy": 0.113323,
+          "tooth_crack": 0.277989
+        }
+      },
+      {
+        "unit": "gear_wear_H_torque_circulation_2000rpm_10Nm",
+        "round": 1,
+        "actual": "gear_wear",
+        "predicted": "gear_wear",
+        "probabilities": {
+          "gear_pitting": 0.114528,
+          "gear_wear": 0.44187,
+          "healthy": 0.128445,
+          "tooth_crack": 0.315157
+        }
+      },
+      {
+        "unit": "gear_wear_H_torque_circulation_2000rpm_20Nm",
+        "round": 1,
+        "actual": "gear_wear",
+        "predicted": "gear_wear",
+        "probabilities": {
+          "gear_pitting": 0.109087,
+          "gear_wear": 0.437298,
+          "healthy": 0.147951,
+          "tooth_crack": 0.305664
+        }
+      },
+      {
+        "unit": "gear_wear_L_speed_circulation_10Nm-2000rpm",
+        "round": 1,
+        "actual": "gear_wear",
+        "predicted": "gear_wear",
+        "probabilities": {
+          "gear_pitting": 0.071573,
+          "gear_wear": 0.506113,
+          "healthy": 0.123905,
+          "tooth_crack": 0.298409
+        }
+      },
+      {
+        "unit": "gear_wear_L_speed_circulation_20Nm-2000rpm",
+        "round": 1,
+        "actual": "gear_wear",
+        "predicted": "gear_wear",
+        "probabilities": {
+          "gear_pitting": 0.147164,
+          "gear_wear": 0.460955,
+          "healthy": 0.135775,
+          "tooth_crack": 0.256106
+        }
+      },
+      {
+        "unit": "gear_wear_L_torque_circulation_2000rpm_10Nm",
+        "round": 1,
+        "actual": "gear_wear",
+        "predicted": "gear_wear",
+        "probabilities": {
+          "gear_pitting": 0.108187,
+          "gear_wear": 0.447272,
+          "healthy": 0.124048,
+          "tooth_crack": 0.320493
+        }
+      },
+      {
+        "unit": "gear_wear_L_torque_circulation_2000rpm_20Nm",
+        "round": 1,
+        "actual": "gear_wear",
+        "predicted": "gear_wear",
+        "probabilities": {
+          "gear_pitting": 0.081473,
+          "gear_wear": 0.49364,
+          "healthy": 0.158456,
+          "tooth_crack": 0.266432
+        }
+      },
+      {
+        "unit": "gear_wear_M_speed_circulation_10Nm-2000rpm",
+        "round": 1,
+        "actual": "gear_wear",
+        "predicted": "gear_wear",
+        "probabilities": {
+          "gear_pitting": 0.060107,
+          "gear_wear": 0.451624,
+          "healthy": 0.161665,
+          "tooth_crack": 0.326604
+        }
+      },
+      {
+        "unit": "gear_wear_M_speed_circulation_20Nm-2000rpm",
+        "round": 1,
+        "actual": "gear_wear",
+        "predicted": "gear_wear",
+        "probabilities": {
+          "gear_pitting": 0.164636,
+          "gear_wear": 0.419044,
+          "healthy": 0.130255,
+          "tooth_crack": 0.286065
+        }
+      },
+      {
+        "unit": "gear_wear_M_torque_circulation_2000rpm_10Nm",
+        "round": 1,
+        "actual": "gear_wear",
+        "predicted": "gear_wear",
+        "probabilities": {
+          "gear_pitting": 0.089316,
+          "gear_wear": 0.413257,
+          "healthy": 0.127052,
+          "tooth_crack": 0.370375
+        }
+      },
+      {
+        "unit": "gear_wear_M_torque_circulation_2000rpm_20Nm",
+        "round": 1,
+        "actual": "gear_wear",
+        "predicted": "gear_wear",
+        "probabilities": {
+          "gear_pitting": 0.097943,
+          "gear_wear": 0.430387,
+          "healthy": 0.109741,
+          "tooth_crack": 0.36193
+        }
+      },
+      {
+        "unit": "health_speed_circulation_10Nm-2000rpm",
+        "round": 1,
+        "actual": "healthy",
+        "predicted": "gear_wear",
+        "probabilities": {
+          "gear_pitting": 0.08854,
+          "gear_wear": 0.388805,
+          "healthy": 0.232069,
+          "tooth_crack": 0.290586
+        }
+      },
+      {
+        "unit": "health_speed_circulation_20Nm-2000rpm",
+        "round": 1,
+        "actual": "healthy",
+        "predicted": "gear_wear",
+        "probabilities": {
+          "gear_pitting": 0.154186,
+          "gear_wear": 0.402609,
+          "healthy": 0.20143,
+          "tooth_crack": 0.241775
+        }
+      },
+      {
+        "unit": "health_torque_circulation_2000rpm_10Nm",
+        "round": 1,
+        "actual": "healthy",
+        "predicted": "gear_wear",
+        "probabilities": {
+          "gear_pitting": 0.12527,
+          "gear_wear": 0.336352,
+          "healthy": 0.246351,
+          "tooth_crack": 0.292027
+        }
+      },
+      {
+        "unit": "health_torque_circulation_2000rpm_20Nm",
+        "round": 1,
+        "actual": "healthy",
+        "predicted": "gear_wear",
+        "probabilities": {
+          "gear_pitting": 0.152509,
+          "gear_wear": 0.383129,
+          "healthy": 0.210559,
+          "tooth_crack": 0.253804
+        }
+      },
+      {
+        "unit": "teeth_crack_H_speed_circulation_10Nm-2000rpm",
+        "round": 1,
+        "actual": "tooth_crack",
+        "predicted": "tooth_crack",
+        "probabilities": {
+          "gear_pitting": 0.19284,
+          "gear_wear": 0.22697,
+          "healthy": 0.107357,
+          "tooth_crack": 0.472832
+        }
+      },
+      {
+        "unit": "teeth_crack_H_speed_circulation_20Nm-2000rpm",
+        "round": 1,
+        "actual": "tooth_crack",
+        "predicted": "tooth_crack",
+        "probabilities": {
+          "gear_pitting": 0.223472,
+          "gear_wear": 0.266146,
+          "healthy": 0.124974,
+          "tooth_crack": 0.385409
+        }
+      },
+      {
+        "unit": "teeth_crack_H_torque_circulation_2000rpm_10Nm",
+        "round": 1,
+        "actual": "tooth_crack",
+        "predicted": "tooth_crack",
+        "probabilities": {
+          "gear_pitting": 0.242575,
+          "gear_wear": 0.175454,
+          "healthy": 0.099696,
+          "tooth_crack": 0.482276
+        }
+      },
+      {
+        "unit": "teeth_crack_H_torque_circulation_2000rpm_20Nm",
+        "round": 1,
+        "actual": "tooth_crack",
+        "predicted": "tooth_crack",
+        "probabilities": {
+          "gear_pitting": 0.324246,
+          "gear_wear": 0.21442,
+          "healthy": 0.118536,
+          "tooth_crack": 0.342798
+        }
+      },
+      {
+        "unit": "teeth_crack_L_speed_circulation_10Nm-2000rpm",
+        "round": 1,
+        "actual": "tooth_crack",
+        "predicted": "tooth_crack",
+        "probabilities": {
+          "gear_pitting": 0.080305,
+          "gear_wear": 0.389389,
+          "healthy": 0.128985,
+          "tooth_crack": 0.401321
+        }
+      },
+      {
+        "unit": "teeth_crack_L_speed_circulation_20Nm-2000rpm",
+        "round": 1,
+        "actual": "tooth_crack",
+        "predicted": "gear_wear",
+        "probabilities": {
+          "gear_pitting": 0.181237,
+          "gear_wear": 0.374805,
+          "healthy": 0.107138,
+          "tooth_crack": 0.33682
+        }
+      },
+      {
+        "unit": "teeth_crack_L_torque_circulation_2000rpm_10Nm",
+        "round": 1,
+        "actual": "tooth_crack",
+        "predicted": "gear_wear",
+        "probabilities": {
+          "gear_pitting": 0.114126,
+          "gear_wear": 0.395057,
+          "healthy": 0.120254,
+          "tooth_crack": 0.370563
+        }
+      },
+      {
+        "unit": "teeth_crack_L_torque_circulation_2000rpm_20Nm",
+        "round": 1,
+        "actual": "tooth_crack",
+        "predicted": "gear_wear",
+        "probabilities": {
+          "gear_pitting": 0.097445,
+          "gear_wear": 0.424765,
+          "healthy": 0.148922,
+          "tooth_crack": 0.328867
+        }
+      },
+      {
+        "unit": "teeth_crack_M_speed_circulation_10Nm-2000rpm",
+        "round": 1,
+        "actual": "tooth_crack",
+        "predicted": "tooth_crack",
+        "probabilities": {
+          "gear_pitting": 0.129585,
+          "gear_wear": 0.300785,
+          "healthy": 0.121038,
+          "tooth_crack": 0.448593
+        }
+      },
+      {
+        "unit": "teeth_crack_M_speed_circulation_20Nm-2000rpm",
+        "round": 1,
+        "actual": "tooth_crack",
+        "predicted": "tooth_crack",
+        "probabilities": {
+          "gear_pitting": 0.208339,
+          "gear_wear": 0.31244,
+          "healthy": 0.122328,
+          "tooth_crack": 0.356894
+        }
+      },
+      {
+        "unit": "teeth_crack_M_torque_circulation_2000rpm_10Nm",
+        "round": 1,
+        "actual": "tooth_crack",
+        "predicted": "tooth_crack",
+        "probabilities": {
+          "gear_pitting": 0.12769,
+          "gear_wear": 0.324846,
+          "healthy": 0.118765,
+          "tooth_crack": 0.4287
+        }
+      },
+      {
+        "unit": "teeth_crack_M_torque_circulation_2000rpm_20Nm",
+        "round": 1,
+        "actual": "tooth_crack",
+        "predicted": "gear_wear",
+        "probabilities": {
+          "gear_pitting": 0.12575,
+          "gear_wear": 0.371768,
+          "healthy": 0.158113,
+          "tooth_crack": 0.344369
+        }
+      },
+      {
+        "unit": "gear_pitting_H_speed_circulation_10Nm-3000rpm",
+        "round": 2,
+        "actual": "gear_pitting",
+        "predicted": "gear_wear",
+        "probabilities": {
+          "gear_pitting": 0.364144,
+          "gear_wear": 0.405417,
+          "healthy": 0.036982,
+          "tooth_crack": 0.193457
+        }
+      },
+      {
+        "unit": "gear_pitting_H_speed_circulation_20Nm-3000rpm",
+        "round": 2,
+        "actual": "gear_pitting",
+        "predicted": "gear_wear",
+        "probabilities": {
+          "gear_pitting": 0.420395,
+          "gear_wear": 0.466503,
+          "healthy": 0.061405,
+          "tooth_crack": 0.051697
+        }
+      },
+      {
+        "unit": "gear_pitting_H_torque_circulation_3000rpm_10Nm",
+        "round": 2,
+        "actual": "gear_pitting",
+        "predicted": "tooth_crack",
+        "probabilities": {
+          "gear_pitting": 0.360574,
+          "gear_wear": 0.17921,
+          "healthy": 0.023809,
+          "tooth_crack": 0.436408
+        }
+      },
+      {
+        "unit": "gear_pitting_H_torque_circulation_3000rpm_20Nm",
+        "round": 2,
+        "actual": "gear_pitting",
+        "predicted": "gear_wear",
+        "probabilities": {
+          "gear_pitting": 0.163968,
+          "gear_wear": 0.736797,
+          "healthy": 0.037705,
+          "tooth_crack": 0.06153
+        }
+      },
+      {
+        "unit": "gear_pitting_L_speed_circulation_10Nm-3000rpm",
+        "round": 2,
+        "actual": "gear_pitting",
+        "predicted": "gear_pitting",
+        "probabilities": {
+          "gear_pitting": 0.498964,
+          "gear_wear": 0.44826,
+          "healthy": 0.01595,
+          "tooth_crack": 0.036826
+        }
+      },
+      {
+        "unit": "gear_pitting_L_speed_circulation_20Nm-3000rpm",
+        "round": 2,
+        "actual": "gear_pitting",
+        "predicted": "gear_wear",
+        "probabilities": {
+          "gear_pitting": 0.273558,
+          "gear_wear": 0.650848,
+          "healthy": 0.058234,
+          "tooth_crack": 0.017359
+        }
+      },
+      {
+        "unit": "gear_pitting_L_torque_circulation_3000rpm_10Nm",
+        "round": 2,
+        "actual": "gear_pitting",
+        "predicted": "gear_wear",
+        "probabilities": {
+          "gear_pitting": 0.307967,
+          "gear_wear": 0.428168,
+          "healthy": 0.009229,
+          "tooth_crack": 0.254636
+        }
+      },
+      {
+        "unit": "gear_pitting_L_torque_circulation_3000rpm_20Nm",
+        "round": 2,
+        "actual": "gear_pitting",
+        "predicted": "gear_wear",
+        "probabilities": {
+          "gear_pitting": 0.201186,
+          "gear_wear": 0.731003,
+          "healthy": 0.034336,
+          "tooth_crack": 0.033475
+        }
+      },
+      {
+        "unit": "gear_pitting_M_speed_circulation_10Nm-3000rpm",
+        "round": 2,
+        "actual": "gear_pitting",
+        "predicted": "gear_wear",
+        "probabilities": {
+          "gear_pitting": 0.32517,
+          "gear_wear": 0.455992,
+          "healthy": 0.049756,
+          "tooth_crack": 0.169081
+        }
+      },
+      {
+        "unit": "gear_pitting_M_speed_circulation_20Nm-3000rpm",
+        "round": 2,
+        "actual": "gear_pitting",
+        "predicted": "gear_wear",
+        "probabilities": {
+          "gear_pitting": 0.413401,
+          "gear_wear": 0.476112,
+          "healthy": 0.064203,
+          "tooth_crack": 0.046285
+        }
+      },
+      {
+        "unit": "gear_pitting_M_torque_circulation_3000rpm_10Nm",
+        "round": 2,
+        "actual": "gear_pitting",
+        "predicted": "tooth_crack",
+        "probabilities": {
+          "gear_pitting": 0.397676,
+          "gear_wear": 0.140826,
+          "healthy": 0.049492,
+          "tooth_crack": 0.412006
+        }
+      },
+      {
+        "unit": "gear_pitting_M_torque_circulation_3000rpm_20Nm",
+        "round": 2,
+        "actual": "gear_pitting",
+        "predicted": "gear_wear",
+        "probabilities": {
+          "gear_pitting": 0.158466,
+          "gear_wear": 0.736347,
+          "healthy": 0.036925,
+          "tooth_crack": 0.068262
+        }
+      },
+      {
+        "unit": "gear_wear_H_speed_circulation_10Nm-3000rpm",
+        "round": 2,
+        "actual": "gear_wear",
+        "predicted": "gear_wear",
+        "probabilities": {
+          "gear_pitting": 0.021489,
+          "gear_wear": 0.948421,
+          "healthy": 0.02695,
+          "tooth_crack": 0.003141
+        }
+      },
+      {
+        "unit": "gear_wear_H_speed_circulation_20Nm-3000rpm",
+        "round": 2,
+        "actual": "gear_wear",
+        "predicted": "gear_wear",
+        "probabilities": {
+          "gear_pitting": 0.123534,
+          "gear_wear": 0.79413,
+          "healthy": 0.050552,
+          "tooth_crack": 0.031783
+        }
+      },
+      {
+        "unit": "gear_wear_H_torque_circulation_3000rpm_10Nm",
+        "round": 2,
+        "actual": "gear_wear",
+        "predicted": "gear_wear",
+        "probabilities": {
+          "gear_pitting": 0.127474,
+          "gear_wear": 0.785233,
+          "healthy": 0.021004,
+          "tooth_crack": 0.066288
+        }
+      },
+      {
+        "unit": "gear_wear_H_torque_circulation_3000rpm_20Nm",
+        "round": 2,
+        "actual": "gear_wear",
+        "predicted": "gear_wear",
+        "probabilities": {
+          "gear_pitting": 0.056423,
+          "gear_wear": 0.874818,
+          "healthy": 0.005224,
+          "tooth_crack": 0.063535
+        }
+      },
+      {
+        "unit": "gear_wear_L_speed_circulation_10Nm-3000rpm",
+        "round": 2,
+        "actual": "gear_wear",
+        "predicted": "gear_wear",
+        "probabilities": {
+          "gear_pitting": 0.036111,
+          "gear_wear": 0.889232,
+          "healthy": 0.056318,
+          "tooth_crack": 0.018339
+        }
+      },
+      {
+        "unit": "gear_wear_L_speed_circulation_20Nm-3000rpm",
+        "round": 2,
+        "actual": "gear_wear",
+        "predicted": "gear_wear",
+        "probabilities": {
+          "gear_pitting": 0.122752,
+          "gear_wear": 0.742499,
+          "healthy": 0.077452,
+          "tooth_crack": 0.057298
+        }
+      },
+      {
+        "unit": "gear_wear_L_torque_circulation_3000rpm_10Nm",
+        "round": 2,
+        "actual": "gear_wear",
+        "predicted": "gear_wear",
+        "probabilities": {
+          "gear_pitting": 0.117256,
+          "gear_wear": 0.71183,
+          "healthy": 0.008026,
+          "tooth_crack": 0.162888
+        }
+      },
+      {
+        "unit": "gear_wear_L_torque_circulation_3000rpm_20Nm",
+        "round": 2,
+        "actual": "gear_wear",
+        "predicted": "gear_wear",
+        "probabilities": {
+          "gear_pitting": 0.078326,
+          "gear_wear": 0.752827,
+          "healthy": 0.068237,
+          "tooth_crack": 0.100609
+        }
+      },
+      {
+        "unit": "gear_wear_M_speed_circulation_10Nm-3000rpm",
+        "round": 2,
+        "actual": "gear_wear",
+        "predicted": "gear_wear",
+        "probabilities": {
+          "gear_pitting": 0.015671,
+          "gear_wear": 0.891525,
+          "healthy": 0.090596,
+          "tooth_crack": 0.002209
+        }
+      },
+      {
+        "unit": "gear_wear_M_speed_circulation_20Nm-3000rpm",
+        "round": 2,
+        "actual": "gear_wear",
+        "predicted": "gear_wear",
+        "probabilities": {
+          "gear_pitting": 0.131077,
+          "gear_wear": 0.738064,
+          "healthy": 0.120524,
+          "tooth_crack": 0.010336
+        }
+      },
+      {
+        "unit": "gear_wear_M_torque_circulation_3000rpm_10Nm",
+        "round": 2,
+        "actual": "gear_wear",
+        "predicted": "gear_wear",
+        "probabilities": {
+          "gear_pitting": 0.18443,
+          "gear_wear": 0.726601,
+          "healthy": 0.024249,
+          "tooth_crack": 0.06472
+        }
+      },
+      {
+        "unit": "gear_wear_M_torque_circulation_3000rpm_20Nm",
+        "round": 2,
+        "actual": "gear_wear",
+        "predicted": "gear_wear",
+        "probabilities": {
+          "gear_pitting": 0.044577,
+          "gear_wear": 0.823914,
+          "healthy": 0.084023,
+          "tooth_crack": 0.047486
+        }
+      },
+      {
+        "unit": "health_speed_circulation_10Nm-3000rpm",
+        "round": 2,
+        "actual": "healthy",
+        "predicted": "gear_wear",
+        "probabilities": {
+          "gear_pitting": 0.031079,
+          "gear_wear": 0.642073,
+          "healthy": 0.323733,
+          "tooth_crack": 0.003115
+        }
+      },
+      {
+        "unit": "health_speed_circulation_20Nm-3000rpm",
+        "round": 2,
+        "actual": "healthy",
+        "predicted": "gear_wear",
+        "probabilities": {
+          "gear_pitting": 0.187503,
+          "gear_wear": 0.410122,
+          "healthy": 0.360449,
+          "tooth_crack": 0.041926
+        }
+      },
+      {
+        "unit": "health_torque_circulation_3000rpm_10Nm",
+        "round": 2,
+        "actual": "healthy",
+        "predicted": "gear_wear",
+        "probabilities": {
+          "gear_pitting": 0.322822,
+          "gear_wear": 0.376668,
+          "healthy": 0.21421,
+          "tooth_crack": 0.0863
+        }
+      },
+      {
+        "unit": "health_torque_circulation_3000rpm_20Nm",
+        "round": 2,
+        "actual": "healthy",
+        "predicted": "healthy",
+        "probabilities": {
+          "gear_pitting": 0.25723,
+          "gear_wear": 0.228659,
+          "healthy": 0.408203,
+          "tooth_crack": 0.105908
+        }
+      },
+      {
+        "unit": "teeth_crack_H_speed_circulation_10Nm-3000rpm",
+        "round": 2,
+        "actual": "tooth_crack",
+        "predicted": "gear_wear",
+        "probabilities": {
+          "gear_pitting": 0.14646,
+          "gear_wear": 0.432073,
+          "healthy": 0.139464,
+          "tooth_crack": 0.282003
+        }
+      },
+      {
+        "unit": "teeth_crack_H_speed_circulation_20Nm-3000rpm",
+        "round": 2,
+        "actual": "tooth_crack",
+        "predicted": "tooth_crack",
+        "probabilities": {
+          "gear_pitting": 0.15142,
+          "gear_wear": 0.310546,
+          "healthy": 0.075357,
+          "tooth_crack": 0.462677
+        }
+      },
+      {
+        "unit": "teeth_crack_H_torque_circulation_3000rpm_10Nm",
+        "round": 2,
+        "actual": "tooth_crack",
+        "predicted": "tooth_crack",
+        "probabilities": {
+          "gear_pitting": 0.164452,
+          "gear_wear": 0.356633,
+          "healthy": 0.050304,
+          "tooth_crack": 0.428611
+        }
+      },
+      {
+        "unit": "teeth_crack_H_torque_circulation_3000rpm_20Nm",
+        "round": 2,
+        "actual": "tooth_crack",
+        "predicted": "tooth_crack",
+        "probabilities": {
+          "gear_pitting": 0.061259,
+          "gear_wear": 0.30559,
+          "healthy": 0.037375,
+          "tooth_crack": 0.595776
+        }
+      },
+      {
+        "unit": "teeth_crack_L_speed_circulation_10Nm-3000rpm",
+        "round": 2,
+        "actual": "tooth_crack",
+        "predicted": "gear_wear",
+        "probabilities": {
+          "gear_pitting": 0.049346,
+          "gear_wear": 0.781196,
+          "healthy": 0.022045,
+          "tooth_crack": 0.147413
+        }
+      },
+      {
+        "unit": "teeth_crack_L_speed_circulation_20Nm-3000rpm",
+        "round": 2,
+        "actual": "tooth_crack",
+        "predicted": "gear_wear",
+        "probabilities": {
+          "gear_pitting": 0.084716,
+          "gear_wear": 0.762209,
+          "healthy": 0.034496,
+          "tooth_crack": 0.118579
+        }
+      },
+      {
+        "unit": "teeth_crack_L_torque_circulation_3000rpm_10Nm",
+        "round": 2,
+        "actual": "tooth_crack",
+        "predicted": "gear_wear",
+        "probabilities": {
+          "gear_pitting": 0.040317,
+          "gear_wear": 0.820401,
+          "healthy": 0.008644,
+          "tooth_crack": 0.130638
+        }
+      },
+      {
+        "unit": "teeth_crack_L_torque_circulation_3000rpm_20Nm",
+        "round": 2,
+        "actual": "tooth_crack",
+        "predicted": "gear_wear",
+        "probabilities": {
+          "gear_pitting": 0.035486,
+          "gear_wear": 0.852343,
+          "healthy": 0.011191,
+          "tooth_crack": 0.100981
+        }
+      },
+      {
+        "unit": "teeth_crack_M_speed_circulation_10Nm-3000rpm",
+        "round": 2,
+        "actual": "tooth_crack",
+        "predicted": "gear_wear",
+        "probabilities": {
+          "gear_pitting": 0.042458,
+          "gear_wear": 0.70137,
+          "healthy": 0.040015,
+          "tooth_crack": 0.216157
+        }
+      },
+      {
+        "unit": "teeth_crack_M_speed_circulation_20Nm-3000rpm",
+        "round": 2,
+        "actual": "tooth_crack",
+        "predicted": "tooth_crack",
+        "probabilities": {
+          "gear_pitting": 0.099527,
+          "gear_wear": 0.389909,
+          "healthy": 0.029896,
+          "tooth_crack": 0.480669
+        }
+      },
+      {
+        "unit": "teeth_crack_M_torque_circulation_3000rpm_10Nm",
+        "round": 2,
+        "actual": "tooth_crack",
+        "predicted": "gear_wear",
+        "probabilities": {
+          "gear_pitting": 0.061911,
+          "gear_wear": 0.617757,
+          "healthy": 0.007646,
+          "tooth_crack": 0.312686
+        }
+      },
+      {
+        "unit": "teeth_crack_M_torque_circulation_3000rpm_20Nm",
+        "round": 2,
+        "actual": "tooth_crack",
+        "predicted": "tooth_crack",
+        "probabilities": {
+          "gear_pitting": 0.027976,
+          "gear_wear": 0.256008,
+          "healthy": 0.01203,
+          "tooth_crack": 0.703987
+        }
+      }
+    ],
+    "seconds": 262.1,
+    "robustness": {
+      "clean": {
+        "test_units": 120,
+        "accuracy": 0.7333,
+        "balanced_accuracy": 0.6806,
+        "macro_f1": 0.7054,
+        "confusion_matrix": [
+          [
+            5,
+            7,
+            0,
+            0
+          ],
+          [
+            0,
+            36,
+            0,
+            0
+          ],
+          [
+            0,
+            9,
+            25,
+            2
+          ],
+          [
+            1,
+            13,
+            0,
+            22
+          ]
+        ],
+        "rejected_recordings": 0,
+        "same_class_as_clean": 1.0
+      },
+      "noise": {
+        "test_units": 120,
+        "accuracy": 0.4917,
+        "balanced_accuracy": 0.4097,
+        "macro_f1": 0.3975,
+        "confusion_matrix": [
+          [
+            0,
+            2,
+            2,
+            8
+          ],
+          [
+            0,
+            12,
+            0,
+            24
+          ],
+          [
+            0,
+            10,
+            24,
+            2
+          ],
+          [
+            0,
+            12,
+            1,
+            23
+          ]
+        ],
+        "rejected_recordings": 0,
+        "same_class_as_clean": 0.6
+      },
+      "amplitude_half": {
+        "test_units": 120,
+        "accuracy": 0.7667,
+        "balanced_accuracy": 0.6944,
+        "macro_f1": 0.7057,
+        "confusion_matrix": [
+          [
+            4,
+            4,
+            2,
+            2
+          ],
+          [
+            0,
+            34,
+            0,
+            2
+          ],
+          [
+            0,
+            4,
+            30,
+            2
+          ],
+          [
+            2,
+            9,
+            1,
+            24
+          ]
+        ],
+        "rejected_recordings": 0,
+        "same_class_as_clean": 0.85
+      },
+      "amplitude_double": {
+        "test_units": 120,
+        "accuracy": 0.6583,
+        "balanced_accuracy": 0.6319,
+        "macro_f1": 0.6557,
+        "confusion_matrix": [
+          [
+            6,
+            6,
+            0,
+            0
+          ],
+          [
+            0,
+            34,
+            0,
+            2
+          ],
+          [
+            0,
+            12,
+            20,
+            4
+          ],
+          [
+            1,
+            16,
+            0,
+            19
+          ]
+        ],
+        "rejected_recordings": 0,
+        "same_class_as_clean": 0.8583
+      },
+      "missing_5pct": {
+        "test_units": 120,
+        "accuracy": 0.4583,
+        "balanced_accuracy": 0.3819,
+        "macro_f1": 0.3559,
+        "confusion_matrix": [
+          [
+            0,
+            3,
+            5,
+            4
+          ],
+          [
+            0,
+            12,
+            18,
+            6
+          ],
+          [
+            0,
+            6,
+            25,
+            5
+          ],
+          [
+            0,
+            6,
+            12,
+            18
+          ]
+        ],
+        "rejected_recordings": 0,
+        "same_class_as_clean": 0.5583
+      },
+      "half_length": {
+        "test_units": 120,
+        "accuracy": 0.7417,
+        "balanced_accuracy": 0.6875,
+        "macro_f1": 0.7127,
+        "confusion_matrix": [
+          [
+            5,
+            7,
+            0,
+            0
+          ],
+          [
+            0,
+            36,
+            0,
+            0
+          ],
+          [
+            0,
+            8,
+            28,
+            0
+          ],
+          [
+            1,
+            15,
+            0,
+            20
+          ]
+        ],
+        "rejected_recordings": 0,
+        "same_class_as_clean": 0.9583
+      },
+      "rate_90pct": {
+        "test_units": 120,
+        "accuracy": 0.425,
+        "balanced_accuracy": 0.3542,
+        "macro_f1": 0.3124,
+        "confusion_matrix": [
+          [
+            0,
+            0,
+            4,
+            8
+          ],
+          [
+            0,
+            6,
+            13,
+            17
+          ],
+          [
+            0,
+            4,
+            24,
+            8
+          ],
+          [
+            0,
+            1,
+            14,
+            21
+          ]
+        ],
+        "rejected_recordings": 0,
+        "same_class_as_clean": 0.4083
+      }
+    },
+    "robustness_clean_matches_fair_test": true
+  },
+  "sensor_grader": {
+    "reproduced": {
+      "confusion_matrix_identical": true,
+      "choices_identical": true,
+      "accuracy": 0.8417,
+      "archived_accuracy": 0.8417,
+      "balanced_accuracy": 0.8417,
+      "macro_f1": 0.847,
+      "chosen_per_round": [
+        {
+          "feature_set": "vibration",
+          "model": "Logistic regression",
+          "validation_macro_f1": 0.8833
+        },
+        {
+          "feature_set": "vibration",
+          "model": "Logistic regression",
+          "validation_macro_f1": 0.7792
+        },
+        {
+          "feature_set": "vibration",
+          "model": "Logistic regression",
+          "validation_macro_f1": 0.4953
+        },
+        {
+          "feature_set": "vibration",
+          "model": "Logistic regression",
+          "validation_macro_f1": 0.7708
+        },
+        {
+          "feature_set": "vibration",
+          "model": "Logistic regression",
+          "validation_macro_f1": 0.6669
+        },
+        {
+          "feature_set": "vibration",
+          "model": "Logistic regression",
+          "validation_macro_f1": 0.7687
+        }
+      ]
+    },
+    "accuracy_wilson_95": [
+      0.7659,
+      0.8962
+    ],
+    "calibration": {
+      "recordings": 120,
+      "brier": 0.1737,
+      "ece_top_label_5_bins": 0.128,
+      "mean_confidence": 0.7978,
+      "accuracy": 0.8417,
+      "mean_confidence_when_correct": 0.8507,
+      "mean_confidence_when_wrong": 0.5164,
+      "wrong_with_confidence_over_0_9": 0,
+      "reliability": [
+        {
+          "bin": [
+            0.2,
+            0.4
+          ],
+          "recordings": 3,
+          "mean_confidence": 0.3915,
+          "accuracy": 0.0
+        },
+        {
+          "bin": [
+            0.4,
+            0.6
+          ],
+          "recordings": 14,
+          "mean_confidence": 0.4908,
+          "accuracy": 0.2143
+        },
+        {
+          "bin": [
+            0.6,
+            0.8
+          ],
+          "recordings": 44,
+          "mean_confidence": 0.7243,
+          "accuracy": 0.8864
+        },
+        {
+          "bin": [
+            0.8,
+            1.0
+          ],
+          "recordings": 59,
+          "mean_confidence": 0.9461,
+          "accuracy": 1.0
+        }
+      ]
+    },
+    "leakage": {
+      "recordings": 120,
+      "one_class_per_recording": true,
+      "one_holdout_group_per_recording": true,
+      "one_inner_group_per_recording": true,
+      "held_out_groups_match_declared": true,
+      "no_recording_on_both_sides": true,
+      "every_recording_tested_once": true,
+      "identical_feature_rows_in_more_than_one_recording": 0,
+      "identical_feature_rows_across_train_and_test": 0,
+      "test_recordings_per_round": [
+        20,
+        20,
+        20,
+        20,
+        20,
+        20
+      ],
+      "class_counts_per_round": [
+        {
+          "healthy": 5,
+          "inner_ring": 5,
+          "outer_ring": 5,
+          "rolling_element": 5
+        },
+        {
+          "healthy": 5,
+          "inner_ring": 5,
+          "outer_ring": 5,
+          "rolling_element": 5
+        },
+        {
+          "healthy": 5,
+          "inner_ring": 5,
+          "outer_ring": 5,
+          "rolling_element": 5
+        },
+        {
+          "healthy": 5,
+          "inner_ring": 5,
+          "outer_ring": 5,
+          "rolling_element": 5
+        },
+        {
+          "healthy": 5,
+          "inner_ring": 5,
+          "outer_ring": 5,
+          "rolling_element": 5
+        },
+        {
+          "healthy": 5,
+          "inner_ring": 5,
+          "outer_ring": 5,
+          "rolling_element": 5
+        }
+      ]
+    },
+    "recordings": [
+      {
+        "unit": "condition1_B1_1",
+        "round": 0,
+        "actual": "rolling_element",
+        "predicted": "rolling_element",
+        "probabilities": {
+          "healthy": 0.021695,
+          "inner_ring": 0.013568,
+          "outer_ring": 2.6e-05,
+          "rolling_element": 0.964711
+        }
+      },
+      {
+        "unit": "condition1_B1_2",
+        "round": 0,
+        "actual": "rolling_element",
+        "predicted": "rolling_element",
+        "probabilities": {
+          "healthy": 0.01995,
+          "inner_ring": 0.013888,
+          "outer_ring": 3.7e-05,
+          "rolling_element": 0.966125
+        }
+      },
+      {
+        "unit": "condition1_B1_3",
+        "round": 0,
+        "actual": "rolling_element",
+        "predicted": "rolling_element",
+        "probabilities": {
+          "healthy": 0.013611,
+          "inner_ring": 0.012051,
+          "outer_ring": 2e-05,
+          "rolling_element": 0.974318
+        }
+      },
+      {
+        "unit": "condition1_B1_4",
+        "round": 0,
+        "actual": "rolling_element",
+        "predicted": "rolling_element",
+        "probabilities": {
+          "healthy": 0.019686,
+          "inner_ring": 0.020903,
+          "outer_ring": 2.9e-05,
+          "rolling_element": 0.959382
+        }
+      },
+      {
+        "unit": "condition1_B1_5",
+        "round": 0,
+        "actual": "rolling_element",
+        "predicted": "rolling_element",
+        "probabilities": {
+          "healthy": 0.008519,
+          "inner_ring": 0.00904,
+          "outer_ring": 1.9e-05,
+          "rolling_element": 0.982422
+        }
+      },
+      {
+        "unit": "condition1_I_1",
+        "round": 0,
+        "actual": "inner_ring",
+        "predicted": "inner_ring",
+        "probabilities": {
+          "healthy": 0.021496,
+          "inner_ring": 0.926578,
+          "outer_ring": 0.000133,
+          "rolling_element": 0.051793
+        }
+      },
+      {
+        "unit": "condition1_I_2",
+        "round": 0,
+        "actual": "inner_ring",
+        "predicted": "inner_ring",
+        "probabilities": {
+          "healthy": 0.021215,
+          "inner_ring": 0.893037,
+          "outer_ring": 0.000179,
+          "rolling_element": 0.085569
+        }
+      },
+      {
+        "unit": "condition1_I_3",
+        "round": 0,
+        "actual": "inner_ring",
+        "predicted": "inner_ring",
+        "probabilities": {
+          "healthy": 0.017003,
+          "inner_ring": 0.934421,
+          "outer_ring": 0.0001,
+          "rolling_element": 0.048476
+        }
+      },
+      {
+        "unit": "condition1_I_4",
+        "round": 0,
+        "actual": "inner_ring",
+        "predicted": "inner_ring",
+        "probabilities": {
+          "healthy": 0.015788,
+          "inner_ring": 0.916878,
+          "outer_ring": 9.3e-05,
+          "rolling_element": 0.06724
+        }
+      },
+      {
+        "unit": "condition1_I_5",
+        "round": 0,
+        "actual": "inner_ring",
+        "predicted": "inner_ring",
+        "probabilities": {
+          "healthy": 0.021958,
+          "inner_ring": 0.918261,
+          "outer_ring": 0.00013,
+          "rolling_element": 0.059651
+        }
+      },
+      {
+        "unit": "condition1_N_1",
+        "round": 0,
+        "actual": "healthy",
+        "predicted": "rolling_element",
+        "probabilities": {
+          "healthy": 0.203434,
+          "inner_ring": 0.315014,
+          "outer_ring": 0.017079,
+          "rolling_element": 0.464473
+        }
+      },
+      {
+        "unit": "condition1_N_2",
+        "round": 0,
+        "actual": "healthy",
+        "predicted": "rolling_element",
+        "probabilities": {
+          "healthy": 0.28527,
+          "inner_ring": 0.279471,
+          "outer_ring": 0.014978,
+          "rolling_element": 0.420281
+        }
+      },
+      {
+        "unit": "condition1_N_3",
+        "round": 0,
+        "actual": "healthy",
+        "predicted": "rolling_element",
+        "probabilities": {
+          "healthy": 0.314385,
+          "inner_ring": 0.246667,
+          "outer_ring": 0.010989,
+          "rolling_element": 0.427958
+        }
+      },
+      {
+        "unit": "condition1_N_4",
+        "round": 0,
+        "actual": "healthy",
+        "predicted": "rolling_element",
+        "probabilities": {
+          "healthy": 0.280273,
+          "inner_ring": 0.165737,
+          "outer_ring": 0.00284,
+          "rolling_element": 0.55115
+        }
+      },
+      {
+        "unit": "condition1_N_5",
+        "round": 0,
+        "actual": "healthy",
+        "predicted": "rolling_element",
+        "probabilities": {
+          "healthy": 0.269242,
+          "inner_ring": 0.128469,
+          "outer_ring": 0.002196,
+          "rolling_element": 0.600093
+        }
+      },
+      {
+        "unit": "condition1_O_1",
+        "round": 0,
+        "actual": "outer_ring",
+        "predicted": "inner_ring",
+        "probabilities": {
+          "healthy": 0.000902,
+          "inner_ring": 0.596673,
+          "outer_ring": 0.366479,
+          "rolling_element": 0.035946
+        }
+      },
+      {
+        "unit": "condition1_O_2",
+        "round": 0,
+        "actual": "outer_ring",
+        "predicted": "inner_ring",
+        "probabilities": {
+          "healthy": 0.000918,
+          "inner_ring": 0.577658,
+          "outer_ring": 0.379587,
+          "rolling_element": 0.041837
+        }
+      },
+      {
+        "unit": "condition1_O_3",
+        "round": 0,
+        "actual": "outer_ring",
+        "predicted": "outer_ring",
+        "probabilities": {
+          "healthy": 0.001502,
+          "inner_ring": 0.454665,
+          "outer_ring": 0.47078,
+          "rolling_element": 0.073053
+        }
+      },
+      {
+        "unit": "condition1_O_4",
+        "round": 0,
+        "actual": "outer_ring",
+        "predicted": "inner_ring",
+        "probabilities": {
+          "healthy": 0.001559,
+          "inner_ring": 0.465666,
+          "outer_ring": 0.434845,
+          "rolling_element": 0.09793
+        }
+      },
+      {
+        "unit": "condition1_O_5",
+        "round": 0,
+        "actual": "outer_ring",
+        "predicted": "inner_ring",
+        "probabilities": {
+          "healthy": 0.001671,
+          "inner_ring": 0.548242,
+          "outer_ring": 0.412925,
+          "rolling_element": 0.037161
+        }
+      },
+      {
+        "unit": "condition2_B1_1",
+        "round": 1,
+        "actual": "rolling_element",
+        "predicted": "rolling_element",
+        "probabilities": {
+          "healthy": 0.234943,
+          "inner_ring": 0.075288,
+          "outer_ring": 0.008426,
+          "rolling_element": 0.681343
+        }
+      },
+      {
+        "unit": "condition2_B1_2",
+        "round": 1,
+        "actual": "rolling_element",
+        "predicted": "rolling_element",
+        "probabilities": {
+          "healthy": 0.156749,
+          "inner_ring": 0.073358,
+          "outer_ring": 0.004806,
+          "rolling_element": 0.765087
+        }
+      },
+      {
+        "unit": "condition2_B1_3",
+        "round": 1,
+        "actual": "rolling_element",
+        "predicted": "rolling_element",
+        "probabilities": {
+          "healthy": 0.206963,
+          "inner_ring": 0.058685,
+          "outer_ring": 0.007059,
+          "rolling_element": 0.727293
+        }
+      },
+      {
+        "unit": "condition2_B1_4",
+        "round": 1,
+        "actual": "rolling_element",
+        "predicted": "rolling_element",
+        "probabilities": {
+          "healthy": 0.184803,
+          "inner_ring": 0.075833,
+          "outer_ring": 0.005839,
+          "rolling_element": 0.733525
+        }
+      },
+      {
+        "unit": "condition2_B1_5",
+        "round": 1,
+        "actual": "rolling_element",
+        "predicted": "rolling_element",
+        "probabilities": {
+          "healthy": 0.191664,
+          "inner_ring": 0.07844,
+          "outer_ring": 0.005574,
+          "rolling_element": 0.724321
+        }
+      },
+      {
+        "unit": "condition2_I_1",
+        "round": 1,
+        "actual": "inner_ring",
+        "predicted": "inner_ring",
+        "probabilities": {
+          "healthy": 0.0911,
+          "inner_ring": 0.7834,
+          "outer_ring": 0.023376,
+          "rolling_element": 0.102125
+        }
+      },
+      {
+        "unit": "condition2_I_2",
+        "round": 1,
+        "actual": "inner_ring",
+        "predicted": "inner_ring",
+        "probabilities": {
+          "healthy": 0.132833,
+          "inner_ring": 0.658631,
+          "outer_ring": 0.018686,
+          "rolling_element": 0.189851
+        }
+      },
+      {
+        "unit": "condition2_I_3",
+        "round": 1,
+        "actual": "inner_ring",
+        "predicted": "inner_ring",
+        "probabilities": {
+          "healthy": 0.076556,
+          "inner_ring": 0.732615,
+          "outer_ring": 0.016052,
+          "rolling_element": 0.174777
+        }
+      },
+      {
+        "unit": "condition2_I_4",
+        "round": 1,
+        "actual": "inner_ring",
+        "predicted": "inner_ring",
+        "probabilities": {
+          "healthy": 0.08551,
+          "inner_ring": 0.677021,
+          "outer_ring": 0.010231,
+          "rolling_element": 0.227238
+        }
+      },
+      {
+        "unit": "condition2_I_5",
+        "round": 1,
+        "actual": "inner_ring",
+        "predicted": "inner_ring",
+        "probabilities": {
+          "healthy": 0.073906,
+          "inner_ring": 0.733979,
+          "outer_ring": 0.017837,
+          "rolling_element": 0.174278
+        }
+      },
+      {
+        "unit": "condition2_N_1",
+        "round": 1,
+        "actual": "healthy",
+        "predicted": "healthy",
+        "probabilities": {
+          "healthy": 0.794861,
+          "inner_ring": 0.017605,
+          "outer_ring": 0.002206,
+          "rolling_element": 0.185328
+        }
+      },
+      {
+        "unit": "condition2_N_2",
+        "round": 1,
+        "actual": "healthy",
+        "predicted": "healthy",
+        "probabilities": {
+          "healthy": 0.737183,
+          "inner_ring": 0.022177,
+          "outer_ring": 0.00347,
+          "rolling_element": 0.23717
+        }
+      },
+      {
+        "unit": "condition2_N_3",
+        "round": 1,
+        "actual": "healthy",
+        "predicted": "healthy",
+        "probabilities": {
+          "healthy": 0.801105,
+          "inner_ring": 0.016372,
+          "outer_ring": 0.003635,
+          "rolling_element": 0.178888
+        }
+      },
+      {
+        "unit": "condition2_N_4",
+        "round": 1,
+        "actual": "healthy",
+        "predicted": "healthy",
+        "probabilities": {
+          "healthy": 0.686625,
+          "inner_ring": 0.021093,
+          "outer_ring": 0.004152,
+          "rolling_element": 0.28813
+        }
+      },
+      {
+        "unit": "condition2_N_5",
+        "round": 1,
+        "actual": "healthy",
+        "predicted": "healthy",
+        "probabilities": {
+          "healthy": 0.661229,
+          "inner_ring": 0.042132,
+          "outer_ring": 0.003697,
+          "rolling_element": 0.292943
+        }
+      },
+      {
+        "unit": "condition2_O_1",
+        "round": 1,
+        "actual": "outer_ring",
+        "predicted": "outer_ring",
+        "probabilities": {
+          "healthy": 0.011751,
+          "inner_ring": 0.092722,
+          "outer_ring": 0.852425,
+          "rolling_element": 0.043103
+        }
+      },
+      {
+        "unit": "condition2_O_2",
+        "round": 1,
+        "actual": "outer_ring",
+        "predicted": "outer_ring",
+        "probabilities": {
+          "healthy": 0.027353,
+          "inner_ring": 0.053756,
+          "outer_ring": 0.86214,
+          "rolling_element": 0.056751
+        }
+      },
+      {
+        "unit": "condition2_O_3",
+        "round": 1,
+        "actual": "outer_ring",
+        "predicted": "outer_ring",
+        "probabilities": {
+          "healthy": 0.018128,
+          "inner_ring": 0.049477,
+          "outer_ring": 0.887957,
+          "rolling_element": 0.044438
+        }
+      },
+      {
+        "unit": "condition2_O_4",
+        "round": 1,
+        "actual": "outer_ring",
+        "predicted": "outer_ring",
+        "probabilities": {
+          "healthy": 0.037925,
+          "inner_ring": 0.059921,
+          "outer_ring": 0.872547,
+          "rolling_element": 0.029608
+        }
+      },
+      {
+        "unit": "condition2_O_5",
+        "round": 1,
+        "actual": "outer_ring",
+        "predicted": "outer_ring",
+        "probabilities": {
+          "healthy": 0.002336,
+          "inner_ring": 0.058243,
+          "outer_ring": 0.923635,
+          "rolling_element": 0.015786
+        }
+      },
+      {
+        "unit": "condition3_B1_1",
+        "round": 2,
+        "actual": "rolling_element",
+        "predicted": "rolling_element",
+        "probabilities": {
+          "healthy": 0.221001,
+          "inner_ring": 0.017349,
+          "outer_ring": 0.008761,
+          "rolling_element": 0.752889
+        }
+      },
+      {
+        "unit": "condition3_B1_2",
+        "round": 2,
+        "actual": "rolling_element",
+        "predicted": "rolling_element",
+        "probabilities": {
+          "healthy": 0.246279,
+          "inner_ring": 0.011032,
+          "outer_ring": 0.010219,
+          "rolling_element": 0.73247
+        }
+      },
+      {
+        "unit": "condition3_B1_3",
+        "round": 2,
+        "actual": "rolling_element",
+        "predicted": "rolling_element",
+        "probabilities": {
+          "healthy": 0.14157,
+          "inner_ring": 0.01736,
+          "outer_ring": 0.007159,
+          "rolling_element": 0.833911
+        }
+      },
+      {
+        "unit": "condition3_B1_4",
+        "round": 2,
+        "actual": "rolling_element",
+        "predicted": "rolling_element",
+        "probabilities": {
+          "healthy": 0.214387,
+          "inner_ring": 0.008842,
+          "outer_ring": 0.00871,
+          "rolling_element": 0.768061
+        }
+      },
+      {
+        "unit": "condition3_B1_5",
+        "round": 2,
+        "actual": "rolling_element",
+        "predicted": "rolling_element",
+        "probabilities": {
+          "healthy": 0.122857,
+          "inner_ring": 0.014782,
+          "outer_ring": 0.006249,
+          "rolling_element": 0.856112
+        }
+      },
+      {
+        "unit": "condition3_I_1",
+        "round": 2,
+        "actual": "inner_ring",
+        "predicted": "rolling_element",
+        "probabilities": {
+          "healthy": 0.075942,
+          "inner_ring": 0.449049,
+          "outer_ring": 0.005469,
+          "rolling_element": 0.469541
+        }
+      },
+      {
+        "unit": "condition3_I_2",
+        "round": 2,
+        "actual": "inner_ring",
+        "predicted": "rolling_element",
+        "probabilities": {
+          "healthy": 0.026669,
+          "inner_ring": 0.34362,
+          "outer_ring": 0.003085,
+          "rolling_element": 0.626626
+        }
+      },
+      {
+        "unit": "condition3_I_3",
+        "round": 2,
+        "actual": "inner_ring",
+        "predicted": "rolling_element",
+        "probabilities": {
+          "healthy": 0.02113,
+          "inner_ring": 0.355607,
+          "outer_ring": 0.008771,
+          "rolling_element": 0.614492
+        }
+      },
+      {
+        "unit": "condition3_I_4",
+        "round": 2,
+        "actual": "inner_ring",
+        "predicted": "rolling_element",
+        "probabilities": {
+          "healthy": 0.052049,
+          "inner_ring": 0.197228,
+          "outer_ring": 0.007156,
+          "rolling_element": 0.743567
+        }
+      },
+      {
+        "unit": "condition3_I_5",
+        "round": 2,
+        "actual": "inner_ring",
+        "predicted": "rolling_element",
+        "probabilities": {
+          "healthy": 0.04248,
+          "inner_ring": 0.22995,
+          "outer_ring": 0.009166,
+          "rolling_element": 0.718404
+        }
+      },
+      {
+        "unit": "condition3_N_1",
+        "round": 2,
+        "actual": "healthy",
+        "predicted": "healthy",
+        "probabilities": {
+          "healthy": 0.647162,
+          "inner_ring": 0.03325,
+          "outer_ring": 0.014995,
+          "rolling_element": 0.304594
+        }
+      },
+      {
+        "unit": "condition3_N_2",
+        "round": 2,
+        "actual": "healthy",
+        "predicted": "healthy",
+        "probabilities": {
+          "healthy": 0.749327,
+          "inner_ring": 0.010995,
+          "outer_ring": 0.013814,
+          "rolling_element": 0.225863
+        }
+      },
+      {
+        "unit": "condition3_N_3",
+        "round": 2,
+        "actual": "healthy",
+        "predicted": "healthy",
+        "probabilities": {
+          "healthy": 0.662437,
+          "inner_ring": 0.03525,
+          "outer_ring": 0.014706,
+          "rolling_element": 0.287608
+        }
+      },
+      {
+        "unit": "condition3_N_4",
+        "round": 2,
+        "actual": "healthy",
+        "predicted": "healthy",
+        "probabilities": {
+          "healthy": 0.713328,
+          "inner_ring": 0.01572,
+          "outer_ring": 0.015071,
+          "rolling_element": 0.255881
+        }
+      },
+      {
+        "unit": "condition3_N_5",
+        "round": 2,
+        "actual": "healthy",
+        "predicted": "healthy",
+        "probabilities": {
+          "healthy": 0.61482,
+          "inner_ring": 0.039373,
+          "outer_ring": 0.01014,
+          "rolling_element": 0.335668
+        }
+      },
+      {
+        "unit": "condition3_O_1",
+        "round": 2,
+        "actual": "outer_ring",
+        "predicted": "outer_ring",
+        "probabilities": {
+          "healthy": 0.043879,
+          "inner_ring": 0.039673,
+          "outer_ring": 0.794331,
+          "rolling_element": 0.122117
+        }
+      },
+      {
+        "unit": "condition3_O_2",
+        "round": 2,
+        "actual": "outer_ring",
+        "predicted": "outer_ring",
+        "probabilities": {
+          "healthy": 0.049975,
+          "inner_ring": 0.050268,
+          "outer_ring": 0.788518,
+          "rolling_element": 0.111238
+        }
+      },
+      {
+        "unit": "condition3_O_3",
+        "round": 2,
+        "actual": "outer_ring",
+        "predicted": "outer_ring",
+        "probabilities": {
+          "healthy": 0.045695,
+          "inner_ring": 0.060902,
+          "outer_ring": 0.716594,
+          "rolling_element": 0.176809
+        }
+      },
+      {
+        "unit": "condition3_O_4",
+        "round": 2,
+        "actual": "outer_ring",
+        "predicted": "outer_ring",
+        "probabilities": {
+          "healthy": 0.034059,
+          "inner_ring": 0.028449,
+          "outer_ring": 0.785724,
+          "rolling_element": 0.151768
+        }
+      },
+      {
+        "unit": "condition3_O_5",
+        "round": 2,
+        "actual": "outer_ring",
+        "predicted": "outer_ring",
+        "probabilities": {
+          "healthy": 0.024498,
+          "inner_ring": 0.040011,
+          "outer_ring": 0.787995,
+          "rolling_element": 0.147496
+        }
+      },
+      {
+        "unit": "condition4_B1_1",
+        "round": 3,
+        "actual": "rolling_element",
+        "predicted": "inner_ring",
+        "probabilities": {
+          "healthy": 0.095058,
+          "inner_ring": 0.391269,
+          "outer_ring": 0.220167,
+          "rolling_element": 0.293506
+        }
+      },
+      {
+        "unit": "condition4_B1_2",
+        "round": 3,
+        "actual": "rolling_element",
+        "predicted": "inner_ring",
+        "probabilities": {
+          "healthy": 0.108762,
+          "inner_ring": 0.384733,
+          "outer_ring": 0.12944,
+          "rolling_element": 0.377066
+        }
+      },
+      {
+        "unit": "condition4_B1_3",
+        "round": 3,
+        "actual": "rolling_element",
+        "predicted": "inner_ring",
+        "probabilities": {
+          "healthy": 0.115411,
+          "inner_ring": 0.406792,
+          "outer_ring": 0.171998,
+          "rolling_element": 0.305798
+        }
+      },
+      {
+        "unit": "condition4_B1_4",
+        "round": 3,
+        "actual": "rolling_element",
+        "predicted": "inner_ring",
+        "probabilities": {
+          "healthy": 0.106594,
+          "inner_ring": 0.405184,
+          "outer_ring": 0.113126,
+          "rolling_element": 0.375096
+        }
+      },
+      {
+        "unit": "condition4_B1_5",
+        "round": 3,
+        "actual": "rolling_element",
+        "predicted": "inner_ring",
+        "probabilities": {
+          "healthy": 0.11255,
+          "inner_ring": 0.398353,
+          "outer_ring": 0.147522,
+          "rolling_element": 0.341575
+        }
+      },
+      {
+        "unit": "condition4_I_1",
+        "round": 3,
+        "actual": "inner_ring",
+        "predicted": "inner_ring",
+        "probabilities": {
+          "healthy": 0.014326,
+          "inner_ring": 0.945484,
+          "outer_ring": 0.040083,
+          "rolling_element": 0.000107
+        }
+      },
+      {
+        "unit": "condition4_I_2",
+        "round": 3,
+        "actual": "inner_ring",
+        "predicted": "inner_ring",
+        "probabilities": {
+          "healthy": 0.001009,
+          "inner_ring": 0.985731,
+          "outer_ring": 0.013157,
+          "rolling_element": 0.000103
+        }
+      },
+      {
+        "unit": "condition4_I_3",
+        "round": 3,
+        "actual": "inner_ring",
+        "predicted": "inner_ring",
+        "probabilities": {
+          "healthy": 0.021732,
+          "inner_ring": 0.927592,
+          "outer_ring": 0.050615,
+          "rolling_element": 6.1e-05
+        }
+      },
+      {
+        "unit": "condition4_I_4",
+        "round": 3,
+        "actual": "inner_ring",
+        "predicted": "inner_ring",
+        "probabilities": {
+          "healthy": 0.023067,
+          "inner_ring": 0.932855,
+          "outer_ring": 0.042851,
+          "rolling_element": 0.001227
+        }
+      },
+      {
+        "unit": "condition4_I_5",
+        "round": 3,
+        "actual": "inner_ring",
+        "predicted": "inner_ring",
+        "probabilities": {
+          "healthy": 0.017217,
+          "inner_ring": 0.970907,
+          "outer_ring": 0.011747,
+          "rolling_element": 0.000129
+        }
+      },
+      {
+        "unit": "condition4_N_1",
+        "round": 3,
+        "actual": "healthy",
+        "predicted": "healthy",
+        "probabilities": {
+          "healthy": 0.882137,
+          "inner_ring": 0.026096,
+          "outer_ring": 0.01736,
+          "rolling_element": 0.074408
+        }
+      },
+      {
+        "unit": "condition4_N_2",
+        "round": 3,
+        "actual": "healthy",
+        "predicted": "healthy",
+        "probabilities": {
+          "healthy": 0.840711,
+          "inner_ring": 0.073634,
+          "outer_ring": 0.002334,
+          "rolling_element": 0.083321
+        }
+      },
+      {
+        "unit": "condition4_N_3",
+        "round": 3,
+        "actual": "healthy",
+        "predicted": "healthy",
+        "probabilities": {
+          "healthy": 0.841485,
+          "inner_ring": 0.06172,
+          "outer_ring": 0.007264,
+          "rolling_element": 0.089531
+        }
+      },
+      {
+        "unit": "condition4_N_4",
+        "round": 3,
+        "actual": "healthy",
+        "predicted": "healthy",
+        "probabilities": {
+          "healthy": 0.842204,
+          "inner_ring": 0.039004,
+          "outer_ring": 0.01978,
+          "rolling_element": 0.099012
+        }
+      },
+      {
+        "unit": "condition4_N_5",
+        "round": 3,
+        "actual": "healthy",
+        "predicted": "healthy",
+        "probabilities": {
+          "healthy": 0.888301,
+          "inner_ring": 0.012527,
+          "outer_ring": 0.002877,
+          "rolling_element": 0.096294
+        }
+      },
+      {
+        "unit": "condition4_O_1",
+        "round": 3,
+        "actual": "outer_ring",
+        "predicted": "outer_ring",
+        "probabilities": {
+          "healthy": 0.0,
+          "inner_ring": 3e-06,
+          "outer_ring": 0.999997,
+          "rolling_element": 0.0
+        }
+      },
+      {
+        "unit": "condition4_O_2",
+        "round": 3,
+        "actual": "outer_ring",
+        "predicted": "outer_ring",
+        "probabilities": {
+          "healthy": 0.0,
+          "inner_ring": 8e-06,
+          "outer_ring": 0.999992,
+          "rolling_element": 0.0
+        }
+      },
+      {
+        "unit": "condition4_O_3",
+        "round": 3,
+        "actual": "outer_ring",
+        "predicted": "outer_ring",
+        "probabilities": {
+          "healthy": 0.0,
+          "inner_ring": 0.016396,
+          "outer_ring": 0.983604,
+          "rolling_element": 0.0
+        }
+      },
+      {
+        "unit": "condition4_O_4",
+        "round": 3,
+        "actual": "outer_ring",
+        "predicted": "outer_ring",
+        "probabilities": {
+          "healthy": 0.0,
+          "inner_ring": 7.2e-05,
+          "outer_ring": 0.983577,
+          "rolling_element": 0.016351
+        }
+      },
+      {
+        "unit": "condition4_O_5",
+        "round": 3,
+        "actual": "outer_ring",
+        "predicted": "outer_ring",
+        "probabilities": {
+          "healthy": 0.0,
+          "inner_ring": 1.8e-05,
+          "outer_ring": 0.999982,
+          "rolling_element": 0.0
+        }
+      },
+      {
+        "unit": "condition5_B1_1",
+        "round": 4,
+        "actual": "rolling_element",
+        "predicted": "rolling_element",
+        "probabilities": {
+          "healthy": 0.060614,
+          "inner_ring": 0.165183,
+          "outer_ring": 0.004245,
+          "rolling_element": 0.769959
+        }
+      },
+      {
+        "unit": "condition5_B1_2",
+        "round": 4,
+        "actual": "rolling_element",
+        "predicted": "rolling_element",
+        "probabilities": {
+          "healthy": 0.09623,
+          "inner_ring": 0.126713,
+          "outer_ring": 0.007365,
+          "rolling_element": 0.769691
+        }
+      },
+      {
+        "unit": "condition5_B1_3",
+        "round": 4,
+        "actual": "rolling_element",
+        "predicted": "rolling_element",
+        "probabilities": {
+          "healthy": 0.096555,
+          "inner_ring": 0.109254,
+          "outer_ring": 0.004139,
+          "rolling_element": 0.790052
+        }
+      },
+      {
+        "unit": "condition5_B1_4",
+        "round": 4,
+        "actual": "rolling_element",
+        "predicted": "rolling_element",
+        "probabilities": {
+          "healthy": 0.111854,
+          "inner_ring": 0.082538,
+          "outer_ring": 0.004773,
+          "rolling_element": 0.800835
+        }
+      },
+      {
+        "unit": "condition5_B1_5",
+        "round": 4,
+        "actual": "rolling_element",
+        "predicted": "rolling_element",
+        "probabilities": {
+          "healthy": 0.09731,
+          "inner_ring": 0.105048,
+          "outer_ring": 0.007601,
+          "rolling_element": 0.790041
+        }
+      },
+      {
+        "unit": "condition5_I_1",
+        "round": 4,
+        "actual": "inner_ring",
+        "predicted": "inner_ring",
+        "probabilities": {
+          "healthy": 0.000186,
+          "inner_ring": 0.999122,
+          "outer_ring": 0.00045,
+          "rolling_element": 0.000242
+        }
+      },
+      {
+        "unit": "condition5_I_2",
+        "round": 4,
+        "actual": "inner_ring",
+        "predicted": "inner_ring",
+        "probabilities": {
+          "healthy": 0.006789,
+          "inner_ring": 0.988007,
+          "outer_ring": 0.000136,
+          "rolling_element": 0.005069
+        }
+      },
+      {
+        "unit": "condition5_I_3",
+        "round": 4,
+        "actual": "inner_ring",
+        "predicted": "inner_ring",
+        "probabilities": {
+          "healthy": 0.000472,
+          "inner_ring": 0.996029,
+          "outer_ring": 0.000602,
+          "rolling_element": 0.002896
+        }
+      },
+      {
+        "unit": "condition5_I_4",
+        "round": 4,
+        "actual": "inner_ring",
+        "predicted": "inner_ring",
+        "probabilities": {
+          "healthy": 0.001407,
+          "inner_ring": 0.985937,
+          "outer_ring": 0.010961,
+          "rolling_element": 0.001695
+        }
+      },
+      {
+        "unit": "condition5_I_5",
+        "round": 4,
+        "actual": "inner_ring",
+        "predicted": "inner_ring",
+        "probabilities": {
+          "healthy": 0.016704,
+          "inner_ring": 0.981022,
+          "outer_ring": 0.001817,
+          "rolling_element": 0.000457
+        }
+      },
+      {
+        "unit": "condition5_N_1",
+        "round": 4,
+        "actual": "healthy",
+        "predicted": "healthy",
+        "probabilities": {
+          "healthy": 0.982288,
+          "inner_ring": 0.002054,
+          "outer_ring": 5.8e-05,
+          "rolling_element": 0.015601
+        }
+      },
+      {
+        "unit": "condition5_N_2",
+        "round": 4,
+        "actual": "healthy",
+        "predicted": "healthy",
+        "probabilities": {
+          "healthy": 0.986377,
+          "inner_ring": 0.000927,
+          "outer_ring": 0.000117,
+          "rolling_element": 0.012579
+        }
+      },
+      {
+        "unit": "condition5_N_3",
+        "round": 4,
+        "actual": "healthy",
+        "predicted": "healthy",
+        "probabilities": {
+          "healthy": 0.931108,
+          "inner_ring": 0.01703,
+          "outer_ring": 0.000112,
+          "rolling_element": 0.051751
+        }
+      },
+      {
+        "unit": "condition5_N_4",
+        "round": 4,
+        "actual": "healthy",
+        "predicted": "healthy",
+        "probabilities": {
+          "healthy": 0.960565,
+          "inner_ring": 0.019869,
+          "outer_ring": 9.8e-05,
+          "rolling_element": 0.019468
+        }
+      },
+      {
+        "unit": "condition5_N_5",
+        "round": 4,
+        "actual": "healthy",
+        "predicted": "healthy",
+        "probabilities": {
+          "healthy": 0.995469,
+          "inner_ring": 0.001446,
+          "outer_ring": 6.7e-05,
+          "rolling_element": 0.003018
+        }
+      },
+      {
+        "unit": "condition5_O_1",
+        "round": 4,
+        "actual": "outer_ring",
+        "predicted": "outer_ring",
+        "probabilities": {
+          "healthy": 1e-06,
+          "inner_ring": 1.4e-05,
+          "outer_ring": 0.999985,
+          "rolling_element": 0.0
+        }
+      },
+      {
+        "unit": "condition5_O_2",
+        "round": 4,
+        "actual": "outer_ring",
+        "predicted": "outer_ring",
+        "probabilities": {
+          "healthy": 1.3e-05,
+          "inner_ring": 0.001861,
+          "outer_ring": 0.998127,
+          "rolling_element": 0.0
+        }
+      },
+      {
+        "unit": "condition5_O_3",
+        "round": 4,
+        "actual": "outer_ring",
+        "predicted": "outer_ring",
+        "probabilities": {
+          "healthy": 1.5e-05,
+          "inner_ring": 1e-06,
+          "outer_ring": 0.999984,
+          "rolling_element": 0.0
+        }
+      },
+      {
+        "unit": "condition5_O_4",
+        "round": 4,
+        "actual": "outer_ring",
+        "predicted": "outer_ring",
+        "probabilities": {
+          "healthy": 0.000476,
+          "inner_ring": 1e-06,
+          "outer_ring": 0.999524,
+          "rolling_element": 0.0
+        }
+      },
+      {
+        "unit": "condition5_O_5",
+        "round": 4,
+        "actual": "outer_ring",
+        "predicted": "outer_ring",
+        "probabilities": {
+          "healthy": 1e-06,
+          "inner_ring": 1e-06,
+          "outer_ring": 0.999997,
+          "rolling_element": 0.0
+        }
+      },
+      {
+        "unit": "condition6_B1_1",
+        "round": 5,
+        "actual": "rolling_element",
+        "predicted": "rolling_element",
+        "probabilities": {
+          "healthy": 0.231351,
+          "inner_ring": 0.044754,
+          "outer_ring": 0.00867,
+          "rolling_element": 0.715224
+        }
+      },
+      {
+        "unit": "condition6_B1_2",
+        "round": 5,
+        "actual": "rolling_element",
+        "predicted": "rolling_element",
+        "probabilities": {
+          "healthy": 0.257864,
+          "inner_ring": 0.065489,
+          "outer_ring": 0.014791,
+          "rolling_element": 0.661856
+        }
+      },
+      {
+        "unit": "condition6_B1_3",
+        "round": 5,
+        "actual": "rolling_element",
+        "predicted": "rolling_element",
+        "probabilities": {
+          "healthy": 0.249045,
+          "inner_ring": 0.03252,
+          "outer_ring": 0.006355,
+          "rolling_element": 0.71208
+        }
+      },
+      {
+        "unit": "condition6_B1_4",
+        "round": 5,
+        "actual": "rolling_element",
+        "predicted": "rolling_element",
+        "probabilities": {
+          "healthy": 0.212087,
+          "inner_ring": 0.038317,
+          "outer_ring": 0.007536,
+          "rolling_element": 0.74206
+        }
+      },
+      {
+        "unit": "condition6_B1_5",
+        "round": 5,
+        "actual": "rolling_element",
+        "predicted": "rolling_element",
+        "probabilities": {
+          "healthy": 0.170274,
+          "inner_ring": 0.05589,
+          "outer_ring": 0.0049,
+          "rolling_element": 0.768936
+        }
+      },
+      {
+        "unit": "condition6_I_1",
+        "round": 5,
+        "actual": "inner_ring",
+        "predicted": "inner_ring",
+        "probabilities": {
+          "healthy": 0.079384,
+          "inner_ring": 0.755332,
+          "outer_ring": 0.078835,
+          "rolling_element": 0.08645
+        }
+      },
+      {
+        "unit": "condition6_I_2",
+        "round": 5,
+        "actual": "inner_ring",
+        "predicted": "inner_ring",
+        "probabilities": {
+          "healthy": 0.066403,
+          "inner_ring": 0.704417,
+          "outer_ring": 0.085142,
+          "rolling_element": 0.144038
+        }
+      },
+      {
+        "unit": "condition6_I_3",
+        "round": 5,
+        "actual": "inner_ring",
+        "predicted": "inner_ring",
+        "probabilities": {
+          "healthy": 0.058496,
+          "inner_ring": 0.775924,
+          "outer_ring": 0.079247,
+          "rolling_element": 0.086334
+        }
+      },
+      {
+        "unit": "condition6_I_4",
+        "round": 5,
+        "actual": "inner_ring",
+        "predicted": "inner_ring",
+        "probabilities": {
+          "healthy": 0.09942,
+          "inner_ring": 0.546587,
+          "outer_ring": 0.231727,
+          "rolling_element": 0.122267
+        }
+      },
+      {
+        "unit": "condition6_I_5",
+        "round": 5,
+        "actual": "inner_ring",
+        "predicted": "inner_ring",
+        "probabilities": {
+          "healthy": 0.128239,
+          "inner_ring": 0.520071,
+          "outer_ring": 0.207053,
+          "rolling_element": 0.144637
+        }
+      },
+      {
+        "unit": "condition6_N_1",
+        "round": 5,
+        "actual": "healthy",
+        "predicted": "healthy",
+        "probabilities": {
+          "healthy": 0.996723,
+          "inner_ring": 0.000386,
+          "outer_ring": 4e-05,
+          "rolling_element": 0.00285
+        }
+      },
+      {
+        "unit": "condition6_N_2",
+        "round": 5,
+        "actual": "healthy",
+        "predicted": "healthy",
+        "probabilities": {
+          "healthy": 0.971905,
+          "inner_ring": 0.013107,
+          "outer_ring": 0.000415,
+          "rolling_element": 0.014573
+        }
+      },
+      {
+        "unit": "condition6_N_3",
+        "round": 5,
+        "actual": "healthy",
+        "predicted": "healthy",
+        "probabilities": {
+          "healthy": 0.979749,
+          "inner_ring": 8.3e-05,
+          "outer_ring": 5.6e-05,
+          "rolling_element": 0.020113
+        }
+      },
+      {
+        "unit": "condition6_N_4",
+        "round": 5,
+        "actual": "healthy",
+        "predicted": "healthy",
+        "probabilities": {
+          "healthy": 0.996769,
+          "inner_ring": 1.9e-05,
+          "outer_ring": 5.3e-05,
+          "rolling_element": 0.003159
+        }
+      },
+      {
+        "unit": "condition6_N_5",
+        "round": 5,
+        "actual": "healthy",
+        "predicted": "healthy",
+        "probabilities": {
+          "healthy": 0.991001,
+          "inner_ring": 0.000312,
+          "outer_ring": 3.1e-05,
+          "rolling_element": 0.008656
+        }
+      },
+      {
+        "unit": "condition6_O_1",
+        "round": 5,
+        "actual": "outer_ring",
+        "predicted": "outer_ring",
+        "probabilities": {
+          "healthy": 0.000858,
+          "inner_ring": 0.0,
+          "outer_ring": 0.999141,
+          "rolling_element": 1e-06
+        }
+      },
+      {
+        "unit": "condition6_O_2",
+        "round": 5,
+        "actual": "outer_ring",
+        "predicted": "outer_ring",
+        "probabilities": {
+          "healthy": 0.028842,
+          "inner_ring": 5.1e-05,
+          "outer_ring": 0.971107,
+          "rolling_element": 1e-06
+        }
+      },
+      {
+        "unit": "condition6_O_3",
+        "round": 5,
+        "actual": "outer_ring",
+        "predicted": "outer_ring",
+        "probabilities": {
+          "healthy": 0.018787,
+          "inner_ring": 0.000103,
+          "outer_ring": 0.98111,
+          "rolling_element": 0.0
+        }
+      },
+      {
+        "unit": "condition6_O_4",
+        "round": 5,
+        "actual": "outer_ring",
+        "predicted": "outer_ring",
+        "probabilities": {
+          "healthy": 0.012644,
+          "inner_ring": 2e-06,
+          "outer_ring": 0.987354,
+          "rolling_element": 0.0
+        }
+      },
+      {
+        "unit": "condition6_O_5",
+        "round": 5,
+        "actual": "outer_ring",
+        "predicted": "outer_ring",
+        "probabilities": {
+          "healthy": 0.010614,
+          "inner_ring": 8.2e-05,
+          "outer_ring": 0.989304,
+          "rolling_element": 1e-06
+        }
+      }
+    ],
+    "seconds": 373.3,
+    "robustness": {
+      "clean": {
+        "test_units": 120,
+        "accuracy": 0.8417,
+        "balanced_accuracy": 0.8417,
+        "macro_f1": 0.847,
+        "confusion_matrix": [
+          [
+            25,
+            0,
+            0,
+            5
+          ],
+          [
+            0,
+            25,
+            0,
+            5
+          ],
+          [
+            0,
+            4,
+            26,
+            0
+          ],
+          [
+            0,
+            5,
+            0,
+            25
+          ]
+        ],
+        "rejected_recordings": 0,
+        "same_class_as_clean": 1.0
+      },
+      "noise": {
+        "test_units": 120,
+        "accuracy": 0.8417,
+        "balanced_accuracy": 0.8417,
+        "macro_f1": 0.8467,
+        "confusion_matrix": [
+          [
+            25,
+            0,
+            0,
+            5
+          ],
+          [
+            0,
+            24,
+            0,
+            6
+          ],
+          [
+            0,
+            3,
+            22,
+            5
+          ],
+          [
+            0,
+            0,
+            0,
+            30
+          ]
+        ],
+        "rejected_recordings": 0,
+        "same_class_as_clean": 0.9083
+      },
+      "amplitude_half": {
+        "test_units": 120,
+        "accuracy": 0.2917,
+        "balanced_accuracy": 0.2917,
+        "macro_f1": 0.1749,
+        "confusion_matrix": [
+          [
+            0,
+            30,
+            0,
+            0
+          ],
+          [
+            0,
+            30,
+            0,
+            0
+          ],
+          [
+            0,
+            25,
+            5,
+            0
+          ],
+          [
+            0,
+            30,
+            0,
+            0
+          ]
+        ],
+        "rejected_recordings": 0,
+        "same_class_as_clean": 0.325
+      },
+      "amplitude_double": {
+        "test_units": 120,
+        "accuracy": 0.3667,
+        "balanced_accuracy": 0.3667,
+        "macro_f1": 0.2694,
+        "confusion_matrix": [
+          [
+            30,
+            0,
+            0,
+            0
+          ],
+          [
+            30,
+            0,
+            0,
+            0
+          ],
+          [
+            16,
+            0,
+            14,
+            0
+          ],
+          [
+            30,
+            0,
+            0,
+            0
+          ]
+        ],
+        "rejected_recordings": 0,
+        "same_class_as_clean": 0.2917
+      },
+      "missing_5pct": {
+        "test_units": 120,
+        "accuracy": 0.8917,
+        "balanced_accuracy": 0.8917,
+        "macro_f1": 0.8935,
+        "confusion_matrix": [
+          [
+            25,
+            0,
+            0,
+            5
+          ],
+          [
+            0,
+            26,
+            0,
+            4
+          ],
+          [
+            0,
+            4,
+            26,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            30
+          ]
+        ],
+        "rejected_recordings": 0,
+        "same_class_as_clean": 0.95
+      },
+      "half_length": {
+        "test_units": 120,
+        "accuracy": 0.8667,
+        "balanced_accuracy": 0.8667,
+        "macro_f1": 0.8703,
+        "confusion_matrix": [
+          [
+            25,
+            0,
+            0,
+            5
+          ],
+          [
+            0,
+            26,
+            0,
+            4
+          ],
+          [
+            0,
+            2,
+            28,
+            0
+          ],
+          [
+            0,
+            5,
+            0,
+            25
+          ]
+        ],
+        "rejected_recordings": 0,
+        "same_class_as_clean": 0.975
+      },
+      "rate_90pct": {
+        "test_units": 120,
+        "accuracy": 0.75,
+        "balanced_accuracy": 0.75,
+        "macro_f1": 0.7515,
+        "confusion_matrix": [
+          [
+            15,
+            10,
+            0,
+            5
+          ],
+          [
+            0,
+            30,
+            0,
+            0
+          ],
+          [
+            0,
+            10,
+            20,
+            0
+          ],
+          [
+            0,
+            5,
+            0,
+            25
+          ]
+        ],
+        "rejected_recordings": 0,
+        "same_class_as_clean": 0.7833
+      }
+    },
+    "robustness_clean_matches_fair_test": true
+  },
+  "image_leakage": {
+    "pump": {
+      "images": 3913,
+      "units": 48,
+      "unit_in_one_group": true,
+      "identical_files": 0,
+      "identical_files_with_different_classes": 0,
+      "identical_files_across_train_and_test": [
+        0
+      ],
+      "units_across_train_and_test": [
+        0
+      ]
+    },
+    "haul_truck": {
+      "images": 2691,
+      "units": 24,
+      "unit_in_one_group": true,
+      "identical_files": 0,
+      "identical_files_with_different_classes": 0,
+      "identical_files_across_train_and_test": [
+        0
+      ],
+      "units_across_train_and_test": [
+        0
+      ]
+    },
+    "belt_conveyor": {
+      "images": 7200,
+      "units": 16,
+      "unit_in_one_group": true,
+      "identical_files": 0,
+      "identical_files_with_different_classes": 0,
+      "identical_files_across_train_and_test": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "units_across_train_and_test": [
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    "excavator": {
+      "images": 7200,
+      "units": 16,
+      "unit_in_one_group": true,
+      "identical_files": 0,
+      "identical_files_with_different_classes": 0,
+      "identical_files_across_train_and_test": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "units_across_train_and_test": [
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    "dozer": {
+      "images": 2400,
+      "units": 16,
+      "unit_in_one_group": true,
+      "identical_files": 0,
+      "identical_files_with_different_classes": 0,
+      "identical_files_across_train_and_test": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "units_across_train_and_test": [
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    "wheel_loader": {
+      "images": 7200,
+      "units": 16,
+      "unit_in_one_group": true,
+      "identical_files": 0,
+      "identical_files_with_different_classes": 0,
+      "identical_files_across_train_and_test": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "units_across_train_and_test": [
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    "drill_rig": {
+      "images": 9600,
+      "units": 4800,
+      "unit_in_one_group": true,
+      "identical_files": 0,
+      "identical_files_with_different_classes": 0,
+      "identical_files_across_train_and_test": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "units_across_train_and_test": [
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    "grader": {
+      "status": "Grader tooth crops: split by source set inside the archive; not exported as an index"
+    }
+  },
+  "experiment_e_cora_transient_unseen_speed": {
+    "plan": "Documentation/phase_1_final_verification_plan.md, section 4 (experiment E)",
+    "test": "hold out one speed with all five transient repetitions (20 runs per round, 80 in all); model chosen inside the training speeds; one prediction per run",
+    "dozer": "uses the Belt Conveyor runs, so its result is the Belt Conveyor's",
+    "belt_conveyor": {
+      "runs": 80,
+      "score": {
+        "test_units": 80,
+        "accuracy": 0.6375,
+        "balanced_accuracy": 0.6375,
+        "macro_precision": 0.6566,
+        "macro_recall": 0.6375,
+        "macro_f1": 0.6329,
+        "confusion_matrix": [
+          [
+            10,
+            5,
+            0,
+            5
+          ],
+          [
+            0,
+            15,
+            2,
+            3
+          ],
+          [
+            5,
+            5,
+            10,
+            0
+          ],
+          [
+            4,
+            0,
+            0,
+            16
+          ]
+        ],
+        "per_class_recall": {
+          "healthy": 0.5,
+          "wear25": 0.75,
+          "wear50": 0.5,
+          "wear75": 0.8
+        }
+      },
+      "chosen_per_round": [
+        {
+          "feature_set": "vibration",
+          "model": "Logistic regression",
+          "validation_macro_f1": 0.6631
+        },
+        {
+          "feature_set": "vibration",
+          "model": "Extra trees",
+          "validation_macro_f1": 0.5889
+        },
+        {
+          "feature_set": "vibration",
+          "model": "Extra trees",
+          "validation_macro_f1": 0.2208
+        },
+        {
+          "feature_set": "vibration",
+          "model": "Logistic regression",
+          "validation_macro_f1": 0.3087
+        }
+      ],
+      "majority_control": {
+        "test_units": 80,
+        "accuracy": 0.25,
+        "balanced_accuracy": 0.25,
+        "macro_precision": 0.125,
+        "macro_recall": 0.25,
+        "macro_f1": 0.1562,
+        "confusion_matrix": [
+          [
+            5,
+            15,
+            0,
+            0
+          ],
+          [
+            5,
+            15,
+            0,
+            0
+          ],
+          [
+            5,
+            15,
+            0,
+            0
+          ],
+          [
+            5,
+            15,
+            0,
+            0
+          ]
+        ],
+        "per_class_recall": {
+          "healthy": 0.25,
+          "wear25": 0.75,
+          "wear50": 0.0,
+          "wear75": 0.0
+        }
+      },
+      "accuracy_wilson_95": [
+        0.5281,
+        0.7343
+      ]
+    },
+    "excavator": {
+      "runs": 80,
+      "score": {
+        "test_units": 80,
+        "accuracy": 0.3125,
+        "balanced_accuracy": 0.3125,
+        "macro_precision": 0.3142,
+        "macro_recall": 0.3125,
+        "macro_f1": 0.3116,
+        "confusion_matrix": [
+          [
+            6,
+            4,
+            6,
+            4
+          ],
+          [
+            5,
+            5,
+            5,
+            5
+          ],
+          [
+            5,
+            5,
+            5,
+            5
+          ],
+          [
+            0,
+            5,
+            6,
+            9
+          ]
+        ],
+        "per_class_recall": {
+          "healthy": 0.3,
+          "bearing": 0.25,
+          "unbalance": 0.25,
+          "misalignment": 0.45
+        }
+      },
+      "chosen_per_round": [
+        {
+          "feature_set": "vibration",
+          "model": "Extra trees",
+          "validation_macro_f1": 0.479
+        },
+        {
+          "feature_set": "vibration",
+          "model": "Extra trees",
+          "validation_macro_f1": 0.5721
+        },
+        {
+          "feature_set": "vibration",
+          "model": "Logistic regression",
+          "validation_macro_f1": 0.4002
+        },
+        {
+          "feature_set": "vibration",
+          "model": "Logistic regression",
+          "validation_macro_f1": 0.2452
+        }
+      ],
+      "majority_control": {
+        "test_units": 80,
+        "accuracy": 0.25,
+        "balanced_accuracy": 0.25,
+        "macro_precision": 0.0625,
+        "macro_recall": 0.25,
+        "macro_f1": 0.1,
+        "confusion_matrix": [
+          [
+            0,
+            20,
+            0,
+            0
+          ],
+          [
+            0,
+            20,
+            0,
+            0
+          ],
+          [
+            0,
+            20,
+            0,
+            0
+          ],
+          [
+            0,
+            20,
+            0,
+            0
+          ]
+        ],
+        "per_class_recall": {
+          "healthy": 0.0,
+          "bearing": 1.0,
+          "unbalance": 0.0,
+          "misalignment": 0.0
+        }
+      },
+      "accuracy_wilson_95": [
+        0.2215,
+        0.4207
+      ]
+    },
+    "wheel_loader": {
+      "runs": 80,
+      "score": {
+        "test_units": 80,
+        "accuracy": 0.35,
+        "balanced_accuracy": 0.35,
+        "macro_precision": 0.3893,
+        "macro_recall": 0.35,
+        "macro_f1": 0.3187,
+        "confusion_matrix": [
+          [
+            8,
+            7,
+            5,
+            0
+          ],
+          [
+            0,
+            15,
+            5,
+            0
+          ],
+          [
+            0,
+            10,
+            5,
+            5
+          ],
+          [
+            0,
+            11,
+            9,
+            0
+          ]
+        ],
+        "per_class_recall": {
+          "healthy": 0.4,
+          "bearing": 0.75,
+          "half_broken_bar": 0.25,
+          "broken_bar": 0.0
+        }
+      },
+      "chosen_per_round": [
+        {
+          "feature_set": "vibration",
+          "model": "Extra trees",
+          "validation_macro_f1": 0.3443
+        },
+        {
+          "feature_set": "vibration",
+          "model": "Gradient boosting",
+          "validation_macro_f1": 0.4634
+        },
+        {
+          "feature_set": "vibration",
+          "model": "Random forest",
+          "validation_macro_f1": 0.1
+        },
+        {
+          "feature_set": "vibration",
+          "model": "Logistic regression",
+          "validation_macro_f1": 0.1741
+        }
+      ],
+      "majority_control": {
+        "test_units": 80,
+        "accuracy": 0.25,
+        "balanced_accuracy": 0.25,
+        "macro_precision": 0.0625,
+        "macro_recall": 0.25,
+        "macro_f1": 0.1,
+        "confusion_matrix": [
+          [
+            0,
+            20,
+            0,
+            0
+          ],
+          [
+            0,
+            20,
+            0,
+            0
+          ],
+          [
+            0,
+            20,
+            0,
+            0
+          ],
+          [
+            0,
+            20,
+            0,
+            0
+          ]
+        ],
+        "per_class_recall": {
+          "healthy": 0.0,
+          "bearing": 1.0,
+          "half_broken_bar": 0.0,
+          "broken_bar": 0.0
+        }
+      },
+      "accuracy_wilson_95": [
+        0.2545,
+        0.4592
+      ]
+    }
+  },
+  "phase1_runner_rerun": {
+    "cora_candidates_identical": {
+      "belt_conveyor": true,
+      "excavator": true,
+      "wheel_loader": true
+    },
+    "pump_robustness_identical": {
+      "clean": true,
+      "noise": true,
+      "amplitude_half": true,
+      "amplitude_double": true,
+      "missing_5pct": true,
+      "half_length": true,
+      "rate_90pct": true
+    },
+    "pump_robustness_here": {
+      "clean": {
+        "accuracy": 0.9583,
+        "balanced_accuracy": 0.9583,
+        "macro_f1": 0.958
+      },
+      "noise": {
+        "accuracy": 0.9583,
+        "balanced_accuracy": 0.9583,
+        "macro_f1": 0.958
+      },
+      "amplitude_half": {
+        "accuracy": 0.9583,
+        "balanced_accuracy": 0.9583,
+        "macro_f1": 0.958
+      },
+      "amplitude_double": {
+        "accuracy": 0.9167,
+        "balanced_accuracy": 0.9167,
+        "macro_f1": 0.9188
+      },
+      "missing_5pct": {
+        "accuracy": 0.7083,
+        "balanced_accuracy": 0.7083,
+        "macro_f1": 0.6247
+      },
+      "half_length": {
+        "accuracy": 0.9167,
+        "balanced_accuracy": 0.9167,
+        "macro_f1": 0.9143
+      },
+      "rate_90pct": {
+        "accuracy": 0.7083,
+        "balanced_accuracy": 0.7083,
+        "macro_f1": 0.6247
+      }
+    },
+    "deployment_probes_identical": {
+      "short": true,
+      "nan": true,
+      "inf": true,
+      "corrupt": true,
+      "short_drill": true,
+      "broken.mat": true,
+      "broken.png": true,
+      "unsupported.txt": true,
+      "jpeg_auto": true,
+      "jpeg_confirmed": true,
+      "resized_image": true,
+      "missing_checkpoint": true,
+      "untrusted_checkpoint": true
+    },
+    "deployment_probes_here": {
+      "short": {
+        "status": "rejected",
+        "reason": "The recording is too short. Ottawa CSVs need at least 20,000 samples."
+      },
+      "nan": {
+        "status": "rejected",
+        "reason": "The recording contains invalid Ottawa signal values."
+      },
+      "inf": {
+        "status": "rejected",
+        "reason": "The recording contains invalid Ottawa signal values."
+      },
+      "corrupt": {
+        "status": "rejected",
+        "reason": "could not convert string to float: 'xyz'"
+      },
+      "short_drill": {
+        "status": "rejected",
+        "reason": "The recording is too short. MCC5-THU needs at least 12,800 samples."
+      },
+      "broken.mat": {
+        "status": "rejected",
+        "reason": "Invalid or unsupported MAT recording."
+      },
+      "broken.png": {
+        "status": "rejected",
+        "reason": "broken.png matches none of the known dataset formats; no prediction made"
+      },
+      "unsupported.txt": {
+        "status": "rejected",
+        "reason": "unsupported.txt matches none of the known dataset formats; no prediction made"
+      },
+      "jpeg_auto": {
+        "status": "rejected",
+        "reason": "compressed.jpg matches none of the known dataset formats; no prediction made"
+      },
+      "jpeg_confirmed": {
+        "status": "rejected",
+        "reason": "compressed.jpg matches none of the known dataset formats; no prediction made"
+      },
+      "resized_image": {
+        "status": "rejected",
+        "reason": "resized.png matches none of the known dataset formats; no prediction made"
+      },
+      "missing_checkpoint": {
+        "status": "rejected",
+        "reason": "No trained sensor model: run  python Notebook/pdm.py pump train-final"
+      },
+      "untrusted_checkpoint": {
+        "status": "rejected",
+        "reason": "pump_sensor.joblib is not in the trusted model list. If this computer built it, run python Notebook/pdm.py trust-models; never trust a model file from someone else."
+      }
+    },
+    "make_figures_input_missing_here": true
+  },
+  "diagnostics_check": {
+    "just_example": {
+      "archive": "condition1.zip",
+      "member": "\u2563\u00f1\u2510\u00f71/20221208-O-2rpm-0N-1.csv",
+      "columns": [
+        "Time (s)",
+        "AI 1 (m/s2)",
+        "AI 2 (m/s2)",
+        "AI 3 (m/s2)",
+        "AI 4 (m/s2)",
+        "AI 5 (m/s2)",
+        "AI 6 (m/s2)",
+        "AI 7 (dB)"
+      ],
+      "rms": 0.001658051913036343,
+      "peak_to_peak": 0.0162878111,
+      "fft_peak_hz": 30.0,
+      "frequency_resolution_hz": 1.0,
+      "reported": {
+        "rms": 0.001658,
+        "peak_to_peak": 0.016288,
+        "fft_peak_hz": 30.0
+      },
+      "measured_rate_hz": 50000.0
+    },
+    "aalto_measured_rate_hz": 3012.05,
+    "aalto_declared_rate_hz": 3012,
+    "rates_from_publisher_metadata_only": {
+      "Ottawa": "200 kHz (no time column in the .mat)",
+      "UODS": "42 kHz (no time column)",
+      "CORA Vx": "3 kHz (single column)",
+      "MCC5-THU": "12.8 kHz (no time column)"
+    }
+  },
+  "benchmark_windows": {
+    "pump_sensor": {
+      "platform": "Windows-10-10.0.26200-SP0",
+      "python": "3.11.9",
+      "cpu_torch_threads": 2,
+      "peak_process_rss_mib": null,
+      "routes": {
+        "pump_sensor": {
+          "cold_s": 0.2647687999997288,
+          "warm_median_s": 0.2267165000012028,
+          "preprocessing_s": 0.1929887999976927,
+          "checkpoint_bytes": 2357678,
+          "first_load_call_s": 0.029970600000524428,
+          "load_calls": 6,
+          "prediction": {
+            "file format": "Ottawa bearing rig recording",
+            "machine": "Pump",
+            "condition": "inner",
+            "model probability": 0.999,
+            "model used": "Random forest",
+            "all classes": {
+              "healthy": 0.0,
+              "inner": 0.999,
+              "outer": 0.0,
+              "ball": 0.001
+            }
+          }
+        }
+      },
+      "peak_working_set_mib": 386.8
+    },
+    "pump_image": {
+      "platform": "Windows-10-10.0.26200-SP0",
+      "python": "3.11.9",
+      "cpu_torch_threads": 2,
+      "peak_process_rss_mib": null,
+      "routes": {
+        "pump_image": {
+          "cold_s": 2.9800162999999884,
+          "warm_median_s": 0.013559600000007777,
+          "preprocessing_s": 0.0005224999986239709,
+          "checkpoint_bytes": 44792267,
+          "first_load_call_s": 0.06924459999936516,
+          "load_calls": 1,
+          "prediction": {
+            "file format": "event-camera frame (XJTU-DV style)",
+            "machine": "Pump",
+            "condition": "healthy",
+            "model probability": 1.0,
+            "model used": "ResNet18 CNN",
+            "all classes": {
+              "healthy": 1.0,
+              "inner": 0.0,
+              "outer": 0.0,
+              "ball": 0.0
+            }
+          }
+        }
+      },
+      "peak_working_set_mib": 491.0
+    },
+    "aalto": {
+      "platform": "Windows-10-10.0.26200-SP0",
+      "python": "3.11.9",
+      "cpu_torch_threads": 2,
+      "peak_process_rss_mib": null,
+      "routes": {
+        "aalto": {
+          "cold_s": 0.3724292000006244,
+          "warm_median_s": 0.3481443000018771,
+          "preprocessing_s": 0.3448199999984354,
+          "checkpoint_bytes": 7468,
+          "first_load_call_s": 0.018565200000011828,
+          "load_calls": 6,
+          "prediction": {
+            "file format": "Aalto gear rig (3012 Hz)",
+            "machine": "Grader",
+            "condition": "healthy",
+            "model probability": 0.987,
+            "model used": "Logistic regression",
+            "all classes": {
+              "healthy": 0.987,
+              "tooth_damage": 0.013
+            },
+            "task": "gear tooth condition (laboratory gear-pair analogue; not the slewing bearing)"
+          }
+        }
+      },
+      "peak_working_set_mib": 362.6
+    }
+  }
+}
