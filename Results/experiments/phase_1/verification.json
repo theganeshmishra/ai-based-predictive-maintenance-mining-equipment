@@ -1,0 +1,701 @@
+{
+  "cora_candidates": {
+    "belt_conveyor": {
+      "classes": [
+        "healthy",
+        "wear25",
+        "wear50",
+        "wear75"
+      ],
+      "held_out_groups": 4,
+      "choices": [
+        "RBF SVM",
+        "Logistic regression",
+        "Logistic regression",
+        "Random forest"
+      ],
+      "score": {
+        "test_units": 16,
+        "accuracy": 0.4375,
+        "balanced_accuracy": 0.4375,
+        "macro_precision": 0.4375,
+        "macro_recall": 0.4375,
+        "macro_f1": 0.4208,
+        "confusion_matrix": [
+          [
+            2,
+            1,
+            0,
+            1
+          ],
+          [
+            1,
+            1,
+            1,
+            1
+          ],
+          [
+            1,
+            1,
+            1,
+            1
+          ],
+          [
+            0,
+            1,
+            0,
+            3
+          ]
+        ],
+        "per_class_recall": {
+          "healthy": 0.5,
+          "wear25": 0.25,
+          "wear50": 0.25,
+          "wear75": 0.75
+        }
+      }
+    },
+    "excavator": {
+      "classes": [
+        "healthy",
+        "bearing",
+        "unbalance",
+        "misalignment"
+      ],
+      "held_out_groups": 4,
+      "choices": [
+        "RBF SVM",
+        "Logistic regression",
+        "Logistic regression",
+        "Logistic regression"
+      ],
+      "score": {
+        "test_units": 16,
+        "accuracy": 0.3125,
+        "balanced_accuracy": 0.3125,
+        "macro_precision": 0.4583,
+        "macro_recall": 0.3125,
+        "macro_f1": 0.3214,
+        "confusion_matrix": [
+          [
+            2,
+            2,
+            0,
+            0
+          ],
+          [
+            2,
+            1,
+            0,
+            1
+          ],
+          [
+            0,
+            2,
+            1,
+            1
+          ],
+          [
+            2,
+            1,
+            0,
+            1
+          ]
+        ],
+        "per_class_recall": {
+          "healthy": 0.5,
+          "bearing": 0.25,
+          "unbalance": 0.25,
+          "misalignment": 0.25
+        }
+      }
+    },
+    "wheel_loader": {
+      "classes": [
+        "healthy",
+        "bearing",
+        "half_broken_bar",
+        "broken_bar"
+      ],
+      "held_out_groups": 4,
+      "choices": [
+        "RBF SVM",
+        "Random forest",
+        "Logistic regression",
+        "Logistic regression"
+      ],
+      "score": {
+        "test_units": 16,
+        "accuracy": 0.3125,
+        "balanced_accuracy": 0.3125,
+        "macro_precision": 0.3417,
+        "macro_recall": 0.3125,
+        "macro_f1": 0.3234,
+        "confusion_matrix": [
+          [
+            2,
+            1,
+            1,
+            0
+          ],
+          [
+            0,
+            1,
+            1,
+            2
+          ],
+          [
+            1,
+            1,
+            1,
+            1
+          ],
+          [
+            0,
+            1,
+            2,
+            1
+          ]
+        ],
+        "per_class_recall": {
+          "healthy": 0.5,
+          "bearing": 0.25,
+          "half_broken_bar": 0.25,
+          "broken_bar": 0.25
+        }
+      }
+    }
+  },
+  "pump_robustness": {
+    "clean": {
+      "test_units": 24,
+      "accuracy": 0.9583,
+      "balanced_accuracy": 0.9583,
+      "macro_precision": 0.9643,
+      "macro_recall": 0.9583,
+      "macro_f1": 0.958,
+      "confusion_matrix": [
+        [
+          6,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          6,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          6,
+          0
+        ],
+        [
+          0,
+          1,
+          0,
+          5
+        ]
+      ],
+      "per_class_recall": {
+        "healthy": 1.0,
+        "inner": 1.0,
+        "outer": 1.0,
+        "ball": 0.8333
+      }
+    },
+    "noise": {
+      "test_units": 24,
+      "accuracy": 0.9583,
+      "balanced_accuracy": 0.9583,
+      "macro_precision": 0.9643,
+      "macro_recall": 0.9583,
+      "macro_f1": 0.958,
+      "confusion_matrix": [
+        [
+          6,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          6,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          6,
+          0
+        ],
+        [
+          0,
+          1,
+          0,
+          5
+        ]
+      ],
+      "per_class_recall": {
+        "healthy": 1.0,
+        "inner": 1.0,
+        "outer": 1.0,
+        "ball": 0.8333
+      }
+    },
+    "amplitude_half": {
+      "test_units": 24,
+      "accuracy": 0.9583,
+      "balanced_accuracy": 0.9583,
+      "macro_precision": 0.9643,
+      "macro_recall": 0.9583,
+      "macro_f1": 0.958,
+      "confusion_matrix": [
+        [
+          6,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          6,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          6,
+          0
+        ],
+        [
+          0,
+          0,
+          1,
+          5
+        ]
+      ],
+      "per_class_recall": {
+        "healthy": 1.0,
+        "inner": 1.0,
+        "outer": 1.0,
+        "ball": 0.8333
+      }
+    },
+    "amplitude_double": {
+      "test_units": 24,
+      "accuracy": 0.9167,
+      "balanced_accuracy": 0.9167,
+      "macro_precision": 0.9375,
+      "macro_recall": 0.9167,
+      "macro_f1": 0.9188,
+      "confusion_matrix": [
+        [
+          6,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          6,
+          0,
+          0
+        ],
+        [
+          0,
+          1,
+          5,
+          0
+        ],
+        [
+          0,
+          1,
+          0,
+          5
+        ]
+      ],
+      "per_class_recall": {
+        "healthy": 1.0,
+        "inner": 1.0,
+        "outer": 0.8333,
+        "ball": 0.8333
+      }
+    },
+    "missing_5pct": {
+      "test_units": 24,
+      "accuracy": 0.7083,
+      "balanced_accuracy": 0.7083,
+      "macro_precision": 0.5893,
+      "macro_recall": 0.7083,
+      "macro_f1": 0.6247,
+      "confusion_matrix": [
+        [
+          0,
+          0,
+          6,
+          0
+        ],
+        [
+          0,
+          6,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          6,
+          0
+        ],
+        [
+          0,
+          1,
+          0,
+          5
+        ]
+      ],
+      "per_class_recall": {
+        "healthy": 0.0,
+        "inner": 1.0,
+        "outer": 1.0,
+        "ball": 0.8333
+      }
+    },
+    "half_length": {
+      "test_units": 24,
+      "accuracy": 0.9167,
+      "balanced_accuracy": 0.9167,
+      "macro_precision": 0.9375,
+      "macro_recall": 0.9167,
+      "macro_f1": 0.9143,
+      "confusion_matrix": [
+        [
+          6,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          6,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          6,
+          0
+        ],
+        [
+          0,
+          2,
+          0,
+          4
+        ]
+      ],
+      "per_class_recall": {
+        "healthy": 1.0,
+        "inner": 1.0,
+        "outer": 1.0,
+        "ball": 0.6667
+      }
+    },
+    "rate_90pct": {
+      "test_units": 24,
+      "accuracy": 0.7083,
+      "balanced_accuracy": 0.7083,
+      "macro_precision": 0.5893,
+      "macro_recall": 0.7083,
+      "macro_f1": 0.6247,
+      "confusion_matrix": [
+        [
+          0,
+          0,
+          6,
+          0
+        ],
+        [
+          0,
+          6,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          6,
+          0
+        ],
+        [
+          0,
+          1,
+          0,
+          5
+        ]
+      ],
+      "per_class_recall": {
+        "healthy": 0.0,
+        "inner": 1.0,
+        "outer": 1.0,
+        "ball": 0.8333
+      }
+    }
+  },
+  "deployment_robustness": {
+    "short": {
+      "status": "rejected",
+      "reason": "The recording is too short. Ottawa CSVs need at least 20,000 samples."
+    },
+    "nan": {
+      "status": "rejected",
+      "reason": "The recording contains invalid Ottawa signal values."
+    },
+    "inf": {
+      "status": "rejected",
+      "reason": "The recording contains invalid Ottawa signal values."
+    },
+    "corrupt": {
+      "status": "rejected",
+      "reason": "could not convert string to float: 'xyz'"
+    },
+    "short_drill": {
+      "status": "rejected",
+      "reason": "The recording is too short. MCC5-THU needs at least 12,800 samples."
+    },
+    "broken.mat": {
+      "status": "rejected",
+      "reason": "Invalid or unsupported MAT recording."
+    },
+    "broken.png": {
+      "status": "rejected",
+      "reason": "broken.png matches none of the known dataset formats; no prediction made"
+    },
+    "unsupported.txt": {
+      "status": "rejected",
+      "reason": "unsupported.txt matches none of the known dataset formats; no prediction made"
+    },
+    "jpeg_auto": {
+      "status": "rejected",
+      "reason": "compressed.jpg matches none of the known dataset formats; no prediction made"
+    },
+    "jpeg_confirmed": {
+      "status": "rejected",
+      "reason": "compressed.jpg matches none of the known dataset formats; no prediction made"
+    },
+    "resized_image": {
+      "status": "rejected",
+      "reason": "resized.png matches none of the known dataset formats; no prediction made"
+    },
+    "missing_checkpoint": {
+      "status": "rejected",
+      "reason": "No trained sensor model: run  python Notebook/pdm.py pump train-final"
+    },
+    "untrusted_checkpoint": {
+      "status": "rejected",
+      "reason": "pump_sensor.joblib is not in the trusted model list. If this computer built it, run python Notebook/pdm.py trust-models; never trust a model file from someone else."
+    }
+  },
+  "diagnostics": {
+    "rms": 0.001658051913036343,
+    "variance": 2.7403882092747097e-06,
+    "std": 0.001655411794471306,
+    "skewness": -0.00033764929593651686,
+    "excess_kurtosis": 0.22964972519805782,
+    "crest_factor": 5.282484421106313,
+    "peak_to_peak": 0.0162878111,
+    "fft_peak_hz": 30.0,
+    "band_energy": {
+      "0\u20131000 Hz": 5.353164968761392e-07,
+      "1000\u20135000 Hz": 3.9367854727006977e-07,
+      "5000\u201325000 Hz": 1.6834036388583475e-06
+    }
+  },
+  "paired_cpu_benchmark": {
+    "pump_sensor": {
+      "before": {
+        "platform": "macOS-27.2-arm64-arm-64bit",
+        "python": "3.12.14",
+        "cpu_torch_threads": 2,
+        "peak_process_rss_mib": 460.328125,
+        "routes": {
+          "pump_sensor": {
+            "cold_s": 0.19353808400046546,
+            "warm_median_s": 0.14796862499497365,
+            "preprocessing_s": 0.11838454200187698,
+            "checkpoint_bytes": 2359699,
+            "first_load_call_s": 0.02817954200145323,
+            "load_calls": 6,
+            "prediction": {
+              "file format": "Ottawa bearing rig recording",
+              "machine": "Pump",
+              "condition": "inner",
+              "model probability": 0.999,
+              "model used": "Random forest",
+              "all classes": {
+                "healthy": 0.0,
+                "inner": 0.999,
+                "outer": 0.0,
+                "ball": 0.001
+              }
+            }
+          }
+        }
+      },
+      "after": {
+        "platform": "macOS-27.2-arm64-arm-64bit",
+        "python": "3.12.14",
+        "cpu_torch_threads": 2,
+        "peak_process_rss_mib": 449.34375,
+        "routes": {
+          "pump_sensor": {
+            "cold_s": 0.2017017920006765,
+            "warm_median_s": 0.14828741700330283,
+            "preprocessing_s": 0.11888795800041407,
+            "checkpoint_bytes": 2359699,
+            "first_load_call_s": 0.028446291005820967,
+            "load_calls": 6,
+            "prediction": {
+              "file format": "Ottawa bearing rig recording",
+              "machine": "Pump",
+              "condition": "inner",
+              "model probability": 0.999,
+              "model used": "Random forest",
+              "all classes": {
+                "healthy": 0.0,
+                "inner": 0.999,
+                "outer": 0.0,
+                "ball": 0.001
+              }
+            }
+          }
+        }
+      }
+    },
+    "pump_image": {
+      "before": {
+        "platform": "macOS-27.2-arm64-arm-64bit",
+        "python": "3.12.14",
+        "cpu_torch_threads": 2,
+        "peak_process_rss_mib": 543.0625,
+        "routes": {
+          "pump_image": {
+            "cold_s": 1.5658230839908356,
+            "warm_median_s": 0.2047714590007672,
+            "preprocessing_s": 0.0005316249880706891,
+            "checkpoint_bytes": 44792971,
+            "first_load_call_s": 0.018106207993696444,
+            "load_calls": 6,
+            "prediction": {
+              "file format": "event-camera frame (XJTU-DV style)",
+              "machine": "Pump",
+              "condition": "healthy",
+              "model probability": 0.993,
+              "model used": "ResNet18 CNN",
+              "all classes": {
+                "healthy": 0.993,
+                "inner": 0.001,
+                "outer": 0.005,
+                "ball": 0.001
+              }
+            }
+          }
+        }
+      },
+      "after": {
+        "platform": "macOS-27.2-arm64-arm-64bit",
+        "python": "3.12.14",
+        "cpu_torch_threads": 2,
+        "peak_process_rss_mib": 524.9375,
+        "routes": {
+          "pump_image": {
+            "cold_s": 1.585384707999765,
+            "warm_median_s": 0.010663166991434991,
+            "preprocessing_s": 0.00046187499538064003,
+            "checkpoint_bytes": 44792971,
+            "first_load_call_s": 0.018631625003763475,
+            "load_calls": 1,
+            "prediction": {
+              "file format": "event-camera frame (XJTU-DV style)",
+              "machine": "Pump",
+              "condition": "healthy",
+              "model probability": 0.993,
+              "model used": "ResNet18 CNN",
+              "all classes": {
+                "healthy": 0.993,
+                "inner": 0.001,
+                "outer": 0.005,
+                "ball": 0.001
+              }
+            }
+          }
+        }
+      }
+    },
+    "aalto": {
+      "before": {
+        "platform": "macOS-27.2-arm64-arm-64bit",
+        "python": "3.12.14",
+        "cpu_torch_threads": 2,
+        "peak_process_rss_mib": 596.109375,
+        "routes": {
+          "aalto": {
+            "cold_s": 0.3323132910009008,
+            "warm_median_s": 0.3159775840031216,
+            "preprocessing_s": 0.31470050000643823,
+            "checkpoint_bytes": 7468,
+            "first_load_call_s": 0.0009609999979147688,
+            "load_calls": 6,
+            "prediction": {
+              "file format": "Aalto gear rig (3012 Hz)",
+              "machine": "Grader",
+              "condition": "healthy",
+              "model probability": 0.987,
+              "model used": "Logistic regression",
+              "all classes": {
+                "healthy": 0.987,
+                "tooth_damage": 0.013
+              },
+              "task": "gear tooth condition (laboratory gear-pair analogue; not the slewing bearing)"
+            }
+          }
+        }
+      },
+      "after": {
+        "platform": "macOS-27.2-arm64-arm-64bit",
+        "python": "3.12.14",
+        "cpu_torch_threads": 2,
+        "peak_process_rss_mib": 595.90625,
+        "routes": {
+          "aalto": {
+            "cold_s": 0.33189037500415,
+            "warm_median_s": 0.3153408750076778,
+            "preprocessing_s": 0.312793666991638,
+            "checkpoint_bytes": 7468,
+            "first_load_call_s": 0.0009085839992621914,
+            "load_calls": 6,
+            "prediction": {
+              "file format": "Aalto gear rig (3012 Hz)",
+              "machine": "Grader",
+              "condition": "healthy",
+              "model probability": 0.987,
+              "model used": "Logistic regression",
+              "all classes": {
+                "healthy": 0.987,
+                "tooth_damage": 0.013
+              },
+              "task": "gear tooth condition (laboratory gear-pair analogue; not the slewing bearing)"
+            }
+          }
+        }
+      }
+    }
+  },
+  "baseline_commit": "044d428ab85bf46631fad34f5f5c2722481d42f7"
+}

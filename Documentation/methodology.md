@@ -54,6 +54,10 @@ The upload routes use locally fitted checkpoints. Some fits use different inputs
 
 The [follow-up record](followup_experiments.md) uses the same folds and methods with a changed target or subset, saves to `Results/experiments/` and leaves the four-class results and checkpoints unchanged: CORA healthy vs worn (one prediction per held-out run, majority control, four-class model read as healthy vs worn), the Haul Truck fair test without the load-confounded ball class, and a route check with checkpoint hashes.
 
+## Phase 1 diagnostics and follow-up
+
+The signal diagnostics report waveform, FFT amplitude, Welch PSD and optional constant-speed shaft orders using the recording’s acquisition metadata. They run separately from model preprocessing. The grouped CORA candidate, fixed Pump disturbance tests and inference benchmarks are documented in the [Phase 1 enhancement report](phase_1_enhancement_report.md).
+
 ## Limits
 
 - No data comes from mining equipment. Each machine maps a mining component onto a laboratory component.

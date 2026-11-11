@@ -27,6 +27,6 @@ jobs:
           python -m pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
           python -m pip install -r requirements.txt pytest pyflakes
       - name: Lint
-        run: python -m pyflakes Notebook/pdm.py tests
+        run: python -m pyflakes Notebook tests
       - name: Tests
         run: python -m pytest tests -q
