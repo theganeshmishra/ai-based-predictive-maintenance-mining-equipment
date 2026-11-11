@@ -8,7 +8,7 @@ This capstone demonstrates sensor and visual classification of current component
 
 ## Results
 
-The [eight-equipment evidence matrix](Documentation/equipment_evidence_matrix.md) records each component, fault label, source, test group, accuracy, balanced accuracy, and macro F1. The [results index](Results/README.md) explains how to read the saved score files.
+The [eight-equipment evidence matrix](Documentation/equipment_evidence_matrix.md) records each component, fault label, source, test group, accuracy, balanced accuracy, and macro F1. The [results index](Results/README.md) explains how to read the saved score files. The [scientific validation](Documentation/scientific_validation.md) checks the metrics, comparisons and deployment evidence.
 
 - **Pump** has the strongest aligned held-out benchmark. Its sensor and event-camera results use different laboratory rigs and holdout protocols.
 - **CORA** shares run IDs across sensor and infrared recordings. The four mappings scored 18.75%–56.25% when whole speeds were held out. The 93.75%–100% time-split scores measure later segments of the same recordings. **Dozer reuses all Belt Conveyor runs**, and Excavator and Wheel Loader share eight run IDs.
@@ -18,22 +18,22 @@ The [eight-equipment evidence matrix](Documentation/equipment_evidence_matrix.md
 
 The [20-day audit and plan](Documentation/proj613_20_day_audit.md) ranks the remaining evidence gaps and gives acceptance criteria. The [follow-up experiments](Documentation/followup_experiments.md) (November 6) carry out priorities 2 to 6:
 
-- **CORA healthy vs worn** (Belt Conveyor and Dozer runs, unseen speed, 16 runs): sensor balanced accuracy 45.8% and images 75.0%, against 50.0% for the majority control. The image result beats the four-class model read the same way (58.3%) by two runs, which is promising but not defensible evidence (exact p = 0.05). No model is replaced, and CORA modelling stops here.
+- **CORA healthy vs worn** (Belt Conveyor and Dozer runs, unseen speed, 16 runs): sensor balanced accuracy 45.8% and images 75.0%, against 50.0% for the majority control. The infrared binary model correctly classified two more of the same 16 runs than the four-class model with merged wear predictions (58.3% balanced accuracy). The exploratory exact p-value of 0.05 is for random assignment of healthy predictions under a conditional null. No model is replaced, and CORA modelling stops here.
 - **Haul Truck:** the ball class is confirmed load-confounded (no load in all 5 ball recordings, 400 N in the rest). Without it, the sensor model scores 84.0% accuracy (73.3% balanced) on 25 unseen-bearing recordings.
 - **Drill Rig and Pump:** the crack mapping stays a qualified analogue; the Pump test is an unseen-speed-profile test, because the source gives no bearing IDs.
 - **Grader:** the sensor and image experiments stay separate tasks.
-- **Demo routes:** 15 of 16 routes rerun on 6 November with checkpoint hashes recorded (the Grader photo route needs its checkpoint on the demo computer).
+- **Demo routes:** 15 of 16 routes rerun on 6 November with checkpoint hashes recorded (the Grader photo checkpoint was missing from that computer).
 
-Three [improvement attempts](Documentation/improvement_results.md), each [planned in advance](Documentation/improvement_plan_2026-11-06.md) and run once:
+Four [improvement attempts](Documentation/improvement_results.md) followed plans committed before execution:
 
 - **Drill Rig sensor with tachometer-order features:** 77.5% accuracy (75.7% balanced) on the same unseen-speed test, up from 73.3%. A deployment refit on all 120 recordings with order features offered chose vibration features only, the same as the existing model, so nothing was deployed.
 - **Drill Rig sensor with envelope order features (attempt D, planned November 10):** 75.0% accuracy (72.2% balanced) on the same test, below attempt A and under 80%; not deployed, and no further Drill Rig sensor attempts on this data.
-- **Haul Truck images with speed-scaled frames:** 50.0%, no gain over the archived 58.3%. The image model mostly recognises the camera angle.
+- **Haul Truck images with speed-scaled frames:** 50.0%, no gain over the archived 58.3%. The follow-up revealed sensitivity to the held-out recording and camera setup.
 - **CORA transient runs, unseen repetition at a trained speed:** 100% Belt Conveyor, 100% Excavator, 97.5% Wheel Loader. This is a narrower test than the fair test and does not replace it.
 
 Under the fair test, Pump, Grader, Drill Rig (images) and Haul Truck (sensor accuracy, exactly 80%) reach 80%; the four CORA machines do not.
 
-**Grader with matched classes** ([results](Documentation/grader_matched_classes_results.md), [plan](Documentation/grader_matched_classes_plan.md)): no public image data with the four slewing-bearing classes exists, so the sensor side was given the image side's task, healthy gear vs damaged tooth. On the independent Aalto thruster rig, holding out whole gear pairs, the sensor model scores 77.8% balanced accuracy on 425 runs (majority 50%). MCC5-THU scores 70.8% at an unseen speed. The gear-tooth photos score 82.6%. The slewing-bearing route is unchanged.
+**Grader with matched classes** ([results](Documentation/grader_matched_classes_results.md), [plan](Documentation/grader_matched_classes_plan.md)): The investigation found no suitable public image set for the four slewing-bearing classes. The gear follow-up compares whole gear-run condition with individual tooth-crop condition. On the independent Aalto thruster rig, holding out whole gear pairs, the sensor model scores 77.8% balanced accuracy on 425 runs (majority 50%). MCC5-THU scores 70.8% at an unseen speed. The gear-tooth photos score 82.6%. The slewing-bearing route is unchanged.
 
 ## How it works
 
@@ -94,9 +94,9 @@ Open [Integrated Equipment Fault Prediction](Notebook/Integrated_Equipment_Fault
 - Keep trusted deployment checkpoints in `Processed_Data/models/`. They contain the estimator or weights, the class order, and preprocessing metadata. The notebook displays availability and loads the models for inference.
 - Sensor and gear-tooth models are `.joblib` files, and loading one can run code stored inside it. They load only if their SHA-256 is in the local list `Processed_Data/models/trusted_sha256.json`. `train-final` adds each model it saves. For models already on your computer, run `python Notebook/pdm.py trust-models` once, and only for models you built yourself. Never load a `.joblib` file someone sends you. Image models (`.pt`) load as weights only.
 - Motor Grader’s gear-tooth image experiment measures visible damage on a separate set of small gears. Its local deployment checkpoint is now built from the verified Roboflow v1 export. The integrated Grader sensor model classifies slewing-bearing conditions; gear-tooth predictions do not diagnose the slewing bearing.
-- Drill Rig images come from synthetic CAD gear renders. The Drill Rig and Grader sensor deployment fits use two-second excerpts per publisher recording. The Drill Rig image checkpoint uses a bounded mesh subset. Those deployment fits are separate from the published experiments.
+- Drill Rig images come from synthetic CAD gear renders. The Drill Rig and Grader JUST bearing deployment fits use two-second excerpts per publisher recording. The Aalto deployment fit uses all 425 gear runs. The Drill Rig image checkpoint uses a bounded mesh subset. Those deployment fits are separate from the published experiments.
 
-The November 8 notebook and CLI smoke tests each passed all eight sensor and eight image routes. The notebook passed 19 upload checks. See the [regression check](Documentation/deployment_verification.md#november-8-regression-check) for local records and sample prediction errors.
+The latest local smoke tests passed all eight sensor and eight image mappings plus Aalto gear vibration. The 250 RPM Aalto recording returned healthy at 98.7% model probability. See the [coding completion audit](Documentation/coding_completion_audit.md) for the checkpoint and test results.
 
 For raw sensor CSV uploads, use these schemas. The header identifies the expected source format and rate. Prepare the CSV from the corresponding recording without resampling or substituting channels.
 

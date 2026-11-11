@@ -41,7 +41,7 @@ Rerun commands: `python Notebook/pdm.py attempt drill-orders`, `attempt drill-en
 - **Baseline rerun with the current code (125 ms):** 8 of 12 test recordings correct, 66.7% accuracy, macro F1 67.6%.
 - **Speed-scaled frames:** 6 of 12 correct, 50.0% accuracy, macro F1 47.5%. Healthy stays 3 of 3. More faulty recordings are now called healthy.
 - **Archived result:** 58.3% (7 of 12). The rerun differs from the archive by one recording. The difference is run-to-run variation, not an improvement, so the archived number stays official.
-- **Finding found while checking this run:** the epoch choice uses one training recording per class as validation, and each of those is a camera angle that its class never shows in the remaining training data. At every epoch the model gets all 8 remaining training recordings right and all 4 validation recordings wrong (image accuracy 0.0–0.4%). So the epoch choice always falls to 1 epoch, and the model is largely recognising the camera angle (scene), not the fault. This applies to the archived Haul Truck image result too, and it is the main reason we do not expect frame-length changes to help. It is a limitation of the event-camera source (three angles per class), not a code error.
+- **Finding found while checking this run:** the epoch choice uses one training recording per class as validation, and each of those is a camera angle that its class never shows in the remaining training data. At every epoch the model gets all 8 remaining training recordings right and all 4 validation recordings wrong (image accuracy 0.0–0.4%). In this rerun, all validation epochs tied at the recording level and the selection rule picked one epoch. The validation recordings introduce both a recording and camera-angle change. The result is consistent with scene dependence, but the experiment does not isolate angle effects or establish the cause of errors in the archived run.
 - **Decision:** no gain. No change to the model or the archive.
 
 ## C. CORA transient runs: unseen repetition at a known speed
@@ -55,12 +55,12 @@ Rerun commands: `python Notebook/pdm.py attempt drill-orders`, `attempt drill-en
 | Excavator (healthy, bearing, unbalance, misalignment) | 80 | 100% | 100% | 100% | 25% | none |
 | Wheel Loader (healthy, bearing, half-broken bar, broken bar) | 80 | 97.5% | 97.5% | 97.5% | 25% | 2 half-broken-bar runs called broken bar |
 
-- **What it shows:** the CORA features separate the classes well when the model has seen the class at that speed. The fair-test failure (18.75–56.25%) comes from the change of speed, not from features that carry no fault information.
+- **What it shows:** the CORA features separate the classes well when the model has seen the class at that speed. The stationary unseen-speed scores remain 18.75–56.25%. Because acquisition and preprocessing also differ, the gap cannot be attributed to speed alone.
 - **What it does not show:** this is not the unseen-speed claim. The repetitions use the same physical gear set or fault and the same session, so session effects cannot be ruled out. It is not a new-specimen test either. The Dozer reuses the Belt Conveyor runs, so its result is the Belt Conveyor's.
 
 ## Which machines reach 80%, and under which test
 
-The official headline for each machine stays its fair test (whole speeds, bearings, designs or supports held out). The other tests answer narrower questions and must be labelled as such.
+The official headline for each machine stays its fair test (recordings grouped by speed, bearing ID, design or operating condition). The other tests answer narrower questions and must be labelled as such.
 
 | Machine | Fair test, sensor | Fair test, images | ≥ 80% on the fair test? | Narrower tests that reach 80% |
 |---|---|---|---|---|
