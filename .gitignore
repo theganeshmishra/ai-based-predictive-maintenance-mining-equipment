@@ -12,6 +12,21 @@ __pycache__/
 .idea/
 .vscode/*
 
+# Local assistant configuration, instructions and bookmarks
+.claude/
+.chatgpt/
+.codex/
+CLAUDE.md
+CLAUDE.local.md
+CHATGPT.md
+CHATGPT.local.md
+*[Cc][Ll][Aa][Uu][Dd][Ee]*.[Uu][Rr][Ll]
+*[Cc][Ll][Aa][Uu][Dd][Ee]*.[Ww][Ee][Bb][Ll][Oo][Cc]
+*[Cc][Ll][Aa][Uu][Dd][Ee]*.[Ll][Nn][Kk]
+*[Cc][Hh][Aa][Tt][Gg][Pp][Tt]*.[Uu][Rr][Ll]
+*[Cc][Hh][Aa][Tt][Gg][Pp][Tt]*.[Ww][Ee][Bb][Ll][Oo][Cc]
+*[Cc][Hh][Aa][Tt][Gg][Pp][Tt]*.[Ll][Nn][Kk]
+
 # Credentials and local configuration
 .env
 .env.*
