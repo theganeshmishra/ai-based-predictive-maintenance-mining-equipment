@@ -1,6 +1,6 @@
 # AI-Based Predictive Maintenance for Mining Equipment
 
-Saskatchewan Polytechnic PROJ 613 capstone · Group 9 · Ganesh Mishra, Lakshya Sharma and Sagar Patel
+Saskatchewan Polytechnic · Group 9 · Ganesh Mishra, Lakshya Sharma and Sagar Patel
 
 This capstone demonstrates sensor and visual classification of current component condition across eight mining equipment mappings. The sources include laboratory analogues, small-gear inspection photos, and synthetic CAD renders. The eight mappings have working local prediction routes. The strength and comparability of the archived experiments vary by equipment.
 
@@ -16,7 +16,7 @@ The [eight-equipment evidence matrix](Documentation/equipment_evidence_matrix.md
 - **Motor Grader** reports separate results for slewing-bearing vibration and gear-tooth photo inspection. Its image headline is balanced accuracy per tooth crop.
 - **Local deployment checks** verify routing and prediction output. They use saved deployment checkpoints and may include training samples. See the [deployment verification report](Documentation/deployment_verification.md) for the test cases.
 
-The [20-day audit and plan](Documentation/proj613_20_day_audit.md) ranks the remaining evidence gaps and gives acceptance criteria. The [follow-up experiments](Documentation/followup_experiments.md) (November 6) carry out priorities 2 to 6:
+The [20-day audit and plan](Documentation/project_20_day_audit.md) ranks the remaining evidence gaps and gives acceptance criteria. The [follow-up experiments](Documentation/followup_experiments.md) (November 6) carry out priorities 2 to 6:
 
 - **CORA healthy vs worn** (Belt Conveyor and Dozer runs, unseen speed, 16 runs): sensor balanced accuracy 45.8% and images 75.0%, against 50.0% for the majority control. The infrared binary model correctly classified two more of the same 16 runs than the four-class model with merged wear predictions (58.3% balanced accuracy). The exploratory exact p-value of 0.05 is for random assignment of healthy predictions under a conditional null. No model is replaced, and CORA modelling stops here.
 - **Haul Truck:** the ball class is confirmed load-confounded (no load in all 5 ball recordings, 400 N in the rest). Without it, the sensor model scores 84.0% accuracy (73.3% balanced) on 25 unseen-bearing recordings.

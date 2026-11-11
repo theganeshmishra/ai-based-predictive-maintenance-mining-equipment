@@ -1,4 +1,4 @@
-# PROJ 613 scientific validation
+# Scientific validation
 
 AI-Based Predictive Maintenance for Mining Equipment · Ganesh Mishra, Lakshya Sharma and Sagar Patel · November 11, 2026
 

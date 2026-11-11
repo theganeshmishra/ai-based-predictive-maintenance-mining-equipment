@@ -1,6 +1,6 @@
 # Motor Grader image model investigation
 
-PROJ 613 · Group 9 · November 5, 2026
+AI-Based Predictive Maintenance for Mining Equipment · Group 9 · November 5, 2026
 
 **Decision.** Keep the Motor Grader slewing-bearing route sensor-only. The reviewed sources did not establish a reusable set of genuine inspection images with all four target labels and independent bearing IDs. The gear-tooth experiment remains a separate visual task.
 

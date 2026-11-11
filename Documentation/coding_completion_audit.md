@@ -1,4 +1,4 @@
-# PROJ 613 coding completion audit
+# Coding completion audit
 
 AI-Based Predictive Maintenance for Mining Equipment · Group 9
 

@@ -1,6 +1,6 @@
 # Eight-equipment evidence matrix
 
-PROJ 613 · Group 9 · Updated November 8, 2026
+AI-Based Predictive Maintenance for Mining Equipment · Group 9 · Updated November 8, 2026
 
 The matrix describes eight equipment application mappings. The measurements come from laboratory analogues or component datasets, and the Drill Rig image benchmark uses synthetic CAD renders. Shared CORA run IDs support a comparison at run level. Frame-to-window synchronization was not verified. The Pump and Haul Truck modalities use separate rigs. Source links, licenses and paths are recorded in the [dataset manifest](../Dataset_Manifest/manifest.md).
 
@@ -62,4 +62,4 @@ Aalto is the deployed gear-vibration source. Its separate held-out evaluation gr
 
 ## Local deployment checks
 
-The [deployment report](deployment_verification.md) records successful inference for eight sensor and eight image routes plus the Aalto gear-vibration route. Its sample predictions and confidence values verify that the interface routes files and loads checkpoints. The smoke samples may have been included in a deployment fit. Some checkpoint training scopes also differ from the archived experiments. For example, the Belt Conveyor and Dozer upload models accept vibration alone, and the Drill Rig and Grader deployment fits use bounded training inputs. See the [20-day audit](proj613_20_day_audit.md) for the next experiment and its acceptance criteria.
+The [deployment report](deployment_verification.md) records successful inference for eight sensor and eight image routes plus the Aalto gear-vibration route. Its sample predictions and confidence values verify that the interface routes files and loads checkpoints. The smoke samples may have been included in a deployment fit. Some checkpoint training scopes also differ from the archived experiments. For example, the Belt Conveyor and Dozer upload models accept vibration alone, and the Drill Rig and Grader deployment fits use bounded training inputs. See the [20-day audit](project_20_day_audit.md) for the next experiment and its acceptance criteria.

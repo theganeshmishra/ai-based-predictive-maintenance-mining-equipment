@@ -1,6 +1,6 @@
 # Planned improvement attempts (written before running)
 
-PROJ 613 · Group 9 · November 6, 2026 · committed before any of these results existed
+AI-Based Predictive Maintenance for Mining Equipment · Group 9 · November 6, 2026 · committed before any of these results existed
 
 The team asked whether more machines can reach 80% accuracy. This file fixes the attempts in advance so the results cannot be tuned to the test. Each attempt runs once. Every result is reported, whether it reaches 80% or not. The archived fair-test results and the deployment checkpoints stay unchanged; new results go to `Results/experiments/`.
 

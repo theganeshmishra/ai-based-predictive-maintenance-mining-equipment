@@ -1,6 +1,6 @@
 # Final report: sensor and image condition classification for eight mining equipment mappings
 
-PROJ 613 · Saskatchewan Polytechnic · Group 9: Ganesh Mishra, Lakshya Sharma and Sagar Patel · November 10, 2026
+AI-Based Predictive Maintenance for Mining Equipment · Saskatchewan Polytechnic · Group 9: Ganesh Mishra, Lakshya Sharma and Sagar Patel · November 10, 2026
 
 This report brings the project's evidence into one place. Every number comes from a saved result file in `Results/` and can be rerun with the commands in the [README](../README.md). The detailed records are the [evidence matrix](equipment_evidence_matrix.md), the [methodology](methodology.md), the [follow-up experiments](followup_experiments.md), the [improvement results](improvement_results.md), the [Grader matched-class results](grader_matched_classes_results.md) and the [deployment verification](deployment_verification.md).
 
