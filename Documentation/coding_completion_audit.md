@@ -2,7 +2,7 @@
 
 AI-Based Predictive Maintenance for Mining Equipment · Group 9
 
-**Verdict · Complete With Limitations.** All eight equipment mappings have working sensor and image inference on the verification computer. The additional Motor Grader Aalto gear-vibration route still requires a real-file test on this computer.
+**Verdict · Coding Complete.** All eight equipment mappings passed local sensor and image checks. The additional Motor Grader Aalto gear-vibration route passed with the publisher’s 250 RPM recording and a locally rebuilt checkpoint.
 
 ## Completed features
 
@@ -24,25 +24,25 @@ PASS means a real input reached the appropriate local checkpoint and returned a 
 | Excavator | PASS · `bearing`, 98.7% | PASS · CORA infrared frames |
 | Wheel Loader | PASS · `half_broken_bar`, 98.6% | PASS · CORA infrared frames |
 | Drill Rig | PASS · `gear_pitting`, 92.9% | PASS · indexed CAD renders |
-| Motor Grader | PASS · JUST bearing `outer_ring`, 79.6% | PASS · both `good_tooth` and `damaged_tooth` crops returned their expected labels |
+| Motor Grader | PASS · JUST bearing `outer_ring`, 79.6%. Aalto gear `healthy`, 98.7%. | PASS · both `good_tooth` and `damaged_tooth` crops returned their expected labels |
 
 ## Tests executed
 
 | Check | Observed result |
 |---|---|
-| `python -m pytest -q -rs` | 52 passed, 1 skipped, 12 warnings. The skip is the real Aalto prediction test. The warnings concern the future removal of scikit-learn's SVC probability option. |
+| `python -m pytest -q -rs` | 53 passed, 0 failed, 0 skipped, 12 warnings. The real Aalto test passed. The warnings concern the future removal of scikit-learn's SVC probability option. |
 | `python -m pyflakes Notebook/pdm.py tests` | Passed. |
 | `python -m pip check` | No broken requirements. |
-| `python Notebook/pdm.py route-check` | 38 prediction calls returned results across the 16 available mappings. Unsupported-file and ambiguous-CORA checks passed. The command exited 2 because the additional Aalto sample was absent. Local results are in `Processed_Data/deployment/route_check.json`. |
-| Clean-kernel integrated notebook | All cells executed. All 16 real-file routes and 19 upload checks passed. The eight sensor labels and displayed probabilities agreed with the CLI within rounding precision. The checks validated checkpoint labels and preprocessing metadata. A separate synthetic Aalto upload passed. |
+| `python Notebook/pdm.py route-check` | 39 prediction checks passed across all routes, including Aalto. Unsupported-file and ambiguous-CORA checks passed. The command exited 0. Local results are in `Processed_Data/deployment/route_check.json`. |
+| Clean-kernel integrated notebook | All cells executed. All 16 real-file routes and 19 upload checks passed. The eight sensor labels and displayed probabilities agreed with the CLI within rounding precision. The checks validated checkpoint labels and preprocessing metadata. A clean-kernel rerun also predicted `healthy` at 98.7% on the real Aalto recording. |
 | Research notebook | All 18 code cells executed in a clean kernel. |
 | Dependency checks | `pip check` reported no broken requirements. `pip-audit` reported no known vulnerabilities in the verification environment. |
-| Local upload server | 16 real-file multipart uploads and seven error or ambiguity cases passed. Cases covered a corrupted image, unsupported type, unknown CSV schema, ambiguous CORA input and missing sensor or image models. Automated HTTP tests also covered a corrupted MAT upload. |
+| Local upload server | 16 real-file multipart uploads and seven error or ambiguity cases passed. Cases covered a corrupted image, unsupported type, unknown CSV schema, ambiguous CORA input and missing sensor or image models. The real Aalto multipart upload returned `healthy` at 98.7%. Automated HTTP tests also covered a corrupted MAT upload. |
 
 ## Motor Grader integration
 
 - **JUST slewing-bearing vibration** and **gear-tooth inspection** both passed real-file checks. Select the Grader mapping explicitly for a single-tooth photo crop.
-- **Aalto gear vibration** selected the dedicated gear checkpoint and returned the binary condition with a synthetic test estimator. The trained-model test is skipped on this checkout. It needs `Raw_Data/aalto_gear/3012Hz/250RPM/0_12Nm/Healthy/GP1.csv` and `Processed_Data/models/grader_gear_sensor.joblib`. The local trust manifest exists. A verified copy of the fitted checkpoint must be registered locally before use.
+- **Aalto gear vibration** passed the real-file test, CLI, clean-kernel notebook and local upload page. The 250 RPM recording produced `healthy` at 98.7% with the trusted logistic regression checkpoint.
 - The Aalto and tooth-image data use different physical gears. Aalto labels a gear-pair run and the image route labels a tooth crop. See the [matched-class results](grader_matched_classes_results.md) for the laboratory evaluation and its limitations.
 
 ## Reliability fixes
@@ -57,18 +57,14 @@ PASS means a real input reached the appropriate local checkpoint and returned a 
 - Dozer and Belt Conveyor reuse CORA evidence. The shared schema requires a confirmed laboratory mapping. The Drill Rig image route uses synthetic CAD renders. The deployment checks establish local inference on the available component samples.
 - The [previous audit commit’s workflow](https://github.com/theganeshmishra/ai-based-predictive-maintenance-mining-equipment/actions/runs/42923427532) passed. The [main workflow runs](https://github.com/theganeshmishra/ai-based-predictive-maintenance-mining-equipment/actions?query=branch%3Amain) show CI status for the reliability fixes. CI skips real-file cases whose local fixtures are absent.
 
-## Aalto real-file recovery check
+## Aalto real-file recovery and rebuild
 
-A fresh local run completed with **52 passed, 0 failed, and 1 skipped**. The CLI returned 38 predictions and reported one missing Aalto sample with exit code 2. The real Aalto test remains skipped because the exact CSV and fitted checkpoint listed above are absent. The searched local project and shared folders, accessible Drive, GitHub releases and Actions artifacts contained neither file.
+The full Aalto archive matched the publisher SHA-256 recorded in the [dataset manifest](../Dataset_Manifest/manifest.md). The exact recording was restored to `Raw_Data/aalto_gear/3012Hz/250RPM/0_12Nm/Healthy/GP1.csv`. The existing extractor generated 12,750 windows from 425 runs across eight gear pairs. The saved feature cache and the original recording produced the same feature values within numerical tolerance.
 
-The [original deployment record](../Results/deployment/route_check.json) records a healthy prediction of 0.987 for `GP1.csv` and the original `grader_gear_sensor.joblib` SHA-256:
+The existing `python Notebook/pdm.py grader-gear train-final` command selected logistic regression with acceleration, shaft orders and torque, and registered the rebuilt checkpoint in the local trust manifest. The checkpoint at `Processed_Data/models/grader_gear_sensor.joblib` is a fresh fit on the full dataset. Its SHA-256 is:
 
 ```text
-418fb49af15362f033004109561745ce14a736f7b798daeb85a5756b1d325138
+5f9580644da0cfa366cfae2905073b8ad3d95ef288c98449c5720073a36235fa
 ```
 
-Recover the original checkpoint and sample from the environment that produced that record. Verify the source and match the recorded checkpoint hash before registering it in the local trust manifest. The publisher also lists and serves the 9,256,917,062-byte source archive with the SHA-256 in the [dataset manifest](../Dataset_Manifest/manifest.md). This archive provides the recordings for an independently rebuilt checkpoint through the existing `grader-gear train-final` command. No archive or fitted model was recovered in this check. [Aalto Gear Failure Dataset 3012 Hz v2](https://data.mendeley.com/datasets/fywnj597d8/2)
-
-After restoring both files, run `python -m pytest -q tests/test_features_and_routes.py::test_grader_gear_route`, then rerun the full suite and `python Notebook/pdm.py route-check`. The prior deployment result documents the original environment. This checkout requires a fresh real-file result before the Aalto route can be signed off.
-
-The [workflow for the tested software revision](https://github.com/theganeshmishra/ai-based-predictive-maintenance-mining-equipment/actions/runs/42924394880) passed. The [main workflow runs](https://github.com/theganeshmishra/ai-based-predictive-maintenance-mining-equipment/actions?query=branch%3Amain) show CI status for this audit update.
+The exact recording is part of the fitted dataset, so this prediction verifies deployment. The archived held-out experiment remains the source for the generalization estimate. Keep the recording and the trusted checkpoint on the demonstration computer. The raw archive, feature cache, checkpoint and trust manifest are excluded from Git.
