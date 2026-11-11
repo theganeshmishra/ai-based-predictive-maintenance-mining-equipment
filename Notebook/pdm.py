@@ -103,6 +103,80 @@ OTTAWA_FEATURES = ["mean", "std", "rms", "peak_to_peak", "crest_factor", "skew",
                    *(f"power_{lo}_{hi}_hz" for lo, hi in OTTAWA_BANDS)]
 
 
+def signal_diagnostics(samples, rate_hz, units, *, rpm=None, bands=()):
+    """Analyze one uniformly sampled channel. Rate and units must come from acquisition metadata."""
+    from scipy.signal import welch
+
+    values = np.asarray(samples, dtype=np.float64)
+    if values.ndim != 1 or len(values) < 4 or not np.isfinite(values).all():
+        raise ValueError("Provide at least four finite samples from one channel.")
+    if not np.isfinite(rate_hz) or rate_hz <= 0 or not isinstance(units, str) or not units.strip():
+        raise ValueError("Provide a positive sample rate and the verified signal units.")
+    if rpm is not None and (not np.isfinite(rpm) or rpm <= 0):
+        raise ValueError("Shaft speed must be a positive, constant RPM.")
+    bands = tuple(bands)
+    if any(not (0 <= lo < hi <= rate_hz / 2) for lo, hi in bands):
+        raise ValueError("Frequency bands must lie between zero and Nyquist.")
+
+    # Scale the moment calculation to keep tiny and large finite signals numerically stable.
+    scale = np.max(np.abs(values)) or 1.0
+    scaled = values / scale
+    centered = scaled - scaled.mean()
+    spread = centered.std()
+    rms = float(np.sqrt(np.mean(scaled**2)) * scale)
+    std = float(spread * scale)
+    moment = centered / spread if spread else np.zeros_like(centered)
+    frequency = np.fft.rfftfreq(len(values), d=1 / rate_hz)
+    amplitude = np.abs(np.fft.rfft(centered)) / len(values)
+    amplitude[1 : -1 if len(values) % 2 == 0 else None] *= 2
+    amplitude *= scale
+    psd_frequency, psd = welch(values, fs=rate_hz, nperseg=min(len(values), 4096),
+                               detrend="constant", scaling="density")
+    df = rate_hz / min(len(values), 4096)
+    band_energy = {}
+    for lo, hi in bands:
+        upper = psd_frequency <= hi if hi == rate_hz / 2 else psd_frequency < hi
+        band_energy[(lo, hi)] = float(psd[(psd_frequency >= lo) & upper].sum() * df)
+    return {
+        "units": units, "sample_rate_hz": rate_hz,
+        "time_s": np.arange(len(values)) / rate_hz, "waveform": values,
+        "frequency_hz": frequency, "amplitude": amplitude,
+        "psd_frequency_hz": psd_frequency, "psd": psd, "band_energy": band_energy,
+        "rms": rms, "variance": std * std, "std": std,
+        "skewness": float(np.mean(moment**3)),
+        "excess_kurtosis": float(np.mean(moment**4) - 3) if spread else None,
+        "crest_factor": float(1 / np.sqrt(np.mean(scaled**2))) if rms else None,
+        "peak_to_peak": float(np.ptp(scaled) * scale),
+        "shaft_orders": frequency / (rpm / 60) if rpm is not None else None,
+    }
+
+
+def save_signal_diagnostic_plot(analysis, path):
+    """Save waveform, FFT amplitude, Welch PSD and, when available, a constant-speed order spectrum."""
+    import matplotlib.pyplot as plt
+
+    units = analysis["units"]
+    has_orders = analysis["shaft_orders"] is not None
+    fig, axes = plt.subplots(4 if has_orders else 3, 1, figsize=(9, 9 if has_orders else 7))
+    traces = [
+        ("time_s", "waveform", "Time (s)", f"Vibration ({units})"),
+        ("frequency_hz", "amplitude", "Frequency (Hz)", f"FFT amplitude ({units})"),
+        ("psd_frequency_hz", "psd", "Frequency (Hz)", f"Welch PSD (({units})²/Hz)"),
+    ]
+    if has_orders:
+        traces.append(("shaft_orders", "amplitude", "Shaft order (× rotation frequency)", f"FFT amplitude ({units})"))
+    try:
+        for axis, (x, y, xlabel, ylabel) in zip(axes, traces):
+            axis.plot(analysis[x], analysis[y], linewidth=0.8)
+            axis.set(xlabel=xlabel, ylabel=ylabel)
+            axis.grid(alpha=0.2)
+        fig.tight_layout()
+        fig.savefig(path, dpi=140)
+    finally:
+        plt.close(fig)
+
+
+
 def ottawa_recording(path):
     """Features of every 100 ms window (20,000 samples at 200 kHz) of one .mat recording."""
     from scipy.io import loadmat
@@ -113,6 +187,8 @@ def ottawa_recording(path):
 
 
 def ottawa_signal_features(signal):
+    if not np.isfinite(signal).all():
+        raise ValueError("The recording contains invalid Ottawa signal values.")
     size = 20_000
     windows = signal[: len(signal) // size * size].reshape(-1, size)
     stats = window_statistics(windows, 200_000, OTTAWA_BANDS)
@@ -317,6 +393,8 @@ def mcc5_recording(handle):
     RMS, std, peak, crest, skewness, kurtosis and 8 relative log band energies."""
     size = 12_800
     signal = pd.read_csv(handle, usecols=MCC5_CHANNELS, dtype=np.float64)[MCC5_CHANNELS].to_numpy()
+    if len(signal) < size:
+        raise ValueError("The recording is too short. MCC5-THU needs at least 12,800 samples.")
     windows = signal[: len(signal) // size * size].reshape(-1, size, len(MCC5_CHANNELS))
     centered = windows - windows.mean(axis=1, keepdims=True)
     sd = centered.std(axis=1) + 1e-12
@@ -2871,14 +2949,12 @@ def predict(path, machine=None):
     return answer
 
 
-def image_probability(path, machine):
+@lru_cache(maxsize=2)
+def cached_image_model(model_file, machine, fingerprint):
     import torch
     from torch import nn
     from torchvision.models import resnet18
 
-    model_file = MODELS / f"{machine}_images.pt"
-    if not model_file.is_file():
-        raise FileNotFoundError(f"No trained image model: run  python Notebook/pdm.py {machine} train-final-images")
     config = MACHINES[machine]
     saved = torch.load(model_file, map_location="cpu", weights_only=True)
     # Existing exports contain just the state dict; newer bundles also record preprocessing.
@@ -2890,6 +2966,20 @@ def image_probability(path, machine):
     model = resnet18(weights=None)
     model.fc = nn.Linear(model.fc.in_features, len(labels))
     model.load_state_dict(saved.get("state_dict", saved))
+    model.eval()
+    return model, labels, normalise
+
+
+def image_probability(path, machine):
+    model_file = MODELS / f"{machine}_images.pt"
+    try:
+        stat = model_file.stat()
+    except FileNotFoundError as problem:
+        raise FileNotFoundError(
+            f"No trained image model: run  python Notebook/pdm.py {machine} train-final-images"
+        ) from problem
+    fingerprint = (stat.st_dev, stat.st_ino, stat.st_size, stat.st_mtime_ns, stat.st_ctime_ns)
+    model, labels, normalise = cached_image_model(model_file, machine, fingerprint)
     x = load_images(Path(path).parent, [{"file": Path(path).name}], normalise)
     return dict(zip(labels, image_probabilities(model, x)[0]))
 

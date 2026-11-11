@@ -108,3 +108,46 @@ def test_route_check_preserves_archived_results(tmp_path, monkeypatch):
     assert all(row["status"] == "no local sample" for row in result["routes"])
     assert archived_report.read_text() == "archived"
     assert (local / "deployment" / "route_check.json").is_file()
+
+
+def test_image_model_cache_reuses_weights_and_invalidates_replaced_file(isolated_models, monkeypatch):
+    import os
+
+    import torch
+    from torch import nn
+
+    path = isolated_models / "pump_images.pt"
+    path.write_bytes(b"first")
+    loaded = []
+
+    def read_weights(file, *, map_location, weights_only):
+        assert map_location == "cpu" and weights_only
+        loaded.append(file.read_bytes())
+        return {}
+
+    class TinyModel(nn.Module):
+        def __init__(self):
+            super().__init__()
+            self.fc = nn.Linear(1, 4)
+
+        def load_state_dict(self, state_dict, *args, **kwargs):
+            assert state_dict == {}
+
+    monkeypatch.setattr(torch, "load", read_weights)
+    monkeypatch.setattr("torchvision.models.resnet18", lambda weights: TinyModel())
+    monkeypatch.setattr(pdm, "load_images", lambda *args: None)
+    monkeypatch.setattr(pdm, "image_probabilities", lambda *args: np.array([[.1, .2, .3, .4]]))
+    sample = isolated_models / "example.png"
+    try:
+        first = pdm.image_probability(sample, "pump")
+        assert pdm.image_probability(sample, "pump") == first
+        assert loaded == [b"first"]
+        stat = path.stat()
+        replacement = path.with_suffix(".tmp")
+        replacement.write_bytes(b"other")
+        os.utime(replacement, ns=(stat.st_atime_ns, stat.st_mtime_ns))
+        replacement.replace(path)
+        assert pdm.image_probability(sample, "pump") == first
+        assert loaded == [b"first", b"other"]
+    finally:
+        pdm.cached_image_model.cache_clear()
