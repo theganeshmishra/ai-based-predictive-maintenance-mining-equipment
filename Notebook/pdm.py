@@ -917,7 +917,7 @@ def sha256(path):
 # Saved scikit-learn models are joblib (pickle) files, and loading one can run code stored inside it.
 # So a .joblib model is loaded only if its SHA-256 is in a local trust list, which is written when this
 # computer trains the model (or by `trust-models` after you have checked the files are your own builds).
-# Never trust a .joblib file that someone sent you. Image models (.pt) load with weights_only=True instead.
+# Image checkpoints also require a trusted digest and load with weights_only=True.
 TRUSTED_MODELS = MODELS / "trusted_sha256.json"
 _TRUSTED_LOADS = {}
 _TRUSTED_LOAD_LOCK = Lock()
@@ -938,8 +938,21 @@ def trusted_hashes():
 def trust_model(path):
     hashes = trusted_hashes()
     hashes[Path(path).name] = sha256(Path(path))
+    write_trusted_hashes(hashes)
+
+
+def write_trusted_hashes(hashes):
+    from tempfile import NamedTemporaryFile
+
     TRUSTED_MODELS.parent.mkdir(parents=True, exist_ok=True)
-    TRUSTED_MODELS.write_text(json.dumps(hashes, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    with NamedTemporaryFile(mode="w", encoding="utf-8", dir=TRUSTED_MODELS.parent, delete=False) as handle:
+        temporary = Path(handle.name)
+        try:
+            handle.write(json.dumps(hashes, indent=2, sort_keys=True) + "\n")
+            handle.close()
+            temporary.replace(TRUSTED_MODELS)
+        finally:
+            temporary.unlink(missing_ok=True)
 
 
 def save_trusted_joblib(value, path):
@@ -954,24 +967,36 @@ def save_trusted_joblib(value, path):
     trust_model(path)
 
 
+def expected_checkpoint_hash(path):
+    expected = trusted_hashes().get(path.name)
+    if expected is None:
+        raise ValueError(f"{path.name} is not in the trusted model list. Verify its provenance and SHA-256 "
+                         "before registering it.")
+    return expected
+
+
+def checkpoint_fingerprint(stat):
+    return (stat.st_dev, stat.st_ino, stat.st_size, stat.st_mtime_ns, stat.st_ctime_ns)
+
+
+def verified_checkpoint_bytes(handle, filename, expected):
+    contents = handle.read()
+    if hashlib.sha256(contents).hexdigest() != expected:
+        raise ValueError(f"{filename} has changed since it was trusted, so it was not loaded.")
+    return contents
+
+
 def load_trusted_joblib(path):
     """Load a saved .joblib model only if its SHA-256 matches the local trust list."""
+    from io import BytesIO
     import joblib
 
     path = Path(path).resolve()
-    expected = trusted_hashes().get(path.name)
-    if expected is None:
-        raise ValueError(f"{path.name} is not in the trusted model list. If this computer built it, run "
-                         "python Notebook/pdm.py trust-models; never trust a model file from someone else.")
+    expected = expected_checkpoint_hash(path)
     with _TRUSTED_LOAD_LOCK, path.open("rb") as handle:
-        stat = os.fstat(handle.fileno())
-        key = (path, stat.st_dev, stat.st_ino, stat.st_size, stat.st_mtime_ns, stat.st_ctime_ns, expected)
+        key = (path, checkpoint_fingerprint(os.fstat(handle.fileno())), expected)
         if key not in _TRUSTED_LOADS:
-            from io import BytesIO
-
-            contents = handle.read()
-            if hashlib.sha256(contents).hexdigest() != expected:
-                raise ValueError(f"{path.name} has changed since it was trusted, so it was not loaded.")
+            contents = verified_checkpoint_bytes(handle, path.name, expected)
             model = joblib.load(BytesIO(contents))
             if len(_TRUSTED_LOADS) >= 8:
                 _TRUSTED_LOADS.pop(next(iter(_TRUSTED_LOADS)))
@@ -980,14 +1005,20 @@ def load_trusted_joblib(path):
 
 
 def trust_models():
-    """Record the SHA-256 of the .joblib models that predict uses (if present) as trusted."""
-    names = [f"{machine}_sensor.joblib" for machine in MACHINES] + ["grader_gear_tooth.joblib",
-                                                                     GRADER_GEAR_MODEL.name]
-    for path in (MODELS / name for name in names):
-        if not path.is_file():
-            continue
-        trust_model(path)
-        print(f"trusted {path.name}  {trusted_hashes()[path.name]}")
+    """Register existing local prediction checkpoints while preserving previously registered hashes."""
+    names = [f"{machine}_sensor.joblib" for machine in MACHINES] + [
+        f"{machine}_images.pt" for machine in MACHINES if machine != "grader"
+    ] + ["grader_gear_tooth.joblib", GRADER_GEAR_MODEL.name]
+    hashes = trusted_hashes()
+    present = {name: sha256(MODELS / name) for name in names if (MODELS / name).is_file()}
+    changed = [name for name, digest in present.items() if name in hashes and hashes[name] != digest]
+    if changed:
+        raise ValueError("Previously trusted checkpoints have changed: " + ", ".join(changed) +
+                         ". Restore the verified originals or verify and update the registry explicitly.")
+    if set(present) - set(hashes):
+        write_trusted_hashes({**hashes, **present})
+    for name, digest in present.items():
+        print(f"trusted {name}  {digest}")
 
 
 def check_data():
@@ -1940,6 +1971,8 @@ def run_train_final_images(machine, accept_archive=None):
     y = np.asarray([m.labels.index(r["class"]) for r in rows])
     model, _ = fit_resnet(x, y, epochs, m.labels, m.image_settings)
     MODELS.mkdir(parents=True, exist_ok=True)
+    target = MODELS / f"{machine}_images.pt"
+    partial = target.with_suffix(".part")
     torch.save({
         "state_dict": model.state_dict(),
         "metadata": {
@@ -1951,7 +1984,9 @@ def run_train_final_images(machine, accept_archive=None):
             "training_images": len(rows),
             "image_export": folder.name,
         },
-    }, MODELS / f"{machine}_images.pt")
+    }, partial)
+    partial.replace(target)
+    trust_model(target)
     print(f"{m.title}: saved ResNet-18 trained for {epochs} epochs on {len(rows)} images")
 
 
@@ -2957,13 +2992,24 @@ def predict(path, machine=None):
 
 
 @lru_cache(maxsize=2)
-def cached_image_model(model_file, machine, fingerprint):
+def cached_image_model(model_file, machine, fingerprint, expected):
+    from io import BytesIO
+    import pickle
     import torch
     from torch import nn
     from torchvision.models import resnet18
 
     config = MACHINES[machine]
-    saved = torch.load(model_file, map_location="cpu", weights_only=True)
+    with model_file.open("rb") as handle:
+        if checkpoint_fingerprint(os.fstat(handle.fileno())) != fingerprint:
+            raise ValueError(f"{model_file.name} changed during loading. Retry with a verified checkpoint.")
+        contents = verified_checkpoint_bytes(handle, model_file.name, expected)
+    try:
+        saved = torch.load(BytesIO(contents), map_location="cpu", weights_only=True)
+    except (EOFError, OSError, RuntimeError, ValueError, pickle.UnpicklingError) as problem:
+        raise ValueError(f"{model_file.name} is not a readable weights-only checkpoint.") from problem
+    if not isinstance(saved, dict):
+        raise ValueError(f"{model_file.name} does not contain a checkpoint dictionary.")
     # Existing exports contain just the state dict; newer bundles also record preprocessing.
     metadata = saved.get("metadata", {})
     if metadata and (metadata["machine"] != machine or metadata["modality"] != "image"):
@@ -2972,7 +3018,10 @@ def cached_image_model(model_file, machine, fingerprint):
     normalise = metadata.get("preprocessing", {}).get("normalise", config.image_settings["normalise"])
     model = resnet18(weights=None)
     model.fc = nn.Linear(model.fc.in_features, len(labels))
-    model.load_state_dict(saved.get("state_dict", saved))
+    try:
+        model.load_state_dict(saved.get("state_dict", saved))
+    except (RuntimeError, TypeError) as problem:
+        raise ValueError(f"{model_file.name} weights do not match the expected ResNet18 architecture.") from problem
     model.eval()
     return model, labels, normalise
 
@@ -2985,8 +3034,8 @@ def image_probability(path, machine):
         raise FileNotFoundError(
             f"No trained image model: run  python Notebook/pdm.py {machine} train-final-images"
         ) from problem
-    fingerprint = (stat.st_dev, stat.st_ino, stat.st_size, stat.st_mtime_ns, stat.st_ctime_ns)
-    model, labels, normalise = cached_image_model(model_file, machine, fingerprint)
+    expected = expected_checkpoint_hash(model_file)
+    model, labels, normalise = cached_image_model(model_file, machine, checkpoint_fingerprint(stat), expected)
     x = load_images(Path(path).parent, [{"file": Path(path).name}], normalise)
     return dict(zip(labels, image_probabilities(model, x)[0]))
 
@@ -3401,7 +3450,10 @@ def main():
     if args.target == "serve":
         return serve()
     if args.target == "trust-models":
-        return trust_models()
+        try:
+            return trust_models()
+        except ValueError as problem:
+            parser.exit(1, f"{problem}\n")
     if args.target == "cora-binary":
         if args.command == "verify":
             return verify_cora_runs()

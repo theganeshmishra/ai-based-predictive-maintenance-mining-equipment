@@ -99,8 +99,10 @@ def test_image_cache_keeps_routes_apart_and_holds_at_most_two_models(isolated_mo
             self.source = state_dict["source"]
 
     def read_weights(file, *, map_location, weights_only):
-        loads.append(file.name)
-        return {"source": file.name}
+        assert map_location == "cpu" and weights_only
+        source = file.read().decode() + "_images.pt"
+        loads.append(source)
+        return {"source": source}
 
     monkeypatch.setattr(torch, "load", read_weights)
     monkeypatch.setattr("torchvision.models.resnet18", lambda weights: TinyModel())
@@ -110,7 +112,9 @@ def test_image_cache_keeps_routes_apart_and_holds_at_most_two_models(isolated_mo
                         np.array([[0.1, 0.2, 0.3, 0.4]]))
     pdm.cached_image_model.cache_clear()
     for machine in ("pump", "haul_truck", "drill_rig"):
-        (isolated_models / f"{machine}_images.pt").write_bytes(machine.encode())
+        path = isolated_models / f"{machine}_images.pt"
+        path.write_bytes(machine.encode())
+        pdm.trust_model(path)
     sample = isolated_models / "frame.png"
     try:
         for machine in ("pump", "haul_truck", "pump", "haul_truck", "drill_rig", "pump"):
