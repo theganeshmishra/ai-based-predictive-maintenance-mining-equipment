@@ -265,7 +265,7 @@ How this was measured:
 | Aalto gear sensor | 372 ms | 348 ms | 345 ms | 6 | 363 MiB |
 
 - **Cache behaviour:** the image cache holds at most two models, keeps routes apart, and reloads when a checkpoint file changes. A new test checks this by alternating three routes. Repeated predictions were identical.
-- **Gap:** `.pt` image checkpoints are loaded with `weights_only=True`, which prevents code execution. But they aren't on the SHA-256 trust list, so a replaced image checkpoint would be used without warning. Adding them to the trust list is recommended before any shared deployment.
+- **Historical gap:** Image weights originally used weights-only loading without a registered hash. The hardening below closes this gap.
 
 ### 13. Missing datasets and checkpoints
 
@@ -298,3 +298,19 @@ How this was measured:
 - inference reliability was measured.
 
 Phase 2 was not started.
+
+## Final checkpoint hardening · November 13, 2026
+
+Implementation baseline: `04e25d29d79219b2a5ad319c662d47d1a235cf50`.
+
+All seven ResNet18 `.pt` classifiers (Pump, Haul Truck, Belt Conveyor, Dozer, Excavator, Wheel Loader and Drill Rig) now require a trusted SHA-256. The eighth image mapping, Motor Grader tooth inspection, uses the existing trusted Joblib loader. The optional whole-machine ONNX detector is a separate identification aid outside these component fault routes.
+
+On this computer, actual model bytes matched the earlier local deployment digests before registration. On a cache miss, the exact bytes hashed are passed to PyTorch with `weights_only=True`. Each request checks the local registry and checkpoint file identity. The two-entry cache includes the registered hash, device, inode, size, modification time and change time. Bulk registration rejects changed entries. New checkpoints written by the training command are registered explicitly. Keep the local registry under operator control and verify provenance before registering models.
+
+The local suite passed **231 tests with zero failures and zero skips**. The Pump and Aalto route tests use real files. Security fixtures cover unregistered and corrupted weights, tampering after caching, explicit replacement, revoked registration, missing image models, and cache isolation across routes. Existing trusted sensor tests and unsupported-input tests also passed. Pyflakes and dependency checks passed.
+
+All **39 real-file prediction checks** passed. The route report matched the pre-change report byte-for-byte, including predictions, displayed probabilities and checkpoint digests. A clean notebook and a real multipart Pump image upload also passed. No archived scores, checkpoints or scientific protocols changed.
+
+Hosted CI runs the same security tests using temporary fixtures and skips the real-file tests when the local inputs are unavailable. See the [main workflow runs](https://github.com/theganeshmishra/ai-based-predictive-maintenance-mining-equipment/actions?query=branch%3Amain) for the posted commit’s result.
+
+**Phase 1 Complete With Scientific Limitations.** The application classifies current condition using laboratory analogues and synthetic imagery. Field generalization, calibrated failure probabilities, paired fusion and remaining useful life remain outside the verified scope.

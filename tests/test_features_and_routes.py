@@ -119,10 +119,11 @@ def test_image_model_cache_reuses_weights_and_invalidates_replaced_file(isolated
     path = isolated_models / "pump_images.pt"
     path.write_bytes(b"first")
     loaded = []
+    pdm.trust_model(path)
 
     def read_weights(file, *, map_location, weights_only):
         assert map_location == "cpu" and weights_only
-        loaded.append(file.read_bytes())
+        loaded.append(file.read())
         return {}
 
     class TinyModel(nn.Module):
@@ -147,7 +148,19 @@ def test_image_model_cache_reuses_weights_and_invalidates_replaced_file(isolated
         replacement.write_bytes(b"other")
         os.utime(replacement, ns=(stat.st_atime_ns, stat.st_mtime_ns))
         replacement.replace(path)
+        with pytest.raises(ValueError, match="has changed since it was trusted"):
+            pdm.image_probability(sample, "pump")
+        assert loaded == [b"first"]
+        with pytest.raises(ValueError, match="Previously trusted checkpoints have changed"):
+            pdm.trust_models()
+        pdm.trust_model(path)  # operator explicitly verifies and registers the replacement
         assert pdm.image_probability(sample, "pump") == first
         assert loaded == [b"first", b"other"]
+        pdm.TRUSTED_MODELS.unlink()
+        with pytest.raises(ValueError, match="not in the trusted model list"):
+            pdm.image_probability(sample, "pump")
+        path.unlink()
+        with pytest.raises(FileNotFoundError, match="No trained image model"):
+            pdm.image_probability(sample, "pump")
     finally:
         pdm.cached_image_model.cache_clear()
