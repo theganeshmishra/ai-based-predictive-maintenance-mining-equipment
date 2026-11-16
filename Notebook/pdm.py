@@ -3289,7 +3289,7 @@ def dashboard_page():
     def pct(value):
         if value is None or value != value:
             return "–"
-        return (f'{value * 100:.1f}%<span class="bar"><span style="width:{max(0, min(100, value * 100)):.0f}%">'
+        return (f'{value * 100 + 1e-9:.1f}%<span class="bar"><span style="width:{max(0, min(100, value * 100)):.0f}%">'
                 "</span></span>")
 
     overview = results_overview()
@@ -3342,7 +3342,8 @@ or remaining-useful-life prediction.</p>
 <div class=wrap><table><tr><th>Machine</th><th>Component analogue</th><th>Sensor</th><th>Test recordings</th>
 <th>Images</th><th>Test recordings or gears</th><th>Majority control</th></tr>{result_rows}</table></div>
 <p class="note">From the saved results in Results/. Drill Rig images are CAD renders. Grader images are gear-tooth
-photos (a different task from its slewing-bearing sensor model).</p>
+photos (a different task from its slewing-bearing sensor model); their figure is balanced accuracy, because damaged teeth
+are rare (plain accuracy 97.2%).</p>
 <h2>Prediction routes</h2>
 <div class=wrap><table><tr><th>Machine</th><th>Route</th><th>Checkpoint</th><th>Present</th><th>Trusted</th>
 <th>Last route check</th></tr>{status_rows}</table></div>
