@@ -1,0 +1,473 @@
+{
+  "attempt": "G: Grader sensor with gain-independent features (planned in Documentation/grader_gain_invariant_plan.md)",
+  "features": [
+    "AI1_crest",
+    "AI1_skew",
+    "AI1_kurtosis",
+    "AI1_band0",
+    "AI1_band1",
+    "AI1_band2",
+    "AI1_band3",
+    "AI1_band4",
+    "AI1_band5",
+    "AI1_band6",
+    "AI1_band7",
+    "AI2_crest",
+    "AI2_skew",
+    "AI2_kurtosis",
+    "AI2_band0",
+    "AI2_band1",
+    "AI2_band2",
+    "AI2_band3",
+    "AI2_band4",
+    "AI2_band5",
+    "AI2_band6",
+    "AI2_band7",
+    "AI3_crest",
+    "AI3_skew",
+    "AI3_kurtosis",
+    "AI3_band0",
+    "AI3_band1",
+    "AI3_band2",
+    "AI3_band3",
+    "AI3_band4",
+    "AI3_band5",
+    "AI3_band6",
+    "AI3_band7",
+    "AI4_crest",
+    "AI4_skew",
+    "AI4_kurtosis",
+    "AI4_band0",
+    "AI4_band1",
+    "AI4_band2",
+    "AI4_band3",
+    "AI4_band4",
+    "AI4_band5",
+    "AI4_band6",
+    "AI4_band7",
+    "AI5_crest",
+    "AI5_skew",
+    "AI5_kurtosis",
+    "AI5_band0",
+    "AI5_band1",
+    "AI5_band2",
+    "AI5_band3",
+    "AI5_band4",
+    "AI5_band5",
+    "AI5_band6",
+    "AI5_band7",
+    "AI6_crest",
+    "AI6_skew",
+    "AI6_kurtosis",
+    "AI6_band0",
+    "AI6_band1",
+    "AI6_band2",
+    "AI6_band3",
+    "AI6_band4",
+    "AI6_band5",
+    "AI6_band6",
+    "AI6_band7"
+  ],
+  "test": "same fair test as the archived result: hold out one working condition at a time (6 rounds)",
+  "score": {
+    "test_units": 120,
+    "accuracy": 0.8667,
+    "balanced_accuracy": 0.8667,
+    "macro_precision": 0.8696,
+    "macro_recall": 0.8667,
+    "macro_f1": 0.8655,
+    "confusion_matrix": [
+      [
+        30,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        25,
+        0,
+        5
+      ],
+      [
+        0,
+        3,
+        27,
+        0
+      ],
+      [
+        5,
+        3,
+        0,
+        22
+      ]
+    ],
+    "per_class_recall": {
+      "healthy": 1.0,
+      "inner_ring": 0.8333,
+      "outer_ring": 0.9,
+      "rolling_element": 0.7333
+    }
+  },
+  "chosen_per_round": [
+    {
+      "feature_set": "gain-invariant",
+      "model": "Logistic regression",
+      "validation_macro_f1": 0.8481
+    },
+    {
+      "feature_set": "gain-invariant",
+      "model": "Logistic regression",
+      "validation_macro_f1": 0.692
+    },
+    {
+      "feature_set": "gain-invariant",
+      "model": "Logistic regression",
+      "validation_macro_f1": 0.447
+    },
+    {
+      "feature_set": "gain-invariant",
+      "model": "Logistic regression",
+      "validation_macro_f1": 0.8879
+    },
+    {
+      "feature_set": "gain-invariant",
+      "model": "Logistic regression",
+      "validation_macro_f1": 0.7514
+    },
+    {
+      "feature_set": "gain-invariant",
+      "model": "Logistic regression",
+      "validation_macro_f1": 0.8016
+    }
+  ],
+  "accuracy_wilson_95": [
+    0.7944,
+    0.9162
+  ],
+  "calibration": {
+    "recordings": 120,
+    "brier": 0.1837,
+    "ece_top_label_5_bins": 0.0974,
+    "mean_confidence": 0.7759,
+    "accuracy": 0.8667,
+    "mean_confidence_when_correct": 0.8097,
+    "mean_confidence_when_wrong": 0.5557,
+    "wrong_with_confidence_over_0_9": 0,
+    "reliability": [
+      {
+        "bin": [
+          0.2,
+          0.4
+        ],
+        "recordings": 1,
+        "mean_confidence": 0.3964,
+        "accuracy": 0.0
+      },
+      {
+        "bin": [
+          0.4,
+          0.6
+        ],
+        "recordings": 17,
+        "mean_confidence": 0.5091,
+        "accuracy": 0.5294
+      },
+      {
+        "bin": [
+          0.6,
+          0.8
+        ],
+        "recordings": 48,
+        "mean_confidence": 0.6995,
+        "accuracy": 0.8542
+      },
+      {
+        "bin": [
+          0.8,
+          1.0
+        ],
+        "recordings": 54,
+        "mean_confidence": 0.9347,
+        "accuracy": 1.0
+      }
+    ]
+  },
+  "robustness": {
+    "clean": {
+      "test_units": 120,
+      "accuracy": 0.8667,
+      "balanced_accuracy": 0.8667,
+      "macro_f1": 0.8655,
+      "confusion_matrix": [
+        [
+          30,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          25,
+          0,
+          5
+        ],
+        [
+          0,
+          3,
+          27,
+          0
+        ],
+        [
+          5,
+          3,
+          0,
+          22
+        ]
+      ],
+      "rejected_recordings": 0,
+      "same_class_as_clean": 1.0
+    },
+    "noise": {
+      "test_units": 120,
+      "accuracy": 0.75,
+      "balanced_accuracy": 0.75,
+      "macro_f1": 0.7568,
+      "confusion_matrix": [
+        [
+          20,
+          0,
+          0,
+          10
+        ],
+        [
+          0,
+          25,
+          0,
+          5
+        ],
+        [
+          0,
+          5,
+          20,
+          5
+        ],
+        [
+          5,
+          0,
+          0,
+          25
+        ]
+      ],
+      "rejected_recordings": 0,
+      "same_class_as_clean": 0.8333
+    },
+    "amplitude_half": {
+      "test_units": 120,
+      "accuracy": 0.8667,
+      "balanced_accuracy": 0.8667,
+      "macro_f1": 0.8655,
+      "confusion_matrix": [
+        [
+          30,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          25,
+          0,
+          5
+        ],
+        [
+          0,
+          3,
+          27,
+          0
+        ],
+        [
+          5,
+          3,
+          0,
+          22
+        ]
+      ],
+      "rejected_recordings": 0,
+      "same_class_as_clean": 1.0
+    },
+    "amplitude_double": {
+      "test_units": 120,
+      "accuracy": 0.8667,
+      "balanced_accuracy": 0.8667,
+      "macro_f1": 0.8655,
+      "confusion_matrix": [
+        [
+          30,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          25,
+          0,
+          5
+        ],
+        [
+          0,
+          3,
+          27,
+          0
+        ],
+        [
+          5,
+          3,
+          0,
+          22
+        ]
+      ],
+      "rejected_recordings": 0,
+      "same_class_as_clean": 1.0
+    },
+    "missing_5pct": {
+      "test_units": 120,
+      "accuracy": 0.8583,
+      "balanced_accuracy": 0.8583,
+      "macro_f1": 0.8576,
+      "confusion_matrix": [
+        [
+          30,
+          0,
+          0,
+          0
+        ],
+        [
+          3,
+          22,
+          0,
+          5
+        ],
+        [
+          0,
+          2,
+          28,
+          0
+        ],
+        [
+          7,
+          0,
+          0,
+          23
+        ]
+      ],
+      "rejected_recordings": 0,
+      "same_class_as_clean": 0.9083
+    },
+    "half_length": {
+      "test_units": 120,
+      "accuracy": 0.8833,
+      "balanced_accuracy": 0.8833,
+      "macro_f1": 0.8817,
+      "confusion_matrix": [
+        [
+          30,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          26,
+          0,
+          4
+        ],
+        [
+          0,
+          2,
+          28,
+          0
+        ],
+        [
+          5,
+          3,
+          0,
+          22
+        ]
+      ],
+      "rejected_recordings": 0,
+      "same_class_as_clean": 0.9833
+    },
+    "rate_90pct": {
+      "test_units": 120,
+      "accuracy": 0.7917,
+      "balanced_accuracy": 0.7917,
+      "macro_f1": 0.7834,
+      "confusion_matrix": [
+        [
+          15,
+          5,
+          0,
+          10
+        ],
+        [
+          0,
+          21,
+          2,
+          7
+        ],
+        [
+          0,
+          1,
+          29,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          30
+        ]
+      ],
+      "rejected_recordings": 0,
+      "same_class_as_clean": 0.6583
+    }
+  },
+  "archived_fair_test": {
+    "accuracy": 0.8417,
+    "balanced_accuracy": 0.8417,
+    "macro_f1": 0.847,
+    "confusion_matrix": [
+      [
+        25,
+        0,
+        0,
+        5
+      ],
+      [
+        0,
+        25,
+        0,
+        5
+      ],
+      [
+        0,
+        4,
+        26,
+        0
+      ],
+      [
+        0,
+        5,
+        0,
+        25
+      ]
+    ]
+  },
+  "decision_rules": {
+    "1_fair_test_accuracy_at_least_0.825": true,
+    "2_half_and_double_amplitude_at_least_0.80": true,
+    "3_other_disturbances_within_5_points": false
+  },
+  "promote": false
+}

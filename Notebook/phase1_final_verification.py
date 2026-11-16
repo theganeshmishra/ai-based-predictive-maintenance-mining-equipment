@@ -5,7 +5,7 @@ Run from the project root with the project interpreter:
     python Notebook/phase1_final_verification.py [stage ...]
 
 Stages: reproduce (sensor fair tests, calibration, leakage, robustness), images, transient, phase1, diagnostics,
-benchmark. With no stage, all run. Each stage is saved into Results/experiments/phase_1/final_verification.json
+benchmark; grader_gain runs planned attempt G and is not part of the default run. With no stage, all run. Each stage is saved into Results/experiments/phase_1/final_verification.json
 as soon as it finishes. Nothing here writes to Results/<machine>/, to the model folder or to the trust list.
 """
 import hashlib
@@ -437,10 +437,53 @@ def stage_benchmark():
     return out
 
 
+GAIN_INVARIANT = [f for f in pdm.JUST_FEATURES if not f.endswith(("_rms", "_std", "_peak"))]
+
+
+def stage_grader_gain():
+    """Attempt G (Documentation/grader_gain_invariant_plan.md): Grader sensor without absolute-level features."""
+    m = pdm.MACHINES["grader"]
+    table, _ = m.load_sensor()
+    folds, records, chosen, fitted = fair_test_with_probabilities("grader", table, {"gain-invariant": GAIN_INVARIANT})
+    actual = [r["actual"] for r in records]
+    predicted = [r["predicted"] for r in records]
+    score = pdm.classification_metrics(actual, predicted, m.labels)
+    probabilities = np.array([[r["probabilities"].get(c, 0.0) for c in m.labels] for r in records])
+    shaken = robustness("grader", table, fitted)
+    archived = json.loads((pdm.RESULTS / "grader" / "sensor.json").read_text(encoding="utf-8"))["score"]
+    archived_robustness = {"noise": 0.8417, "missing_5pct": 0.8917, "half_length": 0.8667, "rate_90pct": 0.75}
+    rules = {
+        "1_fair_test_accuracy_at_least_0.825": score["accuracy"] >= 0.825,
+        "2_half_and_double_amplitude_at_least_0.80": min(shaken["amplitude_half"]["accuracy"],
+                                                         shaken["amplitude_double"]["accuracy"]) >= 0.80,
+        "3_other_disturbances_within_5_points": all(shaken[k]["accuracy"] >= v - 0.05 - 1e-9
+                                                    for k, v in archived_robustness.items()),
+    }
+    result = {
+        "attempt": "G: Grader sensor with gain-independent features (planned in "
+                   "Documentation/grader_gain_invariant_plan.md)",
+        "features": GAIN_INVARIANT,
+        "test": "same fair test as the archived result: hold out one working condition at a time (6 rounds)",
+        "score": score, "chosen_per_round": chosen,
+        "accuracy_wilson_95": wilson(sum(a == b for a, b in zip(actual, predicted)), len(actual)),
+        "calibration": calibration(actual, probabilities, m.labels),
+        "robustness": shaken,
+        "archived_fair_test": {k: archived[k] for k in ("accuracy", "balanced_accuracy", "macro_f1", "confusion_matrix")},
+        "decision_rules": rules, "promote": all(rules.values()),
+    }
+    out = pdm.RESULTS / "experiments" / "grader_gain_invariant.json"
+    out.write_text(json.dumps(result, indent=2, default=_json_default) + "\n", encoding="utf-8")
+    print(f"G: accuracy {score['accuracy']:.4f}, balanced {score['balanced_accuracy']:.4f}, macro F1 "
+          f"{score['macro_f1']:.4f}; rules {rules}", flush=True)
+    print({k: v["accuracy"] for k, v in shaken.items()}, flush=True)
+    return result
+
+
 if __name__ == "__main__":
     stages = {"reproduce": stage_reproduce, "images": stage_images, "transient": stage_transient,
-              "phase1": stage_phase1, "diagnostics": stage_diagnostics, "benchmark": stage_benchmark}
-    chosen = sys.argv[1:] or list(stages)
+              "phase1": stage_phase1, "diagnostics": stage_diagnostics, "benchmark": stage_benchmark,
+              "grader_gain": stage_grader_gain}
+    chosen = sys.argv[1:] or [k for k in stages if k != "grader_gain"]
     for stage in chosen:
         if stage.startswith("reproduce="):
             stage_reproduce(stage.split("=", 1)[1].split(","))

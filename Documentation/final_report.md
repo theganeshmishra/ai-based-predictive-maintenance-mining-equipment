@@ -72,6 +72,7 @@ All were planned in advance, saved separately, and left the main results and dep
 | B. Haul Truck images with speed-scaled frames | unseen speed, 12 recordings | 50.0% (archived 58.3%) | no gain; the image model mostly learns the camera angle |
 | C. CORA transient runs | unseen repetition at a **trained** speed, 80 runs | 100% Belt Conveyor, 100% Excavator, 97.5% Wheel Loader | features carry fault information; the CORA failure is the change of speed |
 | E. CORA transient runs at an **unseen** speed (planned in advance, November 11) | unseen speed, 80 runs | 63.7% Belt Conveyor, 31.3% Excavator, 35.0% Wheel Loader (control 25%) | more runs help gear wear; drive faults stay near chance; not deployed |
+| G. Grader sensor without absolute-level features (planned in advance, November 16) | unseen working condition, 120 recordings | 86.7% (archived 84.2%); 86.7% at half and double gain (archived 29.2 / 36.7%); 75.0% with added noise (archived 84.2%) | fixes gain sensitivity but loses noise robustness; failed its pre-set rule, not deployed |
 | Grader with matched classes, Aalto rig | unseen gear pair, 425 runs | 78.4% accuracy, **77.8% balanced** (control 50%) | the sensor side now answers the image side's question (healthy gear vs damaged tooth) |
 | Grader with matched classes, MCC5-THU | unseen speed, 60 recordings | 88.3% accuracy, 70.8% balanced | shares the Drill Rig's rig; not independent |
 
