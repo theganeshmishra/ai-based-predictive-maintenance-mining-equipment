@@ -314,3 +314,12 @@ All **39 real-file prediction checks** passed. The route report matched the pre-
 Hosted CI runs the same security tests using temporary fixtures and skips the real-file tests when the local inputs are unavailable. See the [main workflow runs](https://github.com/theganeshmishra/ai-based-predictive-maintenance-mining-equipment/actions?query=branch%3Amain) for the posted commit’s result.
 
 **Phase 1 Complete With Scientific Limitations.** The application classifies current condition using laboratory analogues and synthetic imagery. Field generalization, calibrated failure probabilities, paired fusion and remaining useful life remain outside the verified scope.
+
+## Closing checks · November 16, 2026
+
+- **Image checkpoint trust on the Windows computer:** after the November 13 change, the seven local `.pt` files were compared with the digests in the committed `Results/deployment/route_check.json` before registration; all seven matched exactly. All 39 routes then passed.
+- **Attempt G (planned in advance):** removing the Grader sensor model's absolute-level features made it independent of signal gain (86.7% at half and double amplitude, against 29.2% and 36.7%) and scored 86.7% on the fair test. Under added noise it scored 75.0%, below the archived model's 84.2% by more than the 5 points allowed, so it was not deployed. See [Grader attempt G](grader_gain_invariant_results.md).
+- **Input requirements:** every sensor route rejects NaN and infinite values. No route can detect a wrong sampling rate or wrong units from the file, so uploads must use the publisher's rate and units.
+- **Notebooks:** both notebooks execute without errors. The main notebook's improvement table now lists attempts A to E and G from the saved results.
+
+The verdict is unchanged: **Phase 1 Complete With Scientific Limitations.**

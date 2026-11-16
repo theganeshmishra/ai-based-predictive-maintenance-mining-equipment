@@ -3376,7 +3376,7 @@ def followup_overview():
 
 
 def improvement_overview():
-    """The three planned improvement attempts next to the archived results, from Results/experiments/."""
+    """The planned improvement attempts (A to E and G) next to the archived results, from Results/experiments/."""
     out = RESULTS / "experiments" / "improvement"
     rows = []
 
@@ -3403,6 +3403,22 @@ def improvement_overview():
         for machine in ("belt_conveyor", "excavator", "wheel_loader"):
             add(MACHINES[machine].title + " sensor", "unseen repetition, known speed", "C: transient runs",
                 r[machine]["score"])
+    path = out / "drill_rig_sensor_envelope.json"
+    if path.is_file():
+        add("Drill Rig sensor", "unseen speed", "D: envelope order features offered",
+            json.loads(path.read_text(encoding="utf-8"))["score"])
+    path = RESULTS / "experiments" / "phase_1" / "final_verification.json"
+    if path.is_file():
+        r = json.loads(path.read_text(encoding="utf-8")).get("experiment_e_cora_transient_unseen_speed", {})
+        for machine in ("belt_conveyor", "excavator", "wheel_loader"):
+            if machine in r:
+                add(MACHINES[machine].title + " sensor", "unseen speed", "E: transient runs", r[machine]["score"])
+    path = RESULTS / "experiments" / "grader_gain_invariant.json"
+    if path.is_file():
+        r = json.loads(path.read_text(encoding="utf-8"))
+        add("Motor Grader sensor", "unseen working condition", "archived", r["archived_fair_test"])
+        add("Motor Grader sensor", "unseen working condition", "G: gain-independent features (not deployed)",
+            r["score"])
     return pd.DataFrame(rows)
 
 
