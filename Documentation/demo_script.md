@@ -1,6 +1,6 @@
 # Demonstration script
 
-AI-Based Predictive Maintenance for Mining Equipment · Group 9 · November 10, 2026 · about 10 minutes
+AI-Based Predictive Maintenance for Mining Equipment · Group 9 · November 10, 2026, updated November 16, 2026 · about 12 minutes
 
 The files below are the local samples used by `route-check` on November 10, 2026 (`Results/deployment/route_check.json`). They are training samples, so the demo shows that each route works; the accuracy claims come from the fair tests in the [final report](final_report.md).
 
@@ -9,7 +9,9 @@ The files below are the local samples used by `route-check` on November 10, 2026
 1. Pull the latest `main` and install packages: `.venv\Scripts\python.exe -m pip install -r requirements.txt`.
 2. Make sure `Processed_Data/models/` holds the checkpoints and that you built them yourself, then run `.venv\Scripts\python.exe Notebook\pdm.py trust-models` once.
 3. Run `.venv\Scripts\python.exe Notebook\pdm.py route-check`. Every route with a local sample should say PASS. If one says "not in the trusted model list", repeat step 2.
-4. Open `Notebook/Integrated_Equipment_Fault_Prediction.ipynb`, select the `.venv` kernel and run all cells. The first table shows which checkpoints are found.
+4. Run `.venv\Scripts\python.exe Notebook\pdm.py demo-check`. It runs every upload in the script below and compares the answer with the expected one; it should end with "all steps as in Documentation/demo_script.md" and exit status 0.
+5. Open `Notebook/Integrated_Equipment_Fault_Prediction.ipynb`, select the `.venv` kernel and run all cells. The first table shows which checkpoints are found.
+6. Start the app with `.venv\Scripts\python.exe Notebook\pdm.py serve` and open http://localhost:8613. Optional: delete `Processed_Data/prediction_history.jsonl` so the dashboard history shows only the demo.
 
 ## Script
 
@@ -24,7 +26,9 @@ The files below are the local samples used by `route-check` on November 10, 2026
 | 7 | Upload `Processed_Data/predict_examples/gear_pitting_2000rpm_20Nm.csv` | Drill Rig, gear pitting, 97.7% | Drill Rig images are CAD renders, 88.9% on unseen designs; sensor 73.3%, 77.5% with order features. |
 | 8 | Upload `Processed_Data/predict_examples/just_outer_ring_condition3.csv` | Grader, outer ring, 94.1% | Grader slewing-bearing sensor model, 84.2% on unseen working conditions. |
 | 9 | Upload `Raw_Data/aalto_gear/3012Hz/250RPM/0_12Nm/Healthy/GP1.csv` | Grader gear task, healthy, 98.7% | The matched-class gear model: 77.8% balanced on gear pairs it never saw. It is a gear-pair analogue, not the slewing bearing. |
+| 9b | Upload `Processed_Data/deployment_samples/grader_gear_tooth/damaged_tooth.png`, choose Grader | damaged tooth, 99.8% | Gear-tooth photos: 82.6% on gears the model never saw. |
 | 10 | Upload `README.md` | rejected: matches no known format | Unknown inputs are refused, not guessed. |
+| 10b | Open the **Dashboard** link at the top of the page | fair-test table, all routes trusted and PASS, the uploads above in the history | The dashboard reads the saved fair-test results and the last route check. The history keeps only file name, SHA-256, size and answer, never the file, and can be downloaded as CSV. |
 | 11 | Show the [80% scorecard](final_report.md#6-which-machines-reach-80) | – | Four of eight machines reach 80% under the fair test; the four CORA machines do not, and we explain why instead of changing the test. |
 
 ## Known surprises (do not hide them)

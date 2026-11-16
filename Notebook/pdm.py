@@ -22,7 +22,8 @@ Use it from the notebook (import pdm) or from a terminal in the project folder:
     python Notebook/pdm.py <machine> train-final               sensor model on all data, for predict
     python Notebook/pdm.py <machine> train-final-images        image model on all images, for predict
     python Notebook/pdm.py predict <file> [--machine <name>]   classify one new recording or image
-    python Notebook/pdm.py serve                               upload page at http://localhost:8613
+    python Notebook/pdm.py serve                               upload page and dashboard at http://localhost:8613
+    python Notebook/pdm.py demo-check                          run every demo step and compare with the script
     python Notebook/pdm.py cora-binary verify|sensor|images     healthy vs worn follow-up experiment
     python Notebook/pdm.py haul-truck-load-check               Haul Truck sensor without the unloaded ball class
     python Notebook/pdm.py route-check                         run every predict route once, record checkpoint hashes
@@ -3155,6 +3156,7 @@ PAGE = """<!doctype html><html><head><meta charset="utf-8"><title>AI-Based Predi
 <style>body{font-family:system-ui,sans-serif;max-width:720px;margin:40px auto;padding:0 16px;color:#222}
 table{border-collapse:collapse;margin-top:16px}td{border:1px solid #ccc;padding:6px 10px;vertical-align:top}
 .note{color:#666;font-size:14px}.error{color:#b00020}</style></head><body>
+<nav><a href="/">Upload page</a> · <a href="/dashboard">Dashboard</a></nav>
 <h1>AI-Based Predictive Maintenance for Mining Equipment</h1>
 <p class="note">Upload one sensor recording (.mat or .csv) or one camera image (.png or .jpg). A recognized format can narrow the laboratory mapping. Shared formats require a confirmed mapping. For Grader gear-tooth inspection, choose Grader and upload a crop of one tooth. Laboratory models only:
 not tested on real mining machines.</p>
@@ -3163,6 +3165,238 @@ not tested on real mining machines.</p>
 <p>Equipment mapping (for shared formats and Grader tooth photos): <select name="machine">
 <option value="">find it from the file</option>{options}</select></p>
 <p><button type="submit">Check condition</button></p></form>{result}</body></html>"""
+
+
+# --- Prediction history (Phase 2) ---------------------------------------------------------------------
+# Every prediction made through the upload page or the command line is appended to a local JSON-lines
+# file. Only the file name, its SHA-256, its size and the answer are kept, never the file contents. The
+# file lives in Processed_Data/, which is not committed.
+
+HISTORY = PROCESSED / "prediction_history.jsonl"
+HISTORY_FIELDS = ["time_utc", "interface", "file", "sha256", "bytes", "mapping", "status", "machine",
+                  "condition", "probability", "model", "message"]
+_HISTORY_LOCK = __import__("threading").Lock()
+
+
+def summarize_answer(answer):
+    """(status, machine, condition, probability) from any predict() answer."""
+    if answer.get("status") == "Ambiguous Equipment":
+        return "ambiguous", "", "", None
+    if "Predicted tooth condition" in answer:
+        confidence = str(answer.get("Model confidence", "")).rstrip("%")
+        return ("prediction", "Grader (gear tooth photo)", answer["Predicted tooth condition"],
+                round(float(confidence) / 100, 3) if confidence else None)
+    return "prediction", answer.get("machine", ""), answer.get("condition", ""), answer.get("model probability")
+
+
+def record_prediction(path, interface, mapping, answer=None, problem=None):
+    """Append one prediction (or refusal) to the history; never raises, so it cannot break a prediction."""
+    try:
+        data = Path(path).read_bytes()
+        entry = dict.fromkeys(HISTORY_FIELDS, "")
+        entry.update(time_utc=__import__("datetime").datetime.now(__import__("datetime").timezone.utc)
+                     .isoformat(timespec="seconds"), interface=interface, file=Path(path).name,
+                     sha256=hashlib.sha256(data).hexdigest(), bytes=len(data), mapping=mapping or "automatic")
+        if problem is not None:
+            entry.update(status="rejected", message=str(problem)[:300])
+        else:
+            status, machine, condition, probability = summarize_answer(answer)
+            entry.update(status=status, machine=machine, condition=condition, probability=probability,
+                         model=answer.get("model used", ""),
+                         message=", ".join(answer.get("candidates", [])) if status == "ambiguous" else "")
+        HISTORY.parent.mkdir(parents=True, exist_ok=True)
+        with _HISTORY_LOCK, HISTORY.open("a", encoding="utf-8") as handle:
+            handle.write(json.dumps(entry) + "\n")
+    except OSError:
+        pass
+
+
+def read_history(limit=None):
+    """History entries, newest first, and the number of unreadable lines that were skipped."""
+    if not HISTORY.is_file():
+        return [], 0
+    entries, skipped = [], 0
+    with _HISTORY_LOCK:
+        lines = HISTORY.read_text(encoding="utf-8", errors="replace").splitlines()
+    for line in lines:
+        if not line.strip():
+            continue
+        try:
+            entry = json.loads(line)
+            if not isinstance(entry, dict):
+                raise ValueError
+            entries.append({key: entry.get(key, "") for key in HISTORY_FIELDS})
+        except ValueError:
+            skipped += 1
+    entries.reverse()
+    return (entries[:limit] if limit else entries), skipped
+
+
+def history_csv():
+    """The whole history as CSV text. Cells that a spreadsheet would run as a formula are prefixed with '."""
+    import io
+
+    def safe(value):
+        text = "" if value is None else str(value)
+        return "'" + text if text[:1] in ("=", "+", "-", "@", "\t", "\r") else text
+
+    out = io.StringIO()
+    writer = csv.writer(out)
+    writer.writerow(HISTORY_FIELDS)
+    for entry in read_history()[0]:
+        writer.writerow([safe(entry[key]) for key in HISTORY_FIELDS])
+    return out.getvalue()
+
+
+def checkpoint_status():
+    """Per prediction route: checkpoint file present, registered in the trust list, last route check."""
+    trusted = trusted_hashes() if TRUSTED_MODELS.is_file() else {}
+    report = PROCESSED / "deployment" / "route_check.json"
+    checks = {}
+    if report.is_file():
+        try:
+            for row in json.loads(report.read_text(encoding="utf-8")).get("routes", []):
+                key = (row.get("machine"), row.get("modality"))
+                checks[key] = checks.get(key, True) and row.get("status") == "PASS"
+        except ValueError:
+            pass
+    rows = []
+    for machine, m in MACHINES.items():
+        routes = [("sensor", f"{machine}_sensor.joblib"),
+                  ("image", "grader_gear_tooth.joblib" if machine == "grader" else f"{machine}_images.pt")]
+        if machine == "grader":
+            routes.append(("gear sensor", GRADER_GEAR_MODEL.name))
+        for modality, name in routes:
+            rows.append({"machine": m.title, "route": modality, "checkpoint": name,
+                         "present": (MODELS / name).is_file(), "registered": name in trusted,
+                         "route_check": checks.get((machine, modality))})
+    return rows
+
+
+DASHBOARD_STYLE = """body{font-family:system-ui,sans-serif;max-width:1040px;margin:32px auto;padding:0 16px;color:#222;
+background:#fff}h1{font-size:24px}h2{font-size:18px;margin-top:32px}nav a{margin-right:16px}
+.wrap{overflow-x:auto}table{border-collapse:collapse;margin-top:8px;font-size:14px}
+th,td{border:1px solid #ccc;padding:5px 8px;text-align:left;vertical-align:top}th{background:#f3f3f3}
+td.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}.bar{background:#e8e8e8;width:120px;height:10px;
+display:inline-block;margin-left:6px;vertical-align:middle}.bar span{display:block;height:10px;background:#3b6ea5}
+.ok{color:#1b6e2b}.bad{color:#b00020}.note{color:#555;font-size:14px}"""
+
+
+def dashboard_page():
+    """The local dashboard: fair-test results, checkpoint status and the prediction history (HTML)."""
+    import html
+
+    def pct(value):
+        if value is None or value != value:
+            return "–"
+        return (f'{value * 100:.1f}%<span class="bar"><span style="width:{max(0, min(100, value * 100)):.0f}%">'
+                "</span></span>")
+
+    overview = results_overview()
+    result_rows = "".join(
+        f"<tr><td>{html.escape(name)}</td><td>{html.escape(str(row['Component']))}</td>"
+        f"<td class=num>{pct(row['Sensor, fair test'])}</td><td class=num>{int(row['Test recordings (sensor)'])}</td>"
+        f"<td class=num>{pct(row['Images, fair test'])}</td><td class=num>{int(row['Test recordings/gears (images)'])}</td>"
+        f"<td class=num>{row['Majority control'] * 100:.0f}%</td></tr>"
+        for name, row in overview.iterrows())
+    status_rows = "".join(
+        f"<tr><td>{html.escape(r['machine'])}</td><td>{html.escape(r['route'])}</td><td>{html.escape(r['checkpoint'])}</td>"
+        f"<td class={'ok' if r['present'] else 'bad'}>{'yes' if r['present'] else 'missing'}</td>"
+        f"<td class={'ok' if r['registered'] else 'bad'}>{'yes' if r['registered'] else 'no'}</td>"
+        f"<td>{'–' if r['route_check'] is None else ('PASS' if r['route_check'] else 'FAIL')}</td></tr>"
+        for r in checkpoint_status())
+    entries, skipped = read_history()
+    counts = {}
+    for e in entries:
+        if e["status"] == "prediction":
+            key = (e["machine"], e["condition"])
+            counts[key] = counts.get(key, 0) + 1
+    count_rows = "".join(f"<tr><td>{html.escape(str(m))}</td><td>{html.escape(str(c))}</td><td class=num>{n}</td></tr>"
+                         for (m, c), n in sorted(counts.items()))
+    recent = "".join(
+        f"<tr><td>{html.escape(str(e['time_utc']))}</td><td>{html.escape(str(e['interface']))}</td>"
+        f"<td>{html.escape(str(e['file']))}</td><td>{html.escape(str(e['mapping']))}</td>"
+        f"<td>{html.escape(str(e['status']))}</td><td>{html.escape(str(e['machine']))}</td>"
+        f"<td>{html.escape(str(e['condition']))}</td>"
+        f"<td class=num>{'' if e['probability'] in ('', None) else html.escape(str(e['probability']))}</td>"
+        f"<td>{html.escape(str(e['message']))}</td></tr>" for e in entries[:50])
+    statuses = {k: sum(e["status"] == k for e in entries) for k in ("prediction", "ambiguous", "rejected")}
+    history = (f"<p>{len(entries)} request{'' if len(entries) == 1 else 's'}: {statuses['prediction']} predictions, {statuses['ambiguous']} "
+               f"ambiguous, {statuses['rejected']} rejected." +
+               (f" {skipped} unreadable lines were skipped." if skipped else "") +
+               ' <a href="/history.csv">Download as CSV</a></p>'
+               if entries else "<p>No predictions yet. Upload a file on the <a href=\"/\">upload page</a>.</p>")
+    if entries:
+        history += (f'<div class=wrap><table><tr><th>Machine</th><th>Condition</th><th>Predictions</th></tr>{count_rows}'
+                    '</table></div><h3>Latest 50</h3><div class=wrap><table><tr><th>Time (UTC)</th><th>Interface</th>'
+                    '<th>File</th><th>Mapping</th><th>Status</th><th>Machine</th><th>Condition</th>'
+                    f'<th>Model probability</th><th>Message</th></tr>{recent}</table></div>')
+    return f"""<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Dashboard · AI-Based Predictive Maintenance for Mining Equipment</title><style>{DASHBOARD_STYLE}</style></head><body>
+<nav><a href="/">Upload page</a><a href="/dashboard">Dashboard</a></nav>
+<h1>AI-Based Predictive Maintenance for Mining Equipment · Dashboard</h1>
+<p class="note">Laboratory analogues only, not tested on real mining machines. The model probability is the
+classifier's averaged score, not a calibrated failure probability. Condition classification only; no failure-time
+or remaining-useful-life prediction.</p>
+<h2>Fair-test accuracy (held-out groups, one answer per recording)</h2>
+<div class=wrap><table><tr><th>Machine</th><th>Component analogue</th><th>Sensor</th><th>Test recordings</th>
+<th>Images</th><th>Test recordings or gears</th><th>Majority control</th></tr>{result_rows}</table></div>
+<p class="note">From the saved results in Results/. Drill Rig images are CAD renders. Grader images are gear-tooth
+photos (a different task from its slewing-bearing sensor model).</p>
+<h2>Prediction routes</h2>
+<div class=wrap><table><tr><th>Machine</th><th>Route</th><th>Checkpoint</th><th>Present</th><th>Trusted</th>
+<th>Last route check</th></tr>{status_rows}</table></div>
+<p class="note">Trusted means the file's SHA-256 is registered on this computer; it is checked again on every load.
+Last route check reads Processed_Data/deployment/route_check.json (run: python Notebook/pdm.py route-check).</p>
+<h2>Prediction history (this computer)</h2>{history}
+<p class="note">Kept in Processed_Data/prediction_history.jsonl: file name, SHA-256, size and answer only, never the
+file contents. Delete that file to clear the history.</p></body></html>""".encode("utf-8")
+
+
+# --- Demo check: the steps of Documentation/demo_script.md, run and compared with the expected answers --
+
+def demo_steps():
+    examples, tooth = PROCESSED / "predict_examples", PROCESSED / "deployment_samples" / "grader_gear_tooth"
+    pump_frame = IMAGES / "pump" / "outer" / "pump_outer_20Hz_15_-30_t000.png"
+    cora = RAW / "cora_vibration" / "W50_F50_S_Vx.csv"
+    return [
+        (2, RAW / "uottawa_bearing" / "I-C-1.mat", None, ("Pump", "inner")),
+        (3, pump_frame, None, "Ambiguous Equipment"),
+        (3, pump_frame, "pump", ("Pump", "outer")),
+        (4, RAW / "uods_vafdc" / "B_11_2.mat", None, ("Haul Truck", "ball")),
+        (5, cora, None, "Ambiguous Equipment"),
+        (6, cora, "belt_conveyor", ("Belt Conveyor", "wear50")),
+        (7, examples / "gear_pitting_2000rpm_20Nm.csv", None, ("Drill Rig", "gear_pitting")),
+        (8, examples / "just_outer_ring_condition3.csv", None, ("Grader", "outer_ring")),
+        (9, AALTO / "250RPM" / "0_12Nm" / "Healthy" / "GP1.csv", None, ("Grader", "healthy")),
+        (9, tooth / "damaged_tooth.png", "grader", ("Grader (gear tooth photo)", "damaged_tooth")),
+        (10, ROOT / "README.md", None, "rejected"),
+    ]
+
+
+def run_demo_check():
+    """Run every demo step; print PASS or FAIL against the expected answer. Exit status 1 if any fail."""
+    failures = 0
+    for step, path, mapping, expected in demo_steps():
+        label = f"step {step:2d}  {path.name}  ({mapping or 'automatic'})"
+        if not path.is_file():
+            print(f"MISSING {label}: the sample file is not on this computer")
+            failures += 1
+            continue
+        try:
+            answer = predict(path, mapping)
+            status, machine, condition, probability = summarize_answer(answer)
+            got = "Ambiguous Equipment" if status == "ambiguous" else (machine, condition)
+        except (ValueError, FileNotFoundError) as problem:
+            got, probability = "rejected", None
+            if expected != "rejected":
+                got = f"rejected: {problem}"
+        ok = got == expected
+        failures += not ok
+        shown = f"{got[0]}, {got[1]}" if isinstance(got, tuple) else got
+        print(f"{'PASS' if ok else 'FAIL'}    {label} -> {shown}" + (f" ({probability})" if probability is not None else ""))
+    print("demo check: all steps as in Documentation/demo_script.md" if not failures else f"demo check: {failures} step(s) differ")
+    return failures
 
 
 def upload_server(port=8613):
@@ -3226,6 +3460,19 @@ def upload_server(port=8613):
         def do_GET(self):
             if self.headers.get("Host") not in allowed_hosts:
                 return self.refuse(403, "Open this page at http://localhost:%d." % port)
+            route = self.path.split("?", 1)[0]
+            if route == "/dashboard":
+                return self.send(dashboard_page())
+            if route == "/history.csv":
+                body = history_csv().encode("utf-8")
+                self.send_response(200)
+                self.send_header("Content-Type", "text/csv; charset=utf-8")
+                self.send_header("Content-Disposition", 'attachment; filename="prediction_history.csv"')
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                return self.wfile.write(body)
+            if route != "/":
+                return self.send(page('<p class="error">Page not found.</p>'), 404)
             self.send(page())
 
         def do_POST(self):
@@ -3267,7 +3514,12 @@ def upload_server(port=8613):
                 with tempfile.TemporaryDirectory() as folder:
                     path = Path(folder) / name  # keep the name: CORA files carry their speed in it
                     path.write_bytes(upload.get_payload(decode=True) or b"")
-                    answer = predict(path, machine or None)
+                    try:
+                        answer = predict(path, machine or None)
+                    except (ValueError, FileNotFoundError) as problem:
+                        record_prediction(path, "upload page", machine, problem=problem)
+                        raise
+                    record_prediction(path, "upload page", machine, answer)
                 result = f"<h2>{html.escape(name)}</h2>" + table(answer)
             except (ValueError, FileNotFoundError) as problem:
                 result = f'<p class="error">No prediction for {html.escape(name)}: {html.escape(str(problem))}</p>'
@@ -3457,6 +3709,7 @@ def main():
                         "train-final-images; or the file to predict")
     parser.add_argument("--time-split", action="store_true", help="the easier secondary test")
     parser.add_argument("--machine", help="predict only: which machine the file belongs to")
+    parser.add_argument("--no-history", action="store_true", help="predict only: do not add it to the history")
     parser.add_argument("--accept-archive", metavar="SHA256",
                         help="grader train-final-images: accept this other export of the gear photos")
     parser.add_argument("--random-forest", action="store_true", help="train-final: fit Random Forest on the first compatible feature set")
@@ -3478,6 +3731,8 @@ def main():
         return run_cora_binary(args.command)
     if args.target == "haul-truck-load-check":
         return run_haul_truck_load_check()
+    if args.target == "demo-check":
+        raise SystemExit(1 if run_demo_check() else 0)
     if args.target == "route-check":
         result = verify_routes()
         statuses = [row["status"] for key in ("routes", "input_checks") for row in result[key]]
@@ -3505,7 +3760,11 @@ def main():
         try:
             answer = predict(args.command, args.machine)
         except (ValueError, FileNotFoundError) as problem:
+            if not args.no_history and Path(args.command).is_file():
+                record_prediction(args.command, "command line", args.machine, problem=problem)
             parser.exit(1, f"No prediction: {problem}\n")
+        if not args.no_history:
+            record_prediction(args.command, "command line", args.machine, answer)
         for key, value in answer.items():
             print(f"{key}: {value}")
         return

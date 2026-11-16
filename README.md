@@ -140,8 +140,9 @@ From the project folder (Windows: `.venv\Scripts\python.exe`, Mac/Linux: `.venv/
 | `python Notebook/pdm.py <machine> images --time-split` | image model, time split | minutes to an hour |
 | `python Notebook/pdm.py <machine> train-final` | sensor model on all data, for `predict` | minutes |
 | `python Notebook/pdm.py <machine> train-final-images` | save a supported ResNet18 deployment checkpoint from exported frames | minutes to hours |
-| `python Notebook/pdm.py predict <file>` | identify the file's dataset format, then the machine's model gives the condition; shared formats return ambiguity unless a mapping is supplied | seconds |
-| `python Notebook/pdm.py serve` | upload page at http://localhost:8613 (this computer only): drop in a file, get machine, condition and confidence. It refuses uploads sent by other websites and malformed requests. Stop it with Ctrl-C when you are done | – |
+| `python Notebook/pdm.py predict <file>` | identify the file's dataset format, then the machine's model gives the condition; shared formats return ambiguity unless a mapping is supplied. Each answer is added to the local prediction history (`--no-history` to skip) | seconds |
+| `python Notebook/pdm.py serve` | upload page at http://localhost:8613 (this computer only): drop in a file, get machine, condition and confidence. It refuses uploads sent by other websites and malformed requests. The **Dashboard** at http://localhost:8613/dashboard shows the fair-test results, which checkpoints are present and trusted, the last route check, and the prediction history (download as CSV). Stop it with Ctrl-C when you are done | – |
+| `python Notebook/pdm.py demo-check` | run every upload in [the demo script](Documentation/demo_script.md) and compare with the expected answers. Exit 1 if any step differs | about 1 minute |
 | `python Notebook/pdm.py trust-models` | register verified local component models, including `.pt` weights. Previously registered hashes must still match. | seconds |
 | `python Notebook/pdm.py cora-binary verify\|sensor\|images` | CORA healthy vs worn follow-up → `Results/experiments/cora_binary/` | 1 minute / 1 minute / about 2 hours |
 | `python Notebook/pdm.py haul-truck-load-check` | Haul Truck sensor fair test without the unloaded ball class | about 15 minutes |
@@ -149,7 +150,7 @@ From the project folder (Windows: `.venv\Scripts\python.exe`, Mac/Linux: `.venv/
 | `python Notebook/pdm.py grader-gear mcc5\|aalto` | Grader healthy gear vs damaged tooth, sensor side → `Results/experiments/grader_gear/` (aalto needs `Raw_Data/aalto_gear/3012Hz/`) | minutes / under an hour on CPU (first run reads 29 GB) |
 | `python Notebook/pdm.py grader-gear train-final` | Grader gear sensor model on all Aalto runs, for `predict` → `Processed_Data/models/grader_gear_sensor.joblib` | minutes (with the feature cache) |
 | `python Notebook/pdm.py route-check` | check the local prediction samples and write checkpoint hashes to `Processed_Data/deployment/route_check.json`. Exit 1 means a check failed. Exit 2 means a required sample was missing. | about 1 minute |
-| `python -m pytest tests` | automated tests: fair split, scoring, file identification, model trust list, upload page; route tests skip when local data or models are missing (needs `pip install pytest`). GitHub runs the same tests and a lint check on every push (`.github/workflows/tests.yml`) | under a minute |
+| `python -m pytest tests` | automated tests: fair split, scoring, file identification, model trust list, upload page, dashboard and prediction history; route tests skip when local data or models are missing (needs `pip install pytest`). GitHub runs the same tests and a lint check on every push (`.github/workflows/tests.yml`) | under a minute |
 | `python Notebook/pdm.py data-check` | list missing raw files | seconds |
 
 Machines: `pump`, `haul_truck`, `belt_conveyor`, `excavator`, `dozer`, `wheel_loader`, `drill_rig`, `grader`.

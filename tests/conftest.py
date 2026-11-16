@@ -25,3 +25,12 @@ def needs(*paths):
     """Skip a test when local data it reads is not on this computer (data is never in git)."""
     missing = [str(p) for p in paths if not Path(p).exists()]
     return pytest.mark.skipif(bool(missing), reason=f"local data missing: {', '.join(missing)}")
+
+
+@pytest.fixture(autouse=True, scope="session")
+def isolated_history(tmp_path_factory):
+    """Tests never write to the real prediction history in Processed_Data/."""
+    original = pdm.HISTORY
+    pdm.HISTORY = tmp_path_factory.mktemp("history") / "prediction_history.jsonl"
+    yield pdm.HISTORY
+    pdm.HISTORY = original
