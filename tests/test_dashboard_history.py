@@ -78,8 +78,8 @@ def test_history_csv_neutralises_formulas(history, tmp_path):
 def test_dashboard_escapes_history_text(history, tmp_path):
     pdm.record_prediction(sample(tmp_path, "x.csv"), "upload page", None, problem=ValueError("<script>alert(1)</script>"))
     page = pdm.dashboard_page().decode("utf-8")
-    assert "<script>" not in page and "&lt;script&gt;" in page
-    assert "Fair-test accuracy" in page and "1 request:" in page
+    assert "<script>alert" not in page and "&lt;script&gt;alert" in page
+    assert "Fair-test accuracy" in page and '<div class="v">1</div><div class="l">files checked' in page
 
 
 def test_dashboard_and_csv_are_served(server):
@@ -93,6 +93,46 @@ def test_dashboard_and_csv_are_served(server):
 @pytest.mark.parametrize("path", ["/dashboard", "/history.csv"])
 def test_dashboard_refuses_other_host_names(server, path):
     assert get(server, path, host=f"evil.example:{server}")[0] == 403
+
+
+def post_form(port, path, filename, content, machine=""):
+    boundary = "testboundary613"
+    crlf = "\r\n"
+    body = (f'--{boundary}{crlf}Content-Disposition: form-data; name="machine"{crlf}{crlf}{machine}{crlf}'
+            f'--{boundary}{crlf}Content-Disposition: form-data; name="file"; filename="{filename}"{crlf}'
+            f'Content-Type: application/octet-stream{crlf}{crlf}').encode() + content + f'{crlf}--{boundary}--{crlf}'.encode()
+    connection = http.client.HTTPConnection("127.0.0.1", port, timeout=30)
+    connection.request("POST", path, body, {"Host": f"127.0.0.1:{port}", "Content-Length": str(len(body)),
+                                            "Content-Type": f"multipart/form-data; boundary={boundary}"})
+    response = connection.getresponse()
+    text = response.read().decode("utf-8", "replace")
+    connection.close()
+    return response.status, text
+
+
+def test_dashboard_upload_shows_result_and_records_it(server, history):
+    status, text = post_form(server, "/dashboard", "notes.txt", b"hello")
+    assert status == 200 and "Fleet view" in text and 'class="result no"' in text and "notes.txt" in text
+    entry = json.loads(history.read_text(encoding="utf-8").splitlines()[-1])
+    assert entry["file"] == "notes.txt" and entry["status"] == "rejected"
+
+
+def test_dashboard_upload_from_other_website_is_refused(server):
+    connection = http.client.HTTPConnection("127.0.0.1", server, timeout=30)
+    connection.request("POST", "/dashboard", b"x", {"Host": f"127.0.0.1:{server}", "Origin": "https://evil.example",
+                                                     "Content-Length": "1", "Content-Type": "multipart/form-data; boundary=x"})
+    assert connection.getresponse().status == 403
+    connection.close()
+
+
+def test_answer_cards_escape_and_show_classes():
+    card = pdm.answer_card("<b>.csv", {"file format": "x", "machine": "Pump", "condition": "<i>inner",
+                                       "model probability": 0.9, "model used": "RF",
+                                       "all classes": {"inner": 0.9, "outer": 0.1}})
+    assert "<b>" not in card and "<i>" not in card and "&lt;i&gt;inner" in card and "90.0%" in card
+    amb = pdm.answer_card("a.csv", {"status": "Ambiguous Equipment", "candidates": ["Dozer"], "file format": "CORA"})
+    assert "Which machine" in amb and "Dozer" in amb
+    assert 'class="result no"' in pdm.answer_card("a.csv", problem=ValueError("bad"))
 
 
 def test_upload_is_recorded(server, history):

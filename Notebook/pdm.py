@@ -3273,85 +3273,247 @@ def checkpoint_status():
     return rows
 
 
-DASHBOARD_STYLE = """body{font-family:system-ui,sans-serif;max-width:1040px;margin:32px auto;padding:0 16px;color:#222;
-background:#fff}h1{font-size:24px}h2{font-size:18px;margin-top:32px}nav a{margin-right:16px}
-.wrap{overflow-x:auto}table{border-collapse:collapse;margin-top:8px;font-size:14px}
-th,td{border:1px solid #ccc;padding:5px 8px;text-align:left;vertical-align:top}th{background:#f3f3f3}
-td.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}.bar{background:#e8e8e8;width:120px;height:10px;
-display:inline-block;margin-left:6px;vertical-align:middle}.bar span{display:block;height:10px;background:#3b6ea5}
-.ok{color:#1b6e2b}.bad{color:#b00020}.note{color:#555;font-size:14px}"""
+DASHBOARD_STYLE = """
+:root{--ink:#15233A;--soft:#4A5566;--paper:#F5F2EA;--card:#FFFDF8;--line:#DDD6C8;--blue:#2F5F8F;--orange:#B35A14;
+--ok:#1B6E2B;--bad:#A3001B;--warn:#8A5A00}
+*{box-sizing:border-box}body{font-family:"Segoe UI",system-ui,sans-serif;margin:0;background:var(--paper);color:var(--ink)}
+header{background:var(--ink);color:#F5F2EA;padding:20px 32px}header h1{margin:4px 0 0;font-size:24px}
+header nav a{color:#F2A65A;margin-right:18px;text-decoration:none;font-weight:600}header p{margin:6px 0 0;color:#C9D3E0;font-size:14px}
+main{max-width:1180px;margin:0 auto;padding:24px 24px 48px}
+h2{font-size:20px;margin:36px 0 12px}h3{margin:0;font-size:17px}
+.note{color:var(--soft);font-size:13px;line-height:1.45}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:20px}
+.check{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:20px;align-items:start}
+.drop{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;min-height:150px;border:2px dashed #9AA8BA;
+border-radius:12px;background:#F8F6F0;cursor:pointer;text-align:center;padding:16px}
+.drop.over{border-color:var(--blue);background:#EAF1F8}.drop b{font-size:17px}.drop input{max-width:100%}
+.drop .chosen{color:var(--blue);font-weight:600;font-size:14px;min-height:18px}
+.formrow{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:12px}
+select,button,input[type=search]{font:inherit;font-size:14px;padding:8px 10px;border-radius:8px;border:1px solid #B9B2A3;background:#fff}
+button.go{background:var(--ink);color:#fff;border-color:var(--ink);font-weight:600;cursor:pointer;padding:9px 18px}
+.result{border-radius:12px;padding:18px;border:1px solid var(--line);background:#fff}
+.result.ok{border-left:6px solid var(--ok)}.result.amb{border-left:6px solid var(--warn)}.result.no{border-left:6px solid var(--bad)}
+.result .tag{font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--soft)}
+.result .verdict{font-size:26px;font-weight:700;margin:4px 0}.result .file{font-size:13px;color:var(--soft);word-break:break-all}
+.probs{margin-top:10px;display:grid;gap:6px}.prob{display:grid;grid-template-columns:130px 1fr 52px;gap:8px;align-items:center;font-size:13px}
+.track{position:relative;height:10px;background:#E6E1D6;border-radius:5px;overflow:hidden}
+.fill{position:absolute;left:0;top:0;bottom:0;background:var(--blue);border-radius:5px}
+.fill.top{background:var(--orange)}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}.chip{background:#F1EBDD;border-radius:999px;padding:3px 10px;font-size:13px}
+.kpis{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:12px}
+.kpi{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px}
+.kpi .v{font-size:28px;font-weight:700}.kpi .l{font-size:12px;color:var(--soft);text-transform:uppercase;letter-spacing:.05em}
+.fleet{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
+.mcard{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:8px}
+.mcard .comp{font-size:13px;color:var(--soft);margin:0}
+.badge{align-self:flex-start;display:inline-block;font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;background:#E3EEE5;color:var(--ok)}
+.badge.low{background:#F6E7DA;color:var(--orange)}
+.metric{display:grid;grid-template-columns:52px 1fr 48px;gap:6px;align-items:center;font-size:12px}
+.metric .ctrl{position:absolute;top:-2px;bottom:-2px;width:2px;background:var(--ink)}
+.metric .goal{position:absolute;top:-2px;bottom:-2px;width:0;border-left:2px dashed var(--orange)}
+.mcard .last{font-size:12px;color:var(--soft);margin:0;border-top:1px solid var(--line);padding-top:8px}
+.status{font-size:12px}.status .yes{color:var(--ok)}.status .no{color:var(--bad)}
+.two{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px}
+.mix{display:grid;gap:10px}.mixrow{display:grid;grid-template-columns:150px 1fr 34px;gap:8px;align-items:center;font-size:13px}
+.wrap{overflow-x:auto}table{border-collapse:collapse;width:100%;font-size:13px;background:#fff}
+th,td{border-bottom:1px solid var(--line);padding:6px 8px;text-align:left;vertical-align:top}th{background:#EFEAE0;font-weight:600}
+td.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.pill{font-size:11px;font-weight:700;padding:2px 7px;border-radius:999px;white-space:nowrap}
+.pill.prediction{background:#E3EEE5;color:var(--ok)}.pill.ambiguous{background:#FBF0D9;color:var(--warn)}
+.pill.rejected{background:#F8E1E4;color:var(--bad)}
+.filters{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px}
+.filters button{cursor:pointer}.filters button.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+details{margin-top:14px}summary{cursor:pointer;font-weight:600}
+@media (max-width:900px){.check,.two{grid-template-columns:1fr}.fleet{grid-template-columns:repeat(2,minmax(0,1fr))}
+.kpis{grid-template-columns:repeat(3,minmax(0,1fr))}}
+"""
+
+DASHBOARD_SCRIPT = """
+(function(){
+  var drop=document.getElementById('drop'), input=document.getElementById('file'), chosen=document.getElementById('chosen');
+  function show(){chosen.textContent=input.files.length?input.files[0].name+' ('+Math.max(1,Math.round(input.files[0].size/1024))+' KB)':'';}
+  input.addEventListener('change',show);
+  ['dragenter','dragover'].forEach(function(e){drop.addEventListener(e,function(ev){ev.preventDefault();drop.classList.add('over');});});
+  ['dragleave','drop'].forEach(function(e){drop.addEventListener(e,function(ev){ev.preventDefault();drop.classList.remove('over');});});
+  drop.addEventListener('drop',function(ev){if(ev.dataTransfer.files.length){input.files=ev.dataTransfer.files;show();}});
+  document.getElementById('checkform').addEventListener('submit',function(){var b=document.getElementById('go');b.disabled=true;b.textContent='Checking…';});
+  var rows=[].slice.call(document.querySelectorAll('#history tbody tr')), state='all', search=document.getElementById('q');
+  function apply(){var q=(search.value||'').toLowerCase();rows.forEach(function(r){
+    r.style.display=((state==='all'||r.dataset.status===state)&&r.textContent.toLowerCase().indexOf(q)>=0)?'':'none';});}
+  [].slice.call(document.querySelectorAll('.filters button')).forEach(function(b){b.addEventListener('click',function(){
+    state=b.dataset.status;document.querySelectorAll('.filters button').forEach(function(x){x.classList.toggle('on',x===b);});apply();});});
+  if(search){search.addEventListener('input',apply);}
+})();
+"""
+
+MACHINE_NOTES = {"drill_rig": "Images are CAD renders.", "grader": "Images: gear-tooth photos, balanced accuracy.",
+                 "haul_truck": "Ball faults recorded without load.", "dozer": "Same CORA runs as Belt Conveyor."}
 
 
-def dashboard_page():
-    """The local dashboard: fair-test results, checkpoint status and the prediction history (HTML)."""
+def answer_card(name, answer=None, problem=None):
+    """HTML result card for one upload (all text escaped)."""
     import html
+    e = lambda value: html.escape(str(value))  # noqa: E731
+    if problem is not None:
+        return (f'<div class="result no"><div class="tag">No prediction</div><div class="verdict">Not recognised</div>'
+                f'<div class="file">{e(name)}</div><p class="note">{e(problem)}</p></div>')
+    status, machine, condition, probability = summarize_answer(answer)
+    if status == "ambiguous":
+        chips = "".join(f'<span class="chip">{e(c)}</span>' for c in answer.get("candidates", []))
+        return (f'<div class="result amb"><div class="tag">Ambiguous equipment · {e(answer.get("file format", ""))}</div>'
+                f'<div class="verdict">Which machine is this?</div><div class="file">{e(name)}</div>'
+                f'<p class="note">This file format is shared by several machines, so the system does not guess. '
+                f'Choose one of these in “Machine” and check the file again:</p><div class="chips">{chips}</div></div>')
+    bars = ""
+    classes = answer.get("all classes")
+    if isinstance(classes, dict):
+        top = max(classes, key=classes.get)
+        bars = '<div class="probs">' + "".join(
+            f'<div class="prob"><span>{e(k)}</span><div class="track"><div class="fill{" top" if k == top else ""}" '
+            f'style="width:{max(0.0, min(1.0, float(v))) * 100:.1f}%"></div></div><span class="num">{float(v) * 100:.1f}%</span></div>'
+            for k, v in classes.items()) + "</div>"
+    shown = "" if probability is None else f" · {float(probability) * 100:.1f}%"
+    source = answer.get("file format") or answer.get("Task", "")
+    model = answer.get("model used") or answer.get("Model used", "")
+    return (f'<div class="result ok"><div class="tag">{e(machine)}{" · " + e(source) if source else ""}</div>'
+            f'<div class="verdict">{e(condition)}{e(shown)}</div><div class="file">{e(name)} · model: {e(model)}</div>'
+            f'{bars}<p class="note">Model score, not a calibrated failure probability.</p></div>')
+
+
+def dashboard_page(result=""):
+    """The local dashboard: check a file, fleet view, activity and history (HTML; all data text escaped)."""
+    import html
+    e = lambda value: html.escape("" if value is None else str(value))  # noqa: E731
 
     def pct(value):
-        if value is None or value != value:
-            return "–"
-        return (f'{value * 100 + 1e-9:.1f}%<span class="bar"><span style="width:{max(0, min(100, value * 100)):.0f}%">'
-                "</span></span>")
+        return "–" if value is None or value != value else f"{value * 100 + 1e-9:.1f}%"
 
     overview = results_overview()
+    routes = checkpoint_status()
+    entries, skipped = read_history()
+    statuses = {k: sum(x["status"] == k for x in entries) for k in ("prediction", "ambiguous", "rejected")}
+
+    # --- per machine: latest prediction and counts from the history
+    seen = {}
+    for x in entries:  # newest first
+        if x["status"] != "prediction":
+            continue
+        key = next((k for k, m in MACHINES.items() if str(x["machine"]).startswith(m.title)
+                    or (k == "grader" and str(x["machine"]).startswith("Grader"))), None)
+        if key:
+            info = seen.setdefault(key, {"count": 0, "last": x})
+            info["count"] += 1
+
+    cards = []
+    for key, m in MACHINES.items():
+        row = overview.loc[m.title] if m.title in overview.index else None
+        sensor = None if row is None else row["Sensor, fair test"]
+        image = None if row is None else row["Images, fair test"]
+        control = 0.25 if row is None else row["Majority control"]
+        passing = [label for label, v in (("sensor", sensor), ("images", image)) if v is not None and v + 1e-9 >= 0.8]
+        badge = (f'<span class="badge">80%+ {" and ".join(passing)}</span>' if passing
+                 else '<span class="badge low">below 80%</span>')
+
+        def bar(label, value):
+            width = 0 if value is None or value != value else max(0, min(100, value * 100))
+            return (f'<div class="metric"><span>{label}</span><div class="track"><div class="fill" style="width:{width:.1f}%">'
+                    f'</div><div class="ctrl" style="left:{control * 100:.0f}%" title="majority control"></div>'
+                    f'<div class="goal" style="left:80%" title="80% target"></div></div><span class="num">{pct(value)}</span></div>')
+
+        mine = [r for r in routes if r["machine"] == m.title]
+        ready = all(r["present"] and r["registered"] for r in mine)
+        checked = [r["route_check"] for r in mine if r["route_check"] is not None]
+        state = (f'<span class="{"yes" if ready else "no"}">{"models ready" if ready else "model missing or untrusted"}</span>'
+                 + (f' · route check {"PASS" if all(checked) else "FAIL"}' if checked else ""))
+        last = seen.get(key)
+        last_text = (f'Last here: <b>{e(last["last"]["condition"])}</b> · {e(str(last["last"]["time_utc"])[:16].replace("T", " "))}'
+                     f' · {last["count"]} prediction{"s" if last["count"] != 1 else ""}' if last else "No predictions yet")
+        cards.append(f'<div class="mcard"><div><h3>{e(m.title)}</h3><p class="comp">{e(m.component)}</p></div>{badge}'
+                     f'{bar("Sensor", sensor)}{bar("Images", image)}<div class="status">{state}</div>'
+                     f'{"<p class=note>" + e(MACHINE_NOTES[key]) + "</p>" if key in MACHINE_NOTES else ""}'
+                     f'<p class="last">{last_text}</p></div>')
+
+    # --- condition mix from the history
+    mix = {}
+    for x in entries:
+        if x["status"] == "prediction":
+            mix[(x["machine"], x["condition"])] = mix.get((x["machine"], x["condition"]), 0) + 1
+    most = max(mix.values(), default=1)
+    mix_rows = "".join(
+        f'<div class="mixrow"><span>{e(mc)} · {e(cond)}</span><div class="track"><div class="fill" '
+        f'style="width:{n / most * 100:.0f}%"></div></div><span class="num">{n}</span></div>'
+        for (mc, cond), n in sorted(mix.items(), key=lambda item: -item[1])[:12]) or '<p class="note">No predictions yet.</p>'
+    machines_used = len({x["machine"] for x in entries if x["status"] == "prediction"})
+    last_time = str(entries[0]["time_utc"])[:16].replace("T", " ") if entries else "–"
+    kpis = "".join(f'<div class="kpi"><div class="v">{v}</div><div class="l">{label}</div></div>' for v, label in (
+        (len(entries), "files checked"), (statuses["prediction"], "predictions"), (statuses["ambiguous"], "ambiguous"),
+        (statuses["rejected"], "rejected"), (machines_used, "machines seen"), (f'<span style="font-size:18px">{e(last_time)}</span>', "last check (UTC)")))
+
+    # --- history table
+    history_rows = "".join(
+        f'<tr data-status="{e(x["status"])}"><td>{e(str(x["time_utc"])[:19].replace("T", " "))}</td><td>{e(x["interface"])}</td>'
+        f'<td>{e(x["file"])}</td><td>{e(x["mapping"])}</td><td><span class="pill {e(x["status"])}">{e(x["status"])}</span></td>'
+        f'<td>{e(x["machine"])}</td><td>{e(x["condition"])}</td>'
+        f'<td class="num">{"" if x["probability"] in ("", None) else e(x["probability"])}</td><td>{e(x["message"])}</td></tr>'
+        for x in entries[:200])
+    history = (
+        '<div class="filters"><button class="on" data-status="all">All</button><button data-status="prediction">Predictions</button>'
+        '<button data-status="ambiguous">Ambiguous</button><button data-status="rejected">Rejected</button>'
+        '<input id="q" type="search" placeholder="Search file, machine or condition"> <a href="/history.csv">Download CSV</a></div>'
+        '<div class="wrap"><table id="history"><thead><tr><th>Time (UTC)</th><th>Interface</th><th>File</th><th>Mapping</th>'
+        '<th>Status</th><th>Machine</th><th>Condition</th><th>Model probability</th><th>Message</th></tr></thead>'
+        f'<tbody>{history_rows}</tbody></table></div>'
+        + (f'<p class="note">{skipped} unreadable history lines were skipped.</p>' if skipped else "")
+        + (f'<p class="note">Showing the latest 200 of {len(entries)}; the CSV has all.</p>' if len(entries) > 200 else "")
+        if entries else '<p class="note">No predictions yet. Check a file above.</p>')
+
     result_rows = "".join(
-        f"<tr><td>{html.escape(name)}</td><td>{html.escape(str(row['Component']))}</td>"
-        f"<td class=num>{pct(row['Sensor, fair test'])}</td><td class=num>{int(row['Test recordings (sensor)'])}</td>"
-        f"<td class=num>{pct(row['Images, fair test'])}</td><td class=num>{int(row['Test recordings/gears (images)'])}</td>"
-        f"<td class=num>{row['Majority control'] * 100:.0f}%</td></tr>"
+        f"<tr><td>{e(name)}</td><td>{e(row['Component'])}</td><td class=num>{pct(row['Sensor, fair test'])}</td>"
+        f"<td class=num>{int(row['Test recordings (sensor)'])}</td><td class=num>{pct(row['Images, fair test'])}</td>"
+        f"<td class=num>{int(row['Test recordings/gears (images)'])}</td><td class=num>{row['Majority control'] * 100:.0f}%</td></tr>"
         for name, row in overview.iterrows())
     status_rows = "".join(
-        f"<tr><td>{html.escape(r['machine'])}</td><td>{html.escape(r['route'])}</td><td>{html.escape(r['checkpoint'])}</td>"
-        f"<td class={'ok' if r['present'] else 'bad'}>{'yes' if r['present'] else 'missing'}</td>"
-        f"<td class={'ok' if r['registered'] else 'bad'}>{'yes' if r['registered'] else 'no'}</td>"
-        f"<td>{'–' if r['route_check'] is None else ('PASS' if r['route_check'] else 'FAIL')}</td></tr>"
-        for r in checkpoint_status())
-    entries, skipped = read_history()
-    counts = {}
-    for e in entries:
-        if e["status"] == "prediction":
-            key = (e["machine"], e["condition"])
-            counts[key] = counts.get(key, 0) + 1
-    count_rows = "".join(f"<tr><td>{html.escape(str(m))}</td><td>{html.escape(str(c))}</td><td class=num>{n}</td></tr>"
-                         for (m, c), n in sorted(counts.items()))
-    recent = "".join(
-        f"<tr><td>{html.escape(str(e['time_utc']))}</td><td>{html.escape(str(e['interface']))}</td>"
-        f"<td>{html.escape(str(e['file']))}</td><td>{html.escape(str(e['mapping']))}</td>"
-        f"<td>{html.escape(str(e['status']))}</td><td>{html.escape(str(e['machine']))}</td>"
-        f"<td>{html.escape(str(e['condition']))}</td>"
-        f"<td class=num>{'' if e['probability'] in ('', None) else html.escape(str(e['probability']))}</td>"
-        f"<td>{html.escape(str(e['message']))}</td></tr>" for e in entries[:50])
-    statuses = {k: sum(e["status"] == k for e in entries) for k in ("prediction", "ambiguous", "rejected")}
-    history = (f"<p>{len(entries)} request{'' if len(entries) == 1 else 's'}: {statuses['prediction']} predictions, {statuses['ambiguous']} "
-               f"ambiguous, {statuses['rejected']} rejected." +
-               (f" {skipped} unreadable lines were skipped." if skipped else "") +
-               ' <a href="/history.csv">Download as CSV</a></p>'
-               if entries else "<p>No predictions yet. Upload a file on the <a href=\"/\">upload page</a>.</p>")
-    if entries:
-        history += (f'<div class=wrap><table><tr><th>Machine</th><th>Condition</th><th>Predictions</th></tr>{count_rows}'
-                    '</table></div><h3>Latest 50</h3><div class=wrap><table><tr><th>Time (UTC)</th><th>Interface</th>'
-                    '<th>File</th><th>Mapping</th><th>Status</th><th>Machine</th><th>Condition</th>'
-                    f'<th>Model probability</th><th>Message</th></tr>{recent}</table></div>')
-    return f"""<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+        f"<tr><td>{e(r['machine'])}</td><td>{e(r['route'])}</td><td>{e(r['checkpoint'])}</td>"
+        f"<td>{'yes' if r['present'] else 'missing'}</td><td>{'yes' if r['registered'] else 'no'}</td>"
+        f"<td>{'–' if r['route_check'] is None else ('PASS' if r['route_check'] else 'FAIL')}</td></tr>" for r in routes)
+    options = "".join(f'<option value="{k}">{e(m.title)}</option>' for k, m in MACHINES.items())
+    cards_html = "".join(cards)
+
+    return f"""<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Dashboard · AI-Based Predictive Maintenance for Mining Equipment</title><style>{DASHBOARD_STYLE}</style></head><body>
-<nav><a href="/">Upload page</a><a href="/dashboard">Dashboard</a></nav>
-<h1>AI-Based Predictive Maintenance for Mining Equipment · Dashboard</h1>
-<p class="note">Laboratory analogues only, not tested on real mining machines. The model probability is the
-classifier's averaged score, not a calibrated failure probability. Condition classification only; no failure-time
-or remaining-useful-life prediction.</p>
-<h2>Fair-test accuracy (held-out groups, one answer per recording)</h2>
-<div class=wrap><table><tr><th>Machine</th><th>Component analogue</th><th>Sensor</th><th>Test recordings</th>
-<th>Images</th><th>Test recordings or gears</th><th>Majority control</th></tr>{result_rows}</table></div>
-<p class="note">From the saved results in Results/. Drill Rig images are CAD renders. Grader images are gear-tooth
-photos (a different task from its slewing-bearing sensor model); their figure is balanced accuracy, because damaged teeth
-are rare (plain accuracy 97.2%).</p>
-<h2>Prediction routes</h2>
-<div class=wrap><table><tr><th>Machine</th><th>Route</th><th>Checkpoint</th><th>Present</th><th>Trusted</th>
-<th>Last route check</th></tr>{status_rows}</table></div>
+<header><nav><a href="/dashboard">Dashboard</a><a href="/">Simple upload page</a><a href="/history.csv">History CSV</a></nav>
+<h1>AI-Based Predictive Maintenance for Mining Equipment</h1>
+<p>Laboratory analogues only, not tested on real mining machines. Condition classification only; no failure-time or
+remaining-useful-life prediction. Runs on this computer only.</p></header><main>
+<h2>Check a file</h2>
+<div class="check"><form id="checkform" class="panel" method="post" action="/dashboard" enctype="multipart/form-data">
+<label id="drop" class="drop" for="file"><b>Drop a sensor file or image here</b><span class="note">or click to choose ·
+.mat, .csv, .png or .jpg · up to 300 MB</span><input id="file" type="file" name="file" required><span id="chosen" class="chosen"></span></label>
+<div class="formrow"><label for="machine">Machine</label><select id="machine" name="machine">
+<option value="">find it from the file</option>{options}</select><button id="go" class="go" type="submit">Check condition</button></div>
+<p class="note">Choose a machine only for formats shared by several machines, or for a Grader gear-tooth photo.</p></form>
+<div>{result or '<div class="result"><div class="tag">Result</div><p class="note">The answer appears here, and is added to the history below.</p></div>'}</div></div>
+<h2>Fleet view: fair-test accuracy and model status</h2>
+<div class="fleet">{cards_html}</div>
+<p class="note">Bars: accuracy on whole groups the model never saw (one answer per recording). Solid line: majority-class
+control. Dashed line: the 80% target.</p>
+<h2>Activity on this computer</h2><div class="kpis">{kpis}</div>
+<div class="two" style="margin-top:14px"><div class="panel"><h3>Predicted conditions</h3><div class="mix" style="margin-top:10px">{mix_rows}</div></div>
+<div class="panel"><h3>What the numbers mean</h3><p class="note">The model probability is the classifier’s averaged score,
+not a calibrated failure probability. Ambiguous means the file format is shared by several machines and needs a
+mapping. Rejected means the file matches no known dataset format, or could not be read.</p>
+<p class="note">History is kept in Processed_Data/prediction_history.jsonl: file name, SHA-256, size and answer only,
+never the file. Delete that file to clear it.</p></div></div>
+<h2>Prediction history</h2>{history}
+<details><summary>Fair-test accuracy table</summary><div class="wrap"><table><tr><th>Machine</th><th>Component analogue</th>
+<th>Sensor</th><th>Test recordings</th><th>Images</th><th>Test recordings or gears</th><th>Majority control</th></tr>{result_rows}</table></div>
+<p class="note">From the saved results in Results/. Grader images are gear-tooth photos (a different task from its
+slewing-bearing sensor model); their figure is balanced accuracy, because damaged teeth are rare (plain accuracy 97.2%).</p></details>
+<details><summary>Prediction routes</summary><div class="wrap"><table><tr><th>Machine</th><th>Route</th><th>Checkpoint</th>
+<th>Present</th><th>Trusted</th><th>Last route check</th></tr>{status_rows}</table></div>
 <p class="note">Trusted means the file's SHA-256 is registered on this computer; it is checked again on every load.
-Last route check reads Processed_Data/deployment/route_check.json (run: python Notebook/pdm.py route-check).</p>
-<h2>Prediction history (this computer)</h2>{history}
-<p class="note">Kept in Processed_Data/prediction_history.jsonl: file name, SHA-256, size and answer only, never the
-file contents. Delete that file to clear the history.</p></body></html>""".encode("utf-8")
+Last route check reads Processed_Data/deployment/route_check.json (run: python Notebook/pdm.py route-check).</p></details>
+</main><script>{DASHBOARD_SCRIPT}</script></body></html>""".encode("utf-8")
 
 
 # --- Demo check: the steps of Documentation/demo_script.md, run and compared with the expected answers --
@@ -3522,11 +3684,16 @@ def upload_server(port=8613):
                         raise
                     record_prediction(path, "upload page", machine, answer)
                 result = f"<h2>{html.escape(name)}</h2>" + table(answer)
+                card = answer_card(name, answer)
             except (ValueError, FileNotFoundError) as problem:
                 result = f'<p class="error">No prediction for {html.escape(name)}: {html.escape(str(problem))}</p>'
+                card = answer_card(name or "no file", problem=problem)
             except Exception as problem:  # a damaged file must give an answer, not a dropped connection
                 result = (f'<p class="error">No prediction for {html.escape(name)}: the file could not be read '
                           f'({html.escape(type(problem).__name__)}).</p>')
+                card = answer_card(name, problem=f"the file could not be read ({type(problem).__name__})")
+            if self.path.split("?", 1)[0] == "/dashboard":
+                return self.send(dashboard_page(card))
             self.send(page(result))
 
         def log_message(self, *args):
@@ -3547,7 +3714,7 @@ def upload_name_ok(name):
 def serve(port=8613):
     """Start the upload page; stop it with Ctrl-C."""
     server = upload_server(port)
-    print(f"Upload page: http://localhost:{port}  (this computer only; Ctrl-C to stop)")
+    print(f"Dashboard: http://localhost:{port}/dashboard   Simple upload page: http://localhost:{port}  (this computer only; Ctrl-C to stop)")
     server.serve_forever()
 
 
