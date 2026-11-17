@@ -2,7 +2,7 @@
 
 AI-Based Predictive Maintenance for Mining Equipment · Group 9 · November 16, 2026
 
-Planned in [grader_gain_invariant_plan.md](grader_gain_invariant_plan.md), committed before the run (77d9bca), and run once. Rerun: `python Notebook/phase1_final_verification.py grader_gain`. Result file: [grader_gain_invariant.json](../Results/experiments/grader_gain_invariant.json).
+Planned in [grader_gain_invariant_plan.md](grader_gain_invariant_plan.md), committed before the run (77d9bca), and run once. The completed experiment used the [archived verification runner](https://github.com/theganeshmishra/ai-based-predictive-maintenance-mining-equipment/blob/48d95c50ad615eb4caa7f779d471ec981ea23058/Notebook/phase1_final_verification.py) with the `grader_gain` stage. Restore that recorded revision to reproduce it. Result file: [grader_gain_invariant.json](../Results/experiments/grader_gain_invariant.json).
 
 ## Result
 

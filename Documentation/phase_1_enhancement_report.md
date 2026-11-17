@@ -71,18 +71,16 @@ The Pump image loaded weights once across six calls after caching, compared with
 
 ## Run and verify
 
-From the repository root with the project environment active:
+From the repository root with the project environment active. The completed research runners were retired from the current tree on November 17, 2026. Their original implementations remain available as [validation source](https://github.com/theganeshmishra/ai-based-predictive-maintenance-mining-equipment/blob/48d95c50ad615eb4caa7f779d471ec981ea23058/Notebook/phase1_validation.py) and [final verification source](https://github.com/theganeshmishra/ai-based-predictive-maintenance-mining-equipment/blob/48d95c50ad615eb4caa7f779d471ec981ea23058/Notebook/phase1_final_verification.py) at the recorded revision. The saved experimental evidence is retained.
 
 ```bash
-python Notebook/phase1_validation.py
-python Notebook/phase1_validation.py --benchmark pump_image
 python -m pytest -q -rs
 python -m pyflakes Notebook/pdm.py tests
 python -m pyflakes Notebook tests
 python Notebook/pdm.py route-check
 ```
 
-The experiment runner defaults to `Processed_Data/phase1/` for outputs. It needs the Ottawa recordings, CORA stationary Vx recordings, the JUST demonstration excerpt, trusted local checkpoints, indexed image exports and the Aalto demo CSV. The paired benchmark uses an isolated checkout of `044d428` with access to the same local data and the new benchmark runner. Raw files and fitted models remain local.
+The historical experiment runner defaulted to `Processed_Data/phase1/` for outputs. It needs the Ottawa recordings, CORA stationary Vx recordings, the JUST demonstration excerpt, trusted local checkpoints, indexed image exports and the Aalto demo CSV. The paired benchmark uses an isolated checkout of `044d428` with access to the same local data and the new benchmark runner. Raw files and fitted models remain local.
 
 ## Regression and remaining limitations
 
@@ -95,7 +93,7 @@ The experiment runner defaults to `Processed_Data/phase1/` for outputs. It needs
 
 **Verdict · Phase 1 Complete With Scientific Limitations.** Every archived sensor result reproduces exactly from the raw data, no leakage was found, all tests and prediction routes pass, and two deployment defects found during the checks were fixed. The limits are scientific: small held-out sets, laboratory analogues only, four CORA mappings that do not generalise to an unseen speed, uncalibrated probabilities, and strong sensitivity of some sensor models to gain, noise and sampling-rate errors.
 
-The checks and the one new experiment were fixed in advance in the [final verification plan](phase_1_enhancement_report.md#phase-1-final-verification-plan), committed before they ran. Runner: `python Notebook/phase1_final_verification.py`. Results: [final_verification.json](../Results/experiments/phase_1/final_verification.json). Archived results and deployed checkpoints are unchanged.
+The checks and the one new experiment were fixed in advance in the [final verification plan](phase_1_enhancement_report.md#phase-1-final-verification-plan), committed before they ran. Historical runner: [final verification source](https://github.com/theganeshmishra/ai-based-predictive-maintenance-mining-equipment/blob/48d95c50ad615eb4caa7f779d471ec981ea23058/Notebook/phase1_final_verification.py). Results: [final_verification.json](../Results/experiments/phase_1/final_verification.json). Archived results and deployed checkpoints are unchanged.
 
 ### 1. Commits and environment
 
@@ -245,7 +243,7 @@ Each cell shows accuracy / balanced accuracy, then the share of recordings whose
 |---|---|
 | Fully reproduced here, bit-identical | all 8 archived sensor fair tests; the Phase 1 CORA candidates and Pump robustness (identical scores and choices); the 13 deployment probes; the JUST diagnostic values |
 | Reproducible with a caveat | image fair tests: PyTorch CPU training is not bit-for-bit repeatable (documented); not rerun |
-| Partially reproducible | the full `phase1_validation.py` run: its diagnostic figure reads `Processed_Data/deployment_samples/grader/20221208-O-2rpm-0N-1.csv`, which exists only on the computer that produced it; the same file is inside `condition1.zip` |
+| Partially reproducible | the archived validation run: its diagnostic figure reads `Processed_Data/deployment_samples/grader/20221208-O-2rpm-0N-1.csv`, which exists only on the computer that produced it; the same file is inside `condition1.zip` |
 | Blocked by unavailable data | none on this computer: `data-check` found all 163 raw files; the only mismatch is the documented second Roboflow export of the gear photos |
 
 The eight research inputs reported missing on the macOS computer (MCC5-THU, the MFGNet mesh archive and six JUST condition archives) are present here and pass `data-check`.
@@ -534,7 +532,7 @@ The exact recording is part of the fitted dataset, so this prediction verifies d
 
 AI-Based Predictive Maintenance for Mining Equipment · Group 9 · November 11, 2026 · committed before any of these results existed
 
-This file fixes, in advance, what the final Phase 1 verification runs. It is a verification pass: archived results and deployed checkpoints are not changed, and nothing here is promoted to deployment. Outputs go to `Results/experiments/phase_1/final_verification.json` and `Figures/experiments/phase_1/`. The runner is `Notebook/phase1_final_verification.py`.
+This file fixes, in advance, what the final Phase 1 verification runs. It is a verification pass: archived results and deployed checkpoints are not changed, and nothing here is promoted to deployment. Outputs go to `Results/experiments/phase_1/final_verification.json` and `Figures/experiments/phase_1/`. The historical runner is available in the [recorded revision](https://github.com/theganeshmishra/ai-based-predictive-maintenance-mining-equipment/blob/48d95c50ad615eb4caa7f779d471ec981ea23058/Notebook/phase1_final_verification.py).
 
 #### 1. Reproduction and calibration of the archived sensor fair tests (all eight mappings)
 

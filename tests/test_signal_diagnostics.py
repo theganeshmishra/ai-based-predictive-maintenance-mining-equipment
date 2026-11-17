@@ -54,7 +54,7 @@ def test_diagnostic_figure_is_written(tmp_path):
 
 
 def test_controlled_perturbations_are_repeatable_and_have_expected_lengths():
-    from phase1_validation import perturb_signal
+    perturb_signal = pdm.perturb_signal
 
     x = np.arange(1000, dtype=float)
     assert np.array_equal(perturb_signal(x, "amplitude_half", None), x / 2)

@@ -105,6 +105,27 @@ OTTAWA_FEATURES = ["mean", "std", "rms", "peak_to_peak", "crest_factor", "skew",
                    *(f"power_{lo}_{hi}_hz" for lo, hi in OTTAWA_BANDS)]
 
 
+def perturb_signal(signal, kind, rng):
+    """Apply a reproducible signal perturbation for the archived robustness checks."""
+    from scipy.signal import resample_poly
+
+    if kind == "noise":
+        return signal + rng.normal(0, 0.1 * np.sqrt(np.mean(signal**2)), len(signal))
+    if kind == "amplitude_half":
+        return signal * 0.5
+    if kind == "amplitude_double":
+        return signal * 2
+    if kind == "missing_5pct":
+        return signal[rng.random(len(signal)) >= 0.05]
+    if kind == "half_length":
+        return signal[:len(signal) // 2]
+    if kind == "rate_90pct":
+        return resample_poly(signal, 9, 10)
+    if kind == "clean":
+        return signal
+    raise ValueError(f"Unknown perturbation {kind!r}")
+
+
 def signal_diagnostics(samples, rate_hz, units, *, rpm=None, bands=()):
     """Analyze one uniformly sampled channel. Rate and units must come from acquisition metadata."""
     from scipy.signal import welch
