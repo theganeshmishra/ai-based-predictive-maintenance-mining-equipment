@@ -424,8 +424,12 @@ def stage_diagnostics():
 
 
 def stage_benchmark():
-    code = ("import json, sys; sys.path.insert(0, 'Notebook'); import psutil, phase1_validation as v; "
-            "r = v.benchmark(sys.argv[1]); r['peak_working_set_mib'] = round(psutil.Process().memory_info().peak_wset / 2**20, 1); "
+    code = ("import json, sys; sys.path.insert(0, 'Notebook'); import phase1_validation as v; "
+            "r = v.benchmark(sys.argv[1]); peak = None\n"
+            "if sys.platform == 'win32':\n"
+            "    import psutil\n"
+            "    peak = psutil.Process().memory_info().peak_wset\n"
+            "r['peak_working_set_mib'] = round(peak / 2**20, 1) if peak is not None else None; "
             "print('JSON' + json.dumps(r, default=str))")
     out = {}
     for route in ("pump_sensor", "pump_image", "aalto"):

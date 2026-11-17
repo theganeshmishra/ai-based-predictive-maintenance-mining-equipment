@@ -73,6 +73,7 @@ data/
 *.safetensors
 *.log
 *.tmp
+prediction_history.jsonl
 *.part
 *.swp
 *~
@@ -86,6 +87,7 @@ work/
 *.tiff
 *.bmp
 *.png
+!/Figures/methodology_flow.png
 !/Figures/*/*.png
 !/Figures/experiments/*/*.png
 /Figures/machine_images/

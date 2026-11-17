@@ -37,6 +37,7 @@ Machines: pump, haul_truck, belt_conveyor, excavator, dozer, wheel_loader, drill
 """
 
 from dataclasses import dataclass, field
+from datetime import datetime, timezone
 from functools import lru_cache
 from pathlib import Path
 import csv
@@ -3175,7 +3176,7 @@ not tested on real mining machines.</p>
 HISTORY = PROCESSED / "prediction_history.jsonl"
 HISTORY_FIELDS = ["time_utc", "interface", "file", "sha256", "bytes", "mapping", "status", "machine",
                   "condition", "probability", "model", "message"]
-_HISTORY_LOCK = __import__("threading").Lock()
+_HISTORY_LOCK = Lock()
 
 
 def summarize_answer(answer):
@@ -3192,11 +3193,11 @@ def summarize_answer(answer):
 def record_prediction(path, interface, mapping, answer=None, problem=None):
     """Append one prediction (or refusal) to the history; never raises, so it cannot break a prediction."""
     try:
-        data = Path(path).read_bytes()
+        path = Path(path)
         entry = dict.fromkeys(HISTORY_FIELDS, "")
-        entry.update(time_utc=__import__("datetime").datetime.now(__import__("datetime").timezone.utc)
-                     .isoformat(timespec="seconds"), interface=interface, file=Path(path).name,
-                     sha256=hashlib.sha256(data).hexdigest(), bytes=len(data), mapping=mapping or "automatic")
+        entry.update(time_utc=datetime.now(timezone.utc).isoformat(timespec="seconds"),
+                     interface=interface, file=path.name, sha256=sha256(path),
+                     bytes=path.stat().st_size, mapping=mapping or "automatic")
         if problem is not None:
             entry.update(status="rejected", message=str(problem)[:300])
         else:
@@ -3238,7 +3239,7 @@ def history_csv():
 
     def safe(value):
         text = "" if value is None else str(value)
-        return "'" + text if text[:1] in ("=", "+", "-", "@", "\t", "\r") else text
+        return "'" + text if text[:1] in ("\t", "\r", "\n") or text.lstrip()[:1] in ("=", "+", "-", "@") else text
 
     out = io.StringIO()
     writer = csv.writer(out)
@@ -3250,7 +3251,10 @@ def history_csv():
 
 def checkpoint_status():
     """Per prediction route: checkpoint file present, registered in the trust list, last route check."""
-    trusted = trusted_hashes() if TRUSTED_MODELS.is_file() else {}
+    try:
+        trusted = trusted_hashes()
+    except (OSError, ValueError):
+        trusted = {}  # Degrade status display only. The inference loader still rejects invalid registries.
     report = PROCESSED / "deployment" / "route_check.json"
     checks = {}
     if report.is_file():
@@ -3258,8 +3262,8 @@ def checkpoint_status():
             for row in json.loads(report.read_text(encoding="utf-8")).get("routes", []):
                 key = (row.get("machine"), row.get("modality"))
                 checks[key] = checks.get(key, True) and row.get("status") == "PASS"
-        except ValueError:
-            pass
+        except (AttributeError, OSError, TypeError, ValueError):
+            checks.clear()
     rows = []
     for machine, m in MACHINES.items():
         routes = [("sensor", f"{machine}_sensor.joblib"),
@@ -3643,6 +3647,9 @@ def upload_server(port=8613):
             if self.headers.get("Host") not in allowed_hosts or (
                     origin is not None and origin.removeprefix("http://") not in allowed_hosts):
                 return self.refuse(403, "Uploads are accepted only from this page.")
+            route = self.path.split("?", 1)[0]
+            if route not in {"/", "/dashboard"}:
+                return self.refuse(404, "Page not found.")
             try:
                 length = int(self.headers.get("Content-Length", ""))
             except ValueError:
@@ -3692,7 +3699,7 @@ def upload_server(port=8613):
                 result = (f'<p class="error">No prediction for {html.escape(name)}: the file could not be read '
                           f'({html.escape(type(problem).__name__)}).</p>')
                 card = answer_card(name, problem=f"the file could not be read ({type(problem).__name__})")
-            if self.path.split("?", 1)[0] == "/dashboard":
+            if route == "/dashboard":
                 return self.send(dashboard_page(card))
             self.send(page(result))
 

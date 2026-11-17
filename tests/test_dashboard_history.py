@@ -154,3 +154,23 @@ def test_demo_steps_cover_the_script():
     assert [s[0] for s in steps] == sorted(s[0] for s in steps)
     assert {s[0] for s in steps} == {2, 3, 4, 5, 6, 7, 8, 9, 10}
     assert steps[-1][3] == "rejected"
+
+
+def test_dashboard_renders_when_local_registry_is_malformed(server, history, isolated_models):
+    pdm.TRUSTED_MODELS.write_text("[]")
+    status, _, body = get(server, "/dashboard")
+    assert status == 200 and "Prediction routes" in body
+    with pytest.raises(ValueError, match="trusted_sha256.json"):
+        pdm.trusted_hashes()
+
+
+def test_history_csv_neutralises_whitespace_prefixed_formulas(history, tmp_path):
+    pdm.record_prediction(sample(tmp_path), "upload page", None, problem=ValueError("  =1+1"))
+    rows = list(csv.DictReader(io.StringIO(pdm.history_csv())))
+    assert rows[0]["message"] == "'  =1+1"
+
+
+def test_upload_to_unknown_route_creates_no_history(server, history):
+    status, _ = post_form(server, "/missing", "notes.txt", b"hello")
+    assert status == 404
+    assert not history.exists()
