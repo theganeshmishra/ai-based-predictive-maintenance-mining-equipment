@@ -2,7 +2,7 @@
 
 AI-Based Predictive Maintenance for Mining Equipment · Group 9 · November 6, 2026 · starting point: `main` at `879e968` (same files as Ganesh's `dc2a8c8`)
 
-This record follows the [20-day audit](project_20_day_audit.md). Every number below is read from the saved files in `Results/experiments/` and `Results/deployment/`. The four-class results in `Results/<machine>/` and the saved checkpoints in `Processed_Data/models/` were not changed: every checkpoint and every earlier result and figure file has the same SHA-256 before and after this work (the result hashes are in `Results/experiments/cora_binary/verification.json`, the checkpoint hashes in `Results/deployment/route_check.json`).
+This record follows the [20-day audit](phase_1_enhancement_report.md#project-audit-and-20-day-plan). Every number below is read from the saved files in `Results/experiments/` and `Results/deployment/`. The four-class results in `Results/<machine>/` and the saved checkpoints in `Processed_Data/models/` were not changed: every checkpoint and every earlier result and figure file has the same SHA-256 before and after this work (the result hashes are in `Results/experiments/cora_binary/verification.json`, the checkpoint hashes in `Results/deployment/route_check.json`).
 
 ## Summary
 
@@ -134,4 +134,4 @@ The sensor data (JUST slewing bearing: healthy, inner ring, outer ring, rolling 
 
 Input checks: unsupported file → PASS: rejected; CORA file without a mapping → PASS.
 
-The Grader gear-tooth checkpoint is not on this computer, and the local Roboflow archive does not match the SHA-256 of the export it was built from, so that route was not rebuilt or tested here. Ganesh's November 5 record ([deployment verification](deployment_verification.md)) reports it passing on his computer.
+The Grader gear-tooth checkpoint is not on this computer, and the local Roboflow archive does not match the SHA-256 of the export it was built from, so that route was not rebuilt or tested here. Ganesh's November 5 record ([deployment verification](phase_1_enhancement_report.md#integrated-notebook-deployment-verification)) reports it passing on his computer.

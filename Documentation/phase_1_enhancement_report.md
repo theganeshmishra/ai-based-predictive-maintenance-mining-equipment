@@ -6,7 +6,7 @@ AI-Based Predictive Maintenance for Mining Equipment · Ganesh Mishra, Lakshya S
 
 ## Baseline and changes
 
-The work started from `044d428ab85bf46631fad34f5f5c2722481d42f7` on GitHub main. The baseline rerun had 53 passed tests, zero failures or skips, and 39 successful prediction checks. Pyflakes passed. The existing application already supported eight mappings, three prediction interfaces, separate Grader bearing and gear tasks, and checkpoint trust verification. [Coding audit](coding_completion_audit.md) · [Scientific validation](scientific_validation.md)
+The work started from `044d428ab85bf46631fad34f5f5c2722481d42f7` on GitHub main. The baseline rerun had 53 passed tests, zero failures or skips, and 39 successful prediction checks. Pyflakes passed. The existing application already supported eight mappings, three prediction interfaces, separate Grader bearing and gear tasks, and checkpoint trust verification. [Coding audit](phase_1_enhancement_report.md#coding-completion-audit) · [Scientific validation](scientific_validation.md)
 
 This phase adds separate signal diagnostics, a reproducible experiment runner, controlled robustness probes, and a two-entry cache for the weights-only CPU ResNet18 models. The cache invalidates on file identity, size or timestamp changes. The Pump extractor now rejects non-finite samples before feature calculations. Short MCC5-THU recordings produce a minimum-length error. The validation script, test fixtures and new results are separate from the archived evaluations and deployment fits.
 
@@ -95,7 +95,7 @@ The experiment runner defaults to `Processed_Data/phase1/` for outputs. It needs
 
 **Verdict · Phase 1 Complete With Scientific Limitations.** Every archived sensor result reproduces exactly from the raw data, no leakage was found, all tests and prediction routes pass, and two deployment defects found during the checks were fixed. The limits are scientific: small held-out sets, laboratory analogues only, four CORA mappings that do not generalise to an unseen speed, uncalibrated probabilities, and strong sensitivity of some sensor models to gain, noise and sampling-rate errors.
 
-The checks and the one new experiment were fixed in advance in the [final verification plan](phase_1_final_verification_plan.md), committed before they ran. Runner: `python Notebook/phase1_final_verification.py`. Results: [final_verification.json](../Results/experiments/phase_1/final_verification.json). Archived results and deployed checkpoints are unchanged.
+The checks and the one new experiment were fixed in advance in the [final verification plan](phase_1_enhancement_report.md#phase-1-final-verification-plan), committed before they ran. Runner: `python Notebook/phase1_final_verification.py`. Results: [final_verification.json](../Results/experiments/phase_1/final_verification.json). Archived results and deployed checkpoints are unchanged.
 
 ### 1. Commits and environment
 
@@ -336,3 +336,231 @@ Baseline commit `7945df4a7cce2407dd6fbb2a2ce53ce9515730e2`. Verification ran in 
 - **Automated verification.** The baseline suite passed 252 tests. The cleaned revision passed 255 with zero failures and zero skips locally. See the [Tests workflow](https://github.com/theganeshmishra/ai-based-predictive-maintenance-mining-equipment/actions/workflows/tests.yml) for the hosted check. Hosted runners may skip real-file checks that require local fixtures.
 
 **Phase 1 Complete With Scientific Limitations — Repository Cleaned and Verified.** The application classifies current component condition. Generalization to mining fleets, calibrated probabilities, paired sensor-image fusion and failure-time prediction remain unverified.
+
+## Archived verification records
+
+These records retain their original observations and decision criteria. Archived result files may cite their original filenames.
+
+### Project audit and 20-day plan
+
+November 5, 2026 · Group 9 · Baseline `05476ba`
+
+The saved post-push check confirms eight sensor routes, eight image routes and 19 upload/error checks. The experimental results below are separate from those checks. The routes use deployment fits, including some trained on subsets different from the archived evaluations. A working route and its prediction confidence do not establish held-out accuracy.
+
+This review uses the requirements recorded for the capstone discussion: compare sensor and visual methods for a comparable component fault, distinguish laboratory analogues from mine equipment, preserve the split, report class-level performance and explain the methodology without code snippets. The team previously stated a target above 80% for every equipment pair. Confirm the instructor's exact metric, split and treatment of analogues before treating that target as a formal rubric rule.
+
+#### Eight equipment mappings
+
+Scores are the archived primary held-out accuracy and macro F1, shown as percentages. The Grader image entry uses balanced accuracy. Test units are evaluation units, and several may share an underlying physical specimen.
+
+| Equipment | Sensor accuracy / F1 | Image accuracy / F1 | Audit finding |
+|---|---:|---:|---|
+| Pump | 95.8 / 95.8, 24 records | 100 / 100, 24 records | Strongest aligned laboratory comparison. Both use healthy, inner race, outer race and rolling-element classes. The Ottawa and XJTU rigs are separate and use different held-out speed protocols. Verify specimen IDs before claiming generalization to new physical bearings. |
+| Haul Truck | 80.0 / 74.1, 30 records | 58.3 / 56.6, 12 records | Four classes align on bearing analogues. UODS ball-fault recordings run unloaded while other classes run loaded, so load is confounded with ball fault. Sensor balanced accuracy is 73.3%. Image outer-race and ball recall are both 33.3%. Sensor holds out bearing IDs while vision holds out speed. |
+| Belt Conveyor | 43.8 / 35.0, 16 runs | 50.0 / 43.2, 16 runs | Shared CORA gear-wear labels and run keys support a comparison at the experiment level. Sensor misses every wear25 run and images miss every wear75 run. The laboratory geared drive is the analogue. |
+| Dozer | 43.8 / 35.0, 16 runs | 56.3 / 52.1, 16 runs | Reuses all 16 Belt Conveyor runs. Differences in visual scores do not establish a separate machine result. Report a second application mapping of the same benchmark. |
+| Excavator | 25.0 / 18.3, 16 runs | 25.0 / 21.7, 16 runs | Same CORA classes across modalities, with both accuracies at the four-class baseline. Sensor bearing and misalignment recall are zero. Image healthy recall is zero. Local follow-up experiments use different targets or feature sets and need separate rows if presented. |
+| Wheel Loader | 31.3 / 32.5, 16 runs | 18.8 / 20.6, 16 runs | Same CORA target across modalities. Images are below the four-class baseline and miss all broken-bar runs. Eight healthy or bearing run IDs also appear in Excavator. |
+| Drill Rig | 73.3 / 70.5, 120 records | 88.9 / 88.8, 4,800 synthetic gears | The sensor study holds out speed and the image study holds out CAD designs. The image source calls R0 root breakage while the project maps it to the sensor class tooth crack. Treat that class as unaligned until justified. CAD results do not establish camera performance. Sensor healthy recall is 41.7%. [MCC5-THU data paper](https://pmc.ncbi.nlm.nih.gov/articles/PMC11070670/) · [MFGNet-Gear label definitions](https://huggingface.co/datasets/rsmei/MFGNet-Gear) |
+| Motor Grader | 84.2 / 84.7, 120 records | 82.6 / 85.8, 2,879 tooth crops | Different components, labels, metrics and test units. JUST slewing-bearing tests hold out operating conditions on reused supports, one per class. The image result concerns good vs. damaged teeth and damaged recall is 66.1%. The earlier [gear-alignment feasibility review](motor_grader_gear_comparison.md) documents the missing independent physical gear IDs and full-gear label coverage. |
+
+CORA's secondary same-recording time-split accuracy is 93.8%–100%, while the unseen-speed accuracy is 18.8%–56.3%. Each CORA row has four speeds and one run per class/speed. A single correct run changes pooled accuracy by 6.25 percentage points. Frame or window counts increase the number of observations within a run. They do not increase the number of independent test runs. The sensor selection for Belt Conveyor and Dozer also used vibration plus temperature in three of four folds, while their upload checkpoints use vibration alone. Keep those evaluation and deployment configurations distinct.
+
+The README and methodology generalize that sensor and image data come from different rigs. CORA uses a shared rig and matching run IDs, with synchronization below the run level unverified. The methodology also describes an all-recording separation rule. That applies to the primary test, while the secondary time split deliberately reuses recordings. Correct both descriptions during implementation. [Repository results](../Results) · [Deployment verification](phase_1_enhancement_report.md#integrated-notebook-deployment-verification)
+
+#### Ranked issues and acceptance criteria
+
+| Rank | Severity and feasibility | Work after audit review | Acceptance criteria |
+|---|---|---|---|
+| 1 | Critical · High feasibility · 2 team-days | Correct the comparison matrix and professor-facing claims. Mark Grader as separate tasks, Dozer as a reused benchmark, Drill Rig as synthetic and partially aligned, and all routes as current-condition classification. | Every row names the component, class mapping, modality, rig, experimental unit, split, result provenance, and applicability. Published and demo results appear in separate tables. The team confirms whether >80% is strict and whether analogues count. |
+| 2 | Critical · High feasibility for reporting, moderate for improvement · 4 team-days | Freeze CORA group manifests and prioritize one new benchmark experiment before expanding. Start with a binary healthy vs. worn gear comparison on the existing shared Belt Conveyor/Dozer runs, or a reproducible four-class baseline using the same unseen-speed folds. | A predeclared target and majority baseline. Zero cross-fold run leakage. One prediction per held-out run, fold-level results, class recall, macro F1 and balanced accuracy. Report binary and four-class scores separately. Stop after the planned comparison if performance remains weak. |
+| 3 | High · Moderate feasibility · 3 team-days | Quantify Haul Truck load confounding and vision limits. Verify specimen metadata, report load by class, and use a load-matched common-label subset only if both modalities support it. | Whole-bearing grouping where IDs exist, with groups and classes counted before fitting. If ball fault remains inseparable from load, flag that class and report any narrower analysis separately. |
+| 4 | High · High feasibility for scope correction · 2 team-days | Check Drill Rig fault mapping against the source, and trace Pump specimen grouping. | Source-backed label crosswalk. Drill Rig root breakage and root crack remain distinct unless the source evidence supports a common target. A three-class follow-up is allowed only with the same eligible classes on both sides and the original grouped split preserved. Pump claims remain limited to the observed split. |
+| 5 | Critical mismatch · Low feasibility for replacement · 1 team-day timebox | Decide whether Grader can be aligned around gear teeth. Verify full-gear photographs, physical gear IDs, compatible damage labels, reuse rights and independent groups before training. | Proceed only with complete label and group evidence for both classes on both modalities. Otherwise keep the existing two experiments and state why their scores cannot be directly compared. |
+| 6 | High demo impact · High feasibility · 2 team-days | Freeze the demo manifest and practice the technical explanation. | All 16 routes load from verified local checkpoint hashes. Confirm expected ambiguity and unsupported input behavior. Show file, mapping, prediction and confidence. Demonstrate shared-format limits and explain the data-to-result flow without code snippets. |
+
+#### Schedule and decision gates
+
+- **Days 1–3:** Review findings as a team, confirm the instructor's acceptance criteria, freeze the baseline commit, and produce the label, group and metric matrix.
+- **Days 4–8:** Reconcile source IDs, archive the primary splits and make a timeboxed Grader data decision by Day 8. Prioritize the one CORA comparison with the clearest shared target.
+- **Days 9–13:** If approved, run the prespecified CORA experiment and one bounded Haul Truck sensitivity analysis. Use separate output directories and keep the current deployment available. Record weak results without tuning on outer folds.
+- **Days 14–16:** Review evidence and stop new modeling. Promote a candidate only if its comparable target and grouping are documented and its agreed primary score improves under the same evaluation protocol. Keep any remaining limits explicit.
+- **Days 17–20:** Finalize the comparison table, methodology diagram, captions, technical narrative and demonstration. Reserve the final two days for an end-to-end run and corrections.
+
+The audit itself made no changes to model code, weights, data or saved evaluations.
+
+### Integrated notebook deployment verification
+
+The November 5, 2026 post-push run passed all 16 inference routes and 19 upload/error checks. PASS means the route loaded its saved model and returned the equipment mapping, fault class, model confidence, and model name. Image samples include event-camera frames, infrared frames, and synthetic CAD renders.
+
+| Equipment | Sensor CSV inference and sample prediction | Image inference | Automatic component-source identification |
+|---|---|---|---|
+| Pump | PASS · `I-C-1.csv` → `inner`, 99.9% | PASS · 4/4 sample labels matched | PASS · Supported source format |
+| Haul Truck | PASS · `B_11_2.csv` → `ball`, 99.0% | PASS · 3/4 sample labels matched | PASS · Supported source format |
+| Belt Conveyor | PASS · `W50_F50_S_Vx.csv` → `wear50`, 99.5% | PASS · 4/4 sample labels matched | NOT AVAILABLE · Shared CORA format |
+| Dozer | PASS · `W50_F50_S_Vx.csv` → `wear50`, 99.5% | PASS · 4/4 sample labels matched | NOT AVAILABLE · Shared CORA format |
+| Excavator | PASS · `BD_F50_S_Vx.csv` → `bearing`, 98.7% | PASS · 4/4 sample labels matched | NOT AVAILABLE · Shared CORA format |
+| Wheel Loader | PASS · `HB_F50_S_Vx.csv` → `half_broken_bar`, 98.6% | PASS · 4/4 sample labels matched | NOT AVAILABLE · Shared CORA format |
+| Drill Rig | PASS · `gear_pitting_H_torque_circulation_2000rpm_10Nm.csv` → `gear_pitting`, 92.9% | PASS · 2/4 sample labels matched | PASS · Supported source format |
+| Motor Grader | PASS · `20221208-O-2rpm-0N-1.csv` → `outer_ring`, 79.6% | PASS · Separate gear-tooth model, selected manually | PASS · Supported sensor source format |
+
+The Pump and Haul Truck CSVs preserve the samples and channels of their source MAT recordings. Their reported predictions matched the MAT routes. The four CORA mappings required explicit source confirmation. Exact local image fingerprints also resolved the Pump and Haul Truck event-camera exports and Drill Rig CAD renders. Filenames or a confirmed mapping describe a laboratory data source.
+
+The notebook ran in a Jupyter kernel and exercised the upload widget callbacks with real CSV excerpts and image bytes. Checks covered unknown formats, invalid images, short recordings, incompatible mappings, shared CORA formats, and missing sensor and image checkpoints. The optional photo mode separately detected a Wheel Loader, Excavator and Dump Truck and returned ambiguity on a mixed scene. The current photo route treats all detector labels as unverified.
+
+The Haul Truck CNN predicted outer-race fault for one ball-fault frame. The Drill Rig CNN predicted healthy for one wear render and one pitting render. The deployment checks included training samples. Confidence is a model output. For generalization, use the existing fair tests, which hold out recordings, speeds, bearings or designs. The existing time-split scores use later segments from recordings seen during training. CORA unseen-speed performance is weak in the saved results even when time-split scores are high.
+
+Motor Grader slewing-bearing image diagnosis remains unavailable. The [JUST slewing-bearing dataset](https://data.mendeley.com/datasets/hwg8v5j8t6/1) supplies sensor signals. The separate [gear-tooth image dataset](https://universe.roboflow.com/vjs-jek7v/gearbox_adddingimg) labels a different component and task. Its deployment checkpoint predicts visible tooth condition from a manually confirmed crop. The Grader gear vibration model (Aalto, healthy vs tooth damage) has its own route since November 10; it does not replace the slewing-bearing route. All component routes classify current condition using laboratory analogues. Future failure and remaining useful life are outside the demonstrated scope.
+
+The post-push record is `Processed_Data/pushed_deployment_verification.json`. Earlier route and photo checks are stored separately in `Processed_Data/final_deployment_verification.json` and `Processed_Data/whole_machine_verification.json`. The [evidence matrix](equipment_evidence_matrix.md) contains the archived held-out scores. Keep the trusted checkpoints and indexed image exports locally when running the demo.
+
+
+#### November 8 regression check
+
+The integrated notebook passed all 16 routes and 19 upload checks on real local samples after updating to `abd1d5d`. The repaired command-line verifier also passed all 16 routes across 38 prediction calls and checked 16 checkpoint hashes. The unsupported-file and unresolved-CORA checks passed. The verifier now finds the local Pump dense frame export, the Drill Rig and JUST deployment CSVs, and both Grader tooth crops. A route passes when it returns a prediction. Two Drill Rig image examples (wear and pitting) were predicted healthy in the CLI check. These are smoke tests, and their sample matches are not estimates of generalization.
+
+The local rerun records are `Processed_Data/abd1d5d_notebook_verification.json` and `Processed_Data/nov8_cli_route_check.json`. The archived results were preserved. See the [Grader deployment decision](grader_matched_classes_results.md#deployment-decision--november-8-2026) for the Aalto checkpoint and data requirements.
+
+#### November 10 check
+
+After the security changes (`6a32997` and the November 10 commit) and the Aalto gear model, `route-check` passed all 39 routes: eight sensor routes, all image routes including both Grader tooth-photo crops, and the new Grader gear-sensor route (`GP1.csv` → healthy, 0.987). The Grader tooth-photo checkpoint was built from the November 2 Roboflow export with `--accept-archive`: its SHA-256 differs from the evaluated export, and it matched the evaluated crop counts and number of source groups (2,879 crops, 2,714 good and 165 damaged, 55 groups). The alternate export’s image content was not checked for exact equality. The unsupported-file and unresolved-CORA checks passed. The upload page returned the same Aalto prediction and refused requests from other websites, other host names, missing or negative lengths and non-form uploads. An untrusted model and a model changed by one byte were both refused. Four packages with known vulnerabilities (Pillow, filelock, tornado, certifi) were upgraded; pip-audit then found none. Both notebooks reran with 0 errors on the upgraded packages.
+
+#### Grader image data and equipment photo follow-up
+
+| Public source | What it supports | Deployment decision |
+|---|---|---|
+| [JUST slewing-bearing recordings](https://data.mendeley.com/datasets/hwg8v5j8t6/1) | Vibration and acoustic signals for healthy, inner ring, outer ring and rolling element conditions | Keep the existing sensor route. |
+| [GearBox_adddingImg](https://universe.roboflow.com/vjs-jek7v/gearbox_adddingimg) | Visible gear-tooth damage | Keep the existing separate research result. These labels describe teeth, while the sensor target describes bearing parts. |
+| [Bearing-ring surface inspection research](https://www.mdpi.com/1424-8220/25/21/6504) | Manufacturing surface defects on bearing rings | Useful background for inspection. Its manufacturing defect labels differ from the Grader slewing-bearing fault targets. |
+| [ACID](https://www.acidb.net/dataset) and [AIDCON](https://www.ai2lab.org/aidcon/) | Equipment identity annotations, including Grader and Dozer. The full datasets require access requests. | Use the available ACID examples as a smoke test. A fair model comparison would require an independent annotated split. |
+
+No reviewed image source established the Grader fault classes on independent bearing units. A fair Grader image benchmark would require images of the relevant component, verified labels, and multiple units per class. Hold out complete bearing units or machines so repeated views cannot cross the split. Compare a simple baseline with a transfer-learning classifier on identical held-out units using macro F1 and per-class recall.
+
+The existing BuildVision photo detector was checked on four labeled ACID publisher examples. It proposed Excavator at 85.9% and Wheel Loader at 85.2% on their respective examples, returned Unknown Equipment on the Dozer, and incorrectly proposed Wheel Loader at 86.4% on the Grader. It also reported ambiguity on a mixed Excavator and Dump Truck scene from its publisher. These examples verify behavior and expose one failure. Dataset independence and generalization were not established. The notebook now returns Unknown Equipment for single photo detections and lists the suggestion, detector score, and pixel box separately. A mixed scene returns Ambiguous Equipment. Neither path invokes fault inference. The local record is `Processed_Data/photo_source_recheck.json`.
+
+
+#### Inference routing regression checks
+
+- **PASS** · Eight sensor and seven CNN routes ran through the Jupyter upload workflow. The 17 component upload checks covered unknown, ambiguous, invalid, short and missing-model inputs.
+- **PASS** · The Grader photo that the detector scored as Wheel Loader returned Unknown Equipment with an unverified suggestion. The mixed photo returned Ambiguous Equipment. The photo mode emitted no fault classification.
+- **PASS** · The command-line and upload server share the component routing in `pdm.predict`. A shared CORA input without a mapping returned ambiguity. A confirmed CORA mapping ran its model. An arbitrary 224 × 224 image was rejected, while an indexed Drill Rig render ran its image model.
+- **NOT AVAILABLE** · A Grader slewing-bearing image model still requires independently labeled visual inspections of relevant slewing bearings, including healthy, inner-ring, outer-ring and rolling-element conditions, with bearing IDs to keep units separate across training and testing. [JUST part 2](https://data.mendeley.com/datasets/rcxgmdxhbr/1) continues the sensor dataset. The [CITEF bearing benchmark](https://zenodo.org/records/8241764) also supplies vibration records.
+
+The additional photo regression outputs are local at `Processed_Data/photo_routing_verification.json`.
+
+The shared input parser was also verified directly through `pdm.predict`. Pump and Haul Truck CSVs returned inner-race and ball faults respectively, matching the notebook. A CSV matching two different sensor schemas remained ambiguous even with a selected mapping. A blank image was rejected before scoring, including when Pump was selected.
+
+The [Motor Grader image investigation](motor_grader_image_investigation.md) records source provenance, access and licensing evidence, the bearing-level data requirements, and the scope proposed for professor approval.
+
+
+#### Motor Grader gear-tooth deployment verification
+
+The version 1 COCO export dated November 5 contains 838 images. Its archive SHA-256 matches the local checkpoint metadata. The fixed ResNet18 feature and logistic regression deployment fit uses 2,879 labeled tooth crops from 55 source groups. The earlier 82.6% balanced accuracy belongs to the saved source-group-held-out experiment.
+
+The integrated notebook upload callback, command line, and local multipart HTTP upload each returned `good_tooth` for one labeled good crop and `damaged_tooth` for one labeled damaged crop. These two training-sample checks establish inference behavior. Local outputs are saved in `Processed_Data/grader_gear_tooth_verification.json`. The Grader sensor checkpoint retained its SHA-256 throughout verification.
+
+### Coding completion audit
+
+AI-Based Predictive Maintenance for Mining Equipment · Group 9
+
+**Verdict · Coding Complete.** All eight equipment mappings passed local sensor and image checks. The additional Motor Grader Aalto gear-vibration route passed with the publisher’s 250 RPM recording and a locally rebuilt checkpoint.
+
+#### Completed features
+
+- The [integrated notebook](../Notebook/Integrated_Equipment_Fault_Prediction.ipynb), command line and local upload page accept supported sensor recordings and component images. They select the appropriate checkpoint, run the saved preprocessing and display a condition, model name and class probability.
+- The application checks checkpoint trust for local Joblib models and uses weights-only loading for the PyTorch image models. Shared CORA formats return ambiguity until the user confirms a compatible mapping.
+- Invalid files, malformed MAT recordings, unknown schemas and missing checkpoints produce error messages. The local route checker records checkpoint hashes, reports missing samples and saves the current run outside the archived results.
+- The [README](../README.md#quick-start) documents setup, upload formats, model registration and the route-check command.
+
+#### Equipment mapping status
+
+PASS means a real input reached the appropriate local checkpoint and returned a prediction. The label and probability below are from the CLI sample. The [evidence matrix](equipment_evidence_matrix.md) contains held-out performance.
+
+| Equipment mapping | Sensor result | Image result |
+|---|---|---|
+| Pump | PASS · `inner`, 99.9% | PASS · indexed event-camera frames |
+| Haul Truck | PASS · `ball`, 99.0% | PASS · indexed event-camera frames |
+| Belt Conveyor | PASS · `wear50`, 99.5% | PASS · CORA infrared frames |
+| Dozer | PASS · `wear50`, 99.5% | PASS · CORA infrared frames |
+| Excavator | PASS · `bearing`, 98.7% | PASS · CORA infrared frames |
+| Wheel Loader | PASS · `half_broken_bar`, 98.6% | PASS · CORA infrared frames |
+| Drill Rig | PASS · `gear_pitting`, 92.9% | PASS · indexed CAD renders |
+| Motor Grader | PASS · JUST bearing `outer_ring`, 79.6%. Aalto gear `healthy`, 98.7%. | PASS · both `good_tooth` and `damaged_tooth` crops returned their expected labels |
+
+#### Tests executed
+
+| Check | Observed result |
+|---|---|
+| `python -m pytest -q -rs` | 53 passed, 0 failed, 0 skipped, 12 warnings. The real Aalto test passed. The warnings concern the future removal of scikit-learn's SVC probability option. |
+| `python -m pyflakes Notebook/pdm.py tests` | Passed. |
+| `python -m pip check` | No broken requirements. |
+| `python Notebook/pdm.py route-check` | 39 prediction checks passed across all routes, including Aalto. Unsupported-file and ambiguous-CORA checks passed. The command exited 0. Local results are in `Processed_Data/deployment/route_check.json`. |
+| Clean-kernel integrated notebook | All cells executed. All 16 real-file routes and 19 upload checks passed. The eight sensor labels and displayed probabilities agreed with the CLI within rounding precision. The checks validated checkpoint labels and preprocessing metadata. A clean-kernel rerun also predicted `healthy` at 98.7% on the real Aalto recording. |
+| Research notebook | All 18 code cells executed in a clean kernel. |
+| Dependency checks | `pip check` reported no broken requirements. `pip-audit` reported no known vulnerabilities in the verification environment. |
+| Local upload server | 16 real-file multipart uploads and seven error or ambiguity cases passed. Cases covered a corrupted image, unsupported type, unknown CSV schema, ambiguous CORA input and missing sensor or image models. The real Aalto multipart upload returned `healthy` at 98.7%. Automated HTTP tests also covered a corrupted MAT upload. |
+
+#### Motor Grader integration
+
+- **JUST slewing-bearing vibration** and **gear-tooth inspection** both passed real-file checks. Select the Grader mapping explicitly for a single-tooth photo crop.
+- **Aalto gear vibration** passed the real-file test, CLI, clean-kernel notebook and local upload page. The 250 RPM recording produced `healthy` at 98.7% with the trusted logistic regression checkpoint.
+- The Aalto and tooth-image data use different physical gears. Aalto labels a gear-pair run and the image route labels a tooth crop. See the [matched-class results](grader_matched_classes_results.md) for the laboratory evaluation and its limitations.
+
+#### Reliability fixes
+
+- Joblib loading verifies the same bytes it deserializes. The cache uses file identity and change time as well as size and modification time. A regression test replaces a cached checkpoint with a different file of identical size and modification time and confirms rejection.
+- A malformed trust manifest produces a clear validation error. The notebook shows its status and opens the prediction interface.
+- The loopback upload server rejects short request bodies and malformed multipart forms before prediction. The test server uses an operating-system-assigned port and accepts requests on that port.
+
+#### Remaining limitations and GitHub Actions
+
+- No blocking application bugs remained in the checks of the available routes. Two Drill Rig image samples labeled gear wear and gear pitting were predicted healthy. The demo probabilities are model outputs. Performance claims should use the held-out results.
+- Dozer and Belt Conveyor reuse CORA evidence. The shared schema requires a confirmed laboratory mapping. The Drill Rig image route uses synthetic CAD renders. The deployment checks establish local inference on the available component samples.
+- The [previous audit commit’s workflow](https://github.com/theganeshmishra/ai-based-predictive-maintenance-mining-equipment/actions/runs/42923427532) passed. The [main workflow runs](https://github.com/theganeshmishra/ai-based-predictive-maintenance-mining-equipment/actions?query=branch%3Amain) show CI status for the reliability fixes. CI skips real-file cases whose local fixtures are absent.
+
+#### Aalto real-file recovery and rebuild
+
+The full Aalto archive matched the publisher SHA-256 recorded in the [dataset manifest](../Dataset_Manifest/manifest.md). The exact recording was restored to `Raw_Data/aalto_gear/3012Hz/250RPM/0_12Nm/Healthy/GP1.csv`. The existing extractor generated 12,750 windows from 425 runs across eight gear pairs. The saved feature cache and the original recording produced the same feature values within numerical tolerance.
+
+The existing `python Notebook/pdm.py grader-gear train-final` command selected logistic regression with acceleration, shaft orders and torque, and registered the rebuilt checkpoint in the local trust manifest. The checkpoint at `Processed_Data/models/grader_gear_sensor.joblib` is a fresh fit on the full dataset. Its SHA-256 is:
+
+```text
+5f9580644da0cfa366cfae2905073b8ad3d95ef288c98449c5720073a36235fa
+```
+
+The exact recording is part of the fitted dataset, so this prediction verifies deployment. The archived held-out experiment remains the source for the generalization estimate. Keep the recording and the trusted checkpoint on the demonstration computer. The raw archive, feature cache, checkpoint and trust manifest are excluded from Git.
+
+### Phase 1 final verification plan
+
+AI-Based Predictive Maintenance for Mining Equipment · Group 9 · November 11, 2026 · committed before any of these results existed
+
+This file fixes, in advance, what the final Phase 1 verification runs. It is a verification pass: archived results and deployed checkpoints are not changed, and nothing here is promoted to deployment. Outputs go to `Results/experiments/phase_1/final_verification.json` and `Figures/experiments/phase_1/`. The runner is `Notebook/phase1_final_verification.py`.
+
+#### 1. Reproduction and calibration of the archived sensor fair tests (all eight mappings)
+
+- Rebuild every sensor feature table from the raw files and rerun the archived fair test exactly (same folds, same candidate models and feature sets, model chosen inside the training groups).
+- **Reproduced** means the recording-level confusion matrix and the chosen (feature set, model) per round are identical to the archived `Results/<machine>/sensor.json`.
+- Save each test recording's mean class probability. Report, per mapping: multiclass Brier score, top-label expected calibration error (5 equal-width bins), mean top-label confidence for correct and wrong predictions, and a Wilson 95% interval for accuracy. With 16 to 120 test recordings these are descriptive only; no calibration is fitted and deployed outputs are not changed.
+
+#### 2. Leakage audit
+
+- Sensor tables: each recording has one class and one held-out group; each round holds out exactly its declared groups; no recording is on both sides; every recording is tested once across rounds; identical feature rows shared between different recordings are counted.
+- Images: for every exported image index, exact duplicate files (SHA-256) are checked across each round's train and test sides, and whole recordings or source units must not cross the split. Near-duplicates that are not byte-identical are not detected by this check.
+
+#### 3. Sensor robustness beyond the Pump
+
+For Haul Truck (UODS), Drill Rig (MCC5-THU) and Motor Grader (JUST): in each archived fair-test round, the archived chosen (feature set, model) is refitted on the training groups, and only the held-out recordings are disturbed. The disturbances are the Pump set, unchanged: Gaussian noise at 10% of each channel's RMS (seed 613), half and double amplitude, random removal of 5% of samples, the first half of the recording, and resampling to 90% of the rate while the extractor still assumes the original rate. Multi-channel recordings get the same removal mask on every channel. Report accuracy, balanced accuracy, macro F1 and the share of recordings whose class is unchanged from the clean prediction. The clean case must reproduce the archived score. These are synthetic disturbances on laboratory data, not a field robustness claim.
+
+#### 4. Planned experiment E: CORA transient runs, unseen speed
+
+- **Why:** the CORA stationary fair test has one run per class and speed, so it cannot tell whether the failure at an unseen speed comes from too few runs or from the speed change itself. The transient start-up runs (5 repetitions per class and speed, already downloaded for attempt C) have never been used for an unseen-speed test.
+- **Test:** Belt Conveyor, Excavator and Wheel Loader classes (Dozer reuses the Belt Conveyor runs). Four rounds, each holding out one speed (F5, F15, F50, F60) with all five repetitions, so 20 test runs per round and 80 in total. Attempt C's transient features (orders normalised with the measured speed), the same five candidate models, chosen inside the training speeds. One prediction per run, with the majority control.
+- **Runs once.** No change after seeing the result.
+- **Reading:** clearly above the 25% control would mean more runs per class help at an unseen speed; near the control would mean the speed change itself is the barrier. Either way the result is reported only. It is not deployed, because the deployed routes take stationary recordings, and it does not replace the archived stationary fair test.
+
+#### 5. Other checks
+
+- Rerun the committed Phase 1 runner's CORA candidates, Pump robustness and deployment probes on this computer and compare with `Results/experiments/phase_1/verification.json`.
+- Recompute the reported JUST diagnostic values from the original archive member; record sampling rates that can be measured from time columns.
+- CPU inference benchmark of the Pump sensor, Pump image and Aalto routes on this Windows computer, one fresh process per route, with peak memory.
+- New automated tests: saved confusion matrices agree with every reported metric; scalers sit inside the model pipelines; model selection never sees test rows; the image model cache keeps routes apart and stays bounded; analytic checks of skewness, kurtosis, crest factor, peak-to-peak, Welch band power and scale stability.

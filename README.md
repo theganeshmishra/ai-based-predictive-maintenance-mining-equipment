@@ -16,9 +16,9 @@ The [eight-equipment evidence matrix](Documentation/equipment_evidence_matrix.md
 - **CORA** shares run IDs across sensor and infrared recordings. The four mappings scored 18.75%–56.25% when whole speeds were held out. The 93.75%–100% time-split scores measure later segments of the same recordings. **Dozer reuses all Belt Conveyor runs**, and Excavator and Wheel Loader share eight run IDs.
 - **Drill Rig** uses CAD renders. The source labels CAD R0 as root breakage, while the sensor class describes a root crack. The full four-class comparison needs that qualification.
 - **Motor Grader** reports separate results for slewing-bearing vibration and gear-tooth photo inspection. Its image headline is balanced accuracy per tooth crop.
-- **Local deployment checks** verify routing and prediction output. They use saved deployment checkpoints and may include training samples. See the [deployment verification report](Documentation/deployment_verification.md) for the test cases.
+- **Local deployment checks** verify routing and prediction output. They use saved deployment checkpoints and may include training samples. See the [deployment verification report](Documentation/phase_1_enhancement_report.md#integrated-notebook-deployment-verification) for the test cases.
 
-The [20-day audit and plan](Documentation/project_20_day_audit.md) ranks the remaining evidence gaps and gives acceptance criteria. The [follow-up experiments](Documentation/followup_experiments.md) (November 6) carry out priorities 2 to 6:
+The [20-day audit and plan](Documentation/phase_1_enhancement_report.md#project-audit-and-20-day-plan) ranks the remaining evidence gaps and gives acceptance criteria. The [follow-up experiments](Documentation/followup_experiments.md) (November 6) carry out priorities 2 to 6:
 
 - **CORA healthy vs worn** (Belt Conveyor and Dozer runs, unseen speed, 16 runs): sensor balanced accuracy 45.8% and images 75.0%, against 50.0% for the majority control. The infrared binary model correctly classified two more of the same 16 runs than the four-class model with merged wear predictions (58.3% balanced accuracy). The exploratory exact p-value of 0.05 is for random assignment of healthy predictions under a conditional null. No model is replaced, and CORA modelling stops here.
 - **Haul Truck:** the ball class is confirmed load-confounded (no load in all 5 ball recordings, 400 N in the rest). Without it, the sensor model scores 84.0% accuracy (73.3% balanced) on 25 unseen-bearing recordings.
@@ -98,7 +98,7 @@ Open [Integrated Equipment Fault Prediction](Notebook/Integrated_Equipment_Fault
 - Motor Grader’s gear-tooth image experiment measures visible damage on a separate set of small gears. Its local deployment checkpoint is now built from the verified Roboflow v1 export. The integrated Grader sensor model classifies slewing-bearing conditions; gear-tooth predictions do not diagnose the slewing bearing.
 - Drill Rig images come from synthetic CAD gear renders. The Drill Rig and Grader JUST bearing deployment fits use two-second excerpts per publisher recording. The Aalto deployment fit uses all 425 gear runs. The Drill Rig image checkpoint uses a bounded mesh subset. Those deployment fits are separate from the published experiments.
 
-The latest local smoke tests passed all eight sensor and eight image mappings plus Aalto gear vibration. The 250 RPM Aalto recording returned healthy at 98.7% model probability. See the [coding completion audit](Documentation/coding_completion_audit.md) for the checkpoint and test results.
+The latest local smoke tests passed all eight sensor and eight image mappings plus Aalto gear vibration. The 250 RPM Aalto recording returned healthy at 98.7% model probability. See the [coding completion audit](Documentation/phase_1_enhancement_report.md#coding-completion-audit) for the checkpoint and test results.
 
 For raw sensor CSV uploads, use these schemas. The header identifies the expected source format and rate. Prepare the CSV from the corresponding recording without resampling or substituting channels.
 
@@ -111,7 +111,7 @@ For raw sensor CSV uploads, use these schemas. The header identifies the expecte
 | Motor Grader, JUST | Original six accelerometer channel headers at 50 kHz. |
 | Motor Grader gear task, Aalto | Original Aalto CSV: `time,enc1_ang,acc1,acc2,acc3,acc4,Torq1,Torq2` (other encoder columns allowed) at 3012 Hz, at least 11 s. |
 
-See the [deployment verification report](Documentation/deployment_verification.md) for the per-equipment results and demonstration limits.
+See the [deployment verification report](Documentation/phase_1_enhancement_report.md#integrated-notebook-deployment-verification) for the per-equipment results and demonstration limits.
 
 The fair tests above hold out complete recordings, speeds, bearings or designs. The time-split experiments use later segments of recordings also seen in training. Inference smoke tests check routing and output on known local samples. Model confidence is a class probability, and the task is current laboratory component condition classification.
 

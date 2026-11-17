@@ -107,7 +107,7 @@ Rows are actual classes, columns are predictions. Class order follows each saved
 
 ## Motor Grader deployment verification
 
-The local Aalto checkpoint is a fresh fit on all 425 runs from the SHA-256-verified source archive. It uses standardized logistic regression on 100 acceleration, order and torque features. The selected model is registered in the local trust manifest. The exact 250 RPM `GP1.csv` returned `healthy` with **98.7% model probability** in the CLI, notebook and upload page. This recording was used for the final fit. For generalization, use the separate archived leave-one-gear-pair-out evaluation of the model-selection procedure (**78.35% accuracy, 77.78% balanced accuracy, 76.58% macro F1**). [Local rebuild and verification](coding_completion_audit.md#aalto-real-file-recovery-and-rebuild)
+The local Aalto checkpoint is a fresh fit on all 425 runs from the SHA-256-verified source archive. It uses standardized logistic regression on 100 acceleration, order and torque features. The selected model is registered in the local trust manifest. The exact 250 RPM `GP1.csv` returned `healthy` with **98.7% model probability** in the CLI, notebook and upload page. This recording was used for the final fit. For generalization, use the separate archived leave-one-gear-pair-out evaluation of the model-selection procedure (**78.35% accuracy, 77.78% balanced accuracy, 76.58% macro F1**). [Local rebuild and verification](phase_1_enhancement_report.md#aalto-real-file-recovery-and-rebuild)
 
 ## Technical checks and deployment prerequisites
 

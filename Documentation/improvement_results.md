@@ -2,9 +2,9 @@
 
 AI-Based Predictive Maintenance for Mining Equipment · Group 9 · November 6, 2026
 
-The team asked whether more machines can reach 80% accuracy. The three attempts were fixed in advance in the [improvement plan](improvement_plan_2026-11-06.md) (committed before any were run), and each was run once. All three results are reported below. The archived fair-test results and the deployment checkpoints are unchanged. The new results are in `Results/experiments/improvement/` and the figures in `Figures/experiments/improvement/`.
+The team asked whether more machines can reach 80% accuracy. The three attempts were fixed in advance in the [improvement plan](improvement_results.md#improvement-plans-a-to-c) (committed before any were run), and each was run once. All three results are reported below. The archived fair-test results and the deployment checkpoints are unchanged. The new results are in `Results/experiments/improvement/` and the figures in `Figures/experiments/improvement/`.
 
-Attempt D was added on November 10, 2026, planned in a [second plan](improvement_plan_2026-11-10.md) committed before it ran.
+Attempt D was added on November 10, 2026, planned in a [second plan](improvement_results.md#improvement-plan-d) committed before it ran.
 
 Rerun commands: `python Notebook/pdm.py attempt drill-orders`, `attempt drill-envelope`, `attempt haul-frames`, `attempt cora-transient`.
 
@@ -29,7 +29,7 @@ Rerun commands: `python Notebook/pdm.py attempt drill-orders`, `attempt drill-en
 
 ## D. Drill Rig sensor: envelope order features
 
-- **Plan:** [improvement_plan_2026-11-10.md](improvement_plan_2026-11-10.md), committed before running. Motivated by attempt A's errors: 19 of 72 pitting and tooth-crack recordings were called gear wear.
+- **Plan:** [improvement_results.md#improvement-plan-d](improvement_results.md#improvement-plan-d), committed before running. Motivated by attempt A's errors: 19 of 72 pitting and tooth-crack recordings were called gear wear.
 - **Features added:** per channel and 1 s window, the Hilbert envelope of the 1 kHz high-passed vibration, summed in attempt A's shaft-order bands, plus the high-passed kurtosis (54 features). Offered sets: `vibration`, `vibration+orders`, `vibration+orders+envelope`.
 - **Result (unseen speed, 120 recordings):** 75.0% accuracy (90 of 120), 72.2% balanced, macro F1 74.7%; majority control 30%. Recall: healthy 7/12, gear wear 36/36, pitting 24/36, tooth crack 23/36.
 - **Chosen per round:** vibration+orders+envelope with gradient boosting, vibration+orders+envelope with logistic regression, vibration with gradient boosting.
@@ -74,3 +74,64 @@ The official headline for each machine stays its fair test (recordings grouped b
 | Wheel Loader | 31.3% | 18.8% | no | time split 93.8% / 100%; transient repetition 97.5% |
 
 **Bottom line:** under the fair test, four of eight machines reach 80% on at least one modality (Pump, Grader, Drill Rig images, and Haul Truck sensor accuracy at exactly 80%). The four CORA machines do not, and none of the planned attempts changes that. CORA reaches 97.5–100% only when the test speed was seen in training. We report that as a separate, narrower result, not as the headline.
+
+## Preregistered experiment plans
+
+These records retain their original observations and decision criteria. Archived result files may cite their original filenames.
+
+### Improvement plans A to C
+
+AI-Based Predictive Maintenance for Mining Equipment · Group 9 · November 6, 2026 · committed before any of these results existed
+
+The team asked whether more machines can reach 80% accuracy. This file fixes the attempts in advance so the results cannot be tuned to the test. Each attempt runs once. Every result is reported, whether it reaches 80% or not. The archived fair-test results and the deployment checkpoints stay unchanged; new results go to `Results/experiments/`.
+
+#### A. Drill Rig sensor: speed-normalised (order) features
+
+- **Why:** the fair test holds out one speed (1000, 2000 or 3000 rpm). The current band features are in hertz, so gear-mesh energy moves to another band when the speed changes. Healthy recall is 5 of 12.
+- **Change:** each MCC5-THU file has a `speed` channel (a tachometer pulse). For every 1 s window, the pulse rate is measured from that channel, and each vibration channel's spectrum is summed in bands of multiples of that rate (tachometer orders) instead of fixed hertz bands. The pulse rate itself is not a feature, so the model cannot use speed as a shortcut.
+- **Test:** the same three folds (leave one speed out), the same five candidate models, chosen inside the training speeds. The feature sets offered are the existing `vibration` set, `orders` and `vibration+orders`.
+- **Result:** one prediction per recording; accuracy, balanced accuracy and macro F1, with the majority control. It is compared with the archived 73.3%.
+
+#### B. Haul Truck images: frames that cover the same number of shaft turns
+
+- **Why:** the image model trains on 1000 rpm recordings and tests on 2000 rpm. With fixed 125 ms frames, a test frame covers twice as many revolutions as a training frame.
+- **Change:** 2000 rpm recordings are cut into 62.5 ms frames, so every frame covers about 2.1 revolutions at both speeds. The training frames (1000 rpm, 125 ms) are unchanged. The speed comes from the recording's operating condition, not from its label.
+- **Test:** the same 12 training and 12 test recordings and the same fine-tuned ResNet-18 settings. The baseline (125 ms test frames) is rerun with the current code first, so both use identical code.
+- **Result:** one prediction per test recording; accuracy and macro F1 for both runs. It is compared with the rerun baseline and the archived 58.3%.
+
+#### C. CORA: unseen repetition at a known speed (a different, narrower question)
+
+- **Why:** the CORA fair test holds out a whole speed, with one stationary run per class and speed. The CORA data also has transient runs: 5 repetitions per class and speed.
+- **Data:** the transient `Vx` vibration, `RPM` and `TimeVi` files from CSUC Dataverse doi 10.34810/DATA2500 (about 230 MB), saved in `Raw_Data/cora_transient/`.
+- **Test:** for each CORA machine, its four classes. Five rounds, each holding out repetition k at all four speeds, so 16 test runs per round and 80 in total. The features are the existing CORA order features, normalised with the measured speed of each window when the RPM file allows it, otherwise with the nominal speed. The model is chosen inside the training repetitions. One prediction per run, with the majority control.
+- **Claim if it scores well:** the model recognises a repeated run of a known class at a speed it has trained on. This is not the unseen-speed claim, and it does not replace the fair-test number. The repetitions use the same physical gear set or fault, so it is not a new-specimen test either.
+
+#### Reporting rule
+
+All three results go into the final report with their protocol next to the number. A model is promoted to the demo only if it improves its own fair test under the same protocol (A and B). C is reported as a separate test.
+
+### Improvement plan D
+
+AI-Based Predictive Maintenance for Mining Equipment · Group 9 · November 10, 2026 · committed before any result of this attempt existed
+
+The team wants at least 80% accuracy. Under the fair test, the Drill Rig sensor model is the closest miss: 73.3% archived, 77.5% with attempt A's shaft-order features. 80% means 96 of the 120 recordings correct, 3 more than attempt A. This file fixes one more attempt in advance. It runs once and is reported whatever the result. The archived results and the deployed checkpoint stay unchanged; new results go to `Results/experiments/improvement/`.
+
+#### Why this attempt
+
+Attempt A's confusion matrix (an existing result, used here only to choose what to try): 19 of the 72 pitting and tooth-crack recordings were called gear wear. Pitting and cracks are local faults that hit once per turn of the damaged gear; wear is spread around the gear. The standard way to see such repeated impacts is the envelope spectrum: high-pass the vibration, take its envelope, and look at which shaft orders the envelope repeats at.
+
+#### D. Drill Rig sensor: envelope order features
+
+- **Data:** the same 120 single-fault MCC5-THU recordings and the same 1 s windows (12,800 samples) as attempt A.
+- **New features, per vibration channel and window (9 per channel, 54 in all):**
+  - The whole recording is high-pass filtered (4th-order Butterworth, 1 kHz cutoff, zero-phase), then its Hilbert envelope is taken. The cutoff is fixed here and is not tuned.
+  - Per window, the envelope's mean is removed, a Hann window applied, and its power summed in the same shaft-order bands as attempt A (0.5–1.5 … 64.5–120.5), using attempt A's shaft rate from the `speed` tachometer. Each band is a log share of the total, like attempt A. The shaft rate itself is not a feature.
+  - The kurtosis of the high-passed signal in the window.
+- **Feature sets offered (fixed now):** `vibration` (archived), `vibration+orders` (attempt A) and `vibration+orders+envelope`.
+- **Test:** the same fair test as before: hold out 1000, 2000 and 3000 rpm in turn. The same five candidate models. The feature set and model are chosen inside the training speeds by macro F1 on validation groups. One prediction per recording (mean window probability). Accuracy, balanced accuracy and macro F1, with the majority control, compared with the archived 73.3% and attempt A's 77.5%.
+- **Runs once.** No change to the cutoff, bands, feature sets or models after seeing the result.
+
+#### Decision rule (fixed now)
+
+- **If the fair test reaches at least 80% accuracy** and its balanced accuracy is above the archived 68.1%: the same procedure is fitted on all 120 recordings and saved as a separate file, `drill_rig_sensor_envelope.joblib`. `predict` uses it only for MCC5-THU CSVs that have the `speed` column, and says so in its answer. The fair-test number is the accuracy estimate for that procedure. If the all-data selection picks a feature set without the new features, the result is the existing model and nothing is deployed (as happened after attempt A). `drill_rig_sensor.joblib` is not changed in any case.
+- **If it stays under 80%:** the result is reported next to attempts A and the archived number, nothing is deployed, and no further Drill Rig sensor attempts are made with this data.

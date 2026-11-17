@@ -2236,7 +2236,7 @@ def run_haul_truck_load_check():
     return result
 
 
-# --- Planned attempt A (Documentation/improvement_plan_2026-11-06.md): Drill Rig order features -------
+# --- Planned attempt A (Documentation/improvement_results.md#improvement-plans-a-to-c): Drill Rig order features -------
 # The MCC5-THU `speed` column is a tachometer with one pulse per revolution. The shaft rate of each
 # 1 s window is interpolated from the times between pulses, and each vibration channel's spectrum is
 # summed in bands of shaft orders. The shaft rate itself is not a feature.
@@ -2295,7 +2295,7 @@ def run_drill_rig_orders():
     scores = sensor_fair_test(table, feature_sets, m.labels, folds, m.inner_group)
     archived = json.loads((RESULTS / "drill_rig" / "sensor.json").read_text(encoding="utf-8"))["score"]
     result = {"attempt": "A: Drill Rig sensor with tachometer-order features (planned in "
-                         "Documentation/improvement_plan_2026-11-06.md)",
+                         "Documentation/improvement_results.md#improvement-plans-a-to-c)",
               "test": "same fair test as the archived result: hold out 1000 / 2000 / 3000 rpm in turn; feature "
                       "set and model chosen inside the training speeds",
               "windows": int(len(table)), "recordings": int(table["unit"].nunique()), **scores,
@@ -2313,7 +2313,7 @@ def run_drill_rig_orders():
     return result
 
 
-# --- Planned attempt D (Documentation/improvement_plan_2026-11-10.md): Drill Rig envelope orders ------
+# --- Planned attempt D (Documentation/improvement_results.md#improvement-plan-d): Drill Rig envelope orders ------
 # Local faults (pitting, cracks) hit once per turn of the damaged gear. The vibration is high-pass
 # filtered (1 kHz), its Hilbert envelope taken, and the envelope's spectrum summed in attempt A's shaft-
 # order bands. The kurtosis of the high-passed window is added. The shaft rate itself is not a feature.
@@ -2387,7 +2387,7 @@ def run_drill_rig_envelope():
     attempt_a = json.loads((out / "drill_rig_sensor_orders.json").read_text(encoding="utf-8"))["score"]
     keys = ("accuracy", "balanced_accuracy", "macro_f1", "confusion_matrix")
     result = {"attempt": "D: Drill Rig sensor with envelope order features (planned in "
-                         "Documentation/improvement_plan_2026-11-10.md)",
+                         "Documentation/improvement_results.md#improvement-plan-d)",
               "test": "same fair test as the archived result: hold out 1000 / 2000 / 3000 rpm in turn; feature "
                       "set and model chosen inside the training speeds",
               "windows": int(len(table)), "recordings": int(table["unit"].nunique()), **scores,
@@ -2426,7 +2426,7 @@ def run_haul_truck_speed_frames():
               flush=True)
     archived = json.loads((RESULTS / "haul_truck" / "images.json").read_text(encoding="utf-8"))["unit_level"]
     result = {"attempt": "B: Haul Truck images, 2000 rpm test recordings cut into 62.5 ms frames (planned in "
-                         "Documentation/improvement_plan_2026-11-06.md)",
+                         "Documentation/improvement_results.md#improvement-plans-a-to-c)",
               "test": "same fair test as the archived result: train on the 12 recordings at 1000 rpm, test the 12 "
                       "recordings at 2000 rpm; ResNet-18 epochs chosen on one training recording per class",
               **runs, "archived_fair_test": {k: archived[k] for k in ("accuracy", "macro_f1", "confusion_matrix")}}
@@ -2515,7 +2515,7 @@ def run_cora_transient():
                               m.labels, f"{m.title}: CORA transient runs, unseen repetition at a trained speed",
                               FIGURES / "experiments" / "improvement" / f"{machine}_cora_transient.png")
     result = {"attempt": "C: CORA transient runs, unseen repetition at a known speed (planned in "
-                         "Documentation/improvement_plan_2026-11-06.md)",
+                         "Documentation/improvement_results.md#improvement-plans-a-to-c)",
               "source": "CORA, CSUC Dataverse doi 10.34810/DATA2500 (CC BY 4.0): transient start-up runs, 5 "
                         "repetitions per class and speed, Vx at 3 kHz for 30 s, RPM at about 100 Hz",
               "test": "five rounds, each holding out repetition k at all four speeds (16 runs); model chosen "

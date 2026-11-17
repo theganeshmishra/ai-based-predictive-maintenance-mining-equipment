@@ -1,4 +1,4 @@
-"""Phase 1 final verification, as planned in Documentation/phase_1_final_verification_plan.md.
+"""Phase 1 final verification, as planned in Documentation/phase_1_enhancement_report.md#phase-1-final-verification-plan.
 
 Run from the project root with the project interpreter:
 
@@ -329,7 +329,7 @@ def stage_transient():
     codes = {"belt_conveyor": pdm.GEAR_WEAR_CODES,
              "excavator": {"H": "healthy", "BD": "bearing", "U": "unbalance", "M": "misalignment"},
              "wheel_loader": {"H": "healthy", "BD": "bearing", "HB": "half_broken_bar", "OB": "broken_bar"}}
-    out = {"plan": "Documentation/phase_1_final_verification_plan.md, section 4 (experiment E)",
+    out = {"plan": "Documentation/phase_1_enhancement_report.md#phase-1-final-verification-plan, section 4 (experiment E)",
            "test": "hold out one speed with all five transient repetitions (20 runs per round, 80 in all); "
                    "model chosen inside the training speeds; one prediction per run",
            "dozer": "uses the Belt Conveyor runs, so its result is the Belt Conveyor's"}
