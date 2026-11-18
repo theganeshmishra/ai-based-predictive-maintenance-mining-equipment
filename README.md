@@ -41,7 +41,7 @@ Under the fair test, Pump, Grader, Drill Rig (images) and Haul Truck (sensor acc
 
 The project uses one Python module and two notebooks.
 
-- [Notebook/pdm.py](Notebook/pdm.py) holds all the code. Its sections run in workflow order, top to bottom.
+- [Notebook/predictive_maintenance.py](Notebook/predictive_maintenance.py) holds all the code. Its sections run in workflow order, top to bottom.
 - [Notebook/Mining_Equipment_Condition_Monitoring.ipynb](Notebook/Mining_Equipment_Condition_Monitoring.ipynb) walks through the workflow and shows the results.
 - [Notebook/Integrated_Equipment_Fault_Prediction.ipynb](Notebook/Integrated_Equipment_Fault_Prediction.ipynb) accepts uploads and runs the local deployment checkpoints.
 
@@ -53,7 +53,7 @@ Raw_Data/ ─► 1a load sensor data ─► one feature row per time window ─�
      4  MACHINES: each machine's data and what its fair test holds out
 ```
 
-| Section of `pdm.py` | What it does |
+| Section of `predictive_maintenance.py` | What it does |
 |---|---|
 | 0 | project folders |
 | 1 | load data: raw sensor files → feature rows (1a); raw camera files → PNG images (1b); data check (1c) |
@@ -82,7 +82,7 @@ You need [Python 3.11](https://www.python.org/downloads/) (tick **Add python.exe
 3. Download the data by hand from the sources in the [dataset manifest](Dataset_Manifest/manifest.md) into `Raw_Data/`, then check it:
 
    ```bash
-   .venv\Scripts\python.exe Notebook\pdm.py data-check
+   .venv\Scripts\python.exe Notebook\predictive_maintenance.py data-check
    ```
 
 4. Open [Notebook/Mining_Equipment_Condition_Monitoring.ipynb](Notebook/Mining_Equipment_Condition_Monitoring.ipynb) in VS Code, choose the `.venv` Python as the kernel and click **Run All**. The results section works without the raw data.
@@ -94,7 +94,7 @@ Open [Integrated Equipment Fault Prediction](Notebook/Integrated_Equipment_Fault
 - **Automatic** uses recognized sensor schemas or an exact match to a trusted local image export. Keep the `Images/` indexes and frames locally for automatic image matching. The separate **Whole-machine photo** mode described below provides unverified visual suggestions.
 - Shared CORA inputs and event-camera frames with unresolved provenance return **Ambiguous Equipment**. Choose a compatible mapping only when you know the source. The display identifies this as a user-confirmed laboratory mapping.
 - Keep trusted deployment checkpoints in `Processed_Data/models/`. They contain the estimator or weights, the class order, and preprocessing metadata. The notebook displays availability and loads the models for inference.
-- All component prediction checkpoints require a trusted SHA-256 in `Processed_Data/models/trusted_sha256.json`. Joblib checkpoints require trusted provenance because loading them can execute code. ResNet18 `.pt` checkpoints also load with `weights_only=True`. Training registers its own outputs. For existing files, verify their provenance and hashes before running `python Notebook/pdm.py trust-models`. Bulk registration refuses changed entries. To approve an intentional replacement, independently verify the new digest before updating that entry in the local registry.
+- All component prediction checkpoints require a trusted SHA-256 in `Processed_Data/models/trusted_sha256.json`. Joblib checkpoints require trusted provenance because loading them can execute code. ResNet18 `.pt` checkpoints also load with `weights_only=True`. Training registers its own outputs. For existing files, verify their provenance and hashes before running `python Notebook/predictive_maintenance.py trust-models`. Bulk registration refuses changed entries. To approve an intentional replacement, independently verify the new digest before updating that entry in the local registry.
 - Motor Grader’s gear-tooth image experiment measures visible damage on a separate set of small gears. Its local deployment checkpoint is now built from the verified Roboflow v1 export. The integrated Grader sensor model classifies slewing-bearing conditions; gear-tooth predictions do not diagnose the slewing bearing.
 - Drill Rig images come from synthetic CAD gear renders. The Drill Rig and Grader JUST bearing deployment fits use two-second excerpts per publisher recording. The Aalto deployment fit uses all 425 gear runs. The Drill Rig image checkpoint uses a bounded mesh subset. Those deployment fits are separate from the published experiments.
 
@@ -117,9 +117,9 @@ The fair tests above hold out complete recordings, speeds, bearings or designs. 
 
 ### Motor Grader gear-tooth deployment
 
-The saved 82.6% balanced accuracy comes from the separate gear-tooth experiment with held-out source groups. The local `Processed_Data/models/grader_gear_tooth.joblib` checkpoint was trained from the Roboflow v1 COCO export and verified through all three interfaces on labeled example crops. To rebuild it, place the verified export at `Raw_Data/roboflow_gear_photos/GearBox_adddingImg.v1i.coco.zip` and run `python Notebook/pdm.py grader train-final-images`. The command verifies the archive SHA-256 and fits the fixed ResNet18 feature extractor plus logistic regression configuration. Another Roboflow export of the same dataset has a different SHA-256; it is accepted only with `--accept-archive <its SHA-256>` and only if its crops match the evaluated set (2,879 crops: 2,714 good, 165 damaged, 55 source groups). The checkpoint then records that it was not built from the evaluated archive. The checkpoint on Lakshya’s computer was built this way on November 10 from the November 2 export.
+The saved 82.6% balanced accuracy comes from the separate gear-tooth experiment with held-out source groups. The local `Processed_Data/models/grader_gear_tooth.joblib` checkpoint was trained from the Roboflow v1 COCO export and verified through all three interfaces on labeled example crops. To rebuild it, place the verified export at `Raw_Data/roboflow_gear_photos/GearBox_adddingImg.v1i.coco.zip` and run `python Notebook/predictive_maintenance.py grader train-final-images`. The command verifies the archive SHA-256 and fits the fixed ResNet18 feature extractor plus logistic regression configuration. Another Roboflow export of the same dataset has a different SHA-256; it is accepted only with `--accept-archive <its SHA-256>` and only if its crops match the evaluated set (2,879 crops: 2,714 good, 165 damaged, 55 source groups). The checkpoint then records that it was not built from the evaluated archive. The checkpoint on Lakshya’s computer was built this way on November 10 from the November 2 export.
 
-Select **Motor Grader** in the notebook or **Grader** in the local upload page, or run `python Notebook/pdm.py predict tooth_crop.jpg --machine grader`. Supply a manually verified crop of one gear tooth with a small margin. The output classifies visible gear-tooth condition. The Grader sensor model covers slewing-bearing conditions separately. The gear-tooth route reports model unavailable when the fitted checkpoint is absent. For gear vibration, upload an original Aalto 3012 Hz CSV: `predict` recognises its columns and uses `Processed_Data/models/grader_gear_sensor.joblib` (healthy vs tooth damage; 78.35% accuracy, 77.78% balanced accuracy on unseen gear pairs). Build it with `python Notebook/pdm.py grader-gear train-final` (needs the Aalto data or its feature cache). It is a laboratory gear-pair analogue and does not replace the slewing-bearing model. The photo and vibration experiments use different gears and evaluation units. See the [matched-class results and deployment decision](Documentation/grader_matched_classes_results.md).
+Select **Motor Grader** in the notebook or **Grader** in the local upload page, or run `python Notebook/predictive_maintenance.py predict tooth_crop.jpg --machine grader`. Supply a manually verified crop of one gear tooth with a small margin. The output classifies visible gear-tooth condition. The Grader sensor model covers slewing-bearing conditions separately. The gear-tooth route reports model unavailable when the fitted checkpoint is absent. For gear vibration, upload an original Aalto 3012 Hz CSV: `predict` recognises its columns and uses `Processed_Data/models/grader_gear_sensor.joblib` (healthy vs tooth damage; 78.35% accuracy, 77.78% balanced accuracy on unseen gear pairs). Build it with `python Notebook/predictive_maintenance.py grader-gear train-final` (needs the Aalto data or its feature cache). It is a laboratory gear-pair analogue and does not replace the slewing-bearing model. The photo and vibration experiments use different gears and evaluation units. See the [matched-class results and deployment decision](Documentation/grader_matched_classes_results.md).
 
 ### Whole-machine photo identification
 
@@ -133,25 +133,25 @@ From the project folder (Windows: `.venv\Scripts\python.exe`, Mac/Linux: `.venv/
 
 | Command | What it does | Time on a laptop CPU |
 |---|---|---|
-| `python Notebook/pdm.py <machine> sensor` | sensor model, fair test → `Results/<machine>/sensor.json` | seconds to minutes |
-| `python Notebook/pdm.py <machine> sensor --time-split` | sensor model, time split | seconds |
-| `python Notebook/pdm.py <machine> export-images` | raw camera files → `Images/<machine>/` | minutes (Drill Rig: hours) |
-| `python Notebook/pdm.py <machine> images` | image model, fair test → `Results/<machine>/images.json` | hours |
-| `python Notebook/pdm.py <machine> images --time-split` | image model, time split | minutes to an hour |
-| `python Notebook/pdm.py <machine> train-final` | sensor model on all data, for `predict` | minutes |
-| `python Notebook/pdm.py <machine> train-final-images` | save a supported ResNet18 deployment checkpoint from exported frames | minutes to hours |
-| `python Notebook/pdm.py predict <file>` | identify the file's dataset format, then the machine's model gives the condition; shared formats return ambiguity unless a mapping is supplied. Each answer is added to the local prediction history (`--no-history` to skip) | seconds |
-| `python Notebook/pdm.py serve` | upload page at http://localhost:8613 (this computer only): drop in a file, get machine, condition and confidence. It refuses uploads sent by other websites and malformed requests. The **Dashboard** at http://localhost:8613/dashboard lets you drop in a file and see the answer with every class's score, and shows one card per machine (fair-test accuracy against the majority control and the 80% target, model status, last prediction), activity counts, and a searchable prediction history (download as CSV). Stop it with Ctrl-C when you are done | – |
-| `python Notebook/pdm.py demo-check` | run every upload in [the demo script](Documentation/demo_script.md) and compare with the expected answers. Exit 1 if any step differs | about 1 minute |
-| `python Notebook/pdm.py trust-models` | register verified local component models, including `.pt` weights. Previously registered hashes must still match. | seconds |
-| `python Notebook/pdm.py cora-binary verify\|sensor\|images` | CORA healthy vs worn follow-up → `Results/experiments/cora_binary/` | 1 minute / 1 minute / about 2 hours |
-| `python Notebook/pdm.py haul-truck-load-check` | Haul Truck sensor fair test without the unloaded ball class | about 15 minutes |
-| `python Notebook/pdm.py attempt drill-orders\|haul-frames\|cora-transient` | the three planned improvement attempts → `Results/experiments/improvement/` (cora-transient needs `Raw_Data/cora_transient/`) | minutes / hours on CPU / minutes |
-| `python Notebook/pdm.py grader-gear mcc5\|aalto` | Grader healthy gear vs damaged tooth, sensor side → `Results/experiments/grader_gear/` (aalto needs `Raw_Data/aalto_gear/3012Hz/`) | minutes / under an hour on CPU (first run reads 29 GB) |
-| `python Notebook/pdm.py grader-gear train-final` | Grader gear sensor model on all Aalto runs, for `predict` → `Processed_Data/models/grader_gear_sensor.joblib` | minutes (with the feature cache) |
-| `python Notebook/pdm.py route-check` | check the local prediction samples and write checkpoint hashes to `Processed_Data/deployment/route_check.json`. Exit 1 means a check failed. Exit 2 means a required sample was missing. | about 1 minute |
+| `python Notebook/predictive_maintenance.py <machine> sensor` | sensor model, fair test → `Results/<machine>/sensor.json` | seconds to minutes |
+| `python Notebook/predictive_maintenance.py <machine> sensor --time-split` | sensor model, time split | seconds |
+| `python Notebook/predictive_maintenance.py <machine> export-images` | raw camera files → `Images/<machine>/` | minutes (Drill Rig: hours) |
+| `python Notebook/predictive_maintenance.py <machine> images` | image model, fair test → `Results/<machine>/images.json` | hours |
+| `python Notebook/predictive_maintenance.py <machine> images --time-split` | image model, time split | minutes to an hour |
+| `python Notebook/predictive_maintenance.py <machine> train-final` | sensor model on all data, for `predict` | minutes |
+| `python Notebook/predictive_maintenance.py <machine> train-final-images` | save a supported ResNet18 deployment checkpoint from exported frames | minutes to hours |
+| `python Notebook/predictive_maintenance.py predict <file>` | identify the file's dataset format, then the machine's model gives the condition; shared formats return ambiguity unless a mapping is supplied. Each answer is added to the local prediction history (`--no-history` to skip) | seconds |
+| `python Notebook/predictive_maintenance.py serve` | upload page at http://localhost:8613 (this computer only): drop in a file, get machine, condition and confidence. It refuses uploads sent by other websites and malformed requests. The **Dashboard** at http://localhost:8613/dashboard lets you drop in a file and see the answer with every class's score, and shows one card per machine (fair-test accuracy against the majority control and the 80% target, model status, last prediction), activity counts, and a searchable prediction history (download as CSV). Stop it with Ctrl-C when you are done | – |
+| `python Notebook/predictive_maintenance.py demo-check` | run every upload in [the demo script](Documentation/demo_script.md) and compare with the expected answers. Exit 1 if any step differs | about 1 minute |
+| `python Notebook/predictive_maintenance.py trust-models` | register verified local component models, including `.pt` weights. Previously registered hashes must still match. | seconds |
+| `python Notebook/predictive_maintenance.py cora-binary verify\|sensor\|images` | CORA healthy vs worn follow-up → `Results/experiments/cora_binary/` | 1 minute / 1 minute / about 2 hours |
+| `python Notebook/predictive_maintenance.py haul-truck-load-check` | Haul Truck sensor fair test without the unloaded ball class | about 15 minutes |
+| `python Notebook/predictive_maintenance.py attempt drill-orders\|haul-frames\|cora-transient` | the three planned improvement attempts → `Results/experiments/improvement/` (cora-transient needs `Raw_Data/cora_transient/`) | minutes / hours on CPU / minutes |
+| `python Notebook/predictive_maintenance.py grader-gear mcc5\|aalto` | Grader healthy gear vs damaged tooth, sensor side → `Results/experiments/grader_gear/` (aalto needs `Raw_Data/aalto_gear/3012Hz/`) | minutes / under an hour on CPU (first run reads 29 GB) |
+| `python Notebook/predictive_maintenance.py grader-gear train-final` | Grader gear sensor model on all Aalto runs, for `predict` → `Processed_Data/models/grader_gear_sensor.joblib` | minutes (with the feature cache) |
+| `python Notebook/predictive_maintenance.py route-check` | check the local prediction samples and write checkpoint hashes to `Processed_Data/deployment/route_check.json`. Exit 1 means a check failed. Exit 2 means a required sample was missing. | about 1 minute |
 | `python -m pytest tests` | automated tests: fair split, scoring, file identification, model trust list, upload page, dashboard and prediction history; route tests skip when local data or models are missing (needs `pip install pytest`). GitHub runs the same tests and a lint check on every push (`.github/workflows/tests.yml`) | under a minute |
-| `python Notebook/pdm.py data-check` | list missing raw files | seconds |
+| `python Notebook/predictive_maintenance.py data-check` | list missing raw files | seconds |
 
 Machines: `pump`, `haul_truck`, `belt_conveyor`, `excavator`, `dozer`, `wheel_loader`, `drill_rig`, `grader`.
 
@@ -160,7 +160,7 @@ Machines: `pump`, `haul_truck`, `belt_conveyor`, `excavator`, `dozer`, `wheel_lo
 ## Folders
 
 ```text
-Notebook/            pdm.py (all code) and the notebook: load → split → train → results → predict
+Notebook/            predictive_maintenance.py (all code) and the notebook: load → split → train → results → predict
 Results/<machine>/   sensor.json, images.json and the time-split versions
 Figures/<machine>/   confusion matrices for each result
 Dataset_Manifest/    data sources, licences and the file lists with SHA-256

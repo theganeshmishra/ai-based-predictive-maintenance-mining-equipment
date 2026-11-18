@@ -1,4 +1,4 @@
-# Packages used by Notebook/pdm.py and the notebook. torch installs the CPU build;
+# Packages used by Notebook/predictive_maintenance.py and the notebook. torch installs the CPU build;
 # see README.md for the optional NVIDIA GPU build.
 ipykernel>=6.29,<8
 ipywidgets>=8,<9

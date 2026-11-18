@@ -1,6 +1,6 @@
 # Dataset manifest
 
-The project uses public laboratory benchmarks, synthetic CAD renders, and small-gear inspection photos as equipment analogues. The [evidence matrix](../Documentation/equipment_evidence_matrix.md) records the component and label alignment of each mapping. Files are downloaded once by hand into `Raw_Data/` (git-ignored, never committed). `python Notebook/pdm.py data-check` lists anything missing and checks the SHA-256 where it is known.
+The project uses public laboratory benchmarks, synthetic CAD renders, and small-gear inspection photos as equipment analogues. The [evidence matrix](../Documentation/equipment_evidence_matrix.md) records the component and label alignment of each mapping. Files are downloaded once by hand into `Raw_Data/` (git-ignored, never committed). `python Notebook/predictive_maintenance.py data-check` lists anything missing and checks the SHA-256 where it is known.
 
 | Machine | Side | Dataset | Source | Licence | Local folder |
 |---|---|---|---|---|---|

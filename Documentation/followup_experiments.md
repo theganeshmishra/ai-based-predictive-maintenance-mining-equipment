@@ -18,7 +18,7 @@ This record follows the [20-day audit](phase_1_enhancement_report.md#project-aud
 
 **Plan, fixed before running.** Target: healthy (H) vs worn (W25, W50 and W75 merged). Same 16 Belt Conveyor runs and the same leave-one-speed-out folds (F5, F15, F50, F60) as the four-class test, so each round tests 4 runs (1 healthy, 3 worn). Same methods as the four-class test: sensor features with five candidate classifiers chosen inside the training speeds; images with the fine-tuned ResNet-18 and its epoch count chosen on training runs only. One prediction per held-out run (mean of its window or frame probabilities). Compared with a majority control and with the saved four-class model read as healthy vs any wear. Balanced accuracy is the headline because 12 of 16 runs are worn.
 
-**Data check** (`python Notebook/pdm.py cora-binary verify`):
+**Data check** (`python Notebook/predictive_maintenance.py cora-binary verify`):
 
 - All 16 run IDs have a vibration file and 450 infrared frames: True. Codes follow the CORA data descriptor (H healthy, W25/W50/W75 tooth wear, F5 to F60 drive set points in Hz, S stationary 45-minute runs).
 - Every exported frame's label matches its file code (Belt Conveyor 450 frames per run, Dozer 150).
@@ -84,13 +84,13 @@ This record follows the [20-day audit](phase_1_enhancement_report.md#project-aud
 - **Images:** every worn run is called worn, and 2 of 4 healthy runs (F15 and F60) are called healthy; the F5 and F50 healthy runs are called worn with high confidence. That beats the majority control and the collapsed four-class model by two runs, and the per-speed ranking is above chance at three of four speeds. With 4 healthy runs, each one moves balanced accuracy by 12.5 points, and p = 0.05 is at the edge of chance. It supports a narrower claim (the infrared frames carry some healthy-vs-worn signal across speeds), not a model replacement.
 - **Decision:** the four-class deployment checkpoints stay as they are. A confirmatory test would need new healthy and worn runs that were not used here; re-tuning on these 16 runs would only fit them. As the audit planned, CORA modelling stops after this comparison.
 
-Commands: `python Notebook/pdm.py cora-binary verify`, `... cora-binary sensor`, `... cora-binary images` (4 rounds of CNN training; about 2 hours on a laptop CPU). Results: `Results/experiments/cora_binary/`.
+Commands: `python Notebook/predictive_maintenance.py cora-binary verify`, `... cora-binary sensor`, `... cora-binary images` (4 rounds of CNN training; about 2 hours on a laptop CPU). Results: `Results/experiments/cora_binary/`.
 
 ## Priority 3: Haul Truck load confounding
 
 The [UODS-VAFDC dataset page](https://data.mendeley.com/datasets/y2px5tg92h/1) states that healthy, inner, outer and cage data were recorded at a nominal 400 N load and ball-fault data at no load, and that the fourth column of each file is the load. In the 30 files used here, the load column is flat (standard deviation 0) for 5/5 ball recordings and for 0/15 healthy, 0/5 inner and 0/5 outer recordings. So in this data, "ball" and "no load" cannot be separated, and the four-class ball recall (80.0%) may partly measure load.
 
-Rerun of the same fair test (3 whole bearings held out per round, model chosen inside the training bearings) on the three loaded classes only (`python Notebook/pdm.py haul-truck-load-check`):
+Rerun of the same fair test (3 whole bearings held out per round, model chosen inside the training bearings) on the three loaded classes only (`python Notebook/predictive_maintenance.py haul-truck-load-check`):
 
 | Test | Recordings | Accuracy | Balanced accuracy | Macro F1 | Recall (healthy / inner / outer) |
 |---|---:|---:|---:|---:|---|
@@ -119,7 +119,7 @@ The sensor data (JUST slewing bearing: healthy, inner ring, outer ring, rolling 
 
 ## Priority 6: demo route check
 
-`python Notebook/pdm.py route-check` runs `predict()` once per sensor route and once per image class per machine, and saves checkpoint hashes. The original November 6 record is historical. Current runs write to `Processed_Data/deployment/route_check.json`. Shared formats get their machine as a user-confirmed mapping, as in the notebook.
+`python Notebook/predictive_maintenance.py route-check` runs `predict()` once per sensor route and once per image class per machine, and saves checkpoint hashes. The original November 6 record is historical. Current runs write to `Processed_Data/deployment/route_check.json`. Shared formats get their machine as a user-confirmed mapping, as in the notebook.
 
 | Machine | Sensor route | Image route |
 |---|---|---|

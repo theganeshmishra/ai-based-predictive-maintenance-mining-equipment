@@ -6,7 +6,7 @@ AI-Based Predictive Maintenance for Mining Equipment · Group 9 · November 7, 2
 
 The Grader sensor model (slewing bearing: healthy, inner ring, outer ring, rolling element) and the Grader images (gear teeth: good vs damaged) answer different questions. On November 7 we searched the web again for photo or thermal-image data with the four bearing classes and found none with a public licence. The search turned up papers with thermal images (for example [Mehta et al. 2021](https://onlinelibrary.wiley.com/doi/10.1155/2021/9947300)) but no released data, and [BD-DET](https://ieee-dataport.org/documents/bearing-defect-dataset), which covers seal-cover scratches rather than ring or rolling-element faults. So the sensor side was moved to the image side's task instead: **healthy gear vs damaged tooth**. The circle drive of a motor grader is turned by a pinion gear, so this is a relevant analogue.
 
-The archived Grader results and the deployment checkpoints are unchanged. The new results are in `Results/experiments/grader_gear/` and the figures in `Figures/experiments/grader_gear/`. Rerun with `python Notebook/pdm.py grader-gear mcc5` and `grader-gear aalto`.
+The archived Grader results and the deployment checkpoints are unchanged. The new results are in `Results/experiments/grader_gear/` and the figures in `Figures/experiments/grader_gear/`. Rerun with `python Notebook/predictive_maintenance.py grader-gear mcc5` and `grader-gear aalto`.
 
 ## Results (each run once)
 
@@ -54,7 +54,7 @@ The binary crosswalk is `healthy` to `good_tooth` and `tooth_damage` to `damaged
 
 ## Deployment model · November 10, 2026
 
-The step above is done. `python Notebook/pdm.py grader-gear train-final` builds `Processed_Data/models/grader_gear_sensor.joblib` from all 425 Aalto runs of the 8 gear pairs. It is saved next to the Grader slewing-bearing model and does not replace it.
+The step above is done. `python Notebook/predictive_maintenance.py grader-gear train-final` builds `Processed_Data/models/grader_gear_sensor.joblib` from all 425 Aalto runs of the 8 gear pairs. It is saved next to the Grader slewing-bearing model and does not replace it.
 
 - **Selection:** the same three feature sets and five candidate models, chosen by macro F1 with grouped validation over gear pairs (4 inner splits, 2 pairs held out each time). Chosen: logistic regression on acceleration + shaft orders + torque (100 features). Its validation macro F1 is 0.892, but this score was used to make the choice, so it is optimistic. **The accuracy estimate stays the leave-one-gear-pair-out result above (77.8% balanced, 76.6% macro F1).** No gear pair is left to test the final fit on its own.
 - **Saved with the model:** class order, feature order, the CSV columns (`time, enc1_ang, acc1..acc4, Torq1, Torq2`), 3012 Hz, 30 windows of 1 s after the first 10 s, mean window probability, the source and its licence, and the caveats.

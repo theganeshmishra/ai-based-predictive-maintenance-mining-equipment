@@ -7,11 +7,11 @@ The files below are the local samples used by `route-check` on November 10, 2026
 ## Before the demo (on the demo computer)
 
 1. Pull the latest `main` and install packages: `.venv\Scripts\python.exe -m pip install -r requirements.txt`.
-2. Make sure `Processed_Data/models/` holds the checkpoints and that you built them yourself, then run `.venv\Scripts\python.exe Notebook\pdm.py trust-models` once.
-3. Run `.venv\Scripts\python.exe Notebook\pdm.py route-check`. Every route with a local sample should say PASS. If one says "not in the trusted model list", repeat step 2.
-4. Run `.venv\Scripts\python.exe Notebook\pdm.py demo-check`. It runs every upload in the script below and compares the answer with the expected one; it should end with "all steps as in Documentation/demo_script.md" and exit status 0.
+2. Make sure `Processed_Data/models/` holds the checkpoints and that you built them yourself, then run `.venv\Scripts\python.exe Notebook\predictive_maintenance.py trust-models` once.
+3. Run `.venv\Scripts\python.exe Notebook\predictive_maintenance.py route-check`. Every route with a local sample should say PASS. If one says "not in the trusted model list", repeat step 2.
+4. Run `.venv\Scripts\python.exe Notebook\predictive_maintenance.py demo-check`. It runs every upload in the script below and compares the answer with the expected one; it should end with "all steps as in Documentation/demo_script.md" and exit status 0.
 5. Open `Notebook/Integrated_Equipment_Fault_Prediction.ipynb`, select the `.venv` kernel and run all cells. The first table shows which checkpoints are found.
-6. Start the app with `.venv\Scripts\python.exe Notebook\pdm.py serve` and open http://localhost:8613. Optional: delete `Processed_Data/prediction_history.jsonl` so the dashboard history shows only the demo.
+6. Start the app with `.venv\Scripts\python.exe Notebook\predictive_maintenance.py serve` and open http://localhost:8613. Optional: delete `Processed_Data/prediction_history.jsonl` so the dashboard history shows only the demo.
 
 ## Script
 

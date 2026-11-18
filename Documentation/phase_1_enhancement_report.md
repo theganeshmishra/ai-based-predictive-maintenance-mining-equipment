@@ -75,9 +75,9 @@ From the repository root with the project environment active. The completed rese
 
 ```bash
 python -m pytest -q -rs
-python -m pyflakes Notebook/pdm.py tests
+python -m pyflakes Notebook/predictive_maintenance.py tests
 python -m pyflakes Notebook tests
-python Notebook/pdm.py route-check
+python Notebook/predictive_maintenance.py route-check
 ```
 
 The historical experiment runner defaulted to `Processed_Data/phase1/` for outputs. It needs the Ottawa recordings, CORA stationary Vx recordings, the JUST demonstration excerpt, trusted local checkpoints, indexed image exports and the Aalto demo CSV. The paired benchmark uses an isolated checkout of `044d428` with access to the same local data and the new benchmark runner. Raw files and fitted models remain local.
@@ -107,7 +107,7 @@ The checks and the one new experiment were fixed in advance in the [final verifi
 | `python -m pytest -q -rs` at the start (481d2e5) | 69 passed, 0 failed, 0 skipped |
 | Same, final (6 consecutive runs) | **230 passed, 0 failed, 0 skipped** in each run |
 | `python -m pyflakes Notebook tests` | clean |
-| `python Notebook/pdm.py route-check`, final | **39 of 39 routes passed**, 0 failed; unsupported file rejected; unmapped CORA file returned "Ambiguous Equipment" |
+| `python Notebook/predictive_maintenance.py route-check`, final | **39 of 39 routes passed**, 0 failed; unsupported file rejected; unmapped CORA file returned "Ambiguous Equipment" |
 | `pip check` | no broken requirements |
 
 The 161 new test cases are in `tests/test_phase1_final.py`. 148 of them check that every saved confusion matrix in `Results/` agrees with its reported accuracy, balanced accuracy, macro F1 and unit count. The rest are leakage guards, cache bounds, analytic diagnostics checks and UODS trimming. They are synthetic or read committed result files, so they also run on GitHub. The real-file tests (Pump and Aalto routes) ran locally and are skipped on GitHub, where the data is absent.
@@ -441,12 +441,12 @@ The existing BuildVision photo detector was checked on four labeled ACID publish
 
 - **PASS** · Eight sensor and seven CNN routes ran through the Jupyter upload workflow. The 17 component upload checks covered unknown, ambiguous, invalid, short and missing-model inputs.
 - **PASS** · The Grader photo that the detector scored as Wheel Loader returned Unknown Equipment with an unverified suggestion. The mixed photo returned Ambiguous Equipment. The photo mode emitted no fault classification.
-- **PASS** · The command-line and upload server share the component routing in `pdm.predict`. A shared CORA input without a mapping returned ambiguity. A confirmed CORA mapping ran its model. An arbitrary 224 × 224 image was rejected, while an indexed Drill Rig render ran its image model.
+- **PASS** · The command-line and upload server share the component routing in `predictive_maintenance.predict`. A shared CORA input without a mapping returned ambiguity. A confirmed CORA mapping ran its model. An arbitrary 224 × 224 image was rejected, while an indexed Drill Rig render ran its image model.
 - **NOT AVAILABLE** · A Grader slewing-bearing image model still requires independently labeled visual inspections of relevant slewing bearings, including healthy, inner-ring, outer-ring and rolling-element conditions, with bearing IDs to keep units separate across training and testing. [JUST part 2](https://data.mendeley.com/datasets/rcxgmdxhbr/1) continues the sensor dataset. The [CITEF bearing benchmark](https://zenodo.org/records/8241764) also supplies vibration records.
 
 The additional photo regression outputs are local at `Processed_Data/photo_routing_verification.json`.
 
-The shared input parser was also verified directly through `pdm.predict`. Pump and Haul Truck CSVs returned inner-race and ball faults respectively, matching the notebook. A CSV matching two different sensor schemas remained ambiguous even with a selected mapping. A blank image was rejected before scoring, including when Pump was selected.
+The shared input parser was also verified directly through `predictive_maintenance.predict`. Pump and Haul Truck CSVs returned inner-race and ball faults respectively, matching the notebook. A CSV matching two different sensor schemas remained ambiguous even with a selected mapping. A blank image was rejected before scoring, including when Pump was selected.
 
 The [Motor Grader image investigation](motor_grader_image_investigation.md) records source provenance, access and licensing evidence, the bearing-level data requirements, and the scope proposed for professor approval.
 
@@ -490,9 +490,9 @@ PASS means a real input reached the appropriate local checkpoint and returned a 
 | Check | Observed result |
 |---|---|
 | `python -m pytest -q -rs` | 53 passed, 0 failed, 0 skipped, 12 warnings. The real Aalto test passed. The warnings concern the future removal of scikit-learn's SVC probability option. |
-| `python -m pyflakes Notebook/pdm.py tests` | Passed. |
+| `python -m pyflakes Notebook/predictive_maintenance.py tests` | Passed. |
 | `python -m pip check` | No broken requirements. |
-| `python Notebook/pdm.py route-check` | 39 prediction checks passed across all routes, including Aalto. Unsupported-file and ambiguous-CORA checks passed. The command exited 0. Local results are in `Processed_Data/deployment/route_check.json`. |
+| `python Notebook/predictive_maintenance.py route-check` | 39 prediction checks passed across all routes, including Aalto. Unsupported-file and ambiguous-CORA checks passed. The command exited 0. Local results are in `Processed_Data/deployment/route_check.json`. |
 | Clean-kernel integrated notebook | All cells executed. All 16 real-file routes and 19 upload checks passed. The eight sensor labels and displayed probabilities agreed with the CLI within rounding precision. The checks validated checkpoint labels and preprocessing metadata. A clean-kernel rerun also predicted `healthy` at 98.7% on the real Aalto recording. |
 | Research notebook | All 18 code cells executed in a clean kernel. |
 | Dependency checks | `pip check` reported no broken requirements. `pip-audit` reported no known vulnerabilities in the verification environment. |
@@ -520,7 +520,7 @@ PASS means a real input reached the appropriate local checkpoint and returned a 
 
 The full Aalto archive matched the publisher SHA-256 recorded in the [dataset manifest](../Dataset_Manifest/manifest.md). The exact recording was restored to `Raw_Data/aalto_gear/3012Hz/250RPM/0_12Nm/Healthy/GP1.csv`. The existing extractor generated 12,750 windows from 425 runs across eight gear pairs. The saved feature cache and the original recording produced the same feature values within numerical tolerance.
 
-The existing `python Notebook/pdm.py grader-gear train-final` command selected logistic regression with acceleration, shaft orders and torque, and registered the rebuilt checkpoint in the local trust manifest. The checkpoint at `Processed_Data/models/grader_gear_sensor.joblib` is a fresh fit on the full dataset. Its SHA-256 is:
+The existing `python Notebook/predictive_maintenance.py grader-gear train-final` command selected logistic regression with acceleration, shaft orders and torque, and registered the rebuilt checkpoint in the local trust manifest. The checkpoint at `Processed_Data/models/grader_gear_sensor.joblib` is a fresh fit on the full dataset. Its SHA-256 is:
 
 ```text
 5f9580644da0cfa366cfae2905073b8ad3d95ef288c98449c5720073a36235fa

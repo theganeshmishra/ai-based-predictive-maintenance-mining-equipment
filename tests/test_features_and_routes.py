@@ -3,24 +3,24 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from conftest import ROOT, needs, pdm
+from conftest import ROOT, needs, predictive_maintenance
 
 
 def synthetic_aalto_csv(path, seconds=13, rpm=600):
-    n = seconds * pdm.AALTO_RATE
-    t = np.arange(n) / pdm.AALTO_RATE
+    n = seconds * predictive_maintenance.AALTO_RATE
+    t = np.arange(n) / predictive_maintenance.AALTO_RATE
     rng = np.random.default_rng(613)
     data = {"time": t, "enc1_ang": (360 * rpm / 60 * t) % 360}
-    for c in pdm.AALTO_ACC:
+    for c in predictive_maintenance.AALTO_ACC:
         data[c] = np.sin(2 * np.pi * 50 * t) + rng.normal(0, 0.1, n)
-    for c in pdm.AALTO_TORQUE:
+    for c in predictive_maintenance.AALTO_TORQUE:
         data[c] = 5 + rng.normal(0, 0.05, n)
     pd.DataFrame(data).to_csv(path)
     return path
 
 
 def test_aalto_features_shape_matches_the_model_input(tmp_path):
-    features, order_names = pdm.aalto_run_features(synthetic_aalto_csv(tmp_path / "run.csv"))
+    features, order_names = predictive_maintenance.aalto_run_features(synthetic_aalto_csv(tmp_path / "run.csv"))
     assert len(features) == 3  # 13 s - 10 s skipped = 3 one-second windows
     assert features.shape[1] == 100  # 4 acc x 12 + 4 acc x 7 orders + 2 torque x 12
     assert len(order_names) == 28
@@ -29,7 +29,7 @@ def test_aalto_features_shape_matches_the_model_input(tmp_path):
 
 def test_short_aalto_run_is_rejected(tmp_path):
     with pytest.raises(ValueError, match="shorter than"):
-        pdm.aalto_run_features(synthetic_aalto_csv(tmp_path / "short.csv", seconds=10))
+        predictive_maintenance.aalto_run_features(synthetic_aalto_csv(tmp_path / "short.csv", seconds=10))
 
 
 def test_aalto_prediction_uses_gear_checkpoint(tmp_path, monkeypatch):
@@ -37,26 +37,26 @@ def test_aalto_prediction_uses_gear_checkpoint(tmp_path, monkeypatch):
 
     path = synthetic_aalto_csv(tmp_path / "run.csv")
     model_path = tmp_path / "grader_gear_sensor.joblib"
-    monkeypatch.setattr(pdm, "GRADER_GEAR_MODEL", model_path)
-    monkeypatch.setattr(pdm, "TRUSTED_MODELS", tmp_path / "trusted_sha256.json")
+    monkeypatch.setattr(predictive_maintenance, "GRADER_GEAR_MODEL", model_path)
+    monkeypatch.setattr(predictive_maintenance, "TRUSTED_MODELS", tmp_path / "trusted_sha256.json")
     with pytest.raises(FileNotFoundError, match="No Grader gear sensor model"):
-        pdm.predict(path)
+        predictive_maintenance.predict(path)
 
-    features, _ = pdm.aalto_run_features(path)
+    features, _ = predictive_maintenance.aalto_run_features(path)
     estimator = DummyClassifier(strategy="constant", constant="healthy")
     estimator.fit(features.to_numpy(), ["healthy", "healthy", "tooth_damage"])
     checkpoint = {"model": estimator, "features": list(features.columns), "model_name": "Test classifier"}
-    pdm.save_trusted_joblib(checkpoint, model_path)
+    predictive_maintenance.save_trusted_joblib(checkpoint, model_path)
 
-    answer = pdm.predict(path)
+    answer = predictive_maintenance.predict(path)
     assert answer["condition"] == "healthy"
     assert set(answer["all classes"]) == {"healthy", "tooth_damage"}
     assert answer["model used"] == "Test classifier"
 
     checkpoint["features"] = ["unavailable_feature"]
-    pdm.save_trusted_joblib(checkpoint, model_path)
+    predictive_maintenance.save_trusted_joblib(checkpoint, model_path)
     with pytest.raises(ValueError, match="Checkpoint features"):
-        pdm.predict(path)
+        predictive_maintenance.predict(path)
 
 
 MODELS = ROOT / "Processed_Data" / "models"
@@ -65,7 +65,7 @@ RAW = ROOT / "Raw_Data"
 
 @needs(RAW / "uottawa_bearing" / "I-C-1.mat", MODELS / "pump_sensor.joblib", MODELS / "trusted_sha256.json")
 def test_pump_sensor_route():
-    answer = pdm.predict(RAW / "uottawa_bearing" / "I-C-1.mat")
+    answer = predictive_maintenance.predict(RAW / "uottawa_bearing" / "I-C-1.mat")
     assert answer["machine"] == "Pump" and answer["condition"] == "inner"
 
 
@@ -74,7 +74,7 @@ AALTO_HEALTHY = RAW / "aalto_gear" / "3012Hz" / "250RPM" / "0_12Nm" / "Healthy" 
 
 @needs(AALTO_HEALTHY, MODELS / "grader_gear_sensor.joblib", MODELS / "trusted_sha256.json")
 def test_grader_gear_route():
-    answer = pdm.predict(AALTO_HEALTHY)
+    answer = predictive_maintenance.predict(AALTO_HEALTHY)
     assert answer["machine"] == "Grader" and answer["condition"] == "healthy"
     assert set(answer["all classes"]) == {"healthy", "tooth_damage"}
     assert "not the slewing bearing" in answer["task"]
@@ -82,13 +82,13 @@ def test_grader_gear_route():
 
 @pytest.mark.parametrize(("status", "exit_code"), [("PASS", None), ("FAIL", 1), ("no local sample", 2)])
 def test_route_check_exit_status(monkeypatch, status, exit_code):
-    monkeypatch.setattr("sys.argv", ["pdm.py", "route-check"])
-    monkeypatch.setattr(pdm, "verify_routes", lambda: {"routes": [{"status": status}], "input_checks": []})
+    monkeypatch.setattr("sys.argv", ["predictive_maintenance.py", "route-check"])
+    monkeypatch.setattr(predictive_maintenance, "verify_routes", lambda: {"routes": [{"status": status}], "input_checks": []})
     if exit_code is None:
-        assert pdm.main() is None
+        assert predictive_maintenance.main() is None
     else:
         with pytest.raises(SystemExit) as error:
-            pdm.main()
+            predictive_maintenance.main()
         assert error.value.code == exit_code
 
 
@@ -98,13 +98,13 @@ def test_route_check_preserves_archived_results(tmp_path, monkeypatch):
     archived_report = archive / "deployment" / "route_check.json"
     archived_report.parent.mkdir(parents=True)
     archived_report.write_text("archived")
-    monkeypatch.setattr(pdm, "RESULTS", archive)
-    monkeypatch.setattr(pdm, "PROCESSED", local)
-    monkeypatch.setattr(pdm, "MODELS", tmp_path / "models")
-    monkeypatch.setattr(pdm, "AALTO", tmp_path / "aalto")
-    samples = {machine: tmp_path / f"{machine}.csv" for machine in pdm.MACHINES}
-    monkeypatch.setattr(pdm, "route_samples", lambda: (samples, dict.fromkeys(samples, "healthy"), {}))
-    result = pdm.verify_routes()
+    monkeypatch.setattr(predictive_maintenance, "RESULTS", archive)
+    monkeypatch.setattr(predictive_maintenance, "PROCESSED", local)
+    monkeypatch.setattr(predictive_maintenance, "MODELS", tmp_path / "models")
+    monkeypatch.setattr(predictive_maintenance, "AALTO", tmp_path / "aalto")
+    samples = {machine: tmp_path / f"{machine}.csv" for machine in predictive_maintenance.MACHINES}
+    monkeypatch.setattr(predictive_maintenance, "route_samples", lambda: (samples, dict.fromkeys(samples, "healthy"), {}))
+    result = predictive_maintenance.verify_routes()
     assert all(row["status"] == "no local sample" for row in result["routes"])
     assert archived_report.read_text() == "archived"
     assert (local / "deployment" / "route_check.json").is_file()
@@ -119,7 +119,7 @@ def test_image_model_cache_reuses_weights_and_invalidates_replaced_file(isolated
     path = isolated_models / "pump_images.pt"
     path.write_bytes(b"first")
     loaded = []
-    pdm.trust_model(path)
+    predictive_maintenance.trust_model(path)
 
     def read_weights(file, *, map_location, weights_only):
         assert map_location == "cpu" and weights_only
@@ -136,12 +136,12 @@ def test_image_model_cache_reuses_weights_and_invalidates_replaced_file(isolated
 
     monkeypatch.setattr(torch, "load", read_weights)
     monkeypatch.setattr("torchvision.models.resnet18", lambda weights: TinyModel())
-    monkeypatch.setattr(pdm, "load_images", lambda *args: None)
-    monkeypatch.setattr(pdm, "image_probabilities", lambda *args: np.array([[.1, .2, .3, .4]]))
+    monkeypatch.setattr(predictive_maintenance, "load_images", lambda *args: None)
+    monkeypatch.setattr(predictive_maintenance, "image_probabilities", lambda *args: np.array([[.1, .2, .3, .4]]))
     sample = isolated_models / "example.png"
     try:
-        first = pdm.image_probability(sample, "pump")
-        assert pdm.image_probability(sample, "pump") == first
+        first = predictive_maintenance.image_probability(sample, "pump")
+        assert predictive_maintenance.image_probability(sample, "pump") == first
         assert loaded == [b"first"]
         stat = path.stat()
         replacement = path.with_suffix(".tmp")
@@ -149,18 +149,18 @@ def test_image_model_cache_reuses_weights_and_invalidates_replaced_file(isolated
         os.utime(replacement, ns=(stat.st_atime_ns, stat.st_mtime_ns))
         replacement.replace(path)
         with pytest.raises(ValueError, match="has changed since it was trusted"):
-            pdm.image_probability(sample, "pump")
+            predictive_maintenance.image_probability(sample, "pump")
         assert loaded == [b"first"]
         with pytest.raises(ValueError, match="Previously trusted checkpoints have changed"):
-            pdm.trust_models()
-        pdm.trust_model(path)  # operator explicitly verifies and registers the replacement
-        assert pdm.image_probability(sample, "pump") == first
+            predictive_maintenance.trust_models()
+        predictive_maintenance.trust_model(path)  # operator explicitly verifies and registers the replacement
+        assert predictive_maintenance.image_probability(sample, "pump") == first
         assert loaded == [b"first", b"other"]
-        pdm.TRUSTED_MODELS.unlink()
+        predictive_maintenance.TRUSTED_MODELS.unlink()
         with pytest.raises(ValueError, match="not in the trusted model list"):
-            pdm.image_probability(sample, "pump")
+            predictive_maintenance.image_probability(sample, "pump")
         path.unlink()
         with pytest.raises(FileNotFoundError, match="No trained image model"):
-            pdm.image_probability(sample, "pump")
+            predictive_maintenance.image_probability(sample, "pump")
     finally:
-        pdm.cached_image_model.cache_clear()
+        predictive_maintenance.cached_image_model.cache_clear()

@@ -5,12 +5,12 @@ import threading
 
 import pytest
 
-from conftest import pdm
+from conftest import predictive_maintenance
 
 
 @pytest.fixture(scope="module")
 def server():
-    srv = pdm.upload_server(0)
+    srv = predictive_maintenance.upload_server(0)
     port = srv.server_port
     thread = threading.Thread(target=srv.serve_forever, daemon=True)
     thread.start()
@@ -90,11 +90,11 @@ def test_damaged_file_still_gets_an_answer(server):
 
 
 def test_upload_name_rule():
-    assert pdm.upload_name_ok("W50_F50_S_Vx.csv")
-    assert pdm.upload_name_ok("20221208-O-2rpm-0N-1.csv")
-    assert pdm.upload_name_ok("pump_outer_20Hz_15_-30_t000.png")
-    assert not pdm.upload_name_ok("..")
-    assert not pdm.upload_name_ok("a/b.csv")
+    assert predictive_maintenance.upload_name_ok("W50_F50_S_Vx.csv")
+    assert predictive_maintenance.upload_name_ok("20221208-O-2rpm-0N-1.csv")
+    assert predictive_maintenance.upload_name_ok("pump_outer_20Hz_15_-30_t000.png")
+    assert not predictive_maintenance.upload_name_ok("..")
+    assert not predictive_maintenance.upload_name_ok("a/b.csv")
 
 def test_truncated_upload_is_rejected(server):
     body, headers = form("sample.csv", b"1,2")

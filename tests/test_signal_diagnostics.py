@@ -1,14 +1,14 @@
 import numpy as np
 import pytest
 
-from conftest import pdm
+from conftest import predictive_maintenance
 
 
 @pytest.mark.parametrize("size", [999, 1000])
 def test_sinusoid_amplitude_and_diagnostics(size):
     t = np.arange(size) / size
     values = 2 * np.sin(2 * np.pi * 50 * t)
-    result = pdm.signal_diagnostics(values, size, "m/s²", rpm=1500, bands=[(40, 60), (100, 150)])
+    result = predictive_maintenance.signal_diagnostics(values, size, "m/s²", rpm=1500, bands=[(40, 60), (100, 150)])
     peak = np.argmax(result["amplitude"])
     assert result["frequency_hz"][peak] == pytest.approx(50)
     assert result["shaft_orders"][peak] == pytest.approx(2)
@@ -25,7 +25,7 @@ def test_sinusoid_amplitude_and_diagnostics(size):
 
 
 def test_zero_signal_is_well_defined():
-    result = pdm.signal_diagnostics(np.zeros(32), 1000, "m/s²")
+    result = predictive_maintenance.signal_diagnostics(np.zeros(32), 1000, "m/s²")
     assert result["rms"] == 0 and result["variance"] == 0
     assert result["crest_factor"] is None and result["excess_kurtosis"] is None
     assert result["shaft_orders"] is None
@@ -43,18 +43,18 @@ def test_zero_signal_is_well_defined():
 ])
 def test_bad_metadata_or_samples_are_rejected(samples, rate, units, options):
     with pytest.raises(ValueError):
-        pdm.signal_diagnostics(samples, rate, units, **options)
+        predictive_maintenance.signal_diagnostics(samples, rate, units, **options)
 
 
 def test_diagnostic_figure_is_written(tmp_path):
     path = tmp_path / "waveform.png"
-    result = pdm.signal_diagnostics(np.arange(100), 500, "m/s²", rpm=600)
-    pdm.save_signal_diagnostic_plot(result, path)
+    result = predictive_maintenance.signal_diagnostics(np.arange(100), 500, "m/s²", rpm=600)
+    predictive_maintenance.save_signal_diagnostic_plot(result, path)
     assert path.read_bytes().startswith(b"\x89PNG")
 
 
 def test_controlled_perturbations_are_repeatable_and_have_expected_lengths():
-    perturb_signal = pdm.perturb_signal
+    perturb_signal = predictive_maintenance.perturb_signal
 
     x = np.arange(1000, dtype=float)
     assert np.array_equal(perturb_signal(x, "amplitude_half", None), x / 2)
@@ -75,12 +75,12 @@ def test_nonfinite_ottawa_sample_is_rejected_before_feature_extraction(bad):
     signal = np.zeros(20_000)
     signal[-1] = bad
     with pytest.raises(ValueError, match="invalid Ottawa signal values"):
-        pdm.ottawa_signal_features(signal)
+        predictive_maintenance.ottawa_signal_features(signal)
 
 
 def test_short_mcc5_has_clear_error():
     from io import StringIO
 
-    contents = ",".join(pdm.MCC5_CHANNELS) + "\n" + ",".join(["1"] * len(pdm.MCC5_CHANNELS))
+    contents = ",".join(predictive_maintenance.MCC5_CHANNELS) + "\n" + ",".join(["1"] * len(predictive_maintenance.MCC5_CHANNELS))
     with pytest.raises(ValueError, match="at least 12,800 samples"):
-        pdm.mcc5_recording(StringIO(contents))
+        predictive_maintenance.mcc5_recording(StringIO(contents))

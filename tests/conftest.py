@@ -1,4 +1,4 @@
-"""Shared setup: import Notebook/pdm.py and keep tests away from the real model folder."""
+"""Shared setup: import Notebook/predictive_maintenance.py and keep tests away from the real model folder."""
 import sys
 from pathlib import Path
 
@@ -7,7 +7,7 @@ import pytest
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "Notebook"))
 
-import pdm  # noqa: E402
+import predictive_maintenance  # noqa: E402
 
 
 @pytest.fixture
@@ -15,9 +15,9 @@ def isolated_models(tmp_path, monkeypatch):
     """Point MODELS and the trust list at an empty temporary folder."""
     models = tmp_path / "models"
     models.mkdir()
-    monkeypatch.setattr(pdm, "MODELS", models)
-    monkeypatch.setattr(pdm, "TRUSTED_MODELS", models / "trusted_sha256.json")
-    monkeypatch.setattr(pdm, "GRADER_GEAR_MODEL", models / "grader_gear_sensor.joblib")
+    monkeypatch.setattr(predictive_maintenance, "MODELS", models)
+    monkeypatch.setattr(predictive_maintenance, "TRUSTED_MODELS", models / "trusted_sha256.json")
+    monkeypatch.setattr(predictive_maintenance, "GRADER_GEAR_MODEL", models / "grader_gear_sensor.joblib")
     return models
 
 
@@ -30,7 +30,7 @@ def needs(*paths):
 @pytest.fixture(autouse=True, scope="session")
 def isolated_history(tmp_path_factory):
     """Tests never write to the real prediction history in Processed_Data/."""
-    original = pdm.HISTORY
-    pdm.HISTORY = tmp_path_factory.mktemp("history") / "prediction_history.jsonl"
-    yield pdm.HISTORY
-    pdm.HISTORY = original
+    original = predictive_maintenance.HISTORY
+    predictive_maintenance.HISTORY = tmp_path_factory.mktemp("history") / "prediction_history.jsonl"
+    yield predictive_maintenance.HISTORY
+    predictive_maintenance.HISTORY = original

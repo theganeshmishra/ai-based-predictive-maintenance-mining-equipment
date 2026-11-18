@@ -4,7 +4,7 @@ AI-Based Predictive Maintenance for Mining Equipment · Ganesh Mishra, Lakshya S
 
 **Readiness · Ready With Limitations.** The local application supports an academic demonstration of current component condition classification. The strongest aligned evidence is the Pump benchmark under changes in speed. CORA compares modalities on the same laboratory runs, with weak unseen-speed performance. The other mappings have different levels of component, label or test-unit alignment. Field validation, future-failure forecasting, and fused sensor–image inference remain outside the demonstrated scope.
 
-The review used committed baseline `53ab430`, the [source manifest](../Dataset_Manifest/manifest.md), the [evaluation implementation](../Notebook/pdm.py), archived image provenance, both notebooks, and the saved result JSON. I recalculated sample counts, accuracy, balanced accuracy, macro precision, macro recall and macro F1 from 111 saved confusion-matrix blocks. Every corresponding saved value agreed within its rounding precision. This checks the arithmetic and recorded class support. It does not reproduce the predictions from raw data.
+The review used committed baseline `53ab430`, the [source manifest](../Dataset_Manifest/manifest.md), the [evaluation implementation](../Notebook/predictive_maintenance.py), archived image provenance, both notebooks, and the saved result JSON. I recalculated sample counts, accuracy, balanced accuracy, macro precision, macro recall and macro F1 from 111 saved confusion-matrix blocks. Every corresponding saved value agreed within its rounding precision. This checks the arithmetic and recorded class support. It does not reproduce the predictions from raw data.
 
 ## Equipment, preprocessing and comparison scope
 

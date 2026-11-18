@@ -14,24 +14,24 @@ The sections follow the workflow, top to bottom:
     7   tables and figures for the notebook
     8   command line
 
-Use it from the notebook (import pdm) or from a terminal in the project folder:
+Use it from the notebook (import predictive_maintenance) or from a terminal in the project folder:
 
-    python Notebook/pdm.py <machine> sensor [--time-split]     sensor model -> Results/<machine>/sensor*.json
-    python Notebook/pdm.py <machine> export-images             raw camera files -> Images/<machine>/
-    python Notebook/pdm.py <machine> images [--time-split]     image model -> Results/<machine>/images*.json
-    python Notebook/pdm.py <machine> train-final               sensor model on all data, for predict
-    python Notebook/pdm.py <machine> train-final-images        image model on all images, for predict
-    python Notebook/pdm.py predict <file> [--machine <name>]   classify one new recording or image
-    python Notebook/pdm.py serve                               upload page and dashboard at http://localhost:8613
-    python Notebook/pdm.py demo-check                          run every demo step and compare with the script
-    python Notebook/pdm.py cora-binary verify|sensor|images     healthy vs worn follow-up experiment
-    python Notebook/pdm.py haul-truck-load-check               Haul Truck sensor without the unloaded ball class
-    python Notebook/pdm.py route-check                         run every predict route once, record checkpoint hashes
-    python Notebook/pdm.py attempt drill-orders|drill-envelope|haul-frames|cora-transient   planned attempts
-    python Notebook/pdm.py grader-gear mcc5|aalto              Grader healthy gear vs damaged tooth (sensor side)
-    python Notebook/pdm.py grader-gear train-final             Grader gear sensor model on all Aalto runs, for predict
-    python Notebook/pdm.py trust-models                        mark this computer's own saved .joblib models as trusted
-    python Notebook/pdm.py data-check                          list missing or changed raw files
+    python Notebook/predictive_maintenance.py <machine> sensor [--time-split]     sensor model -> Results/<machine>/sensor*.json
+    python Notebook/predictive_maintenance.py <machine> export-images             raw camera files -> Images/<machine>/
+    python Notebook/predictive_maintenance.py <machine> images [--time-split]     image model -> Results/<machine>/images*.json
+    python Notebook/predictive_maintenance.py <machine> train-final               sensor model on all data, for predict
+    python Notebook/predictive_maintenance.py <machine> train-final-images        image model on all images, for predict
+    python Notebook/predictive_maintenance.py predict <file> [--machine <name>]   classify one new recording or image
+    python Notebook/predictive_maintenance.py serve                               upload page and dashboard at http://localhost:8613
+    python Notebook/predictive_maintenance.py demo-check                          run every demo step and compare with the script
+    python Notebook/predictive_maintenance.py cora-binary verify|sensor|images     healthy vs worn follow-up experiment
+    python Notebook/predictive_maintenance.py haul-truck-load-check               Haul Truck sensor without the unloaded ball class
+    python Notebook/predictive_maintenance.py route-check                         run every predict route once, record checkpoint hashes
+    python Notebook/predictive_maintenance.py attempt drill-orders|drill-envelope|haul-frames|cora-transient   planned attempts
+    python Notebook/predictive_maintenance.py grader-gear mcc5|aalto              Grader healthy gear vs damaged tooth (sensor side)
+    python Notebook/predictive_maintenance.py grader-gear train-final             Grader gear sensor model on all Aalto runs, for predict
+    python Notebook/predictive_maintenance.py trust-models                        mark this computer's own saved .joblib models as trusted
+    python Notebook/predictive_maintenance.py data-check                          list missing or changed raw files
 
 Machines: pump, haul_truck, belt_conveyor, excavator, dozer, wheel_loader, drill_rig, grader
 """
@@ -896,7 +896,7 @@ def tooth_crops(margin=0.15):
 
 
 # ==================================================================================================
-# 1c. Data check: raw files present in Raw_Data/ with the right SHA-256 (python Notebook/pdm.py data-check)
+# 1c. Data check: raw files present in Raw_Data/ with the right SHA-256 (python Notebook/predictive_maintenance.py data-check)
 # Download by hand from the sources in Dataset_Manifest/manifest.md.
 # ==================================================================================================
 
@@ -1960,7 +1960,7 @@ def run_train_final(machine, random_forest=False):
     final["metadata"] = {
         **deployment_metadata(machine, "sensor"),
         "classes": final["model"].classes_.tolist(),
-        "preprocessing": {"extractor": "pdm.sensor_features", "features": final["features"],
+        "preprocessing": {"extractor": "predictive_maintenance.sensor_features", "features": final["features"],
                           "feature_set": final["feature_set"], "aggregation": "mean window probability"},
     }
     save_trusted_joblib(final, MODELS / f"{machine}_sensor.joblib")
@@ -2002,7 +2002,7 @@ def run_train_final_images(machine, accept_archive=None):
             **deployment_metadata(machine, "image"),
             "model_name": "ResNet18 CNN",
             "classes": list(m.labels),
-            "preprocessing": {"loader": "pdm.load_images", "normalise": m.image_settings["normalise"]},
+            "preprocessing": {"loader": "predictive_maintenance.load_images", "normalise": m.image_settings["normalise"]},
             "epochs": epochs,
             "training_images": len(rows),
             "image_export": folder.name,
@@ -2829,7 +2829,7 @@ def run_train_grader_gear_sensor():
         "classes": final["model"].classes_.tolist(),
         "input": {"format": "original Aalto 3012 Hz CSV", "columns": AALTO_COLUMNS, "sampling_rate_hz": AALTO_RATE,
                   "enc1_ang": "drive-shaft angle in degrees", "minimum_seconds": AALTO_SKIP_SECONDS + 1},
-        "preprocessing": {"extractor": "pdm.aalto_run_features", "features": final["features"],
+        "preprocessing": {"extractor": "predictive_maintenance.aalto_run_features", "features": final["features"],
                           "feature_set": final["feature_set"], "window_seconds": 1,
                           "windows_per_run": AALTO_WINDOWS_PER_RUN, "skip_seconds": AALTO_SKIP_SECONDS,
                           "aggregation": "mean window probability"},
@@ -2968,9 +2968,9 @@ def score_checkpoint(path, machine, source, details):
     if source.startswith("Aalto"):
         model_file = GRADER_GEAR_MODEL
         if not model_file.is_file():
-            raise FileNotFoundError("No Grader gear sensor model: run  python Notebook/pdm.py grader-gear train-final")
+            raise FileNotFoundError("No Grader gear sensor model: run  python Notebook/predictive_maintenance.py grader-gear train-final")
     if not model_file.is_file():
-        raise FileNotFoundError(f"No trained sensor model: run  python Notebook/pdm.py {machine} train-final")
+        raise FileNotFoundError(f"No trained sensor model: run  python Notebook/predictive_maintenance.py {machine} train-final")
     final = load_trusted_joblib(model_file)
     metadata = final.get("metadata", {})
     if metadata and (metadata.get("machine") != machine or metadata.get("modality") != "sensor"):
@@ -3055,7 +3055,7 @@ def image_probability(path, machine):
         stat = model_file.stat()
     except FileNotFoundError as problem:
         raise FileNotFoundError(
-            f"No trained image model: run  python Notebook/pdm.py {machine} train-final-images"
+            f"No trained image model: run  python Notebook/predictive_maintenance.py {machine} train-final-images"
         ) from problem
     expected = expected_checkpoint_hash(model_file)
     model, labels, normalise = cached_image_model(model_file, machine, checkpoint_fingerprint(stat), expected)
@@ -3537,7 +3537,7 @@ slewing-bearing sensor model); their figure is balanced accuracy, because damage
 <details><summary>Prediction routes</summary><div class="wrap"><table><tr><th>Machine</th><th>Route</th><th>Checkpoint</th>
 <th>Present</th><th>Trusted</th><th>Last route check</th></tr>{status_rows}</table></div>
 <p class="note">Trusted means the file's SHA-256 is registered on this computer; it is checked again on every load.
-Last route check reads Processed_Data/deployment/route_check.json (run: python Notebook/pdm.py route-check).</p></details>
+Last route check reads Processed_Data/deployment/route_check.json (run: python Notebook/predictive_maintenance.py route-check).</p></details>
 </main><script>{DASHBOARD_SCRIPT}</script></body></html>""".encode("utf-8")
 
 

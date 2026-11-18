@@ -6,7 +6,7 @@ The project classifies current component condition using eight equipment mapping
 
 ## Workflow (the same for every machine)
 
-All code is in one file, [Notebook/pdm.py](../Notebook/pdm.py). Its sections follow these steps in order.
+All code is in one file, [Notebook/predictive_maintenance.py](../Notebook/predictive_maintenance.py). Its sections follow these steps in order.
 
 ```text
 raw files ──► 1a load sensor data ──► feature table (one row per time window)   ──► 3b sensor model ──┐

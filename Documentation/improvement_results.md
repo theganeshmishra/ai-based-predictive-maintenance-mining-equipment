@@ -6,7 +6,7 @@ The team asked whether more machines can reach 80% accuracy. The three attempts 
 
 Attempt D was added on November 10, 2026, planned in a [second plan](improvement_results.md#improvement-plan-d) committed before it ran.
 
-Rerun commands: `python Notebook/pdm.py attempt drill-orders`, `attempt drill-envelope`, `attempt haul-frames`, `attempt cora-transient`.
+Rerun commands: `python Notebook/predictive_maintenance.py attempt drill-orders`, `attempt drill-envelope`, `attempt haul-frames`, `attempt cora-transient`.
 
 ## Summary
 

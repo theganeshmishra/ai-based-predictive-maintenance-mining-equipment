@@ -7,19 +7,19 @@ import threading
 
 import pytest
 
-from conftest import pdm
+from conftest import predictive_maintenance
 
 
 @pytest.fixture
 def history(tmp_path, monkeypatch):
     path = tmp_path / "prediction_history.jsonl"
-    monkeypatch.setattr(pdm, "HISTORY", path)
+    monkeypatch.setattr(predictive_maintenance, "HISTORY", path)
     return path
 
 
 @pytest.fixture(scope="module")
 def server():
-    srv = pdm.upload_server(0)
+    srv = predictive_maintenance.upload_server(0)
     thread = threading.Thread(target=srv.serve_forever, daemon=True)
     thread.start()
     yield srv.server_port
@@ -47,10 +47,10 @@ def sample(tmp_path, name="sample.csv", content=b"1,2\n"):
 def test_history_roundtrip_keeps_no_file_contents(history, tmp_path):
     path = sample(tmp_path, content=b"secret-looking contents")
     answer = {"machine": "Pump", "condition": "inner", "model probability": 0.9, "model used": "pump_sensor.joblib"}
-    pdm.record_prediction(path, "command line", None, answer)
-    pdm.record_prediction(path, "upload page", "pump", problem=ValueError("too short"))
-    pdm.record_prediction(path, "upload page", None, {"status": "Ambiguous Equipment", "candidates": ["Pump", "Haul Truck"]})
-    entries, skipped = pdm.read_history()
+    predictive_maintenance.record_prediction(path, "command line", None, answer)
+    predictive_maintenance.record_prediction(path, "upload page", "pump", problem=ValueError("too short"))
+    predictive_maintenance.record_prediction(path, "upload page", None, {"status": "Ambiguous Equipment", "candidates": ["Pump", "Haul Truck"]})
+    entries, skipped = predictive_maintenance.read_history()
     assert skipped == 0 and [e["status"] for e in entries] == ["ambiguous", "rejected", "prediction"]
     newest_first_last = entries[-1]
     assert newest_first_last["machine"] == "Pump" and newest_first_last["probability"] == 0.9
@@ -60,24 +60,24 @@ def test_history_roundtrip_keeps_no_file_contents(history, tmp_path):
 
 
 def test_corrupt_history_lines_are_skipped(history, tmp_path):
-    pdm.record_prediction(sample(tmp_path), "command line", None, {"machine": "Grader", "condition": "healthy"})
+    predictive_maintenance.record_prediction(sample(tmp_path), "command line", None, {"machine": "Grader", "condition": "healthy"})
     with history.open("a", encoding="utf-8") as handle:
         handle.write("{not json\n[1, 2]\n\n")
-    entries, skipped = pdm.read_history()
+    entries, skipped = predictive_maintenance.read_history()
     assert len(entries) == 1 and skipped == 2
 
 
 def test_history_csv_neutralises_formulas(history, tmp_path):
-    pdm.record_prediction(sample(tmp_path, "=cmd.csv"), "upload page", None, problem=ValueError("+1 bad"))
-    rows = list(csv.reader(io.StringIO(pdm.history_csv())))
-    assert rows[0] == pdm.HISTORY_FIELDS
+    predictive_maintenance.record_prediction(sample(tmp_path, "=cmd.csv"), "upload page", None, problem=ValueError("+1 bad"))
+    rows = list(csv.reader(io.StringIO(predictive_maintenance.history_csv())))
+    assert rows[0] == predictive_maintenance.HISTORY_FIELDS
     record = dict(zip(rows[0], rows[1]))
     assert record["file"] == "'=cmd.csv" and record["message"] == "'+1 bad"
 
 
 def test_dashboard_escapes_history_text(history, tmp_path):
-    pdm.record_prediction(sample(tmp_path, "x.csv"), "upload page", None, problem=ValueError("<script>alert(1)</script>"))
-    page = pdm.dashboard_page().decode("utf-8")
+    predictive_maintenance.record_prediction(sample(tmp_path, "x.csv"), "upload page", None, problem=ValueError("<script>alert(1)</script>"))
+    page = predictive_maintenance.dashboard_page().decode("utf-8")
     assert "<script>alert" not in page and "&lt;script&gt;alert" in page
     assert "Fair-test accuracy" in page and '<div class="v">1</div><div class="l">files checked' in page
 
@@ -126,13 +126,13 @@ def test_dashboard_upload_from_other_website_is_refused(server):
 
 
 def test_answer_cards_escape_and_show_classes():
-    card = pdm.answer_card("<b>.csv", {"file format": "x", "machine": "Pump", "condition": "<i>inner",
+    card = predictive_maintenance.answer_card("<b>.csv", {"file format": "x", "machine": "Pump", "condition": "<i>inner",
                                        "model probability": 0.9, "model used": "RF",
                                        "all classes": {"inner": 0.9, "outer": 0.1}})
     assert "<b>" not in card and "<i>" not in card and "&lt;i&gt;inner" in card and "90.0%" in card
-    amb = pdm.answer_card("a.csv", {"status": "Ambiguous Equipment", "candidates": ["Dozer"], "file format": "CORA"})
+    amb = predictive_maintenance.answer_card("a.csv", {"status": "Ambiguous Equipment", "candidates": ["Dozer"], "file format": "CORA"})
     assert "Which machine" in amb and "Dozer" in amb
-    assert 'class="result no"' in pdm.answer_card("a.csv", problem=ValueError("bad"))
+    assert 'class="result no"' in predictive_maintenance.answer_card("a.csv", problem=ValueError("bad"))
 
 
 def test_upload_is_recorded(server, history):
@@ -150,23 +150,23 @@ def test_upload_is_recorded(server, history):
 
 
 def test_demo_steps_cover_the_script():
-    steps = pdm.demo_steps()
+    steps = predictive_maintenance.demo_steps()
     assert [s[0] for s in steps] == sorted(s[0] for s in steps)
     assert {s[0] for s in steps} == {2, 3, 4, 5, 6, 7, 8, 9, 10}
     assert steps[-1][3] == "rejected"
 
 
 def test_dashboard_renders_when_local_registry_is_malformed(server, history, isolated_models):
-    pdm.TRUSTED_MODELS.write_text("[]")
+    predictive_maintenance.TRUSTED_MODELS.write_text("[]")
     status, _, body = get(server, "/dashboard")
     assert status == 200 and "Prediction routes" in body
     with pytest.raises(ValueError, match="trusted_sha256.json"):
-        pdm.trusted_hashes()
+        predictive_maintenance.trusted_hashes()
 
 
 def test_history_csv_neutralises_whitespace_prefixed_formulas(history, tmp_path):
-    pdm.record_prediction(sample(tmp_path), "upload page", None, problem=ValueError("  =1+1"))
-    rows = list(csv.DictReader(io.StringIO(pdm.history_csv())))
+    predictive_maintenance.record_prediction(sample(tmp_path), "upload page", None, problem=ValueError("  =1+1"))
+    rows = list(csv.DictReader(io.StringIO(predictive_maintenance.history_csv())))
     assert rows[0]["message"] == "'  =1+1"
 
 
