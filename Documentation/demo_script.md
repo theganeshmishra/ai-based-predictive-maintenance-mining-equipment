@@ -13,13 +13,15 @@ The files below are the local samples used by `route-check` on November 10, 2026
 5. Open `Notebook/Integrated_Equipment_Fault_Prediction.ipynb`, select the `.venv` kernel and run all cells. The first table shows which checkpoints are found.
 6. Start the app with `.venv\Scripts\python.exe Notebook\predictive_maintenance.py serve` and open http://localhost:8613. Optional: delete `Processed_Data/prediction_history.jsonl` so the dashboard history shows only the demo.
 
+The listed paths are the original demonstration inputs. If a local export uses different paths, `demo-check` reuses the outer-fault Pump image from its image index and the Drill Rig and Grader recordings selected by `route-check`. It prints the actual sample names. A missing original Pump folder can use the indexed `Images/pump_denseframes/` export; sensor examples can use `Processed_Data/deployment_samples/`. The expected fault labels stay fixed. Prediction probabilities can differ between recordings. An event frame with a unique hash match in a local Pump index can be identified automatically; an unindexed frame remains ambiguous between Pump and Haul Truck.
+
 ## Script
 
 | Step | Do | Expected answer | Say |
 |---|---|---|---|
 | 1 | Show the [method diagram](../Figures/methodology_flow.png) | – | Features come only from the signal or image; whole groups are held out; one answer per recording. |
 | 2 | Upload `Raw_Data/uottawa_bearing/I-C-1.mat`, Automatic | Pump, inner race, 99.9% | The format check finds the Ottawa rig, so the Pump model is used. Pump is our strongest fair-test result: 95.8% sensor, 100% images. |
-| 3 | Upload `Images/pump/outer/pump_outer_20Hz_15_-30_t000.png`, Automatic, then choose Pump | first **Ambiguous Equipment** (Pump or Haul Truck), then Pump, outer, 100% | Pump and Haul Truck use the same event-camera format, so the system asks which machine; it does not guess. |
+| 3 | Upload `Images/pump/outer/pump_outer_20Hz_15_-30_t000.png`, Automatic, then choose Pump | a unique indexed hash identifies Pump automatically; otherwise **Ambiguous Equipment** (Pump or Haul Truck). Choosing Pump returns outer | Pump and Haul Truck use the same event-camera format. A unique local index hash establishes source provenance; otherwise the system asks which machine. |
 | 4 | Upload `Raw_Data/uods_vafdc/B_11_2.mat` | Haul Truck, ball, 99.0% | The Haul Truck sensor fair test is 80.0%, but ball faults were recorded without load, so we report it with that caveat. |
 | 5 | Upload `Raw_Data/cora_vibration/W50_F50_S_Vx.csv`, Automatic | **Ambiguous Equipment** (Belt Conveyor, Excavator, Dozer, Wheel Loader) | This is intended: one CORA rig stands in for four machines, so the system will not guess which one. |
 | 6 | Same file, choose Belt Conveyor | Belt Conveyor, wear50, 100% | With a confirmed mapping it predicts. On an unseen speed CORA scores only 44%, which is our main weakness. |

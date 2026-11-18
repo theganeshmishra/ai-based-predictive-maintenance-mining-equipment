@@ -562,3 +562,25 @@ For Haul Truck (UODS), Drill Rig (MCC5-THU) and Motor Grader (JUST): in each arc
 - Recompute the reported JUST diagnostic values from the original archive member; record sampling rates that can be measured from time columns.
 - CPU inference benchmark of the Pump sensor, Pump image and Aalto routes on this Windows computer, one fresh process per route, with peak memory.
 - New automated tests: saved confusion matrices agree with every reported metric; scalers sit inside the model pipelines; model selection never sees test rows; the image model cache keeps routes apart and stays bounded; analytic checks of skewness, kurtosis, crest factor, peak-to-peak, Welch band power and scale stability.
+
+## Module rename regression verification · November 17, 2026
+
+The starting main revision was `b9eed23d9c67f1dc249614a6869ca2e474ddc512`. The active module is `Notebook/predictive_maintenance.py`. A tracked-file search found one outdated command in a `.gitignore` comment; it now names the current script. Historical result JSON files retain their original provenance strings.
+
+The first `demo-check` run found four missing sample paths. The route checker already supported indexed Pump frames and alternate deployment recordings for Drill Rig and JUST Grader. The demo now reuses that sample selection and keeps its fault-label assertions. Its automatic Pump expectation follows the existing source-identification behavior: a unique local image-index hash identifies Pump; an unindexed event image remains ambiguous. Two regression tests cover fallback selection and both identification outcomes.
+
+Executed after the fix:
+
+- `python -m pytest -q -rs` — 257 passed, zero failed, zero skipped locally, with 18 existing scikit-learn deprecation warnings.
+- `python -m pyflakes Notebook tests` — passed.
+- `python Notebook/predictive_maintenance.py route-check` — 39 successful prediction checks across eight sensor and eight image mappings plus the additional Aalto gear route; unsupported and ambiguous inputs also handled.
+- `python Notebook/predictive_maintenance.py demo-check` — all 11 scripted prediction/error checks passed.
+- CLI `--help`, a real Aalto `predict --no-history`, and startup of `serve` with a successful dashboard request passed.
+- CLI `data-check` correctly exited 1 and reported eight missing research archives among 163 entries. Available referenced digests had zero mismatches. The missing archives are the MCC5-THU ZIP, MFGNet mesh ZIP and six JUST condition ZIPs; local inference samples and trusted models were available.
+- Real HTTP dashboard checks passed for 17 uploads, ambiguous CORA input, unsupported and corrupted files, history CSV export and the upload-size guard. Automated tests also cover Host/Origin enforcement, escaping, checkpoint SHA-256 trust, PyTorch weights-only loading and cache invalidation.
+- Headless Chrome executed drag/drop into the actual file input, filename feedback, history search and status filtering successfully.
+- Both notebooks executed from clean kernels, with 3 integrated and 18 research code cells.
+
+The hosted workflow for the starting rename commit completed successfully: [run 44209800850](https://github.com/theganeshmishra/ai-based-predictive-maintenance-mining-equipment/actions/runs/44209800850). Its job logs recorded 253 passed and two skipped tests. Those two hosted skips require local Pump/Aalto recordings and checkpoints, which were exercised successfully in the local run. The workflow uses Python 3.11, installs CPU PyTorch and project requirements, and runs lint and tests on pushes and pull requests. The verification fix is checked by the subsequent [main workflow run](https://github.com/theganeshmishra/ai-based-predictive-maintenance-mining-equipment/actions?query=branch%3Amain).
+
+These checks verify application behavior. Archived held-out metrics remain the basis for scientific generalization claims.

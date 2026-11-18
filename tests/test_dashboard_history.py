@@ -174,3 +174,35 @@ def test_upload_to_unknown_route_creates_no_history(server, history):
     status, _ = post_form(server, "/missing", "notes.txt", b"hello")
     assert status == 404
     assert not history.exists()
+
+
+def test_demo_steps_reuse_indexed_images_and_deployment_sensor_samples(tmp_path, monkeypatch):
+    monkeypatch.setattr(predictive_maintenance, "IMAGES", tmp_path / "Images")
+    pump_frame = tmp_path / "outer.png"
+    drill_sample = tmp_path / "gear_pitting_recording.csv"
+    grader_sample = tmp_path / "bearing_outer_ring.csv"
+    monkeypatch.setattr(
+        predictive_maintenance, "route_samples",
+        lambda: ({"drill_rig": drill_sample, "grader": grader_sample}, {},
+                 {"pump": {"outer": pump_frame}}),
+    )
+    steps = predictive_maintenance.demo_steps()
+    assert [(path, expected) for step, path, _, expected in steps if step == 3] == [
+        (pump_frame, "Ambiguous Equipment"), (pump_frame, ("Pump", "outer"))]
+    assert next(path for step, path, _, _ in steps if step == 7) == drill_sample
+    assert next(path for step, path, _, _ in steps if step == 8) == grader_sample
+
+
+def test_demo_accepts_automatic_pump_only_when_image_source_is_identified(tmp_path, monkeypatch):
+    monkeypatch.setattr(predictive_maintenance, "IMAGES", tmp_path)
+    frame = tmp_path / "pump" / "outer" / "pump_outer_20Hz_15_-30_t000.png"
+    frame.parent.mkdir(parents=True)
+    frame.write_bytes(b"indexed image fixture")
+    monkeypatch.setattr(predictive_maintenance, "identify", lambda path: ("event frame", ["pump"], {"indexed_image": True}))
+    automatic = next(expected for step, _, mapping, expected in predictive_maintenance.demo_steps()
+                     if step == 3 and mapping is None)
+    assert automatic == ("Pump", "outer")
+    monkeypatch.setattr(predictive_maintenance, "identify", lambda path: ("event frame", ["pump", "haul_truck"], {}))
+    ambiguous = next(expected for step, _, mapping, expected in predictive_maintenance.demo_steps()
+                     if step == 3 and mapping is None)
+    assert ambiguous == "Ambiguous Equipment"

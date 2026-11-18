@@ -3544,18 +3544,26 @@ Last route check reads Processed_Data/deployment/route_check.json (run: python N
 # --- Demo check: the steps of Documentation/demo_script.md, run and compared with the expected answers --
 
 def demo_steps():
-    examples, tooth = PROCESSED / "predict_examples", PROCESSED / "deployment_samples" / "grader_gear_tooth"
+    sensor, _, images = route_samples()
+    tooth = PROCESSED / "deployment_samples" / "grader_gear_tooth"
     pump_frame = IMAGES / "pump" / "outer" / "pump_outer_20Hz_15_-30_t000.png"
+    if not pump_frame.is_file():
+        pump_frame = images.get("pump", {}).get("outer", pump_frame)
+    pump_automatic = "Ambiguous Equipment"
+    if pump_frame.is_file():
+        _, candidates, _ = identify(pump_frame)
+        if candidates == ["pump"]:
+            pump_automatic = ("Pump", "outer")
     cora = RAW / "cora_vibration" / "W50_F50_S_Vx.csv"
     return [
         (2, RAW / "uottawa_bearing" / "I-C-1.mat", None, ("Pump", "inner")),
-        (3, pump_frame, None, "Ambiguous Equipment"),
+        (3, pump_frame, None, pump_automatic),
         (3, pump_frame, "pump", ("Pump", "outer")),
         (4, RAW / "uods_vafdc" / "B_11_2.mat", None, ("Haul Truck", "ball")),
         (5, cora, None, "Ambiguous Equipment"),
         (6, cora, "belt_conveyor", ("Belt Conveyor", "wear50")),
-        (7, examples / "gear_pitting_2000rpm_20Nm.csv", None, ("Drill Rig", "gear_pitting")),
-        (8, examples / "just_outer_ring_condition3.csv", None, ("Grader", "outer_ring")),
+        (7, sensor["drill_rig"], None, ("Drill Rig", "gear_pitting")),
+        (8, sensor["grader"], None, ("Grader", "outer_ring")),
         (9, AALTO / "250RPM" / "0_12Nm" / "Healthy" / "GP1.csv", None, ("Grader", "healthy")),
         (9, tooth / "damaged_tooth.png", "grader", ("Grader (gear tooth photo)", "damaged_tooth")),
         (10, ROOT / "README.md", None, "rejected"),
