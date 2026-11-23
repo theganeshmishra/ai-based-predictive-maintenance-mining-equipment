@@ -1,2 +1,7 @@
 # Shell scripts must keep Unix line endings to run on macOS/Linux
 *.sh text eol=lf
+
+# Submission media are binary artifacts, not text sources
+*.pdf binary
+*.docx binary
+*.mp4 binary

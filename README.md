@@ -6,6 +6,20 @@ This capstone demonstrates sensor and visual classification of current component
 
 **Start here:** the [final report](Documentation/final_report.md) brings the question, data, method, results, limits and data credits into one document, and the [demo script](Documentation/demo_script.md) lists the files and expected answers for a 10-minute demonstration.
 
+## Final submission and team handoff
+
+The [submission folder](Submission/README.md) contains the final PDF report, editable Word report, explained notebook, 96 by 48 inch poster, and the animated video walkthrough with captions and transcript.
+
+- [Final report PDF](Submission/Group9_Final_Capstone_Report.pdf)
+- [Submission notebook](Submission/Group9_Capstone_Submission.ipynb) — uses the existing `Notebook/predictive_maintenance.py`; no extra Python implementation is required.
+- [Poster PDF](Submission/Group9_Capstone_Poster_96x48.pdf)
+- [Animated video](Submission/Video/Group9_Capstone_Walkthrough.mp4) — 24 minutes 5 seconds; download the MP4 if GitHub does not preview it.
+- [Interactive walkthrough](Submission/Video/Group9_Interactive_Walkthrough.html) — download and open locally in a browser. GitHub shows the source rather than running this page.
+
+The video is computer narrated and replays genuine execution outputs; it is not a recording of team members speaking or a live screen capture. The standalone browser version advances visuals as each spoken line ends. Both are explanatory demonstrations, not Python inference servers.
+
+Lakshya and other team members can clone or pull `main` to access these materials. **Real inference still needs the local datasets, exported images and trusted checkpoints listed in the [handoff instructions](Submission/README.md#running-real-predictions).** These assets are not included in Git. The original research notebooks and evaluation results are preserved. The [November 20 weekly progress PDF](Documentation/weekly_progress/9_20112026.pdf) and its [Word copy](Documentation/weekly_progress/9_20112026.docx) are also available.
+
 ## Results
 
 The [Phase 1 enhancement report](Documentation/phase_1_enhancement_report.md) documents signal diagnostics, grouped CORA candidates, robustness probes, and CPU inference measurements. The report records the archived sensor reproductions and the latest cleanup verification. Phase 1 is complete with scientific limitations. A later planned attempt (G) removed the Grader sensor model's dependence on signal gain but lost robustness to noise, so it was not deployed; see [Grader attempt G](Documentation/grader_gain_invariant_results.md).

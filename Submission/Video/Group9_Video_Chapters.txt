@@ -1,0 +1,30 @@
+00:00  AI-Based Predictive Maintenance
+00:51  The problem and objectives
+01:47  Research background
+02:46  Eight application mappings
+03:41  Dataset provenance
+04:37  System block diagram
+05:28  Open the integrated notebook
+06:21  Check the local checkpoints
+07:09  Load sensor data
+08:08  Cleaning and feature preparation
+09:00  Why the feature definitions matter
+09:54  Keep complete groups apart
+10:50  Sensor model selection
+11:47  Image model inference
+12:41  The central prediction function
+13:33  Notebook upload interface
+14:26  Executed Pump sensor example
+15:15  Executed Pump image example
+16:08  Executed Motor Grader gear sensor
+16:58  Executed Motor Grader tooth image
+17:46  Ambiguous equipment is a valid result
+18:38  Invalid inputs and errors
+19:27  Full route-check evidence
+20:20  Independent experimental results
+21:14  Time split versus held-out groups
+22:05  Applications and remaining limits
+23:05  Final demonstration summary
+
+Browser version: narration lines advance on speechSynthesis onend.
+MP4 version: embedded computer narration, individually timed to each highlighted visual beat.
