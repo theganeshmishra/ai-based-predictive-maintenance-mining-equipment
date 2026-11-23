@@ -13,10 +13,10 @@ The [submission folder](Submission/README.md) contains the final PDF report, edi
 - [Final report PDF](Submission/Group9_Final_Capstone_Report.pdf)
 - [Submission notebook](Submission/Group9_Capstone_Submission.ipynb) — uses the existing `Notebook/predictive_maintenance.py`; no extra Python implementation is required.
 - [Poster PDF](Submission/Group9_Capstone_Poster_96x48.pdf)
-- [Animated video](Submission/Video/Group9_Capstone_Walkthrough.mp4) — 24 minutes 5 seconds; download the MP4 if GitHub does not preview it.
+- [Animated video](Submission/Video/Group9_Capstone_Walkthrough.mp4) — 23 minutes 26 seconds; download the MP4 if GitHub does not preview it.
 - [Interactive walkthrough](Submission/Video/Group9_Interactive_Walkthrough.html) — download and open locally in a browser. GitHub shows the source rather than running this page.
 
-The video is computer narrated and replays genuine execution outputs; it is not a recording of team members speaking or a live screen capture. The standalone browser version advances visuals as each spoken line ends. Both are explanatory demonstrations, not Python inference servers.
+The video is narrated by a synthetic AI voice (Piper TTS, en_US 'ryan' voice trained on the RyanSpeech dataset, CC BY-NC-SA 4.0) and replays genuine execution outputs; it is not a recording of team members speaking or a live screen capture. The standalone browser version advances visuals as each spoken line ends. Both are explanatory demonstrations, not Python inference servers.
 
 Lakshya and other team members can clone or pull `main` to access these materials. **Real inference still needs the local datasets, exported images and trusted checkpoints listed in the [handoff instructions](Submission/README.md#running-real-predictions).** These assets are not included in Git. The original research notebooks and evaluation results are preserved. The [November 20 weekly progress PDF](Documentation/weekly_progress/9_20112026.pdf) and its [Word copy](Documentation/weekly_progress/9_20112026.docx) are also available.
 
