@@ -31,6 +31,45 @@
     ]
   },
   {
+    "title": "Project team and roles",
+    "subtitle": "Group 9 \u00b7 Saskatchewan Polytechnic",
+    "points": [
+      "Ganesh Mishra \u2014 team lead and developer",
+      "Lakshya Sharma \u2014 developer and tester",
+      "Sagar Patel \u2014 planner and developer"
+    ],
+    "narration": "This chapter introduces the project team and their roles. Ganesh Mishra is the team lead and a developer. Lakshya Sharma is a developer and the team's tester. Sagar Patel is the planner and a developer. The project was supervised by Doctor Himanshu Patel. The same roles are listed in the final report and on the poster.",
+    "kind": "summary",
+    "ref": null,
+    "panel_title": "PROJECT TEAM",
+    "panel": [
+      [
+        "Team lead and developer",
+        "Ganesh Mishra"
+      ],
+      [
+        "Developer and tester",
+        "Lakshya Sharma"
+      ],
+      [
+        "Planner and developer",
+        "Sagar Patel"
+      ],
+      [
+        "Supervisor",
+        "Dr. Himanshu Patel"
+      ]
+    ],
+    "beats": [
+      "This chapter introduces the project team and their roles.",
+      "Ganesh Mishra is the team lead and a developer.",
+      "Lakshya Sharma is a developer and the team's tester.",
+      "Sagar Patel is the planner and a developer.",
+      "The project was supervised by Doctor Himanshu Patel.",
+      "The same roles are listed in the final report and on the poster."
+    ]
+  },
+  {
     "title": "The problem and objectives",
     "subtitle": "What the prototype is designed to do",
     "points": [
@@ -60,7 +99,7 @@
       "ResNet18 transfer learning for visual inputs",
       "Group separation as the main evaluation control"
     ],
-    "narration": "The research background combines conventional condition monitoring with visual transfer learning. Sensor measurements can be summarized using statistical and spectral features, making tree ensembles, support vector machines and logistic regression useful candidates. Random forests provide a practical baseline for mixed numerical features. For visual inputs, the project uses ImageNet-pretrained ResNet18 representations. Most visual routes fine tune a classifier, while the gear-tooth photograph route uses frozen features with logistic regression. These algorithm choices do not remove weaknesses in the data. A model may learn a recording, operating speed or camera setup instead of a transferable fault signature. The central methodological choice is therefore the way training and testing are separated. Dataset sources and the original model references are documented in the final report.",
+    "narration": "The research background combines conventional condition monitoring with visual transfer learning. Sensor measurements can be summarized using statistical and spectral features, making tree ensembles, support vector machines and logistic regression useful candidates. Random forests provide a practical baseline for mixed numerical features. For visual inputs, the project uses ImageNet-pretrained ResNet18 representations. Most visual routes fine tune a classifier, while the gear-tooth photograph route uses frozen features with logistic regression. These algorithm choices do not remove weaknesses in the data. A model may learn a recording, operating speed or camera setup instead of a transferable fault signature. The central methodological choice is therefore the way training and testing are separated. Dataset sources and model references are listed in the references chapter near the end of this video, and in the final report.",
     "kind": "summary",
     "ref": null,
     "beats": [
@@ -72,7 +111,7 @@
       "These algorithm choices do not remove weaknesses in the data.",
       "A model may learn a recording, operating speed or camera setup instead of a transferable fault signature.",
       "The central methodological choice is therefore the way training and testing are separated.",
-      "Dataset sources and the original model references are documented in the final report."
+      "Dataset sources and model references are listed in the references chapter near the end of this video, and in the final report."
     ]
   },
   {
@@ -482,6 +521,48 @@
     "source_name": "predictive_maintenance.py / image_probability()"
   },
   {
+    "title": "Data augmentation and selected models",
+    "subtitle": "Training-only variation and what inner validation chose",
+    "points": [
+      "Augment training images only",
+      "Settings differ by image route",
+      "Logistic regression and extra trees chosen most often"
+    ],
+    "narration": "Data augmentation is applied only to training images, never to validation or test images. It imitates nuisance variation that should not change the fault label, and a seeded random generator keeps runs repeatable. Event-camera and infrared frames receive random horizontal flips, shifts of up to eight pixels, brightness scaling between zero point eight and one point two, and small Gaussian noise. Rendered gears are rotated by multiples of ninety degrees, mirrored and shifted by up to six pixels, because a gear looks the same when it is turned or reflected. The gear-tooth photo route uses frozen features and is not augmented. Sensor recordings are not augmented either; each recording already gives many windows, and class weighting handles imbalance. Across the thirty-five outer evaluation rounds, inner validation selected logistic regression thirteen times and extra trees twelve times. Gradient boosting was chosen five times, random forest three times and the RBF support vector machine twice. No single classifier won every mapping, which is why the full candidate set is kept.",
+    "kind": "summary",
+    "ref": null,
+    "panel_title": "AUGMENTATION (TRAINING ONLY) AND SELECTED SENSOR MODELS",
+    "panel": [
+      [
+        "Event-camera and infrared frames",
+        "Flip \u00b7 shift up to 8 px \u00b7 brightness \u00d70.8\u20131.2 \u00b7 Gaussian noise"
+      ],
+      [
+        "CAD gear renders",
+        "Rotate 0/90/180/270\u00b0 \u00b7 mirror \u00b7 shift up to 6 px"
+      ],
+      [
+        "Not augmented",
+        "Gear-tooth photos (frozen features) \u00b7 sensor windows (class weighting)"
+      ],
+      [
+        "Classifiers chosen in 35 outer rounds",
+        "Logistic regression 13 \u00b7 extra trees 12 \u00b7 gradient boosting 5 \u00b7 random forest 3 \u00b7 RBF SVM 2"
+      ]
+    ],
+    "beats": [
+      "Data augmentation is applied only to training images, never to validation or test images.",
+      "It imitates nuisance variation that should not change the fault label, and a seeded random generator keeps runs repeatable.",
+      "Event-camera and infrared frames receive random horizontal flips, shifts of up to eight pixels, brightness scaling between zero point eight and one point two, and small Gaussian noise.",
+      "Rendered gears are rotated by multiples of ninety degrees, mirrored and shifted by up to six pixels, because a gear looks the same when it is turned or reflected.",
+      "The gear-tooth photo route uses frozen features and is not augmented.",
+      "Sensor recordings are not augmented either; each recording already gives many windows, and class weighting handles imbalance.",
+      "Across the thirty-five outer evaluation rounds, inner validation selected logistic regression thirteen times and extra trees twelve times.",
+      "Gradient boosting was chosen five times, random forest three times and the RBF support vector machine twice.",
+      "No single classifier won every mapping, which is why the full candidate set is kept."
+    ]
+  },
+  {
     "title": "The central prediction function",
     "subtitle": "A common interface for all supported routes",
     "points": [
@@ -783,7 +864,7 @@
       "All eight sensor / image mappings plus Aalto",
       "Two known Drill Rig image labels were predicted incorrectly"
     ],
-    "narration": "The complete route check executed thirty-nine saved-model examples successfully, covering all eight sensor and image mappings plus the additional Aalto gear route. Unsupported-file rejection and shared-CORA ambiguity checks also passed. The important qualification is the definition of pass: a model loaded, accepted a compatible input and returned the required output. Two Drill Rig images were classified as healthy when their source labels were gear wear and gear pitting. Those cases remain visible as prediction errors even though execution succeeded. Earlier project verification recorded two hundred fifty-seven local automated tests and a successful hosted workflow with two expected local-data skips. Those are historical verification records, not claims that the entire test suite was rerun during this video preparation.",
+    "narration": "The complete route check executed thirty-nine saved-model examples successfully, covering all eight sensor and image mappings plus the additional Aalto gear route. Unsupported-file rejection and shared-CORA ambiguity checks also passed. The important qualification is the definition of pass: a model loaded, accepted a compatible input and returned the required output. Two Drill Rig images were classified as healthy when their source labels were gear wear and gear pitting. Those cases remain visible as prediction errors even though execution succeeded. The clean publication checkout passed two hundred fifty-five automated tests, with two tests skipped because local data were not available. These counts come from earlier verification runs; the test suite was not rerun while this video was prepared.",
     "kind": "routes",
     "ref": null,
     "beats": [
@@ -792,8 +873,8 @@
       "The important qualification is the definition of pass: a model loaded, accepted a compatible input and returned the required output.",
       "Two Drill Rig images were classified as healthy when their source labels were gear wear and gear pitting.",
       "Those cases remain visible as prediction errors even though execution succeeded.",
-      "Earlier project verification recorded two hundred fifty-seven local automated tests and a successful hosted workflow with two expected local-data skips.",
-      "Those are historical verification records, not claims that the entire test suite was rerun during this video preparation."
+      "The clean publication checkout passed two hundred fifty-five automated tests, with two tests skipped because local data were not available.",
+      "These counts come from earlier verification runs; the test suite was not rerun while this video was prepared."
     ],
     "routes": [
       {
@@ -1157,7 +1238,7 @@
       "CORA unseen-speed transfer remains weak",
       "Grader damage recall matters under class imbalance"
     ],
-    "narration": "The final report contains the independent experimental results. Pump reached ninety-five point eight three percent sensor balanced accuracy and one hundred percent visual balanced accuracy under their respective recording protocols. Those protocols and rigs differ, so the result does not establish that vision is universally better. The CORA tasks showed weak transfer to unseen speeds. Haul Truck had weaker visual recognition and a load-confounded ball-fault class. Motor Grader's aligned gear sensor result was seventy-seven point seven eight percent balanced accuracy, while the tooth-photo result was eighty-two point five nine percent. Its high raw photo accuracy is affected by class imbalance, and damaged-tooth recall is lower. The poster uses qualitative findings, while the report preserves the full numerical evidence.",
+    "narration": "The final report contains the independent experimental results. Pump reached ninety-five point eight three percent sensor balanced accuracy and one hundred percent visual balanced accuracy under their respective recording protocols. Those protocols and rigs differ, so the result does not establish that vision is universally better. The CORA tasks showed weak transfer to unseen speeds. Haul Truck had weaker visual recognition and a load-confounded ball-fault class. Motor Grader's aligned gear sensor result was seventy-seven point seven eight percent balanced accuracy, while the tooth-photo result was eighty-two point five nine percent. Its high raw photo accuracy is affected by class imbalance, and damaged-tooth recall is lower. The poster shows these same held-out balanced accuracies, and the report gives the full numerical evidence.",
     "kind": "figure",
     "ref": "primary",
     "beats": [
@@ -1168,7 +1249,7 @@
       "Haul Truck had weaker visual recognition and a load-confounded ball-fault class.",
       "Motor Grader's aligned gear sensor result was seventy-seven point seven eight percent balanced accuracy, while the tooth-photo result was eighty-two point five nine percent.",
       "Its high raw photo accuracy is affected by class imbalance, and damaged-tooth recall is lower.",
-      "The poster uses qualitative findings, while the report preserves the full numerical evidence."
+      "The poster shows these same held-out balanced accuracies, and the report gives the full numerical evidence."
     ]
   },
   {
@@ -1179,11 +1260,11 @@
       "Same recording and operating condition can appear on both sides",
       "Do not replace unseen-speed results with time-split results"
     ],
-    "narration": "Secondary time-split experiments use the first sixty percent of a recording for training, discard a ten percent gap and test on the last thirty percent. Several saved results are much higher than the unseen-speed results. This is not a reason to hide the more difficult evaluations. The two protocols ask different questions. A later segment of a known recording can retain the same speed, specimen and acquisition signature as training. A gap reduces direct temporal overlap, but it does not create a new machine or operating condition. The report labels these scores separately and notes that fitting settings and sample pools can differ. No score from this procedure establishes future failure forecasting, and no unsupported time-split result is assigned to a mapping without a saved experiment.",
+    "narration": "Supplementary time-split checks use the first sixty percent of a recording for training, discard a ten percent gap and test on the last thirty percent. Several saved results are much higher than the unseen-speed results. This is not a reason to hide the more difficult evaluations. The two protocols ask different questions. A later segment of a known recording can retain the same speed, specimen and acquisition signature as training. A gap reduces direct temporal overlap, but it does not create a new machine or operating condition. The report labels these scores separately and notes that fitting settings and sample pools can differ. No score from this procedure establishes future failure forecasting, and no unsupported time-split result is assigned to a mapping without a saved experiment.",
     "kind": "figure",
     "ref": "timesplit",
     "beats": [
-      "Secondary time-split experiments use the first sixty percent of a recording for training, discard a ten percent gap and test on the last thirty percent.",
+      "Supplementary time-split checks use the first sixty percent of a recording for training, discard a ten percent gap and test on the last thirty percent.",
       "Several saved results are much higher than the unseen-speed results.",
       "This is not a reason to hide the more difficult evaluations.",
       "The two protocols ask different questions.",
@@ -1215,6 +1296,46 @@
     ]
   },
   {
+    "title": "References and data sources",
+    "subtitle": "The final report lists all 24 references",
+    "points": [
+      "Nine public datasets, all CC BY 4.0",
+      "Method references: random forests and ResNet",
+      "Mining context and evaluation literature"
+    ],
+    "narration": "This chapter lists the main sources used in the project. The sensor data come from the Ottawa and UODS bearing datasets, the CORA electromechanical dataset, the MCC5-THU gearbox data, the Aalto gear failure dataset and a slewing-bearing dataset. The image data come from the XJTU dynamic-vision dataset, CORA infrared frames, MFGNet gear renders and the GearBox tooth photographs. All nine public datasets are published under the Creative Commons Attribution 4.0 licence. The models build on Breiman's random forests and on the residual networks of He and colleagues. The mining context and the evaluation design draw on Dayo-Olupona and colleagues' review of predictive maintenance in mining, Zhao and colleagues' diagnosis benchmark, and Kaufman and colleagues' work on data leakage. The final report lists all twenty-four references with full citations.",
+    "kind": "summary",
+    "ref": null,
+    "panel_title": "KEY REFERENCES (NUMBERS AS IN THE REPORT)",
+    "panel": [
+      [
+        "Sensor datasets",
+        "[1] Ottawa bearing \u00b7 [3] MCC5-THU \u00b7 [4] CORA \u00b7 [6] slewing bearing \u00b7 [8] Aalto gear \u00b7 [13] UODS"
+      ],
+      [
+        "Image datasets",
+        "[2] XJTU-DV \u00b7 [4] CORA infrared \u00b7 [5] MFGNet-Gear \u00b7 [7] GearBox tooth photos"
+      ],
+      [
+        "Methods",
+        "[9] Breiman, random forests, 2001 \u00b7 [10] He et al., ResNet, 2016"
+      ],
+      [
+        "Context and evaluation",
+        "[16] Dayo-Olupona et al., 2023 \u00b7 [21] Zhao et al., 2020 \u00b7 [22] Kaufman et al., 2012"
+      ]
+    ],
+    "beats": [
+      "This chapter lists the main sources used in the project.",
+      "The sensor data come from the Ottawa and UODS bearing datasets, the CORA electromechanical dataset, the MCC5-THU gearbox data, the Aalto gear failure dataset and a slewing-bearing dataset.",
+      "The image data come from the XJTU dynamic-vision dataset, CORA infrared frames, MFGNet gear renders and the GearBox tooth photographs.",
+      "All nine public datasets are published under the Creative Commons Attribution 4.0 licence.",
+      "The models build on Breiman's random forests and on the residual networks of He and colleagues.",
+      "The mining context and the evaluation design draw on Dayo-Olupona and colleagues' review of predictive maintenance in mining, Zhao and colleagues' diagnosis benchmark, and Kaufman and colleagues' work on data leakage.",
+      "The final report lists all twenty-four references with full citations."
+    ]
+  },
+  {
     "title": "Final demonstration summary",
     "subtitle": "What is complete and what the evidence supports",
     "points": [
@@ -1222,7 +1343,7 @@
       "Saved models and existing research results preserved",
       "Eight application mappings with explicit limitations"
     ],
-    "narration": "To conclude, the coding phase provides one integrated notebook backed by a reusable Python implementation. It accepts supported sensor recordings or component images, checks source compatibility, loads an existing model and returns a fault label with model information and probability. Where source evidence cannot distinguish equipment mappings, the system reports ambiguity rather than guessing. Real local execution checks confirm that the supported routes run, including the aligned Aalto gear sensor and Motor Grader tooth-image paths. The final report explains the actual held-out results, the separate time-split experiments and the unsuccessful cases. The project is complete as a laboratory-based demonstration with scientific limitations. Future work should improve independent data and validation before expanding claims about mining-field reliability or future failure prediction. Thank you for watching.",
+    "narration": "To conclude, the coding phase provides one integrated notebook backed by a reusable Python implementation. It accepts supported sensor recordings or component images, checks source compatibility, loads an existing model and returns a fault label with model information and probability. Where source evidence cannot distinguish equipment mappings, the system reports ambiguity rather than guessing. Real local execution checks confirm that the supported routes run, including the aligned Aalto gear sensor and Motor Grader tooth-image paths. The final report explains the actual held-out results, the supplementary time-split check and the unsuccessful cases. The project is complete as a laboratory-based demonstration with scientific limitations. Future work should improve independent data and validation before expanding claims about mining-field reliability or future failure prediction. Thank you for watching.",
     "kind": "summary",
     "ref": null,
     "beats": [
@@ -1230,7 +1351,7 @@
       "It accepts supported sensor recordings or component images, checks source compatibility, loads an existing model and returns a fault label with model information and probability.",
       "Where source evidence cannot distinguish equipment mappings, the system reports ambiguity rather than guessing.",
       "Real local execution checks confirm that the supported routes run, including the aligned Aalto gear sensor and Motor Grader tooth-image paths.",
-      "The final report explains the actual held-out results, the separate time-split experiments and the unsuccessful cases.",
+      "The final report explains the actual held-out results, the supplementary time-split check and the unsuccessful cases.",
       "The project is complete as a laboratory-based demonstration with scientific limitations.",
       "Future work should improve independent data and validation before expanding claims about mining-field reliability or future failure prediction.",
       "Thank you for watching."
@@ -1241,7 +1362,7 @@
 const esc=v=>String(v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const mapping=[['Pump','Bearing'],['Haul Truck','Bearing'],['Belt Conveyor','Geared drive'],['Dozer','Shared conveyor benchmark'],['Excavator','Drive components'],['Wheel Loader','Motor'],['Drill Rig','Gearbox'],['Motor Grader','Gear task; separate bearing route']];
 function table(head,rows,focus){return '<table><thead><tr>'+head.map(x=>'<th>'+esc(x)+'</th>').join('')+'</tr></thead><tbody>'+rows.map((r,i)=>'<tr class="'+(i===focus?'focus':'')+'">'+r.map(x=>'<td>'+esc(x)+'</td>').join('')+'</tr>').join('')+'</tbody></table>'}
-function renderVisual(){const s=scenes[chapter],n=s.beats.length,p=beat/Math.max(1,n-1);let title='TECHNICAL EXPLANATION',html='';if(s.code){title=s.source_name;const all=s.code.split('\n'),count=21,focus=Math.min(all.length-1,Math.floor(p*(all.length-1))),start=Math.max(0,Math.min(all.length-count,focus-9));html='<div class="code mono">'+all.slice(start,start+count).map((line,i)=>'<div class="code-line '+(start+i===focus?'focus':'')+'"><span class="ln">'+(start+i+1)+'</span>'+esc(line.length>91?line.slice(0,88)+'...':line)+'</div>').join('')+'</div>'}else if(s.kind==='execution'||s.kind==='invalid'){title='RECORDED EXECUTION OUTPUT · NOT A NEW ACCURACY TEST';let item=s.execution;if(s.kind==='invalid')item=s.executions[Math.min(2,Math.floor(p*3))];const ans=item.answer;html='<div class="call mono">'+esc(item.code)+'</div>';if(Array.isArray(ans)){html+='<div class="checkpoints">'+table(['Equipment','Route','Present','Trusted'],ans.map(x=>[x.machine,x.route,x.present?'YES':'NO',x.registered?'YES':'NO']),Math.floor(p*(ans.length-1)))+'</div>'}else{const rows=JSON.stringify(ans,null,2).split('\n');const focus=Math.min(rows.length-1,Math.floor(p*(rows.length-1)));html+='<div class="output mono">'+rows.map((t,i)=>'<div class="out-line '+(i===focus?'focus':'')+'">'+esc(t)+'</div>').join('')+'</div>'}html+='<div class="tiny">Executed in '+item.elapsed_seconds.toFixed(2)+' seconds. Output replay; no Python execution occurs in this page.</div>'}else if(s.kind==='flow'){title='DATA FLOW · EACH TOKEN REPRESENTS A FILE';const steps=['SUPPORTED INPUT','VALIDATE & IDENTIFY SOURCE','PREPROCESS EACH MODALITY','LOAD TRUSTED CHECKPOINT','FAULT + PROBABILITY + MODEL'];const focus=Math.floor(p*4);html='<div class="pipeline"><div class="packet" style="top:'+(24+focus*109)+'px"></div>'+steps.map((t,i)=>'<div class="step '+(i===focus?'active':'')+'">'+t+'</div>').join('')+'</div>'}else if(s.kind==='routes'){title='39 EXECUTION CHECKS · WRONG LABELS REMAIN VISIBLE';const start=p<.5?0:20,rows=s.routes.slice(start,start+20);html='<div class="route-list mono">'+rows.map((r,i)=>'<div class="route-line '+(i===Math.floor((p%.5)*2*rows.length)?'focus ':'')+(r.expected!==r.predicted?'bad':'')+'"><span>'+esc(r.machine)+'</span><span>'+esc(r.modality)+'</span><span>'+esc(r.status)+'</span><span>'+esc(r.predicted||'')+'</span></div>').join('')+'</div><div class="tiny">Orange rows executed successfully but returned the wrong source label.</div>'}else if(s.kind==='figure'&&s.ref==='primary'){title='ARCHIVED HELD-OUT BALANCED ACCURACY (%)';const names=['Pump','Haul Truck','Belt Conveyor','Dozer','Excavator','Wheel Loader','Drill Rig','Grader gear'],a=[95.83,73.33,43.75,43.75,25,31.25,68.06,77.78],b=[100,58.33,50,56.25,25,18.75,88.94,82.59];html='<div class="bars">'+names.map((name,i)=>'<div class="bar-row"><b>'+name+'</b><div class="tracks"><div class="track"><div class="bar" style="width:'+a[i]+'%"></div></div><div class="track"><div class="bar visual" style="width:'+b[i]+'%"></div></div></div><div class="scores">'+a[i].toFixed(2)+'<br>'+b[i].toFixed(2)+'</div></div>').join('')+'</div><div class="tiny">Teal: sensor. Orange: visual. Different sources and protocols do not establish a causal modality ranking.</div>'}else if(s.kind==='figure'){title='SECONDARY WITHIN-RECORDING TEST';html='<div class="phase-strip"><div class="phase" style="width:60%;background:var(--teal)">FIRST 60%<br>TRAIN</div><div class="phase" style="width:10%;background:var(--muted);font-size:17px">GAP</div><div class="phase" style="width:30%;background:#b66b2b">LAST 30%<br>TEST</div></div><div class="big">Same recording. Same setting.<br>Different time segment.</div><div class="summary-item"><div class="value">High within-recording scores do not replace unseen-speed or unseen-gear-pair tests.</div></div>'}else if(chapter===3){title='EIGHT APPLICATION MAPPINGS';html=table(['Mapping','Relevant component'],mapping,Math.min(7,Math.floor(p*8)))}else if(chapter===0){html='<div class="big">FROM FILE<br>TO FAULT CONDITION</div><div class="summary-item"><div class="label">SENSOR AND IMAGE CONDITION MONITORING</div><div class="value">Ganesh Mishra · Lakshya Sharma · Sagar Patel</div></div><div class="summary-item"><div class="label">SUPERVISOR</div><div class="value">Dr. Himanshu Patel</div></div><div class="tiny">Computer-narrated technical walkthrough. Actual execution outputs are replayed; this is not a live screen recording.</div>'}else{const variants={1:[['Software objective','Reliable file-to-prediction workflow'],['Scientific objective','Comparable component targets and honest evaluation']],2:[['Sensor learning','Signal features with classical classifiers'],['Visual learning','ResNet18 transfer representations'],['Evaluation risk','Learning the recording or operating condition']],4:[['Sensor sources','Ottawa · UODS · CORA · MCC5-THU · Aalto · JUST'],['Visual sources','XJTU-DV · CORA infrared · MFGNet · GearBox'],['Independence','Frames and crops are not independent machines']],25:[['Current use','Educational inspection and component-fault research'],['Before operational use','Independent field data and calibrated thresholds']],26:[['Implemented','One notebook and a reusable Python application'],['Verified locally','Real inference and explicit error handling'],['Still limited','Laboratory evidence and weak transfer']]};html=(variants[chapter]||s.points.map((x,i)=>['KEY POINT '+(i+1),x])).map(([a,b])=>'<div class="summary-item"><div class="label">'+esc(a)+'</div><div class="value">'+esc(b)+'</div></div>').join('')}const key=chapter+':'+(s.kind==='routes'?(p<.5?0:1):s.kind==='invalid'?Math.min(2,Math.floor(p*3)):s.code?Math.floor(p*Math.max(0,s.code.split('\n').length-1)):0);$('panel-title').textContent=title;const oldFlow=$('visual').querySelector('.pipeline');if(s.kind==='flow'&&oldFlow&&$('visual').dataset.chapter===String(chapter)){const focus=Math.floor(p*4);oldFlow.querySelector('.packet').style.top=(24+focus*109)+'px';oldFlow.querySelectorAll('.step').forEach((e,i)=>e.classList.toggle('active',i===focus))}else{$('visual').innerHTML=html;$('visual').dataset.chapter=chapter}window.currentVisualKey=key;}
+function renderVisual(){const s=scenes[chapter],n=s.beats.length,p=beat/Math.max(1,n-1);let title='TECHNICAL EXPLANATION',html='';if(s.code){title=s.source_name;const all=s.code.split('\n'),count=21,focus=Math.min(all.length-1,Math.floor(p*(all.length-1))),start=Math.max(0,Math.min(all.length-count,focus-9));html='<div class="code mono">'+all.slice(start,start+count).map((line,i)=>'<div class="code-line '+(start+i===focus?'focus':'')+'"><span class="ln">'+(start+i+1)+'</span>'+esc(line.length>91?line.slice(0,88)+'...':line)+'</div>').join('')+'</div>'}else if(s.kind==='execution'||s.kind==='invalid'){title='RECORDED EXECUTION OUTPUT · NOT A NEW ACCURACY TEST';let item=s.execution;if(s.kind==='invalid')item=s.executions[Math.min(2,Math.floor(p*3))];const ans=item.answer;html='<div class="call mono">'+esc(item.code)+'</div>';if(Array.isArray(ans)){html+='<div class="checkpoints">'+table(['Equipment','Route','Present','Trusted'],ans.map(x=>[x.machine,x.route,x.present?'YES':'NO',x.registered?'YES':'NO']),Math.floor(p*(ans.length-1)))+'</div>'}else{const rows=JSON.stringify(ans,null,2).split('\n');const focus=Math.min(rows.length-1,Math.floor(p*(rows.length-1)));html+='<div class="output mono">'+rows.map((t,i)=>'<div class="out-line '+(i===focus?'focus':'')+'">'+esc(t)+'</div>').join('')+'</div>'}html+='<div class="tiny">Executed in '+item.elapsed_seconds.toFixed(2)+' seconds. Output replay; no Python execution occurs in this page.</div>'}else if(s.kind==='flow'){title='DATA FLOW · EACH TOKEN REPRESENTS A FILE';const steps=['SUPPORTED INPUT','VALIDATE & IDENTIFY SOURCE','PREPROCESS EACH MODALITY','LOAD TRUSTED CHECKPOINT','FAULT + PROBABILITY + MODEL'];const focus=Math.floor(p*4);html='<div class="pipeline"><div class="packet" style="top:'+(24+focus*109)+'px"></div>'+steps.map((t,i)=>'<div class="step '+(i===focus?'active':'')+'">'+t+'</div>').join('')+'</div>'}else if(s.kind==='routes'){title='39 EXECUTION CHECKS · WRONG LABELS REMAIN VISIBLE';const start=p<.5?0:20,rows=s.routes.slice(start,start+20);html='<div class="route-list mono">'+rows.map((r,i)=>'<div class="route-line '+(i===Math.floor((p%.5)*2*rows.length)?'focus ':'')+(r.expected!==r.predicted?'bad':'')+'"><span>'+esc(r.machine)+'</span><span>'+esc(r.modality)+'</span><span>'+esc(r.status)+'</span><span>'+esc(r.predicted||'')+'</span></div>').join('')+'</div><div class="tiny">Orange rows executed successfully but returned the wrong source label.</div>'}else if(s.kind==='figure'&&s.ref==='primary'){title='ARCHIVED HELD-OUT BALANCED ACCURACY (%)';const names=['Pump','Haul Truck','Belt Conveyor','Dozer','Excavator','Wheel Loader','Drill Rig','Grader gear'],a=[95.83,73.33,43.75,43.75,25,31.25,68.06,77.78],b=[100,58.33,50,56.25,25,18.75,88.94,82.59];html='<div class="bars">'+names.map((name,i)=>'<div class="bar-row"><b>'+name+'</b><div class="tracks"><div class="track"><div class="bar" style="width:'+a[i]+'%"></div></div><div class="track"><div class="bar visual" style="width:'+b[i]+'%"></div></div></div><div class="scores">'+a[i].toFixed(2)+'<br>'+b[i].toFixed(2)+'</div></div>').join('')+'</div><div class="tiny">Teal: sensor. Orange: visual. Different sources and protocols do not establish a causal modality ranking.</div>'}else if(s.kind==='figure'){title='SUPPLEMENTARY WITHIN-RECORDING CHECK';html='<div class="phase-strip"><div class="phase" style="width:60%;background:var(--teal)">FIRST 60%<br>TRAIN</div><div class="phase" style="width:10%;background:var(--muted);font-size:17px">GAP</div><div class="phase" style="width:30%;background:#b66b2b">LAST 30%<br>TEST</div></div><div class="big">Same recording. Same setting.<br>Different time segment.</div><div class="summary-item"><div class="value">High within-recording scores do not replace unseen-speed or unseen-gear-pair tests.</div></div>'}else if(s.title==='Eight application mappings'){title='EIGHT APPLICATION MAPPINGS';html=table(['Mapping','Relevant component'],mapping,Math.min(7,Math.floor(p*8)))}else if(chapter===0){html='<div class="big">FROM FILE<br>TO FAULT CONDITION</div><div class="summary-item"><div class="label">SENSOR AND IMAGE CONDITION MONITORING</div><div class="value">Ganesh Mishra · Lakshya Sharma · Sagar Patel</div></div><div class="summary-item"><div class="label">SUPERVISOR</div><div class="value">Dr. Himanshu Patel</div></div><div class="tiny">Computer-narrated technical walkthrough. Actual execution outputs are replayed; this is not a live screen recording.</div>'}else{const variants={'The problem and objectives':[['Software objective','Reliable file-to-prediction workflow'],['Scientific objective','Comparable component targets and honest evaluation']],'Research background':[['Sensor learning','Signal features with classical classifiers'],['Visual learning','ResNet18 transfer representations'],['Evaluation risk','Learning the recording or operating condition']],'Dataset provenance':[['Sensor sources','Ottawa · UODS · CORA · MCC5-THU · Aalto · JUST'],['Visual sources','XJTU-DV · CORA infrared · MFGNet · GearBox'],['Independence','Frames and crops are not independent machines']],'Applications and remaining limits':[['Current use','Educational inspection and component-fault research'],['Before operational use','Independent field data and calibrated thresholds']],'Final demonstration summary':[['Implemented','One notebook and a reusable Python application'],['Verified locally','Real inference and explicit error handling'],['Still limited','Laboratory evidence and weak transfer']]};if(s.panel_title)title=s.panel_title;html=(s.panel||variants[s.title]||s.points.map((x,i)=>['KEY POINT '+(i+1),x])).map(([a,b])=>'<div class="summary-item"><div class="label">'+esc(a)+'</div><div class="value">'+esc(b)+'</div></div>').join('')}const key=chapter+':'+(s.kind==='routes'?(p<.5?0:1):s.kind==='invalid'?Math.min(2,Math.floor(p*3)):s.code?Math.floor(p*Math.max(0,s.code.split('\n').length-1)):0);$('panel-title').textContent=title;const oldFlow=$('visual').querySelector('.pipeline');if(s.kind==='flow'&&oldFlow&&$('visual').dataset.chapter===String(chapter)){const focus=Math.floor(p*4);oldFlow.querySelector('.packet').style.top=(24+focus*109)+'px';oldFlow.querySelectorAll('.step').forEach((e,i)=>e.classList.toggle('active',i===focus))}else{$('visual').innerHTML=html;$('visual').dataset.chapter=chapter}window.currentVisualKey=key;}
 function draw(){const s=scenes[chapter];$('title').textContent=s.title;$('subtitle').textContent=s.subtitle;$('number').textContent=String(chapter+1).padStart(2,'0')+' / '+scenes.length;$('points').innerHTML=s.points.map((x,i)=>'<p class="point '+(i===Math.min(2,Math.floor(beat/s.beats.length*3))?'focus':'')+'">'+esc(x)+'</p>').join('');$('caption').innerHTML='<b>Narration '+(beat+1)+' / '+s.beats.length+'</b> '+esc(s.beats[beat]);$('position').textContent='Chapter '+(chapter+1)+' · line '+(beat+1);$('chapters').value=chapter;$('timeline').style.width=(chapter+beat/s.beats.length)/scenes.length*100+'%';renderVisual()}
 function stop(){generation++;clearTimeout(timer);if('speechSynthesis'in window)speechSynthesis.cancel();playing=false;paused=false;$('play').textContent='Play narration'}
 function step(delta,auto=false){const was=playing&&!paused;if(!auto)stop();beat+=delta;if(beat>=scenes[chapter].beats.length){if(chapter===scenes.length-1){beat=scenes[chapter].beats.length-1;stop();draw();return}chapter++;beat=0}else if(beat<0){if(chapter>0){chapter--;beat=scenes[chapter].beats.length-1}else beat=0}draw();if(auto||was){playing=true;paused=false;speak()}}
