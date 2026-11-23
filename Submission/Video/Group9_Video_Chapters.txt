@@ -1,33 +1,33 @@
 00:00  AI-Based Predictive Maintenance
-00:52  Project team and roles
-01:15  The problem and objectives
-02:12  Research background
-03:15  Eight application mappings
-04:12  Dataset provenance
-05:09  System block diagram
-06:02  Open the integrated notebook
-06:56  Check the local checkpoints
-07:45  Load sensor data
-08:44  Cleaning and feature preparation
-09:36  Why the feature definitions matter
-10:31  Keep complete groups apart
-11:29  Sensor model selection
-12:27  Image model inference
-13:23  Data augmentation and selected models
-14:36  The central prediction function
-15:30  Notebook upload interface
-16:23  Executed Pump sensor example
-17:13  Executed Pump image example
-18:07  Executed Motor Grader gear sensor
-18:58  Executed Motor Grader tooth image
-19:46  Ambiguous equipment is a valid result
-20:38  Invalid inputs and errors
-21:27  Full route-check evidence
-22:19  Independent experimental results
-23:15  Time split versus held-out groups
-24:07  Applications and remaining limits
-25:07  References and data sources
-26:07  Final demonstration summary
+00:44  Project team and roles
+01:03  The problem and objectives
+01:52  Research background
+02:46  Eight application mappings
+03:36  Dataset provenance
+04:26  System block diagram
+05:11  Open the integrated notebook
+05:58  Check the local checkpoints
+06:41  Load sensor data
+07:31  Cleaning and feature preparation
+08:15  Why the feature definitions matter
+09:03  Keep complete groups apart
+09:51  Sensor model selection
+10:41  Image model inference
+11:30  Data augmentation and selected models
+12:34  The central prediction function
+13:20  Notebook upload interface
+14:05  Executed Pump sensor example
+14:47  Executed Pump image example
+15:33  Executed Motor Grader gear sensor
+16:17  Executed Motor Grader tooth image
+17:01  Ambiguous equipment is a valid result
+17:46  Invalid inputs and errors
+18:27  Full route-check evidence
+19:13  Independent experimental results
+20:02  Time split versus held-out groups
+20:46  Applications and remaining limits
+21:38  References and data sources
+22:34  Final demonstration summary
 
-Browser version: narration lines advance on speechSynthesis onend.
-MP4 version: embedded computer narration, individually timed to each highlighted visual beat.
+Browser version: narration lines advance on speechSynthesis onend, using a voice installed in the browser.
+MP4 version: Narration voice: synthetic speech generated locally with Piper TTS (GPL-3.0) using the en_US 'ryan' medium voice from rhasspy/piper-voices, trained on the RyanSpeech dataset (CC BY-NC-SA 4.0). It is not the voice of a team member.

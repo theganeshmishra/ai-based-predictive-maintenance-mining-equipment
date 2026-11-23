@@ -13,7 +13,7 @@ This folder shares the completed submission materials and the existing software 
 | Final report | [PDF](Group9_Final_Capstone_Report.pdf) and [editable Word version](Editable/Group9_Final_Capstone_Report.docx) |
 | Explained, executed notebook | [Group9_Capstone_Submission.ipynb](Group9_Capstone_Submission.ipynb) |
 | Research poster | [96 inch wide by 48 inch high PDF](Group9_Capstone_Poster_96x48.pdf) |
-| Animated walkthrough | [27 minute 7 second MP4](Video/Group9_Capstone_Walkthrough.mp4) |
+| Animated walkthrough | [23 minute 26 second MP4](Video/Group9_Capstone_Walkthrough.mp4) |
 | Interactive walkthrough | [Standalone HTML](Video/Group9_Interactive_Walkthrough.html) |
 | Narration captions | [English SRT](Video/Group9_Video_Captions.srt), also selectable in the MP4 |
 | Narration text | [Transcript](Video/Group9_Video_Transcript.txt) |
@@ -83,7 +83,7 @@ The November 22 local run completed 39 real-file inference executions and the in
 
 Earlier full project verification recorded 257 passing local tests and 255 passing hosted tests with two expected local-data skips. These are historical records for the pinned source revision. The commit adding this folder must be assessed against its own CI result.
 
-The animated video is computer narrated, with recorded model outputs replayed for explanation. It is not a live screen recording or team-member voice recording. The HTML companion likewise does not run Python or accept live prediction uploads. Browser end-event progression was checked with controlled speech callbacks; the controls passed 11 interaction checks with no browser exceptions. MP4 audio/video fully decoded without errors. Review the deliverables against the instructor's submission instructions.
+The animated video is narrated by a synthetic AI voice (Piper TTS, en_US 'ryan' voice trained on the RyanSpeech dataset, CC BY-NC-SA 4.0), with recorded model outputs replayed for explanation. It is not a live screen recording or team-member voice recording. The HTML companion likewise does not run Python or accept live prediction uploads. Browser end-event progression was checked with controlled speech callbacks; the controls passed 11 interaction checks with no browser exceptions. MP4 audio/video fully decoded without errors. Review the deliverables against the instructor's submission instructions.
 
 The datasets contain laboratory component analogues and synthetic CAD renders, rather than field validation across eight mining machines. CORA mappings share benchmarks; Dozer reuses the conveyor task. Sensor and image samples remain independent, with no paired multimodal fusion. Current fault classification does not establish a failure date or remaining useful life.
 

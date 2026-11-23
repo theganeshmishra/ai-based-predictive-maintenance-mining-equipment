@@ -1,1462 +1,1462 @@
 1
-00:00:00,000 --> 00:00:05,388
+00:00:00,000 --> 00:00:04,923
 Welcome to this technical walkthrough of AI-Based Predictive
 Maintenance for Mining Equipment.
 
 2
-00:00:05,608 --> 00:00:14,014
+00:00:05,143 --> 00:00:12,153
 The project team is Ganesh Mishra, Lakshya Sharma and Sagar
 Patel, from Saskatchewan Polytechnic, under the guidance
 
 3
-00:00:14,014 --> 00:00:15,826
+00:00:12,153 --> 00:00:13,664
 of Doctor Himanshu Patel.
 
 4
-00:00:16,046 --> 00:00:23,479
+00:00:13,884 --> 00:00:21,164
 This video explains the objectives, data sources, software
 design, code and actual prediction outputs.
 
 5
-00:00:23,699 --> 00:00:29,218
+00:00:21,384 --> 00:00:25,471
 The narration is computer generated; it is not a recording of
 a team member speaking.
 
 6
-00:00:29,438 --> 00:00:35,871
+00:00:25,691 --> 00:00:31,089
 The execution examples were run against the existing local
 checkpoints and are replayed here for readability.
 
 7
-00:00:36,091 --> 00:00:40,509
+00:00:31,309 --> 00:00:34,630
 The implemented task is current component fault
 classification.
 
 8
-00:00:40,729 --> 00:00:47,637
+00:00:34,850 --> 00:00:40,655
 Although predictive maintenance is the project title, the
 software does not estimate the date of a future failure.
 
 9
-00:00:47,857 --> 00:00:51,791
+00:00:40,875 --> 00:00:43,824
 That distinction will remain visible throughout the
 demonstration.
 
 10
-00:00:52,011 --> 00:00:55,920
+00:00:44,494 --> 00:00:47,535
 This chapter introduces the project team and their roles.
 
 11
-00:00:56,140 --> 00:00:59,433
+00:00:47,755 --> 00:00:50,460
 Ganesh Mishra is the team lead and a developer.
 
 12
-00:00:59,653 --> 00:01:03,272
+00:00:50,680 --> 00:00:53,513
 Lakshya Sharma is a developer and the team's tester.
 
 13
-00:01:03,492 --> 00:01:06,696
+00:00:53,733 --> 00:00:56,206
 Sagar Patel is the planner and a developer.
 
 14
-00:01:06,916 --> 00:01:10,805
+00:00:56,426 --> 00:00:59,201
 The project was supervised by Doctor Himanshu Patel.
 
 15
-00:01:11,025 --> 00:01:15,023
+00:00:59,421 --> 00:01:02,660
 The same roles are listed in the final report and on the
 poster.
 
 16
-00:01:15,243 --> 00:01:21,017
+00:01:03,330 --> 00:01:07,986
 Mining operations depend on components such as bearings,
 motors and geared drives.
 
 17
-00:01:21,237 --> 00:01:25,445
+00:01:08,206 --> 00:01:11,515
 A fault in one component may interrupt the larger process.
 
 18
-00:01:25,665 --> 00:01:32,434
+00:01:11,735 --> 00:01:17,836
 The project asks whether available condition-monitoring
 measurements can support a practical fault-classification
 
 19
-00:01:32,434 --> 00:01:33,033
+00:01:17,836 --> 00:01:18,376
 prototype.
 
 20
-00:01:33,253 --> 00:01:41,317
+00:01:18,596 --> 00:01:25,218
 The software objective is straightforward: accept a supported
 file, apply the correct preprocessing, load an existing
 
 21
-00:01:41,317 --> 00:01:44,280
+00:01:25,218 --> 00:01:27,651
 model, and display its predicted condition.
 
 22
-00:01:44,500 --> 00:01:51,114
+00:01:27,871 --> 00:01:33,774
 The research objective is harder: compare sensor and visual
 evidence using fault targets that are mechanically
 
 23
-00:01:51,114 --> 00:01:55,322
+00:01:33,774 --> 00:01:37,531
 comparable, and test how results change under proper group
 separation.
 
 24
-00:01:55,542 --> 00:02:00,871
+00:01:37,751 --> 00:01:42,360
 A working upload button alone cannot establish that a
 classifier generalizes.
 
 25
-00:02:01,091 --> 00:02:08,364
+00:01:42,580 --> 00:01:48,629
 For that reason, the project keeps software execution checks
 separate from held-out experimental performance.
 
 26
-00:02:08,584 --> 00:02:12,638
+00:01:48,849 --> 00:01:51,426
 Both are necessary, but they answer different questions.
 
 27
-00:02:12,858 --> 00:02:18,496
+00:01:52,096 --> 00:01:56,972
 The research background combines conventional condition
 monitoring with visual transfer learning.
 
 28
-00:02:18,716 --> 00:02:26,390
+00:01:57,192 --> 00:02:03,862
 Sensor measurements can be summarized using statistical and
 spectral features, making tree ensembles, support vector
 
 29
-00:02:26,390 --> 00:02:29,763
+00:02:03,862 --> 00:02:06,794
 machines and logistic regression useful candidates.
 
 30
-00:02:29,983 --> 00:02:35,087
+00:02:07,014 --> 00:02:11,031
 Random forests provide a practical baseline for mixed
 numerical features.
 
 31
-00:02:35,307 --> 00:02:41,715
+00:02:11,251 --> 00:02:16,754
 For visual inputs, the project uses ImageNet-pretrained
 ResNet18 representations.
 
 32
-00:02:41,935 --> 00:02:49,253
+00:02:16,974 --> 00:02:23,078
 Most visual routes fine tune a classifier, while the gear-
 tooth photograph route uses frozen features with logistic
 
 33
-00:02:49,253 --> 00:02:49,953
+00:02:23,078 --> 00:02:23,661
 regression.
 
 34
-00:02:50,173 --> 00:02:54,277
+00:02:23,881 --> 00:02:27,016
 These algorithm choices do not remove weaknesses in the data.
 
 35
-00:02:54,497 --> 00:03:01,445
+00:02:27,236 --> 00:02:33,564
 A model may learn a recording, operating speed or camera setup
 instead of a transferable fault signature.
 
 36
-00:03:01,665 --> 00:03:06,938
+00:02:33,784 --> 00:02:38,845
 The central methodological choice is therefore the way
 training and testing are separated.
 
 37
-00:03:07,158 --> 00:03:14,501
+00:02:39,065 --> 00:02:45,576
 Dataset sources and model references are listed in the
 references chapter near the end of this video, and in the
 final
 
 38
-00:03:14,501 --> 00:03:14,936
+00:02:45,576 --> 00:02:45,962
 report.
 
 39
-00:03:15,156 --> 00:03:24,056
+00:02:46,632 --> 00:02:54,472
 The system contains eight mining-equipment application
 mappings: Pump, Haul Truck, Belt Conveyor, Dozer, Excavator,
 
 40
-00:03:24,056 --> 00:03:27,229
+00:02:54,472 --> 00:02:57,267
 Wheel Loader, Drill Rig and Motor Grader.
 
 41
-00:03:27,449 --> 00:03:32,177
+00:02:57,487 --> 00:03:01,480
 These names describe intended applications of laboratory
 components.
 
 42
-00:03:32,397 --> 00:03:37,301
+00:03:01,700 --> 00:03:05,497
 They do not mean that every dataset was collected from the
 named mining machine.
 
 43
-00:03:37,521 --> 00:03:40,945
+00:03:05,717 --> 00:03:08,387
 Pump and Haul Truck use bearing-related evidence.
 
 44
-00:03:41,165 --> 00:03:47,013
+00:03:08,607 --> 00:03:13,379
 Conveyor and Dozer use geared-drive evidence, with Dozer
 reusing the conveyor benchmark.
 
 45
-00:03:47,233 --> 00:03:51,632
+00:03:13,599 --> 00:03:17,395
 Excavator and Wheel Loader use related drive and motor tasks.
 
 46
-00:03:51,852 --> 00:03:58,335
+00:03:17,615 --> 00:03:23,130
 Drill Rig uses gearbox data, while the aligned Motor Grader
 comparison concerns gear damage.
 
 47
-00:03:58,555 --> 00:04:03,403
+00:03:23,350 --> 00:03:27,785
 The original Motor Grader bearing route is also preserved as a
 separate task.
 
 48
-00:04:03,623 --> 00:04:10,710
+00:03:28,005 --> 00:03:34,315
 Reuse of the same rig or records is explicitly disclosed, so
 eight application rows are not presented as eight
 
 49
-00:04:10,710 --> 00:04:12,321
+00:03:34,315 --> 00:03:35,749
 independent field trials.
 
 50
-00:04:12,541 --> 00:04:20,454
+00:03:36,419 --> 00:03:43,533
 The sensor sources include Ottawa and UODS bearing
 measurements, CORA electromechanical measurements, MCC5
 gearbox
 
 51
-00:04:20,454 --> 00:04:25,313
+00:03:43,533 --> 00:03:47,901
 vibration, Aalto gear measurements and the separate JUST
 bearing task.
 
 52
-00:04:25,533 --> 00:04:34,336
+00:03:48,121 --> 00:03:56,151
 Visual sources include XJTU dynamic-vision recordings, CORA
 infrared frames, synthetic MFGNet gear renders and real
 
 53
-00:04:34,336 --> 00:04:36,326
+00:03:56,151 --> 00:03:57,966
 GearBox tooth photographs.
 
 54
-00:04:36,546 --> 00:04:40,524
+00:03:58,186 --> 00:04:01,159
 Event-camera frames are not ordinary colour photographs.
 
 55
-00:04:40,744 --> 00:04:45,498
+00:04:01,379 --> 00:04:05,419
 Synthetic renders are not camera measurements from damaged
 mining equipment.
 
 56
-00:04:45,718 --> 00:04:53,170
+00:04:05,639 --> 00:04:11,687
 Multiple frames, windows or tooth crops may come from one
 source group, so their count must not be confused with a
 
 57
-00:04:53,170 --> 00:04:55,131
+00:04:11,687 --> 00:04:13,278
 count of independent machines.
 
 58
-00:04:55,351 --> 00:05:00,429
+00:04:13,498 --> 00:04:17,898
 The dataset manifest records the source mappings and available
 local files.
 
 59
-00:05:00,649 --> 00:05:07,989
+00:04:18,118 --> 00:04:24,889
 Raw data and large checkpoints stay outside the public code
 archive, and the local installation needs access to those
 
 60
-00:05:07,989 --> 00:05:08,867
+00:04:24,889 --> 00:04:25,700
 prerequisites.
 
 61
-00:05:09,087 --> 00:05:15,721
+00:04:26,370 --> 00:04:32,523
 The block diagram begins with a file supplied through the
 notebook, command line or local upload page.
 
 62
-00:05:15,941 --> 00:05:20,979
+00:04:32,743 --> 00:04:36,841
 The system validates the input and tries to identify a known
 source format.
 
 63
-00:05:21,199 --> 00:05:28,305
+00:04:37,061 --> 00:04:42,940
 If the source is compatible with more than one equipment
 mapping, it returns an ambiguity warning rather than silently
 
 64
-00:05:28,305 --> 00:05:28,847
+00:04:42,940 --> 00:04:43,389
 guessing.
 
 65
-00:05:29,067 --> 00:05:33,830
+00:04:43,609 --> 00:04:47,463
 A sensor file is converted into the features expected by its
 checkpoint.
 
 66
-00:05:34,050 --> 00:05:37,539
+00:04:47,683 --> 00:04:50,423
 An image is transformed according to the visual route.
 
 67
-00:05:37,759 --> 00:05:44,537
+00:04:50,643 --> 00:04:56,053
 The saved model produces class probabilities, and the largest
 output determines the displayed condition.
 
 68
-00:05:44,757 --> 00:05:50,776
+00:04:56,273 --> 00:05:01,417
 Both modalities share the same prediction entry point, but
 they remain independent models.
 
 69
-00:05:50,996 --> 00:05:54,994
+00:05:01,637 --> 00:05:04,957
 There is no fusion of unrelated sensor and image samples.
 
 70
-00:05:55,214 --> 00:06:02,418
+00:05:05,177 --> 00:05:11,098
 The final output includes the application mapping, fault
 label, model probability and model used.
 
 71
-00:06:02,638 --> 00:06:07,476
+00:05:11,768 --> 00:05:16,041
 The submitted notebook is the main explanation and
 demonstration entry point.
 
 72
-00:06:07,696 --> 00:06:15,439
+00:05:16,261 --> 00:05:22,704
 Its first code cell imports the standard libraries, numerical
 packages, plotting tools and upload widgets.
 
 73
-00:06:15,659 --> 00:06:21,308
+00:05:22,924 --> 00:05:27,951
 It locates the project folder and imports predictive
 maintenance as the application module.
 
 74
-00:06:21,528 --> 00:06:28,533
+00:05:28,171 --> 00:05:34,580
 The implementation is kept in that companion Python file so
 the notebook does not duplicate thousands of lines of
 
 75
-00:06:28,533 --> 00:06:30,145
+00:05:34,580 --> 00:05:36,055
 model and interface logic.
 
 76
-00:06:30,365 --> 00:06:34,169
+00:05:36,275 --> 00:05:39,398
 The notebook and companion code must be submitted together.
 
 77
-00:06:34,389 --> 00:06:41,609
+00:05:39,618 --> 00:05:46,019
 Selecting the correct environment is important because the
 application depends on packages for numerical processing,
 
 78
-00:06:41,609 --> 00:06:43,476
+00:05:46,019 --> 00:05:47,675
 images and checkpoint loading.
 
 79
-00:06:43,696 --> 00:06:47,580
+00:05:47,895 --> 00:05:50,600
 Running the inference demonstration should not start training.
 
 80
-00:06:47,800 --> 00:06:54,866
+00:05:50,820 --> 00:05:56,785
 The existing checkpoints are reused, and missing local assets
 are reported explicitly rather than replaced by
 
 81
-00:06:54,866 --> 00:06:56,162
+00:05:56,785 --> 00:05:57,879
 fabricated examples.
 
 82
-00:06:56,382 --> 00:07:01,431
+00:05:58,549 --> 00:06:02,543
 Before showing predictions, the notebook displays the
 checkpoint status.
 
 83
-00:07:01,651 --> 00:07:08,521
+00:06:02,763 --> 00:06:09,463
 The application has eight main sensor routes and eight main
 image routes, plus the additional Aalto gear sensor route
 
 84
-00:07:08,521 --> 00:07:09,519
+00:06:09,463 --> 00:06:10,437
 for Motor Grader.
 
 85
-00:07:09,739 --> 00:07:16,615
+00:06:10,657 --> 00:06:16,255
 A checkpoint can be present on disk without being trusted, and
 a trusted filename alone does not prove that a real
 
 86
-00:07:16,615 --> 00:07:17,882
+00:06:16,255 --> 00:06:17,286
 prediction will work.
 
 87
-00:07:18,102 --> 00:07:21,631
+00:06:17,506 --> 00:06:20,084
 The status table is therefore only the first check.
 
 88
-00:07:21,851 --> 00:07:25,060
+00:06:20,304 --> 00:06:22,742
 It is followed by actual inference calls.
 
 89
-00:07:25,280 --> 00:07:30,673
+00:06:22,962 --> 00:06:27,513
 The local verification found all required checkpoint files and
 their registrations.
 
 90
-00:07:30,893 --> 00:07:35,292
+00:06:27,733 --> 00:06:31,506
 The saved models remain unchanged during this video
 preparation.
 
 91
-00:07:35,512 --> 00:07:42,490
+00:06:31,726 --> 00:06:37,805
 The code archive deliberately excludes their large binaries,
 so someone running a fresh copy needs the documented
 
 92
-00:07:42,490 --> 00:07:45,454
+00:06:37,805 --> 00:06:40,387
 local assets as well as the Python dependencies.
 
 93
-00:07:45,674 --> 00:07:52,757
+00:06:41,057 --> 00:06:47,327
 The sensor loading code examines known file structures rather
 than accepting every numerical table as interchangeable.
 
 94
-00:07:52,977 --> 00:08:02,435
+00:06:47,547 --> 00:06:55,662
 Supported CSV schemas identify expected channel names for
 Ottawa, UODS, MCC5, JUST and Aalto sources.
 
 95
-00:08:02,655 --> 00:08:07,378
+00:06:55,882 --> 00:07:00,143
 Original MAT recordings are also supported for relevant
 bearing sources.
 
 96
-00:08:07,598 --> 00:08:12,327
+00:07:00,363 --> 00:07:04,171
 CORA recordings have a source-specific naming and acquisition
 convention.
 
 97
-00:08:12,547 --> 00:08:18,945
+00:07:04,391 --> 00:07:09,639
 These checks matter because sampling rates, channel meanings
 and units affect the extracted features.
 
 98
-00:08:19,165 --> 00:08:25,783
+00:07:09,859 --> 00:07:15,222
 A pressure column cannot be substituted for an acceleration
 channel merely because both contain numbers.
 
 99
-00:08:26,003 --> 00:08:32,916
+00:07:15,442 --> 00:07:21,770
 The application rejects an unrecognized CSV schema instead of
 passing incompatible values into a model.
 
 100
-00:08:33,136 --> 00:08:40,108
+00:07:21,990 --> 00:07:27,682
 Source recognition is not a universal machine-identification
 algorithm; it identifies compatibility with the
 
 101
-00:08:40,108 --> 00:08:43,788
+00:07:27,682 --> 00:07:30,686
 laboratory pipelines already implemented in this project.
 
 102
-00:08:44,008 --> 00:08:50,693
+00:07:31,356 --> 00:07:37,087
 Cleaning in this project means validating the measurements and
 applying the source-specific preparation expected by a
 
 103
-00:08:50,693 --> 00:08:51,036
+00:07:37,087 --> 00:07:37,381
 model.
 
 104
-00:08:51,256 --> 00:08:57,139
+00:07:37,601 --> 00:07:42,675
 Readers check numeric values and whether enough samples are
 available for a complete feature window.
 
 105
-00:08:57,359 --> 00:09:02,968
+00:07:42,895 --> 00:07:47,307
 Later checks reject nonfinite features and feature sets that
 do not match the checkpoint.
 
 106
-00:09:03,188 --> 00:09:08,006
+00:07:47,527 --> 00:07:51,474
 These controls prevent a model from receiving the wrong
 columns in the wrong order.
 
 107
-00:09:08,226 --> 00:09:15,648
+00:07:51,694 --> 00:07:57,597
 Sensor features include quantities such as root mean square,
 standard deviation, crest factor and selected
 
 108
-00:09:15,648 --> 00:09:17,539
+00:07:57,597 --> 00:07:59,101
 frequency-domain summaries.
 
 109
-00:09:17,759 --> 00:09:22,742
+00:07:59,321 --> 00:08:03,431
 Some sources use shaft-order information when rotational speed
 is available.
 
 110
-00:09:22,962 --> 00:09:27,896
+00:08:03,651 --> 00:08:07,784
 Preprocessing is not simply deleting missing rows and hoping
 for a good score.
 
 111
-00:09:28,116 --> 00:09:34,723
+00:08:08,004 --> 00:08:13,640
 Its purpose is to preserve a consistent relationship between
 the original measurement, the extracted features and the
 
 112
-00:09:34,723 --> 00:09:36,473
+00:08:13,640 --> 00:08:15,133
 model that was trained on them.
 
 113
-00:09:36,693 --> 00:09:41,297
+00:08:15,803 --> 00:08:19,936
 Root mean square is the square root of the average squared
 signal amplitude.
 
 114
-00:09:41,517 --> 00:09:47,235
+00:08:20,156 --> 00:08:24,788
 It summarizes signal energy but does not independently
 identify a particular fault.
 
 115
-00:09:47,455 --> 00:09:54,028
+00:08:25,008 --> 00:08:30,883
 Crest factor compares a peak amplitude with the root mean
 square value and can describe impulsive behaviour.
 
 116
-00:09:54,248 --> 00:09:59,177
+00:08:31,103 --> 00:08:35,503
 Spectral features summarize the distribution of energy across
 frequency.
 
 117
-00:09:59,397 --> 00:10:05,725
+00:08:35,723 --> 00:08:41,041
 In sources where speed is known, shaft-order features express
 frequency relative to rotation.
 
 118
-00:10:05,945 --> 00:10:12,509
+00:08:41,261 --> 00:08:46,738
 These measurements can change with operating conditions as
 well as damage, which explains why speed and load
 
 119
-00:10:12,509 --> 00:10:14,028
+00:08:46,738 --> 00:08:48,006
 separation are important.
 
 120
-00:10:14,248 --> 00:10:18,532
+00:08:48,226 --> 00:08:51,651
 The model learns combinations of features from labelled
 examples.
 
 121
-00:10:18,752 --> 00:10:22,890
+00:08:51,871 --> 00:08:55,122
 A large feature value is not automatically a failure warning.
 
 122
-00:10:23,110 --> 00:10:30,226
+00:08:55,342 --> 00:09:01,274
 At inference, the selected checkpoint determines exactly which
 feature columns are required and which preprocessing
 
 123
-00:10:30,226 --> 00:10:31,773
+00:09:01,274 --> 00:09:02,563
 pipeline must be applied.
 
 124
-00:10:31,993 --> 00:10:37,036
+00:09:03,233 --> 00:09:07,517
 The main evaluation safeguards are visible in the notebook
 split demonstration.
 
 125
-00:10:37,256 --> 00:10:41,685
+00:09:07,737 --> 00:09:11,545
 Complete recordings or operating groups are assigned to the
 test side.
 
 126
-00:10:41,905 --> 00:10:46,583
+00:09:11,765 --> 00:09:15,271
 Individual windows from a held-out recording cannot be placed
 in training.
 
 127
-00:10:46,803 --> 00:10:52,087
+00:09:15,491 --> 00:09:20,019
 Pump uses separate speed profiles or operating speeds for its
 two datasets.
 
 128
-00:10:52,307 --> 00:10:55,246
+00:09:20,239 --> 00:09:22,503
 CORA holds out whole speed settings.
 
 129
-00:10:55,466 --> 00:11:00,020
+00:09:22,723 --> 00:09:26,473
 Haul Truck sensor evaluation uses held-out bearing identities.
 
 130
-00:11:00,240 --> 00:11:07,383
+00:09:26,693 --> 00:09:32,707
 The aligned Motor Grader sensor experiment leaves gear pairs
 out, while its photo task uses source groups.
 
 131
-00:11:07,603 --> 00:11:13,461
+00:09:32,927 --> 00:09:37,548
 These protocols are not identical, and their differences
 remain part of the interpretation.
 
 132
-00:11:13,681 --> 00:11:18,414
+00:09:37,768 --> 00:09:41,959
 Inner validation selects models or training settings within
 the training data.
 
 133
-00:11:18,634 --> 00:11:25,799
+00:09:42,179 --> 00:09:48,437
 This reduces direct leakage from the final evaluation group,
 although dataset confounding and limited independent
 
 134
-00:11:25,799 --> 00:11:29,097
+00:09:48,437 --> 00:09:51,316
 specimens can still restrict scientific conclusions.
 
 135
-00:11:29,317 --> 00:11:36,534
+00:09:51,986 --> 00:09:58,244
 The sensor code defines several candidate classifiers rather
 than forcing a single algorithm onto every dataset.
 
 136
-00:11:36,754 --> 00:11:44,915
+00:09:58,464 --> 00:10:05,735
 The candidate family includes random forest, extra trees,
 histogram gradient boosting, a radial-basis support vector
 
 137
-00:11:44,915 --> 00:11:47,167
+00:10:05,735 --> 00:10:07,740
 machine and logistic regression.
 
 138
-00:11:47,387 --> 00:11:54,435
+00:10:07,960 --> 00:10:13,986
 Scaling is contained inside the relevant estimator pipeline,
 so its parameters are fitted with training data.
 
 139
-00:11:54,655 --> 00:11:57,489
+00:10:14,206 --> 00:10:16,075
 Class weighting is used where configured.
 
 140
-00:11:57,709 --> 00:12:03,587
+00:10:16,295 --> 00:10:21,160
 The chosen candidate can differ across evaluation folds and
 across application mappings.
 
 141
-00:12:03,807 --> 00:12:10,115
+00:10:21,380 --> 00:10:27,022
 The notebook displays these settings by instantiating the
 candidate factories and reading their parameters.
 
 142
-00:12:10,335 --> 00:12:15,134
+00:10:27,242 --> 00:10:31,190
 Deployment uses the saved final estimator and its selected
 feature list.
 
 143
-00:12:15,354 --> 00:12:20,257
+00:10:31,410 --> 00:10:35,148
 It does not repeat candidate selection each time a user
 uploads a file.
 
 144
-00:12:20,477 --> 00:12:26,835
+00:10:35,368 --> 00:10:41,034
 This keeps inference reproducible and avoids confusing
 prediction latency with a new training experiment.
 
 145
-00:12:27,055 --> 00:12:34,003
+00:10:41,704 --> 00:10:47,850
 The visual route reads a supported image, applies its
 configured transforms and uses a saved model to obtain
 
 146
-00:12:34,003 --> 00:12:34,903
+00:10:47,850 --> 00:10:48,646
 probabilities.
 
 147
-00:12:35,123 --> 00:12:39,582
+00:10:48,866 --> 00:10:52,582
 Seven main image routes use ResNet18-based classifiers.
 
 148
-00:12:39,802 --> 00:12:48,045
+00:10:52,802 --> 00:11:00,186
 Motor Grader tooth photographs follow a separate path: frozen
 ResNet18 features feed a logistic-regression classifier.
 
 149
-00:12:48,265 --> 00:12:52,943
+00:11:00,406 --> 00:11:04,028
 This distinction is important when explaining which model
 produced an answer.
 
 150
-00:12:53,163 --> 00:12:58,397
+00:11:04,248 --> 00:11:08,497
 Inference runs without gradient calculation and with the model
 in evaluation mode.
 
 151
-00:12:58,617 --> 00:13:03,465
+00:11:08,717 --> 00:11:12,769
 The system is not trained to diagnose arbitrary whole-machine
 photographs.
 
 152
-00:13:03,685 --> 00:13:11,283
+00:11:12,989 --> 00:11:18,829
 Supported event frames, thermal frames, synthetic gear renders
 and tooth crops have different visual meanings and
 
 153
-00:13:11,283 --> 00:13:12,023
+00:11:18,829 --> 00:11:19,398
 provenance.
 
 154
-00:13:12,243 --> 00:13:18,376
+00:11:19,618 --> 00:11:25,400
 A photo of an entire grader does not provide the same evidence
 as a labelled tooth inspection crop.
 
 155
-00:13:18,596 --> 00:13:22,870
+00:11:25,620 --> 00:11:29,567
 Unknown image sources must remain unsupported or ambiguous.
 
 156
-00:13:23,090 --> 00:13:29,428
+00:11:30,237 --> 00:11:36,263
 Data augmentation is applied only to training images, never to
 validation or test images.
 
 157
-00:13:29,648 --> 00:13:36,524
+00:11:36,483 --> 00:11:41,870
 It imitates nuisance variation that should not change the
 fault label, and a seeded random generator keeps runs
 
 158
-00:13:36,524 --> 00:13:37,206
+00:11:41,870 --> 00:11:42,404
 repeatable.
 
 159
-00:13:37,426 --> 00:13:44,868
+00:11:42,624 --> 00:11:49,198
 Event-camera and infrared frames receive random horizontal
 flips, shifts of up to eight pixels, brightness scaling
 
 160
-00:13:44,868 --> 00:13:49,373
+00:11:49,198 --> 00:11:53,177
 between zero point eight and one point two, and small Gaussian
 noise.
 
 161
-00:13:49,593 --> 00:13:56,766
+00:11:53,397 --> 00:11:59,633
 Rendered gears are rotated by multiples of ninety degrees,
 mirrored and shifted by up to six pixels, because a gear
 
 162
-00:13:56,766 --> 00:13:59,636
+00:11:59,633 --> 00:12:02,128
 looks the same when it is turned or reflected.
 
 163
-00:13:59,856 --> 00:14:04,329
+00:12:02,348 --> 00:12:06,260
 The gear-tooth photo route uses frozen features and is not
 augmented.
 
 164
-00:14:04,549 --> 00:14:12,114
+00:12:06,480 --> 00:12:12,351
 Sensor recordings are not augmented either; each recording
 already gives many windows, and class weighting handles
 
 165
-00:14:12,114 --> 00:14:12,777
+00:12:12,351 --> 00:12:12,866
 imbalance.
 
 166
-00:14:12,997 --> 00:14:20,721
+00:12:13,086 --> 00:12:20,136
 Across the thirty-five outer evaluation rounds, inner
 validation selected logistic regression thirteen times and
 extra
 
 167
-00:14:20,721 --> 00:14:21,965
+00:12:20,136 --> 00:12:21,271
 trees twelve times.
 
 168
-00:14:22,185 --> 00:14:29,808
+00:12:21,491 --> 00:12:28,852
 Gradient boosting was chosen five times, random forest three
 times and the RBF support vector machine twice.
 
 169
-00:14:30,028 --> 00:14:36,011
+00:12:29,072 --> 00:12:33,878
 No single classifier won every mapping, which is why the full
 candidate set is kept.
 
 170
-00:14:36,231 --> 00:14:42,770
+00:12:34,548 --> 00:12:40,748
 The central prediction function is the connection between the
 notebook, command line and local upload page.
 
 171
-00:14:42,990 --> 00:14:48,373
+00:12:40,968 --> 00:12:45,635
 It first handles the special tooth-image route when Motor
 Grader is explicitly selected.
 
 172
-00:14:48,593 --> 00:14:52,267
+00:12:45,855 --> 00:12:48,607
 Other inputs are passed through source identification.
 
 173
-00:14:52,487 --> 00:14:58,250
+00:12:48,827 --> 00:12:53,610
 If a user selects a mapping incompatible with that source, the
 function raises an error.
 
 174
-00:14:58,470 --> 00:15:05,546
+00:12:53,830 --> 00:13:00,113
 If the source matches several candidates and no reliable
 choice has been made, it returns an ambiguous equipment
 
 175
-00:15:05,546 --> 00:15:05,988
+00:13:00,113 --> 00:13:00,506
 result.
 
 176
-00:15:06,208 --> 00:15:13,391
+00:13:00,726 --> 00:13:06,589
 Otherwise it scores the appropriate checkpoint, selects the
 most probable class and assembles the answer fields.
 
 177
-00:15:13,611 --> 00:15:20,219
+00:13:06,809 --> 00:13:11,964
 The common entry point reduces the risk that different
 interfaces accidentally apply different preprocessing.
 
 178
-00:15:20,439 --> 00:15:28,059
+00:13:12,184 --> 00:13:18,689
 It also keeps source identification separate from fault
 classification, which is essential for equipment mappings that
 
 179
-00:15:28,059 --> 00:15:29,932
+00:13:18,689 --> 00:13:20,287
 share one laboratory dataset.
 
 180
-00:15:30,152 --> 00:15:36,665
+00:13:20,957 --> 00:13:26,727
 The notebook upload interface uses a file-upload widget, a
 mapping dropdown and a prediction button.
 
 181
-00:15:36,885 --> 00:15:44,292
+00:13:26,947 --> 00:13:32,943
 The upload accepts supported sensor recordings or image
 formats, but format acceptance does not guarantee source
 
 182
-00:15:44,292 --> 00:15:45,218
+00:13:32,943 --> 00:13:33,693
 compatibility.
 
 183
-00:15:45,438 --> 00:15:49,601
+00:13:33,913 --> 00:13:37,013
 The callback first checks whether a file was actually
 supplied.
 
 184
-00:15:49,821 --> 00:15:54,895
+00:13:37,233 --> 00:13:41,401
 It then passes the temporary input to the same application
 prediction function.
 
 185
-00:15:55,115 --> 00:15:59,378
+00:13:41,621 --> 00:13:44,732
 Automatic routing is useful only where the source can be
 established.
 
 186
-00:15:59,598 --> 00:16:06,156
+00:13:44,952 --> 00:13:50,966
 The dropdown remains necessary for shared laboratory formats
 and the explicit gear-tooth inspection route.
 
 187
-00:16:06,376 --> 00:16:12,983
+00:13:51,186 --> 00:13:56,640
 The interface should display either a condition prediction
 with its model information or a clear explanation of why
 
 188
-00:16:12,983 --> 00:16:14,534
+00:13:56,640 --> 00:13:57,920
 the input cannot be scored.
 
 189
-00:16:14,754 --> 00:16:22,321
+00:13:58,140 --> 00:14:04,036
 A user confirmation selects an application mapping; it does
 not turn laboratory data into real measurements from that
 
 190
-00:16:22,321 --> 00:16:23,291
+00:14:04,036 --> 00:14:04,792
 mining machine.
 
 191
-00:16:23,511 --> 00:16:29,870
+00:14:05,462 --> 00:14:10,908
 This panel shows the actual output of a Pump sensor inference
 call using an available local recording.
 
 192
-00:16:30,090 --> 00:16:37,458
+00:14:11,128 --> 00:14:17,602
 The application identifies a compatible bearing source,
 extracts the expected features and loads the trusted sensor
 
 193
-00:16:37,458 --> 00:16:38,162
+00:14:17,602 --> 00:14:18,221
 checkpoint.
 
 194
-00:16:38,382 --> 00:16:42,706
+00:14:18,441 --> 00:14:21,831
 The predicted class and probability are returned with the
 model name.
 
 195
-00:16:42,926 --> 00:16:48,434
+00:14:22,051 --> 00:14:26,544
 The example is useful for demonstrating that the complete path
 works from file to answer.
 
 196
-00:16:48,654 --> 00:16:53,028
+00:14:26,764 --> 00:14:30,224
 It must not be described as a fresh held-out accuracy
 measurement.
 
 197
-00:16:53,248 --> 00:16:59,911
+00:14:30,444 --> 00:14:35,901
 The route-check samples can be fitting data, and the archived
 evaluation uses its own group separation.
 
 198
-00:17:00,131 --> 00:17:05,925
+00:14:36,121 --> 00:14:40,811
 The application mapping is Pump, while the source remains an
 Ottawa bearing-rig measurement.
 
 199
-00:17:06,145 --> 00:17:12,578
+00:14:41,031 --> 00:14:46,223
 That distinction keeps the demonstration truthful without
 reducing the value of showing a real model execute
 
 200
-00:17:12,578 --> 00:17:13,352
+00:14:46,223 --> 00:14:46,848
 successfully.
 
 201
-00:17:13,572 --> 00:17:18,536
+00:14:47,518 --> 00:14:52,023
 The Pump image example uses a local event-camera frame with
 known provenance.
 
 202
-00:17:18,756 --> 00:17:23,964
+00:14:52,243 --> 00:14:56,399
 The model returns its current-condition classification and
 class probabilities.
 
 203
-00:17:24,184 --> 00:17:31,810
+00:14:56,619 --> 00:15:03,143
 An event frame represents changes observed by a dynamic-vision
 sensor; it is different from a standard RGB photograph
 
 204
-00:17:31,810 --> 00:17:32,462
+00:15:03,143 --> 00:15:03,701
 of a pump.
 
 205
-00:17:32,682 --> 00:17:39,987
+00:15:03,921 --> 00:15:09,826
 Its supported size and channel pattern help identify the
 source family, while local source indexing can establish a
 
 206
-00:17:39,987 --> 00:17:40,940
+00:15:09,826 --> 00:15:10,597
 unique mapping.
 
 207
-00:17:41,160 --> 00:17:47,773
+00:15:10,817 --> 00:15:16,239
 The sensor and image examples are separate observations, not
 synchronized recordings of one machine.
 
 208
-00:17:47,993 --> 00:17:52,772
+00:15:16,459 --> 00:15:20,197
 Showing them beside each other demonstrates two independent
 prediction routes.
 
 209
-00:17:52,992 --> 00:18:00,744
+00:15:20,417 --> 00:15:27,556
 It does not demonstrate fusion, causal superiority of one
 modality, or the ability to detect an internal bearing fault
 
 210
-00:18:00,744 --> 00:18:02,649
+00:15:27,556 --> 00:15:29,310
 from an arbitrary photograph.
 
 211
-00:18:02,869 --> 00:18:06,948
+00:15:29,530 --> 00:15:32,642
 Those stronger claims would require additional matched
 evidence.
 
 212
-00:18:07,168 --> 00:18:12,611
+00:15:33,312 --> 00:15:37,909
 Motor Grader needs special explanation because two component
 tasks are retained.
 
 213
-00:18:12,831 --> 00:18:17,085
+00:15:38,129 --> 00:15:41,682
 The original sensor route diagnoses slewing-bearing
 conditions.
 
 214
-00:18:17,305 --> 00:18:23,723
+00:15:41,902 --> 00:15:47,730
 The aligned comparison adds an Aalto gear sensor checkpoint
 for a broad healthy-versus-damaged gear target.
 
 215
-00:18:23,943 --> 00:18:31,031
+00:15:47,950 --> 00:15:53,685
 Here the actual local Aalto recording produces a healthy
 prediction with a probability of zero point nine eight seven.
 
 216
-00:18:31,251 --> 00:18:34,670
+00:15:53,905 --> 00:15:56,634
 This is a deployment response on a fitting recording.
 
 217
-00:18:34,890 --> 00:18:39,143
+00:15:56,854 --> 00:15:59,896
 It is not ninety-eight point seven percent held-out accuracy.
 
 218
-00:18:39,363 --> 00:18:44,447
+00:16:00,116 --> 00:16:04,504
 The independent gear-pair experiment is the evidence used to
 discuss generalization.
 
 219
-00:18:44,667 --> 00:18:51,200
+00:16:04,724 --> 00:16:10,448
 The Aalto dataset is a laboratory gearbox analogue, not a
 field recording from a Motor Grader.
 
 220
-00:18:51,420 --> 00:18:57,695
+00:16:10,668 --> 00:16:16,340
 Preserving both routes avoids deleting working evidence while
 making the component comparison more mechanically
 
 221
-00:18:57,695 --> 00:18:58,317
+00:16:16,340 --> 00:16:16,902
 defensible.
 
 222
-00:18:58,537 --> 00:19:05,105
+00:16:17,572 --> 00:16:23,412
 The Motor Grader image route scores a real tooth inspection
 crop using the saved feature-based classifier.
 
 223
-00:19:05,325 --> 00:19:11,863
+00:16:23,632 --> 00:16:29,356
 The example panel shows the actual damaged-tooth prediction
 and the fields returned by that implementation.
 
 224
-00:19:12,083 --> 00:19:18,587
+00:16:29,576 --> 00:16:35,720
 The model confidence display is still an uncalibrated output
 and should not be interpreted as certainty of real
 
 225
-00:19:18,587 --> 00:19:19,641
+00:16:35,720 --> 00:16:36,716
 equipment failure.
 
 226
-00:19:19,861 --> 00:19:27,015
+00:16:36,936 --> 00:16:44,334
 Sensor and image tasks share a broad gear-condition target,
 but one label is attached to a gear-pair run and the other
 
 227
-00:19:27,015 --> 00:19:28,349
+00:16:44,334 --> 00:16:45,713
 to a local tooth crop.
 
 228
-00:19:28,569 --> 00:19:31,078
+00:16:45,933 --> 00:16:47,361
 Their physical gears are different.
 
 229
-00:19:31,298 --> 00:19:38,469
+00:16:47,581 --> 00:16:53,930
 The existing tests therefore support a comparison of related
 classification tasks, not a paired same-grader
 
 230
-00:19:38,469 --> 00:19:39,206
+00:16:53,930 --> 00:16:54,582
 experiment.
 
 231
-00:19:39,426 --> 00:19:45,968
+00:16:54,802 --> 00:17:00,488
 The original bearing checkpoint remains available
 independently and should not be substituted into this gear-
 tooth
 
 232
-00:19:45,968 --> 00:19:46,599
+00:17:00,488 --> 00:17:01,037
 comparison.
 
 233
-00:19:46,819 --> 00:19:52,392
+00:17:01,707 --> 00:17:06,444
 This execution supplies a compatible CORA recording without
 selecting an equipment mapping.
 
 234
-00:19:52,612 --> 00:19:58,425
+00:17:06,664 --> 00:17:11,795
 The expected behaviour is an ambiguous equipment response
 listing the supported candidates.
 
 235
-00:19:58,645 --> 00:20:05,453
+00:17:12,015 --> 00:17:17,681
 The system cannot infer that an identical laboratory source
 must belong to one particular whole mining machine.
 
 236
-00:20:05,673 --> 00:20:12,136
+00:17:17,901 --> 00:17:22,986
 This is a reliability feature, not a missing classification
 trick that should be bypassed with a guess.
 
 237
-00:20:12,356 --> 00:20:19,197
+00:17:23,206 --> 00:17:28,737
 Manual mapping confirmation allows a known task to be
 evaluated, but it does not create new evidence about the
 
 238
-00:20:19,197 --> 00:20:20,814
+00:17:28,737 --> 00:17:30,044
 original physical machine.
 
 239
-00:20:21,034 --> 00:20:24,347
+00:17:30,264 --> 00:17:32,714
 The same principle applies to image provenance.
 
 240
-00:20:24,567 --> 00:20:30,775
+00:17:32,934 --> 00:17:38,797
 A visually similar frame can remain ambiguous when its source
 index cannot establish a unique route.
 
 241
-00:20:30,995 --> 00:20:37,532
+00:17:39,017 --> 00:17:44,575
 The final demonstration should explain this behaviour clearly
 rather than presenting every upload as automatic
 
 242
-00:20:37,532 --> 00:20:38,423
+00:17:44,575 --> 00:17:45,333
 identification.
 
 243
-00:20:38,643 --> 00:20:45,796
+00:17:46,003 --> 00:17:52,365
 The invalid-input examples test ordinary text, an unrecognized
 CSV and corrupted image bytes.
 
 244
-00:20:46,016 --> 00:20:53,264
+00:17:52,585 --> 00:17:58,193
 Each example was actually sent to the prediction function, and
 the displayed response records the resulting rejection.
 
 245
-00:20:53,484 --> 00:20:59,732
+00:17:58,413 --> 00:18:03,730
 These checks matter because an upload control can accept a
 filename even when the content is unusable.
 
 246
-00:20:59,952 --> 00:21:05,051
+00:18:03,950 --> 00:18:08,327
 The model-loading path also verifies checkpoint trust and
 expected metadata.
 
 247
-00:21:05,271 --> 00:21:11,774
+00:18:08,547 --> 00:18:14,677
 A missing or untrusted checkpoint must not be replaced with a
 random estimator or a fabricated prediction.
 
 248
-00:21:11,994 --> 00:21:18,357
+00:18:14,897 --> 00:18:19,437
 Errors should explain why the input could not be scored, while
 leaving the working application stable.
 
 249
-00:21:18,577 --> 00:21:25,946
+00:18:19,657 --> 00:18:25,870
 These examples demonstrate handling of specific tested cases;
 they are not a guarantee that every imaginable malformed
 
 250
-00:21:25,946 --> 00:21:27,444
+00:18:25,870 --> 00:18:27,133
 file has been exhausted.
 
 251
-00:21:27,664 --> 00:21:34,551
+00:18:27,803 --> 00:18:34,645
 The complete route check executed thirty-nine saved-model
 examples successfully, covering all eight sensor and image
 
 252
-00:21:34,551 --> 00:21:37,282
+00:18:34,645 --> 00:18:37,359
 mappings plus the additional Aalto gear route.
 
 253
-00:21:37,502 --> 00:21:42,611
+00:18:37,579 --> 00:18:42,153
 Unsupported-file rejection and shared-CORA ambiguity checks
 also passed.
 
 254
-00:21:42,831 --> 00:21:50,501
+00:18:42,373 --> 00:18:48,773
 The important qualification is the definition of pass: a model
 loaded, accepted a compatible input and returned the
 
 255
-00:21:50,501 --> 00:21:51,568
+00:18:48,773 --> 00:18:49,664
 required output.
 
 256
-00:21:51,788 --> 00:21:57,871
+00:18:49,884 --> 00:18:55,050
 Two Drill Rig images were classified as healthy when their
 source labels were gear wear and gear pitting.
 
 257
-00:21:58,091 --> 00:22:03,185
+00:18:55,270 --> 00:18:59,496
 Those cases remain visible as prediction errors even though
 execution succeeded.
 
 258
-00:22:03,405 --> 00:22:10,631
+00:18:59,716 --> 00:19:05,576
 The clean publication checkout passed two hundred fifty-five
 automated tests, with two tests skipped because local
 
 259
-00:22:10,631 --> 00:22:12,153
+00:19:05,576 --> 00:19:06,810
 data were not available.
 
 260
-00:22:12,373 --> 00:22:19,475
+00:19:07,030 --> 00:19:12,533
 These counts come from earlier verification runs; the test
 suite was not rerun while this video was prepared.
 
 261
-00:22:19,695 --> 00:22:24,124
+00:19:13,203 --> 00:19:16,884
 The final report contains the independent experimental
 results.
 
 262
-00:22:24,344 --> 00:22:31,042
+00:19:17,104 --> 00:19:23,084
 Pump reached ninety-five point eight three percent sensor
 balanced accuracy and one hundred percent visual balanced
 
 263
-00:22:31,042 --> 00:22:34,071
+00:19:23,084 --> 00:19:25,788
 accuracy under their respective recording protocols.
 
 264
-00:22:34,291 --> 00:22:40,789
+00:19:26,008 --> 00:19:31,232
 Those protocols and rigs differ, so the result does not
 establish that vision is universally better.
 
 265
-00:22:41,009 --> 00:22:45,103
+00:19:31,452 --> 00:19:35,017
 The CORA tasks showed weak transfer to unseen speeds.
 
 266
-00:22:45,323 --> 00:22:50,497
+00:19:35,237 --> 00:19:39,532
 Haul Truck had weaker visual recognition and a load-confounded
 ball-fault class.
 
 267
-00:22:50,717 --> 00:22:57,665
+00:19:39,752 --> 00:19:46,154
 Motor Grader's aligned gear sensor result was seventy-seven
 point seven eight percent balanced accuracy, while the
 
 268
-00:22:57,665 --> 00:23:01,200
+00:19:46,154 --> 00:19:49,412
 tooth-photo result was eighty-two point five nine percent.
 
 269
-00:23:01,420 --> 00:23:08,083
+00:19:49,632 --> 00:19:55,472
 Its high raw photo accuracy is affected by class imbalance,
 and damaged-tooth recall is lower.
 
 270
-00:23:08,303 --> 00:23:15,151
+00:19:55,692 --> 00:20:01,334
 The poster shows these same held-out balanced accuracies, and
 the report gives the full numerical evidence.
 
 271
-00:23:15,371 --> 00:23:22,591
+00:20:02,004 --> 00:20:08,553
 Supplementary time-split checks use the first sixty percent of
 a recording for training, discard a ten percent gap and
 
 272
-00:23:22,591 --> 00:23:24,548
+00:20:08,553 --> 00:20:10,328
 test on the last thirty percent.
 
 273
-00:23:24,768 --> 00:23:29,187
+00:20:10,548 --> 00:20:14,055
 Several saved results are much higher than the unseen-speed
 results.
 
 274
-00:23:29,407 --> 00:23:33,406
+00:20:14,275 --> 00:20:17,119
 This is not a reason to hide the more difficult evaluations.
 
 275
-00:23:33,626 --> 00:23:36,944
+00:20:17,339 --> 00:20:19,278
 The two protocols ask different questions.
 
 276
-00:23:37,164 --> 00:23:44,148
+00:20:19,498 --> 00:20:25,709
 A later segment of a known recording can retain the same
 speed, specimen and acquisition signature as training.
 
 277
-00:23:44,368 --> 00:23:51,111
+00:20:25,929 --> 00:20:31,467
 A gap reduces direct temporal overlap, but it does not create
 a new machine or operating condition.
 
 278
-00:23:51,331 --> 00:23:57,154
+00:20:31,687 --> 00:20:36,447
 The report labels these scores separately and notes that
 fitting settings and sample pools can differ.
 
 279
-00:23:57,374 --> 00:24:04,541
+00:20:36,667 --> 00:20:43,191
 No score from this procedure establishes future failure
 forecasting, and no unsupported time-split result is assigned
 
 280
-00:24:04,541 --> 00:24:06,991
+00:20:43,191 --> 00:20:45,421
 to a mapping without a saved experiment.
 
 281
-00:24:07,211 --> 00:24:14,454
+00:20:46,091 --> 00:20:52,430
 The practical outcome is a working educational prototype for
 component inspection and reproducible model comparison.
 
 282
-00:24:14,674 --> 00:24:22,862
+00:20:52,650 --> 00:20:58,977
 It demonstrates data ingestion, feature preparation, trusted
 model reuse, ambiguity handling and prediction output
 
 283
-00:24:22,862 --> 00:24:24,802
+00:20:58,977 --> 00:21:00,475
 through a common interface.
 
 284
-00:24:25,022 --> 00:24:29,375
+00:21:00,695 --> 00:21:04,283
 Its remaining limitations are scientific as well as
 operational.
 
 285
-00:24:29,595 --> 00:24:37,696
+00:21:04,503 --> 00:21:11,583
 Some datasets share records, image crops remain related,
 synthetic renders need validation against real photographs,
 
 286
-00:24:37,696 --> 00:24:41,537
+00:21:11,583 --> 00:21:14,940
 and confidence values are not calibrated failure risks.
 
 287
-00:24:41,757 --> 00:24:47,176
+00:21:15,160 --> 00:21:19,758
 The code package also needs local data and checkpoints to run
 the full demonstration.
 
 288
-00:24:47,396 --> 00:24:54,425
+00:21:19,978 --> 00:21:26,389
 Before a real maintenance decision could rely on this system,
 additional work would need site-specific measurements,
 
 289
-00:24:54,425 --> 00:25:00,302
+00:21:26,389 --> 00:21:31,750
 balanced operating conditions, independent machines and a
 clear assessment of missed-fault costs.
 
 290
-00:25:00,522 --> 00:25:07,775
+00:21:31,970 --> 00:21:38,124
 The present software should support investigation and
 explanation, not replace qualified engineering judgment.
 
 291
-00:25:07,995 --> 00:25:11,799
+00:21:38,794 --> 00:21:41,766
 This chapter lists the main sources used in the project.
 
 292
-00:25:12,019 --> 00:25:20,456
+00:21:41,986 --> 00:21:50,128
 The sensor data come from the Ottawa and UODS bearing
 datasets, the CORA electromechanical dataset, the MCC5-THU
 
 293
-00:25:20,456 --> 00:25:26,105
+00:21:50,128 --> 00:21:55,581
 gearbox data, the Aalto gear failure dataset and a slewing-
 bearing dataset.
 
 294
-00:25:26,325 --> 00:25:35,104
+00:21:55,801 --> 00:22:03,952
 The image data come from the XJTU dynamic-vision dataset, CORA
 infrared frames, MFGNet gear renders and the GearBox
 
 295
-00:25:35,104 --> 00:25:36,478
+00:22:03,952 --> 00:22:05,228
 tooth photographs.
 
 296
-00:25:36,698 --> 00:25:43,091
+00:22:05,448 --> 00:22:11,010
 All nine public datasets are published under the Creative
 Commons Attribution 4.0 licence.
 
 297
-00:25:43,311 --> 00:25:49,125
+00:22:11,230 --> 00:22:15,850
 The models build on Breiman's random forests and on the
 residual networks of He and colleagues.
 
 298
-00:25:49,345 --> 00:25:56,206
+00:22:16,070 --> 00:22:23,227
 The mining context and the evaluation design draw on Dayo-
 Olupona and colleagues' review of predictive maintenance in
 
 299
-00:25:56,206 --> 00:26:02,012
+00:22:23,227 --> 00:22:29,282
 mining, Zhao and colleagues' diagnosis benchmark, and Kaufman
 and colleagues' work on data leakage.
 
 300
-00:26:02,232 --> 00:26:06,970
+00:22:29,502 --> 00:22:33,473
 The final report lists all twenty-four references with full
 citations.
 
 301
-00:26:07,190 --> 00:26:14,343
+00:22:34,143 --> 00:22:40,285
 To conclude, the coding phase provides one integrated notebook
 backed by a reusable Python implementation.
 
 302
-00:26:14,563 --> 00:26:21,904
+00:22:40,505 --> 00:22:47,064
 It accepts supported sensor recordings or component images,
 checks source compatibility, loads an existing model and
 
 303
-00:26:21,904 --> 00:26:25,765
+00:22:47,064 --> 00:22:50,513
 returns a fault label with model information and probability.
 
 304
-00:26:25,985 --> 00:26:32,868
+00:22:50,733 --> 00:22:56,270
 Where source evidence cannot distinguish equipment mappings,
 the system reports ambiguity rather than guessing.
 
 305
-00:26:33,088 --> 00:26:40,219
+00:22:56,490 --> 00:23:02,957
 Real local execution checks confirm that the supported routes
 run, including the aligned Aalto gear sensor and Motor
 
 306
-00:26:40,219 --> 00:26:41,756
+00:23:02,957 --> 00:23:04,350
 Grader tooth-image paths.
 
 307
-00:26:41,976 --> 00:26:49,669
+00:23:04,570 --> 00:23:11,165
 The final report explains the actual held-out results, the
 supplementary time-split check and the unsuccessful cases.
 
 308
-00:26:49,889 --> 00:26:55,632
+00:23:11,385 --> 00:23:16,250
 The project is complete as a laboratory-based demonstration
 with scientific limitations.
 
 309
-00:26:55,852 --> 00:27:02,863
+00:23:16,470 --> 00:23:22,786
 Future work should improve independent data and validation
 before expanding claims about mining-field reliability or
 
 310
-00:27:02,863 --> 00:27:04,435
+00:23:22,786 --> 00:23:24,202
 future failure prediction.
 
 311
-00:27:04,655 --> 00:27:06,684
+00:23:24,422 --> 00:23:25,339
 Thank you for watching.
