@@ -19,7 +19,7 @@ This folder shares the completed submission materials and the existing software 
 | Narration text | [Transcript](Video/Group9_Video_Transcript.txt) |
 | Navigation | [Chapter timestamps](Video/Group9_Video_Chapters.txt) |
 
-The poster presents qualitative experimental findings without accuracy percentages. The report retains all numerical results and separates primary held-out tests from secondary within-recording time splits.
+The poster follows the instructor's section list: title and objective, block diagram, dataset, models, results, use-cases, contributors and references. It shows held-out balanced accuracy only; sensor and image scores come from different rigs and protocols and are not fused. The report retains all numerical results and reports the within-recording time split only as a supplementary check.
 
 ## Access for the team
 
