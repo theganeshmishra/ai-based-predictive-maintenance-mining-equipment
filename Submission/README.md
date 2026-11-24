@@ -13,6 +13,7 @@ This folder shares the completed submission materials and the existing software 
 | Final report | [PDF](Group9_Final_Capstone_Report.pdf) and [editable Word version](Editable/Group9_Final_Capstone_Report.docx) |
 | Explained, executed notebook | [Group9_Capstone_Submission.ipynb](Group9_Capstone_Submission.ipynb) |
 | Research poster | [96 inch wide by 48 inch high PDF](Group9_Capstone_Poster_96x48.pdf) |
+| Final presentation | [24-slide PPTX](Group9_Final_Presentation.pptx), about 25 minutes, speaker and timing in the notes; slide 21 embeds a 44-second clip from the walkthrough (AI narration) |
 | Animated walkthrough | [23 minute 26 second MP4](Video/Group9_Capstone_Walkthrough.mp4) |
 | Interactive walkthrough | [Standalone HTML](Video/Group9_Interactive_Walkthrough.html) |
 | Narration captions | [English SRT](Video/Group9_Video_Captions.srt), also selectable in the MP4 |
