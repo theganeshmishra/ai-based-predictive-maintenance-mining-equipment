@@ -189,3 +189,7 @@ Local only (git-ignored): `Raw_Data/`, `Processed_Data/` (feature tables and tra
 - **GPU (optional).** `requirements.txt` installs the CPU build of PyTorch, which works everywhere. With an NVIDIA GPU, run `.venv\Scripts\python.exe -m pip install --force-reinstall --no-deps torch==2.14.1 torchvision==0.29.1 --index-url https://download.pytorch.org/whl/cu130`. The image model then uses the GPU by itself (set `PDM_DEVICE=cpu` to force the CPU). Each image result records the device it was trained on, because GPU and CPU runs can differ slightly.
 - These models classify the current condition of a component. They do not predict remaining useful life.
 - Project code and documentation are under the [MIT License](LICENSE). Datasets keep their publishers' licences (all CC BY 4.0) and are not redistributed here.
+
+### Automated checks
+
+All application checks are grouped by feature in `tests/test_application.py`. Run them with `python -m pytest tests -q`. The two real-file checks need local datasets and trusted checkpoints; they skip explicitly when those assets are absent.

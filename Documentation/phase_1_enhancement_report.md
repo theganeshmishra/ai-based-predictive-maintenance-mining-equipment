@@ -110,7 +110,7 @@ The checks and the one new experiment were fixed in advance in the [final verifi
 | `python Notebook/predictive_maintenance.py route-check`, final | **39 of 39 routes passed**, 0 failed; unsupported file rejected; unmapped CORA file returned "Ambiguous Equipment" |
 | `pip check` | no broken requirements |
 
-The 161 new test cases are in `tests/test_phase1_final.py`. 148 of them check that every saved confusion matrix in `Results/` agrees with its reported accuracy, balanced accuracy, macro F1 and unit count. The rest are leakage guards, cache bounds, analytic diagnostics checks and UODS trimming. They are synthetic or read committed result files, so they also run on GitHub. The real-file tests (Pump and Aalto routes) ran locally and are skipped on GitHub, where the data is absent.
+The 161 new test cases are in `tests/test_application.py` (archived results and final regression section). 148 of them check that every saved confusion matrix in `Results/` agrees with its reported accuracy, balanced accuracy, macro F1 and unit count. The rest are leakage guards, cache bounds, analytic diagnostics checks and UODS trimming. They are synthetic or read committed result files, so they also run on GitHub. The real-file tests (Pump and Aalto routes) ran locally and are skipped on GitHub, where the data is absent.
 
 ### 3. GitHub Actions
 
