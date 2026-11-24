@@ -1,92 +1,64 @@
 # AI-Based Predictive Maintenance for Mining Equipment
 
-Saskatchewan Polytechnic · Group 9 · Ganesh Mishra, Lakshya Sharma and Sagar Patel
+**Group 9:** Ganesh Mishra, Lakshya Sharma and Sagar Patel
+Saskatchewan Polytechnic
 
-A local application for classifying current component faults from supported sensor recordings and images. Eight mining-equipment mappings are supported: Pump, Haul Truck, Belt Conveyor, Dozer, Excavator, Wheel Loader, Drill Rig and Motor Grader. The datasets are laboratory component analogues, gear photographs and synthetic CAD renders, not mining-field measurements.
+Upload a supported sensor file or component image to check its current fault condition. The application returns a fault label, model score and the model used.
 
-## Start here
+We use public laboratory datasets as examples of components found in mining equipment. The project covers Pump, Haul Truck, Belt Conveyor, Dozer, Excavator, Wheel Loader, Drill Rig and Motor Grader. It has not been tested on operating mining machines and does not predict a failure date.
 
-- **Run predictions:** [Integrated prediction notebook](Notebook/Integrated_Equipment_Fault_Prediction.ipynb).
-- **Understand the experiments:** [Condition-monitoring notebook](Notebook/Mining_Equipment_Condition_Monitoring.ipynb).
-- **Application code:** [predictive_maintenance.py](Notebook/predictive_maintenance.py).
-- **Run all automated checks:** [test_application.py](tests/test_application.py).
+## Main files
 
-## Install and open in VS Code
+| File | What it does |
+|---|---|
+| [Prediction notebook](Notebook/Integrated_Equipment_Fault_Prediction.ipynb) | Upload a file and get a prediction |
+| [Experiment notebook](Notebook/Mining_Equipment_Condition_Monitoring.ipynb) | Review data preparation, models and results |
+| [predictive_maintenance.py](Notebook/predictive_maintenance.py) | Data loading, training, prediction and local web page |
+| [test_application.py](tests/test_application.py) | Application tests in one file |
 
-Use Python 3.11 and open this repository folder in VS Code. Install the Python and Jupyter extensions.
+## Run in VS Code
+
+Install Python 3.11 and the VS Code Python and Jupyter extensions. Open this repository folder, then create an environment:
 
 ```bash
-git clone https://github.com/theganeshmishra/ai-based-predictive-maintenance-mining-equipment.git
-cd ai-based-predictive-maintenance-mining-equipment
 python -m venv .venv
 ```
 
-Activate the environment with `.venv\Scripts\activate` on Windows, or `source .venv/bin/activate` on Mac/Linux, then install:
+Activate it with `.venv\Scripts\activate` on Windows or `source .venv/bin/activate` on Mac/Linux, then install the packages:
 
 ```bash
 python -m pip install -r requirements.txt
 ```
 
-Open a notebook, select the `.venv` kernel and run its cells. The saved-result sections work without raw datasets. Real predictions require the local inputs, image indexes and trusted checkpoints described below. [requirements-lock.txt](requirements-lock.txt) records the previously tested package versions.
-
-## Local data and trained models
-
-Obtain source data from the [dataset manifest](Dataset_Manifest/manifest.md). Keep raw files in `Raw_Data/`, exported frames and their indexes in `Images/`, and deployment checkpoints in `Processed_Data/models/`. These folders are excluded from Git.
-
-```bash
-python Notebook/predictive_maintenance.py data-check
-python Notebook/predictive_maintenance.py route-check
-```
-
-`route-check` performs real local inference: exit 0 means execution checks passed, 1 means a failure, and 2 means required local assets are missing. Execution checks are not independent accuracy estimates and may use fitting samples.
-
-Every component checkpoint needs a verified SHA-256 entry in `Processed_Data/models/trusted_sha256.json`. Verify provenance and hashes before using `trust-models`; do not register an unknown model just to bypass a loading error. Training registers its own outputs. Joblib loading can execute code; image weights use trusted hashes and restricted weight loading.
-
-The Motor Grader gear route uses `grader_gear_sensor.joblib` and `grader_gear_tooth.joblib`. Its original JUST slewing-bearing route remains separate. Restore verified checkpoints for demonstration rather than retraining automatically. Rebuild instructions, export requirements and previous verification records are preserved in the [experiment archive](Documentation/experiment_archive.md).
-
-## Predict and demonstrate
+Open the prediction notebook, select the `.venv` kernel and run the cells. For the local upload page, run:
 
 ```bash
 python Notebook/predictive_maintenance.py serve
-python Notebook/predictive_maintenance.py predict path/to/input.csv
-python Notebook/predictive_maintenance.py demo-check
 ```
 
-The upload page opens at `http://localhost:8613`, with a dashboard at `/dashboard`. It returns the equipment mapping, fault class, model probability and model name. Stop the local server with Ctrl+C. See the [demo script](Documentation/demo_script.md) for supported sample inputs and expected behavior.
+Open `http://localhost:8613`. Stop the server with Ctrl+C.
 
-Automatic identification recognizes supported schemas or verified image provenance. Shared CORA files and unresolved event-camera inputs remain ambiguous; select a compatible mapping only when its source is known. There is no validated universal whole-machine photograph classifier. Probabilities are uncalibrated model outputs, not failure risks or future failure dates.
+## Data and model files
 
-## Results and scientific scope
+Real predictions need the source data, exported images and saved models on your computer. They are not downloaded automatically or included in Git. See the [dataset manifest](Dataset_Manifest/manifest.md) and the [project guide](Documentation/final_report.md#running-the-application) for folders, trusted checkpoints and commands. The experiment notebook can display saved results without the raw datasets.
 
-The [evidence matrix](Documentation/equipment_evidence_matrix.md) records components, fault labels, evaluation groups and metrics. [Saved results](Results/README.md) and their [figures](Figures/) retain primary evaluations, time-split checks and unsuccessful follow-ups.
+Some equipment uses the same dataset format. If the application cannot identify the mapping, it asks you to choose rather than guessing. The displayed score is a model output, not a guaranteed diagnosis.
 
-- Pump has the strongest aligned benchmark: 95.83% sensor and 100% visual balanced accuracy under different recording holdouts.
-- CORA mappings have weak unseen-speed transfer. Dozer reuses Belt Conveyor data; Excavator and Wheel Loader also share some runs. They are not independent mining-machine trials.
-- Drill Rig images are synthetic CAD renders. Sensor root cracks and rendered root breakage require a qualified comparison.
-- Motor Grader's aligned gear comparison uses Aalto sensor balanced accuracy of 77.78% and tooth-image balanced accuracy of 82.59%, from different physical gears and evaluation units. The archived JUST bearing score is a separate component task.
-- Time-split results measure later segments of recordings seen during training. They cannot replace unseen-speed or unseen-gear-pair results. No paired multimodal fusion, mining-field validation or remaining-life prediction is claimed.
+## Results and documentation
 
-## Essential documentation
+Start with the [project guide](Documentation/final_report.md). The [evidence matrix](Documentation/equipment_evidence_matrix.md) lists the component, fault labels and scores for each mapping. [Results](Results/README.md) contains the saved metrics and [Figures](Figures/) contains the graphs.
 
-| Document | Purpose |
-|---|---|
-| [Project report](Documentation/final_report.md) | Project summary, outcomes and limitations |
-| [Methodology](Documentation/methodology.md) | Preprocessing, grouped evaluation and model selection |
-| [Evidence matrix](Documentation/equipment_evidence_matrix.md) | Eight equipment mappings and comparable results |
-| [Scientific validation](Documentation/scientific_validation.md) | Evidence checks and deployment qualifications |
-| [Demo script](Documentation/demo_script.md) | Local demonstration workflow |
-| [Experiment archive](Documentation/experiment_archive.md) | Consolidated original plans, investigations and verification history |
+Whole-group tests and time-split results are reported separately. Some models perform poorly at unseen speeds. CORA data are reused across mappings, Drill Rig images are synthetic, and sensor/image samples are not a fused dataset. The [methodology](Documentation/methodology.md), [validation](Documentation/scientific_validation.md) and [experiment archive](Documentation/experiment_archive.md) explain these limits. Use the [demo script](Documentation/demo_script.md) to rehearse.
 
-Final submission documents, videos and weekly exports are kept locally rather than in this repository. A fresh clone does not include the large datasets or trained model files.
-
-## Automated checks
+## Check the application
 
 ```bash
 python -m pip install pytest pyflakes
 python -m pyflakes Notebook tests
 python -m pytest tests -q
+python Notebook/predictive_maintenance.py route-check
 ```
 
-All checks are organized by feature in one file, `tests/test_application.py`. Two real-file checks explicitly skip when their local data/checkpoints are unavailable. GitHub Actions runs the tests and lint checks on every push and pull request.
+The test suite skips two real-file tests when their local assets are missing. The route check needs the actual samples and checkpoints; successful execution is not a held-out accuracy score.
 
-Code uses the [MIT License](LICENSE). Dataset publishers retain their licences and attribution, recorded in the manifest. No source datasets are redistributed here.
+The code uses the [MIT License](LICENSE). Dataset licences and credits remain with their publishers. Reports, videos, raw datasets and model binaries stay local.

@@ -1,8 +1,8 @@
-# Final report: sensor and image condition classification for eight mining equipment mappings
+# Project guide
 
 AI-Based Predictive Maintenance for Mining Equipment · Saskatchewan Polytechnic · Group 9: Ganesh Mishra, Lakshya Sharma and Sagar Patel · November 10, 2026, updated November 16, 2026
 
-This report brings the project's evidence into one place. Every number comes from a saved result file in `Results/` and can be rerun with the commands in the [README](../README.md). The detailed records are the [evidence matrix](equipment_evidence_matrix.md), the [methodology](methodology.md), the [follow-up experiments](experiment_archive.md#record-followup-experiments), the [improvement results](experiment_archive.md#record-improvement-results), the [Grader matched-class results](experiment_archive.md#record-grader-matched-classes-results) and the [deployment verification](experiment_archive.md#record-phase-1-enhancement-report).
+This guide explains the experiments and how to run the application. Every number comes from a saved result file in `Results/` and can be rerun with the commands in the [README](../README.md). The detailed records are the [evidence matrix](equipment_evidence_matrix.md), the [methodology](methodology.md), the [follow-up experiments](experiment_archive.md#record-followup-experiments), the [improvement results](experiment_archive.md#record-improvement-results), the [Grader matched-class results](experiment_archive.md#record-grader-matched-classes-results) and the [deployment verification](experiment_archive.md#record-phase-1-enhancement-report).
 
 ## 1. Question and scope
 
@@ -36,7 +36,7 @@ All datasets are public and licensed CC BY 4.0. Sources, versions, checksums and
 4. **One answer per unit.** Each test recording, run or gear gets one prediction: the class with the highest mean probability over its windows or images. We report accuracy, balanced accuracy and macro F1 against a majority-class control.
 5. **Planned before running.** Every follow-up experiment was written down and committed before it ran, and each ran once. Weak results are reported, not tuned away.
 
-## 4. Main results (fair test)
+## 4. Archived results (fair test)
 
 | Machine | Fair test holds out | Sensor: accuracy / balanced / macro F1 | Image: accuracy / balanced / macro F1 | Units tested (sensor; image) |
 |---|---|---|---|---|
@@ -48,6 +48,8 @@ All datasets are public and licensed CC BY 4.0. Sources, versions, checksums and
 | Wheel Loader | one speed per round | 31.3 / 31.3 / 32.5% | 18.8 / 18.8 / 20.6% | 16; 16 runs |
 | Drill Rig | one speed (sensor), 3 CAD designs per round (images) | 73.3 / 68.1 / 70.5% | **88.9 / 88.9 / 88.8%** | 120 recordings; 4,800 rendered gears |
 | Motor Grader | one working condition (sensor), one photo or video set (images) | **84.2 / 84.2 / 84.7%** | **97.2 / 82.6 / 85.8%** | 120 recordings; 2,879 tooth crops |
+
+The Motor Grader row above is the legacy JUST bearing experiment, not the aligned gear sensor comparison. The Aalto gear sensor experiment reports 78.35% accuracy, 77.78% balanced accuracy and 76.58% macro F1 on 425 runs. Its image counterpart reports 82.59% balanced accuracy on tooth crops from different physical gears.
 
 The majority control is 25% for the four-class tests (30% for the Drill Rig sensor, 50% accuracy for the Haul Truck sensor). Bold marks results at or above 80% accuracy.
 
@@ -114,3 +116,33 @@ We did not change tests, merge test data into training, or select results after 
 ## 10. Data credits
 
 University of Ottawa bearing data (Huang and Baddour); University of Ottawa UODS-VAFDC; XJTU-DV event-camera datasets (Zenodo 17447083); CORA rotating electromechanical system (CSUC Dataverse doi 10.34810/DATA2500); MCC5-THU gearbox datasets (Chen et al., Mendeley doi 10.17632/p92gj2732w.2); MFGNet-Gear (Mei and Shao, Deep Blue Data doi 10.7302/qrdj-n812); JUST slewing bearing datasets (Ren, Mendeley doi 10.17632/hwg8v5j8t6.1); GearBox_adddingImg (Roboflow Universe); Aalto Gear Failure Dataset (Dahl et al., Mendeley doi 10.17632/fywnj597d8.2). All CC BY 4.0. Full links are in the [dataset manifest](../Dataset_Manifest/manifest.md).
+
+
+## Running the application
+
+### Data and models
+
+Obtain source data from the [dataset manifest](../Dataset_Manifest/manifest.md). Keep raw files in `Raw_Data/`, exported frames and their indexes in `Images/`, and deployment checkpoints in `Processed_Data/models/`. These folders are excluded from Git.
+
+```bash
+python Notebook/predictive_maintenance.py data-check
+python Notebook/predictive_maintenance.py route-check
+```
+
+`route-check` performs real local inference: exit 0 means execution checks passed, 1 means a failure, and 2 means required local assets are missing. Execution checks are not independent accuracy estimates and may use fitting samples.
+
+Every component checkpoint needs a verified SHA-256 entry in `Processed_Data/models/trusted_sha256.json`. Verify provenance and hashes before using `trust-models`; do not register an unknown model just to bypass a loading error. Training registers its own outputs. Joblib loading can execute code; image weights use trusted hashes and restricted weight loading.
+
+The Motor Grader gear route uses `grader_gear_sensor.joblib` and `grader_gear_tooth.joblib`. Its original JUST slewing-bearing route remains separate. Restore verified checkpoints for demonstration rather than retraining automatically. Rebuild instructions, export requirements and previous verification records are preserved in the [experiment archive](experiment_archive.md).
+
+### Predictions
+
+```bash
+python Notebook/predictive_maintenance.py serve
+python Notebook/predictive_maintenance.py predict path/to/input.csv
+python Notebook/predictive_maintenance.py demo-check
+```
+
+The upload page opens at `http://localhost:8613`, with a dashboard at `/dashboard`. It returns the equipment mapping, fault class, model probability and model name. Stop the local server with Ctrl+C. See the [demo script](demo_script.md) for supported sample inputs and expected behavior.
+
+Automatic identification recognizes supported schemas or verified image provenance. Shared CORA files and unresolved event-camera inputs remain ambiguous; select a compatible mapping only when its source is known. There is no validated universal whole-machine photograph classifier. Probabilities are uncalibrated model outputs, not failure risks or future failure dates.
