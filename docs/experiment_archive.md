@@ -321,7 +321,7 @@ Aalto is the primary gear-sensor candidate. The saved confusion matrices reprodu
 
 The next step is to obtain the verified Aalto archive or its provenance-checked feature cache and representative raw CSVs. Select the final feature set and estimator using grouped validation, fit the deployment artifact separately, and save its class order, feature order, channel schema, sampling rate and window configuration. Verify predictions using the exact Aalto preprocessing before adding a source-confirmed route. Treat the existing outer-fold score as an estimate for the model-selection procedure. A separate unseen gear pair would be needed to independently validate the final all-data artifact. Keep the JUST bearing route available as a separate diagnostic task.
 
-The binary crosswalk is `healthy` to `good_tooth` and `tooth_damage` to `damaged_tooth` at the condition-category level. A good tooth does not certify the full gear as healthy. Aalto and the image dataset contain different physical gears. Same-grader field evidence remains an open requirement. See the [eight-equipment evidence matrix](equipment_evidence_matrix.md).
+The binary crosswalk is `healthy` to `good_tooth` and `tooth_damage` to `damaged_tooth` at the condition-category level. A good tooth does not certify the full gear as healthy. Aalto and the image dataset contain different physical gears. Same-grader field evidence remains an open requirement. See the [eight-equipment evidence matrix](project_guide.md#section-equipment-evidence-matrix).
 
 ## Deployment model · November 10, 2026
 
@@ -385,7 +385,7 @@ Rerun commands: `python Notebook/predictive_maintenance.py attempt drill-orders`
 
 ## C. CORA transient runs: unseen repetition at a known speed
 
-- **Data:** CORA transient start-up runs from CSUC Dataverse doi 10.34810/DATA2500 (CC BY 4.0). There are 5 repetitions per class and speed, each 30 s of Vx at 3 kHz with the output-shaft RPM at about 100 Hz. Each 1 s window is normalised by its measured speed, and windows below half the steady speed are dropped. The 396 files are listed with SHA-256 in [`cora_transient_files.json`](../Dataset_Manifest/cora_transient_files.json).
+- **Data:** CORA transient start-up runs from CSUC Dataverse doi 10.34810/DATA2500 (CC BY 4.0). There are 5 repetitions per class and speed, each 30 s of Vx at 3 kHz with the output-shaft RPM at about 100 Hz. Each 1 s window is normalised by its measured speed, and windows below half the steady speed are dropped. The 396 files are listed with SHA-256 in [`cora_transient_files.json`](../datasets/cora_transient_files.json).
 - **Test:** five rounds, each holding out repetition k at all four speeds (16 runs per round, 80 in total). The model is chosen inside the training repetitions. One prediction per run.
 
 | Machine (classes) | Runs | Accuracy | Balanced | Macro F1 | Majority control | Errors |
@@ -541,7 +541,7 @@ AI-Based Predictive Maintenance for Mining Equipment · Ganesh Mishra, Lakshya S
 
 ## Baseline and changes
 
-The work started from `044d428ab85bf46631fad34f5f5c2722481d42f7` on GitHub main. The baseline rerun had 53 passed tests, zero failures or skips, and 39 successful prediction checks. Pyflakes passed. The existing application already supported eight mappings, three prediction interfaces, separate Grader bearing and gear tasks, and checkpoint trust verification. [Coding audit](experiment_archive.md#record-phase-1-enhancement-report) · [Scientific validation](scientific_validation.md)
+The work started from `044d428ab85bf46631fad34f5f5c2722481d42f7` on GitHub main. The baseline rerun had 53 passed tests, zero failures or skips, and 39 successful prediction checks. Pyflakes passed. The existing application already supported eight mappings, three prediction interfaces, separate Grader bearing and gear tasks, and checkpoint trust verification. [Coding audit](experiment_archive.md#record-phase-1-enhancement-report) · [Scientific validation](project_guide.md#section-scientific-validation)
 
 This phase adds separate signal diagnostics, a reproducible experiment runner, controlled robustness probes, and a two-entry cache for the weights-only CPU ResNet18 models. The cache invalidates on file identity, size or timestamp changes. The Pump extractor now rejects non-finite samples before feature calculations. Short MCC5-THU recordings produce a minimum-length error. The validation script, test fixtures and new results are separate from the archived evaluations and deployment fits.
 
@@ -590,7 +590,7 @@ The deployment probes separately rejected short Pump and Drill Rig inputs, NaN, 
 
 ## Cross-validation and reproducibility
 
-The grouped candidate checks recording IDs and keeps each complete drive setting on one side. Standardization fits inside each training split. The scientific review independently recalculated 111 archived confusion-matrix blocks and documented which groups were held out. Pump speed profiles do not establish unseen-bearing performance. Haul Truck ball faults are load-confounded. CORA reuses runs across mappings and provides no verified frame-window synchronization or fused model. Drill Rig image evidence comes from synthetic CAD. Motor Grader uses separate JUST supports, Aalto gear pairs and tooth crops. Condition classification and confidence outputs do not estimate future failure or remaining useful life. [Scientific validation](scientific_validation.md)
+The grouped candidate checks recording IDs and keeps each complete drive setting on one side. Standardization fits inside each training split. The scientific review independently recalculated 111 archived confusion-matrix blocks and documented which groups were held out. Pump speed profiles do not establish unseen-bearing performance. Haul Truck ball faults are load-confounded. CORA reuses runs across mappings and provides no verified frame-window synchronization or fused model. Drill Rig image evidence comes from synthetic CAD. Motor Grader uses separate JUST supports, Aalto gear pairs and tooth crops. Condition classification and confidence outputs do not estimate future failure or remaining useful life. [Scientific validation](project_guide.md#section-scientific-validation)
 
 ## CPU inference benchmark
 
@@ -945,7 +945,7 @@ The Haul Truck CNN predicted outer-race fault for one ball-fault frame. The Dril
 
 Motor Grader slewing-bearing image diagnosis remains unavailable. The [JUST slewing-bearing dataset](https://data.mendeley.com/datasets/hwg8v5j8t6/1) supplies sensor signals. The separate [gear-tooth image dataset](https://universe.roboflow.com/vjs-jek7v/gearbox_adddingimg) labels a different component and task. Its deployment checkpoint predicts visible tooth condition from a manually confirmed crop. The Grader gear vibration model (Aalto, healthy vs tooth damage) has its own route since November 10; it does not replace the slewing-bearing route. All component routes classify current condition using laboratory analogues. Future failure and remaining useful life are outside the demonstrated scope.
 
-The post-push record is `Processed_Data/pushed_deployment_verification.json`. Earlier route and photo checks are stored separately in `Processed_Data/final_deployment_verification.json` and `Processed_Data/whole_machine_verification.json`. The [evidence matrix](equipment_evidence_matrix.md) contains the archived held-out scores. Keep the trusted checkpoints and indexed image exports locally when running the demo.
+The post-push record is `Processed_Data/pushed_deployment_verification.json`. Earlier route and photo checks are stored separately in `Processed_Data/final_deployment_verification.json` and `Processed_Data/whole_machine_verification.json`. The [evidence matrix](project_guide.md#section-equipment-evidence-matrix) contains the archived held-out scores. Keep the trusted checkpoints and indexed image exports locally when running the demo.
 
 
 #### November 8 regression check
@@ -1007,7 +1007,7 @@ AI-Based Predictive Maintenance for Mining Equipment · Group 9
 
 #### Equipment mapping status
 
-PASS means a real input reached the appropriate local checkpoint and returned a prediction. The label and probability below are from the CLI sample. The [evidence matrix](equipment_evidence_matrix.md) contains held-out performance.
+PASS means a real input reached the appropriate local checkpoint and returned a prediction. The label and probability below are from the CLI sample. The [evidence matrix](project_guide.md#section-equipment-evidence-matrix) contains held-out performance.
 
 | Equipment mapping | Sensor result | Image result |
 |---|---|---|
@@ -1053,7 +1053,7 @@ PASS means a real input reached the appropriate local checkpoint and returned a 
 
 #### Aalto real-file recovery and rebuild
 
-The full Aalto archive matched the publisher SHA-256 recorded in the [dataset manifest](../Dataset_Manifest/manifest.md). The exact recording was restored to `Raw_Data/aalto_gear/3012Hz/250RPM/0_12Nm/Healthy/GP1.csv`. The existing extractor generated 12,750 windows from 425 runs across eight gear pairs. The saved feature cache and the original recording produced the same feature values within numerical tolerance.
+The full Aalto archive matched the publisher SHA-256 recorded in the [dataset manifest](../datasets/README.md). The exact recording was restored to `Raw_Data/aalto_gear/3012Hz/250RPM/0_12Nm/Healthy/GP1.csv`. The existing extractor generated 12,750 windows from 425 runs across eight gear pairs. The saved feature cache and the original recording produced the same feature values within numerical tolerance.
 
 The existing `python Notebook/predictive_maintenance.py grader-gear train-final` command selected logistic regression with acceleration, shaft orders and torque, and registered the rebuilt checkpoint in the local trust manifest. The checkpoint at `Processed_Data/models/grader_gear_sensor.joblib` is a fresh fit on the full dataset. Its SHA-256 is:
 

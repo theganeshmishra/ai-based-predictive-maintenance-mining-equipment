@@ -37,7 +37,7 @@ CHATGPT.local.md
 **/Processed_Data/
 data/
 *.csv
-!Examples/grader_sensor_synthetic_demo.csv
+!datasets/examples/grader_sensor_synthetic_demo.csv
 *.csv.gz
 *.tsv
 *.parquet
@@ -97,4 +97,4 @@ Images/
 
 # Final submission packages and weekly exports stay local
 /Submission/
-/Documentation/weekly_progress/
+/docs/weekly_progress/

@@ -64,7 +64,7 @@ IMAGES = ROOT / "Images"
 RESULTS = ROOT / "Results"
 FIGURES = ROOT / "Figures"
 MODELS = PROCESSED / "models"
-MANIFEST = ROOT / "Dataset_Manifest"  # file lists (with SHA-256) of the Pump and Haul Truck recordings
+MANIFEST = ROOT / "datasets"  # file lists (with SHA-256) of the Pump and Haul Truck recordings
 
 
 # ==================================================================================================
@@ -897,7 +897,7 @@ def tooth_crops(margin=0.15):
 
 # ==================================================================================================
 # 1c. Data check: raw files present in Raw_Data/ with the right SHA-256 (python Notebook/predictive_maintenance.py data-check)
-# Download by hand from the sources in Dataset_Manifest/manifest.md.
+# Download by hand from the sources in datasets/README.md.
 # ==================================================================================================
 
 CORA_RUNS = {
@@ -2257,7 +2257,7 @@ def run_haul_truck_load_check():
     return result
 
 
-# --- Planned attempt A (Documentation/experiment_archive.md#record-improvement-results): Drill Rig order features -------
+# --- Planned attempt A (docs/experiment_archive.md#record-improvement-results): Drill Rig order features -------
 # The MCC5-THU `speed` column is a tachometer with one pulse per revolution. The shaft rate of each
 # 1 s window is interpolated from the times between pulses, and each vibration channel's spectrum is
 # summed in bands of shaft orders. The shaft rate itself is not a feature.
@@ -2316,7 +2316,7 @@ def run_drill_rig_orders():
     scores = sensor_fair_test(table, feature_sets, m.labels, folds, m.inner_group)
     archived = json.loads((RESULTS / "drill_rig" / "sensor.json").read_text(encoding="utf-8"))["score"]
     result = {"attempt": "A: Drill Rig sensor with tachometer-order features (planned in "
-                         "Documentation/experiment_archive.md#record-improvement-results)",
+                         "docs/experiment_archive.md#record-improvement-results)",
               "test": "same fair test as the archived result: hold out 1000 / 2000 / 3000 rpm in turn; feature "
                       "set and model chosen inside the training speeds",
               "windows": int(len(table)), "recordings": int(table["unit"].nunique()), **scores,
@@ -2334,7 +2334,7 @@ def run_drill_rig_orders():
     return result
 
 
-# --- Planned attempt D (Documentation/experiment_archive.md#record-improvement-results): Drill Rig envelope orders ------
+# --- Planned attempt D (docs/experiment_archive.md#record-improvement-results): Drill Rig envelope orders ------
 # Local faults (pitting, cracks) hit once per turn of the damaged gear. The vibration is high-pass
 # filtered (1 kHz), its Hilbert envelope taken, and the envelope's spectrum summed in attempt A's shaft-
 # order bands. The kurtosis of the high-passed window is added. The shaft rate itself is not a feature.
@@ -2408,7 +2408,7 @@ def run_drill_rig_envelope():
     attempt_a = json.loads((out / "drill_rig_sensor_orders.json").read_text(encoding="utf-8"))["score"]
     keys = ("accuracy", "balanced_accuracy", "macro_f1", "confusion_matrix")
     result = {"attempt": "D: Drill Rig sensor with envelope order features (planned in "
-                         "Documentation/experiment_archive.md#record-improvement-results)",
+                         "docs/experiment_archive.md#record-improvement-results)",
               "test": "same fair test as the archived result: hold out 1000 / 2000 / 3000 rpm in turn; feature "
                       "set and model chosen inside the training speeds",
               "windows": int(len(table)), "recordings": int(table["unit"].nunique()), **scores,
@@ -2447,7 +2447,7 @@ def run_haul_truck_speed_frames():
               flush=True)
     archived = json.loads((RESULTS / "haul_truck" / "images.json").read_text(encoding="utf-8"))["unit_level"]
     result = {"attempt": "B: Haul Truck images, 2000 rpm test recordings cut into 62.5 ms frames (planned in "
-                         "Documentation/experiment_archive.md#record-improvement-results)",
+                         "docs/experiment_archive.md#record-improvement-results)",
               "test": "same fair test as the archived result: train on the 12 recordings at 1000 rpm, test the 12 "
                       "recordings at 2000 rpm; ResNet-18 epochs chosen on one training recording per class",
               **runs, "archived_fair_test": {k: archived[k] for k in ("accuracy", "macro_f1", "confusion_matrix")}}
@@ -2536,7 +2536,7 @@ def run_cora_transient():
                               m.labels, f"{m.title}: CORA transient runs, unseen repetition at a trained speed",
                               FIGURES / "experiments" / "improvement" / f"{machine}_cora_transient.png")
     result = {"attempt": "C: CORA transient runs, unseen repetition at a known speed (planned in "
-                         "Documentation/experiment_archive.md#record-improvement-results)",
+                         "docs/experiment_archive.md#record-improvement-results)",
               "source": "CORA, CSUC Dataverse doi 10.34810/DATA2500 (CC BY 4.0): transient start-up runs, 5 "
                         "repetitions per class and speed, Vx at 3 kHz for 30 s, RPM at about 100 Hz",
               "test": "five rounds, each holding out repetition k at all four speeds (16 runs); model chosen "
@@ -2550,7 +2550,7 @@ def run_cora_transient():
     return result
 
 
-# --- Grader with matched classes (Documentation/experiment_archive.md#record-grader-matched-classes-plan) -----------------------
+# --- Grader with matched classes (docs/experiment_archive.md#record-grader-matched-classes-plan) -----------------------
 # The Grader images are good vs damaged gear teeth. Here the sensor side gets the same task: healthy gear
 # vs damaged tooth (tooth break or missing tooth) on MCC5-THU, leave one speed out.
 
@@ -2606,7 +2606,7 @@ def run_grader_gear_mcc5():
     images = json.loads((RESULTS / "grader" / "images.json").read_text(encoding="utf-8"))
     kinds = pd.Series([r["kind"] for r in recordings]).value_counts().sort_index()
     result = {"experiment": "Grader with matched classes, sensor side on MCC5-THU (planned in "
-                            "Documentation/experiment_archive.md#record-grader-matched-classes-plan)",
+                            "docs/experiment_archive.md#record-grader-matched-classes-plan)",
               "classes": GRADER_GEAR_LABELS,
               "test": "leave one speed out (1000 / 2000 / 3000 rpm); feature set and model chosen inside the "
                       "training speeds; one prediction per recording",
@@ -2727,7 +2727,7 @@ def aalto_table():
         raise FileNotFoundError(
             "Aalto recordings unavailable. Extract the verified 3012 Hz archive to "
             "Raw_Data/aalto_gear/3012Hz/ or restore the local feature cache at "
-            "Processed_Data/aalto_gear/window_features.csv.gz. See Dataset_Manifest/manifest.md."
+            "Processed_Data/aalto_gear/window_features.csv.gz. See datasets/README.md."
         )
     for k, r in enumerate(runs):
         features, _ = aalto_run_features(r["path"])
@@ -2768,7 +2768,7 @@ def run_grader_gear_aalto():
                         "damaged_runs": int((sub["class"] == "tooth_damage").sum())})
     images = json.loads((RESULTS / "grader" / "images.json").read_text(encoding="utf-8"))
     result = {"experiment": "Grader with matched classes, sensor side on the Aalto Gear Failure Dataset 3012 Hz v2 "
-                            "(planned in Documentation/experiment_archive.md#record-grader-matched-classes-plan)",
+                            "(planned in docs/experiment_archive.md#record-grader-matched-classes-plan)",
               "source": "Dahl et al., Aalto Gear Failure Dataset 3012Hz v2, Mendeley Data doi 10.17632/fywnj597d8.2, "
                         "CC BY 4.0; data paper doi 10.1016/j.dib.2024.111171",
               "classes": GRADER_GEAR_LABELS,
@@ -3541,7 +3541,7 @@ Last route check reads Processed_Data/deployment/route_check.json (run: python N
 </main><script>{DASHBOARD_SCRIPT}</script></body></html>""".encode("utf-8")
 
 
-# --- Demo check: the steps of Documentation/demo_script.md, run and compared with the expected answers --
+# --- Demo check: the steps of docs/project_guide.md#section-demo-script, run and compared with the expected answers --
 
 def demo_steps():
     sensor, _, images = route_samples()
@@ -3591,7 +3591,7 @@ def run_demo_check():
         failures += not ok
         shown = f"{got[0]}, {got[1]}" if isinstance(got, tuple) else got
         print(f"{'PASS' if ok else 'FAIL'}    {label} -> {shown}" + (f" ({probability})" if probability is not None else ""))
-    print("demo check: all steps as in Documentation/demo_script.md" if not failures else f"demo check: {failures} step(s) differ")
+    print("demo check: all steps as in docs/project_guide.md#section-demo-script" if not failures else f"demo check: {failures} step(s) differ")
     return failures
 
 
